@@ -1,0 +1,7 @@
+﻿<Project>
+  <PropertyGroup>
+    <FsmGenerateDI>true</FsmGenerateDI>
+    <FsmGenerateLogging>true</FsmGenerateLogging>
+    <DefineConstants>$(DefineConstants);FSM_DI_ENABLED;FSM_LOGGING_ENABLED</DefineConstants>
+  </PropertyGroup>
+</Project>

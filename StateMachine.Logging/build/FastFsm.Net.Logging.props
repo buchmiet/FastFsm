@@ -1,0 +1,6 @@
+﻿<Project>
+	<PropertyGroup>
+		<FsmGenerateLogging>true</FsmGenerateLogging>
+		<DefineConstants>$(DefineConstants);FSM_LOGGING_ENABLED</DefineConstants>
+	</PropertyGroup>
+</Project>
