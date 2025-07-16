@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <FsmGenerateLogging Condition="'$(FsmGenerateLogging)' == ''">false</FsmGenerateLogging>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <CompilerVisibleProperty Include="FsmGenerateLogging" />
+  </ItemGroup>
+</Project>

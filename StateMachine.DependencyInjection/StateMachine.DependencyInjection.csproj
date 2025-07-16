@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
+		<LangVersion>latest</LangVersion>
+		<Nullable>enable</Nullable>
+
+		<PackageId>FastFsm.Net.DependencyInjection</PackageId>
+		<Authors>Lukasz Buchmiet</Authors>
+		<Description>Dependency Injection support for FastFsm.Net state machines. Includes logging support.</Description>
+
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<PackageOutputPath>../nupkgs</PackageOutputPath>
+		<IncludeBuildOutput>true</IncludeBuildOutput>
+
+		<!-- Włącz DI i Logging -->
+		<FsmGenerateDI>true</FsmGenerateDI>
+		<FsmGenerateLogging>true</FsmGenerateLogging>
+		<DefineConstants>$(DefineConstants);FSM_DI_ENABLED;FSM_LOGGING_ENABLED</DefineConstants>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="FastFsm.Net" Version="*-dev.*" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.7" />
+		<PackageReference Include="Dorssel.GitVersion.MsBuild" Version="1.1.1" PrivateAssets="all" />
+		<PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.7" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="build\FastFsm.Net.DependencyInjection.props" Pack="true" PackagePath="buildTransitive" />
+	</ItemGroup>
+
+	<!-- Timestamp version -->
+	<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
+		<PropertyGroup>
+			<Version>$(GitVersion_MajorMinorPatch)-dev.$([System.DateTime]::UtcNow.ToString("yyyyMMddHHmmss"))</Version>
+			<PackageVersion>$(Version)</PackageVersion>
+		</PropertyGroup>
+	</Target>
+</Project>

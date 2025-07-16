@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    
+    <!-- Generator specific -->
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <IncludeBuildOutput>false</IncludeBuildOutput> <!-- Important for generators -->
+    <DevelopmentDependency>true</DevelopmentDependency> <!-- Ensures it's a build-time dependency -->
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+        
+    <!-- NuGet -->
+    <PackageId>StateMachine.Generator</PackageId>
+    <Version>1.0.0-alpha1</Version>
+    <Authors>FSM Team</Authors>
+    <Description>Source Generator for FSM.NET</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- This ensures the DLL is packed into the nupkg in the correct analyzers folder -->
+  <ItemGroup>
+    <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Abstractions\Abstractions.csproj" />
+    <ProjectReference Include="..\Generator.DependencyInjection\Generator.DependencyInjection.csproj" />
+    <ProjectReference Include="..\Generator.Log\Generator.Log.csproj" />
+    <ProjectReference Include="..\Generator.Model\Generator.Model.csproj" />
+    <ProjectReference Include="..\Generator.Rules\Generator.Rules.csproj" />
+    <ProjectReference Include="..\IndentedStringBuilder\IndentedStringBuilder.csproj" />
+  </ItemGroup>
+</Project>

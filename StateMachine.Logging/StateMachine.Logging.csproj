@@ -1,0 +1,57 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<!-- ───────────  podstawowe ustawienia  ─────────── -->
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
+
+		<PackageId>FastFsm.Net.Logging</PackageId>
+		<Authors>Lukasz Buchmiet</Authors>
+		<Description>Enables logging for FastFsm.Net state machines</Description>
+
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<PackageOutputPath>../nupkgs</PackageOutputPath>
+		<!-- brak własnego DLL-a -->
+		<IncludeBuildOutput>false</IncludeBuildOutput>
+
+		<!-- globalna flaga i #if -->
+		<FsmGenerateLogging>true</FsmGenerateLogging>
+		<DefineConstants>$(DefineConstants);FSM_LOGGING_ENABLED</DefineConstants>
+
+		<LangVersion>latest</LangVersion>
+	</PropertyGroup>
+
+	<!-- wersjonowanie -->
+	<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
+		<PropertyGroup>
+			<Version>$(GitVersion_MajorMinorPatch)-dev.$([System.DateTime]::UtcNow.ToString("yyyyMMddHHmmss"))</Version>
+			<PackageVersion>$(Version)</PackageVersion>
+		</PropertyGroup>
+	</Target>
+
+	<!-- zależności -->
+	<ItemGroup>
+		<PackageReference Include="FastFsm.Net" Version="*-dev.*" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.5" />
+		<PackageReference Include="Dorssel.GitVersion.MsBuild" Version="1.1.1" PrivateAssets="all" />
+	</ItemGroup>
+
+	<!-- buildTransitive props -->
+	<ItemGroup>
+		<None Include="build\FastFsm.Net.Logging.props" Pack="true" PackagePath="buildTransitive" />
+	</ItemGroup>
+
+	<!-- ───────────  shared-source: ExtensionRunner (link)  ─────────── -->
+	<ItemGroup>
+		<!-- plik pobieramy z projektu core -->
+		<Content Include="..\StateMachine\Runtime\Extensions\ExtensionRunner.cs"
+		         Link="Runtime\Extensions\ExtensionRunner.cs"
+		         Pack="true"
+		         PackagePath="contentFiles/cs/any"
+		         BuildAction="Compile"
+		         Visible="false" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Folder Include="shared\" />
+	</ItemGroup>
+
+</Project>

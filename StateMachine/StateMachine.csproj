@@ -1,0 +1,101 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<!-- ───────────  podstawowe ustawienia  ─────────── -->
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
+		<LangVersion>latest</LangVersion>
+		<Nullable>enable</Nullable>
+
+		<!-- AOT / trimming -->
+		<IsAotCompatible>true</IsAotCompatible>
+		<EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+		<IsTrimmable>true</IsTrimmable>
+
+		<!-- NuGet metadane -->
+		<PackageId>FastFsm.Net</PackageId>
+		<Authors>Lukasz Buchmiet</Authors>
+		<Description>High-performance state machine using source generators</Description>
+
+		<!-- Pakowanie -->
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<PackageOutputPath>../nupkgs</PackageOutputPath>
+		<!-- wrzuć Abstractions.dll do nupkg -->
+		<TargetsForTfmSpecificBuildOutput>
+			$(TargetsForTfmSpecificBuildOutput);
+			CopyProjectReferencesToPackage
+		</TargetsForTfmSpecificBuildOutput>
+	</PropertyGroup>
+
+	<!-- zależności NuGet -->
+	<ItemGroup>
+		<PackageReference Include="Dorssel.GitVersion.MsBuild" Version="1.1.1" PrivateAssets="all" />
+	</ItemGroup>
+
+	<!-- generator -->
+	<ItemGroup>
+		<ProjectReference Include="..\Generator\Generator.csproj" PrivateAssets="all" />
+	</ItemGroup>
+
+	<!-- pliki *.props do nupkg -->
+	<ItemGroup>
+		<None Include="build\*.props" Pack="true" PackagePath="build" />
+	</ItemGroup>
+
+	<!-- analyzer (DLL generatora) -->
+	<ItemGroup>
+		<None Include="..\Generator\bin\$(Configuration)\netstandard2.0\*.dll"
+			  Pack="true"
+			  PackagePath="analyzers/dotnet/cs"
+			  Visible="false" />
+	</ItemGroup>
+
+	<!-- ───────────  shared-source: ExtensionRunner  ─────────── -->
+	<ItemGroup>
+		<!-- 1️⃣ nie kompilujemy wewnątrz FastFsm.Net.dll -->
+		<Compile Remove="Runtime\Extensions\ExtensionRunner.cs" />
+
+		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
+		<None Include="Runtime\Extensions\ExtensionRunner.cs"
+		      Pack="true"
+		      PackagePath="contentFiles/cs/any"
+		      BuildAction="Compile"
+		      Visible="false" />
+
+		<Compile Remove="DependencyInjection\FsmServiceCollectionExtensions.cs" />
+
+		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
+		<None Include="DependencyInjection\FsmServiceCollectionExtensions.cs"
+		      Pack="true"
+		      PackagePath="contentFiles/cs/any"
+		      BuildAction="Compile"
+		      Visible="false" />
+
+		<Compile Remove="DependencyInjection\StateMachineFactory.cs" />
+
+		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
+		<None Include="DependencyInjection\StateMachineFactory.cs"
+		      Pack="true"
+		      PackagePath="contentFiles/cs/any"
+		      BuildAction="Compile"
+		      Visible="false" />
+
+	</ItemGroup>
+
+	
+	<!-- Abstractions.dll do paczki -->
+	<Target Name="CopyProjectReferencesToPackage"
+			DependsOnTargets="BuildOnlySettings;ResolveReferences">
+		<ItemGroup>
+			<BuildOutputInPackage Include="$(OutputPath)Abstractions.dll" />
+		</ItemGroup>
+	</Target>
+
+	<!-- wersja z timestampem -->
+	<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
+		<PropertyGroup>
+			<Version>$(GitVersion_MajorMinorPatch)-dev.$([System.DateTime]::UtcNow.ToString("yyyyMMddHHmmss"))</Version>
+			<PackageVersion>$(Version)</PackageVersion>
+		</PropertyGroup>
+	</Target>
+
+</Project>
