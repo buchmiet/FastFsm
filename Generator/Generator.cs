@@ -141,111 +141,131 @@ public class StateMachineGenerator : IIncrementalGenerator
         return (!hasStateMachineAttr || !isPartial) ? cls : null;
     }
 
-    private static void Execute(
-     SourceProductionContext context,
-     (
-         (Compilation Compilation, AnalyzerConfigOptionsProvider OptionsProvider) compAndOpts,
-         ImmutableArray<ClassDeclarationSyntax> Classes
-     ) data)
-    {
-        // ──────────────────────────────────────────────────────────────
-        // Rozbij krotkę wejściową na składniki
-        // ──────────────────────────────────────────────────────────────
-        var (compAndOpts, classes) = data;
-        var (compilation, optionsProvider) = compAndOpts;
+    // Umieść to w klasie zawierającej metodę Execute
+    private static readonly DiagnosticDescriptor GeneratorSettingsInfo = new(
+        id: "SMG001", // Unikalny ID dla naszej diagnostyki (S)tate(M)achine(G)enerator
+        title: "Generator Configuration Info",
+        messageFormat: "Dla maszyny stanów '{0}': generowanie DI jest '{1}', a generowanie logowania jest '{2}'.",
+        category: "StateMachineGenerator",
+        defaultSeverity: DiagnosticSeverity.Warning, 
+        isEnabledByDefault: true,
+        description: "Wyświetla informacje o tym, jakie funkcje generatora zostały włączone na podstawie właściwości build."
+    );
 
-        // ──────────────────────────────────────────────────────────────
-        // Nic do roboty, jeśli nie ma klas
-        // ──────────────────────────────────────────────────────────────
-        if (classes.IsDefaultOrEmpty)
+    private static void Execute(
+   SourceProductionContext context,
+   (
+       (Compilation Compilation, AnalyzerConfigOptionsProvider OptionsProvider) compAndOpts,
+       ImmutableArray<ClassDeclarationSyntax> Classes
+   ) data)
+{
+    // ──────────────────────────────────────────────────────────────
+    // Rozbij krotkę wejściową na składniki
+    // ──────────────────────────────────────────────────────────────
+    var (compAndOpts, classes) = data;
+    var (compilation, optionsProvider) = compAndOpts;
+
+    // ──────────────────────────────────────────────────────────────
+    // Nic do roboty, jeśli nie ma klas
+    // ──────────────────────────────────────────────────────────────
+    if (classes.IsDefaultOrEmpty)
+        return;
+
+    // ──────────────────────────────────────────────────────────────
+    // Przygotuj parser i selector wariantów
+    // ──────────────────────────────────────────────────────────────
+    var parser = new StateMachineParser(compilation, context);
+    var variantSelector = new VariantSelector();
+
+    // ──────────────────────────────────────────────────────────────
+    // Iteracja po wszystkich klasach z [StateMachine]
+    // ──────────────────────────────────────────────────────────────
+    foreach (var classDeclaration in classes)
+    {
+        if (context.CancellationToken.IsCancellationRequested)
             return;
 
-        // ──────────────────────────────────────────────────────────────
-        // Przygotuj parser i selector wariantów
-        // ──────────────────────────────────────────────────────────────
-        var parser = new StateMachineParser(compilation, context);
-        var variantSelector = new VariantSelector();
-
-        // ──────────────────────────────────────────────────────────────
-        // Iteracja po wszystkich klasach z [StateMachine]
-        // ──────────────────────────────────────────────────────────────
-        foreach (var classDeclaration in classes)
+        // ──────────────────────────────────────────────────────────
+        // Spróbuj sparsować definicję state machine
+        // ──────────────────────────────────────────────────────────
+        if (!parser.TryParse(classDeclaration, out StateMachineModel? model))
         {
-            if (context.CancellationToken.IsCancellationRequested)
-                return;
+            // Parser już zgłosił diagnostykę; pomiń
+            continue;
+        }
 
-            // ──────────────────────────────────────────────────────────
-            // Spróbuj sparsować definicję state machine
-            // ──────────────────────────────────────────────────────────
-            if (!parser.TryParse(classDeclaration, out StateMachineModel? model))
-            {
-                // Parser już zgłosił diagnostykę; pomiń
-                continue;
+        // ──────────────────────────────────────────────────────────
+        // Pobierz symbol klasy i skonfiguruj model
+        // ──────────────────────────────────────────────────────────
+        var semanticModel = compilation.GetSemanticModel(classDeclaration.SyntaxTree);
+        if (semanticModel.GetDeclaredSymbol(classDeclaration) is not INamedTypeSymbol classSymbol)
+        {
+            // Nie powinno się zdarzyć – bezpieczeństwo
+            continue;
+        }
+
+        // Wybór wariantu generatora
+        variantSelector.DetermineVariant(model!, classSymbol);
+
+        model!.GenerateLogging = BuildProperties.GetGenerateLogging(
+            optionsProvider.GlobalOptions);
+
+        model!.GenerateDependencyInjection = BuildProperties.GetGenerateDI(
+            optionsProvider.GlobalOptions);
+
+        // ==========================================================
+        // NOWA CZĘŚĆ: Zgłoś diagnostykę z informacją o flagach
+        // ==========================================================
+        context.ReportDiagnostic(Diagnostic.Create(
+            descriptor: GeneratorSettingsInfo,
+            location: classDeclaration.GetLocation(), // Wskaż na deklarację klasy
+            messageArgs: new object[] {
+                model.ClassName,
+                model.GenerateDependencyInjection ? "włączone" : "wyłączone",
+                model.GenerateLogging ? "włączone" : "wyłączone"
             }
+        ));
+        // ==========================================================
 
+        // ──────────────────────────────────────────────────────────
+        // 1. Generuj główną klasę state machine
+        // ──────────────────────────────────────────────────────────
+        StateMachineCodeGenerator generator = model.Variant switch
+        {
+            GenerationVariant.Full => new FullVariantGenerator(model),
+            GenerationVariant.WithPayload => new PayloadVariantGenerator(model),
+            GenerationVariant.WithExtensions => new ExtensionsVariantGenerator(model),
+            _ => new CoreVariantGenerator(model) // Pure / Basic
+        };
+        var source = generator.Generate();
+        context.AddSource(
+            $"{model.ClassName}.Generated.cs",
+            SourceText.From(source, Encoding.UTF8));
+
+        if (model.GenerateDependencyInjection)
+        {
             // ──────────────────────────────────────────────────────────
-            // Pobierz symbol klasy i skonfiguruj model
+            // 2. Generuj fabrykę i extension-methods dla DI
             // ──────────────────────────────────────────────────────────
-            var semanticModel = compilation.GetSemanticModel(classDeclaration.SyntaxTree);
-            if (semanticModel.GetDeclaredSymbol(classDeclaration) is not INamedTypeSymbol classSymbol)
-            {
-                // Nie powinno się zdarzyć – bezpieczeństwo
-                continue;
-            }
-
-            // Wybór wariantu generatora
-            variantSelector.DetermineVariant(model!, classSymbol);
-
-
-            model!.GenerateLogging =BuildProperties.GetGenerateLogging(
-                optionsProvider.GlobalOptions);
-
-            model!.GenerateDependencyInjection = BuildProperties.GetGenerateDI(
-                optionsProvider.GlobalOptions);
-
-            // ──────────────────────────────────────────────────────────
-            // 1. Generuj główną klasę state machine
-            // ──────────────────────────────────────────────────────────
-            StateMachineCodeGenerator generator = model.Variant switch
-            {
-                GenerationVariant.Full => new FullVariantGenerator(model),
-                GenerationVariant.WithPayload => new PayloadVariantGenerator(model),
-                GenerationVariant.WithExtensions => new ExtensionsVariantGenerator(model),
-                _ => new CoreVariantGenerator(model) // Pure / Basic
-            };
-            var source = generator.Generate();
+            var factoryModel = FactoryGenerationModelBuilder.Create(model);
+            var factoryGenerator = new FactoryCodeGenerator(factoryModel);
+            var factorySource = factoryGenerator.Generate();
             context.AddSource(
-                $"{model.ClassName}.Generated.cs",
-                SourceText.From(source, Encoding.UTF8));
+                $"{model.ClassName}.Factory.g.cs",
+                SourceText.From(factorySource, Encoding.UTF8));
+        }
 
-
-            if (model.GenerateDependencyInjection)
-            {
-                // ──────────────────────────────────────────────────────────
-                // 2. Generuj fabrykę i extension-methods dla DI
-                // ──────────────────────────────────────────────────────────
-
-                var factoryModel = FactoryGenerationModelBuilder.Create(model);
-
-                var factoryGenerator = new FactoryCodeGenerator(factoryModel);
-                var factorySource = factoryGenerator.Generate();
-                context.AddSource(
-                    $"{model.ClassName}.Factory.g.cs",
-                    SourceText.From(factorySource, Encoding.UTF8));
-
-            }
-            // ──────────────────────────────────────────────────────────
-            // 3. Generuj klasę helperów logowania (jeśli włączone)
-            // ──────────────────────────────────────────────────────────
-        
-            if (model.GenerateLogging)
-            {
-                var loggingGenerator = new Generator.Log.LoggingClassGenerator(model.ClassName,model.Namespace);
-                var loggingSource = loggingGenerator.Generate();
-                context.AddSource(
-                    $"{model.ClassName}Log.g.cs",
-                    SourceText.From(loggingSource, Encoding.UTF8));
-            }
+        // ──────────────────────────────────────────────────────────
+        // 3. Generuj klasę helperów logowania (jeśli włączone)
+        // ──────────────────────────────────────────────────────────
+        if (model.GenerateLogging)
+        {
+            var loggingGenerator = new Generator.Log.LoggingClassGenerator(model.ClassName, model.Namespace);
+            var loggingSource = loggingGenerator.Generate();
+            context.AddSource(
+                $"{model.ClassName}Log.g.cs",
+                SourceText.From(loggingSource, Encoding.UTF8));
         }
     }
+}
 }

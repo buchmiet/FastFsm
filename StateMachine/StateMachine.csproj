@@ -49,7 +49,7 @@
 			  Visible="false" />
 	</ItemGroup>
 
-	<!-- ───────────  shared-source: ExtensionRunner  ─────────── -->
+	
 	<ItemGroup>
 		<!-- 1️⃣ nie kompilujemy wewnątrz FastFsm.Net.dll -->
 		<Compile Remove="Runtime\Extensions\ExtensionRunner.cs" />

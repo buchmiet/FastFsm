@@ -33,6 +33,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Generator.DependencyInjecti
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StateMachine.DependencyInjection", "StateMachine.DependencyInjection\StateMachine.DependencyInjection.csproj", "{51892DA0-B465-4AF4-A642-4ED094FF5511}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StateMachine.DependencyInjection.Tests", "StateMachine.DependencyInjection.Tests\StateMachine.DependencyInjection.Tests.csproj", "{F3D05D94-66B1-EA79-D4E7-AFA252BE34D9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -223,6 +225,18 @@ Global
 		{51892DA0-B465-4AF4-A642-4ED094FF5511}.Release|x64.Build.0 = Release|Any CPU
 		{51892DA0-B465-4AF4-A642-4ED094FF5511}.Release|x86.ActiveCfg = Release|Any CPU
 		{51892DA0-B465-4AF4-A642-4ED094FF5511}.Release|x86.Build.0 = Release|Any CPU
+		{F3D05D94-66B1-EA79-D4E7-AFA252BE34D9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F3D05D94-66B1-EA79-D4E7-AFA252BE34D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F3D05D94-66B1-EA79-D4E7-AFA252BE34D9}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F3D05D94-66B1-EA79-D4E7-AFA252BE34D9}.Debug|x64.Build.0 = Debug|Any CPU
+		{F3D05D94-66B1-EA79-D4E7-AFA252BE34D9}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F3D05D94-66B1-EA79-D4E7-AFA252BE34D9}.Debug|x86.Build.0 = Debug|Any CPU
+		{F3D05D94-66B1-EA79-D4E7-AFA252BE34D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F3D05D94-66B1-EA79-D4E7-AFA252BE34D9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F3D05D94-66B1-EA79-D4E7-AFA252BE34D9}.Release|x64.ActiveCfg = Release|Any CPU
+		{F3D05D94-66B1-EA79-D4E7-AFA252BE34D9}.Release|x64.Build.0 = Release|Any CPU
+		{F3D05D94-66B1-EA79-D4E7-AFA252BE34D9}.Release|x86.ActiveCfg = Release|Any CPU
+		{F3D05D94-66B1-EA79-D4E7-AFA252BE34D9}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

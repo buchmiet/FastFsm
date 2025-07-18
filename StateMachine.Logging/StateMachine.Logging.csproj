@@ -31,7 +31,7 @@
 	<!-- zależności -->
 	<ItemGroup>
 		<PackageReference Include="FastFsm.Net" Version="*-dev.*" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.5" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
 		<PackageReference Include="Dorssel.GitVersion.MsBuild" Version="1.1.1" PrivateAssets="all" />
 	</ItemGroup>
 

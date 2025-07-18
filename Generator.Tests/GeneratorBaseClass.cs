@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Xunit.Abstractions;
 
 namespace Generator.Tests;
@@ -35,6 +36,25 @@ namespace Generator.Tests;
  */
 public abstract class GeneratorBaseClass(ITestOutputHelper output)
 {
+    private sealed class DictionaryAnalyzerConfigOptionsProvider(IDictionary<string, string> global)
+        : AnalyzerConfigOptionsProvider
+    {
+        private readonly AnalyzerConfigOptions _globalOptions = new DictionaryAnalyzerConfigOptions(global);
+
+        public override AnalyzerConfigOptions GlobalOptions => _globalOptions;
+
+        // Generator i tak patrzy wyłącznie w GlobalOptions,
+        // więc dla SyntaxTree / AdditionalText zwracamy te same.
+        public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => _globalOptions;
+        public override AnalyzerConfigOptions GetOptions(AdditionalText text) => _globalOptions;
+
+        private sealed class DictionaryAnalyzerConfigOptions(IDictionary<string, string> values) : AnalyzerConfigOptions
+        {
+            public override bool TryGetValue(string key, out string? value) => values.TryGetValue(key, out value);
+
+            public override IEnumerable<string> Keys => values.Keys;
+        }
+    }
     protected void AddProjectReferences(List<MetadataReference> refs)
     {
         // Znajdź katalog z projektami
@@ -109,48 +129,73 @@ public abstract class GeneratorBaseClass(ITestOutputHelper output)
     }
 
 
-    protected (Assembly? asm, ImmutableArray<Diagnostic> diags, Dictionary<string, string> generatedSources)
-        CompileAndRunGenerator(IEnumerable<string> userSources, IIncrementalGenerator generator)
+
+
+    protected (Assembly? asm,
+            ImmutableArray<Diagnostic> diags,
+            Dictionary<string, string> generatedSources)
+ CompileAndRunGenerator(
+     IEnumerable<string> userSources,
+     IIncrementalGenerator generator,
+     bool enableLogging = false,
+     bool enableDependencyInjection = false)
     {
-        // 1. Wczytaj kod atrybutów dynamicznie jako listę stringów (każdy plik to osobny string)
-        //List<string> attributeSourceCodes = LoadAttributeSourceCodesFromAbstractionsProject();
-        //output.WriteLine("Begin: all attributes:");
-        //output.WriteLine(string.Join(Environment.NewLine, attributeSourceCodes));
-        //output.WriteLine("End: all attributes.");
-        //// 2. Połącz wszystkie kody źródłowe
-        //var allSourceTexts = new List<string>();
-        //allSourceTexts.AddRange(attributeSourceCodes); // Dodaj każdy plik atrybutu jako osobny tekst źródłowy
-        //// allSourceTexts.Add(RuntimeSource);          // Dodaj RuntimeSource
-        //allSourceTexts.AddRange(userSources);       // Dodaj kody użytkownika
+        // ───────── build_property.* → AnalyzerConfigOptionsProvider ─────────
+        var buildProps = new Dictionary<string, string>();
+        if (enableLogging)
+            buildProps["build_property.FsmGenerateLogging"] = "true";
+        if (enableDependencyInjection)
+            buildProps["build_property.FsmGenerateDI"] = "true";
 
+        var optionsProvider = new DictionaryAnalyzerConfigOptionsProvider(buildProps);
+        // -------------------------------------------------------------------
 
-
-        //var trees = allSourceTexts
-        //    .Select(s => CSharpSyntaxTree.ParseText(s)) // Każdy string staje się osobnym drzewem
-        //    .ToArray();
-
-        // 1.  ***** NIE ładujemy już źródeł atrybutów *****
         var allSourceTexts = new List<string>();
 
         var solutionDir = GetSolutionDir();
         if (solutionDir is not null)
         {
+            // ExtensionRunner.cs (shared‑source)
             var extRunner = Path.Combine(solutionDir,
-                "StateMachine",
-                "Runtime",
-                "Extensions",
-                "ExtensionRunner.cs");
+                                         "StateMachine",
+                                         "Runtime",
+                                         "Extensions",
+                                         "ExtensionRunner.cs");
             if (File.Exists(extRunner))
                 allSourceTexts.Add(File.ReadAllText(extRunner));
+
+            // ─── dodatkowe pliki DI (shared‑source) ───
+            if (enableDependencyInjection)
+            {
+                var diDir = Path.Combine(solutionDir, "StateMachine.DependencyInjection");
+                foreach (var file in new[]
+                {
+                "FsmServiceCollectionExtensions.cs",
+                "StateMachineFactory.cs"
+            })
+                {
+                    var path = Path.Combine(diDir, file);
+                    if (File.Exists(path))
+                        allSourceTexts.Add(File.ReadAllText(path));
+                }
+            }
         }
 
         // 3.  Kody użytkownika
         allSourceTexts.AddRange(userSources);
 
+        // ─── symbole preprocesora (#if FSM_…) ───
+        var symbols = new List<string>();
+        if (enableLogging) symbols.Add("FSM_LOGGING_ENABLED");
+        if (enableDependencyInjection) symbols.Add("FSM_DI_ENABLED");
+
+        var parseOptions = CSharpParseOptions.Default.WithPreprocessorSymbols(symbols);
+
         var trees = allSourceTexts
-            .Select(s => CSharpSyntaxTree.ParseText(s))
+            .Select(src => CSharpSyntaxTree.ParseText(src, parseOptions))
             .ToArray();
-        // Reszta metody CompileAndRunGenerator pozostaje taka sama ...
+
+        // ─── referencje ───
         var refs = AppDomain.CurrentDomain.GetAssemblies()
             .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
             .Select(a => MetadataReference.CreateFromFile(a.Location))
@@ -159,44 +204,82 @@ public abstract class GeneratorBaseClass(ITestOutputHelper output)
 
         AddProjectReferences(refs);
 
-        string netstandard = Path.Combine(RuntimeEnvironment.GetRuntimeDirectory(), "netstandard.dll");
+        if (enableLogging)
+        {
+            // ILogger<T>
+            refs.Add(MetadataReference.CreateFromFile(
+                typeof(Microsoft.Extensions.Logging.ILogger).Assembly.Location));
+        }
+
+        if (enableDependencyInjection)
+        {
+            // IServiceCollection
+            refs.Add(MetadataReference.CreateFromFile(
+                typeof(Microsoft.Extensions.DependencyInjection.IServiceCollection).Assembly.Location));
+
+            // ── StateMachine.DependencyInjection.dll (z projektu w repo) ──
+            if (solutionDir is not null)
+            {
+                string testAssemblyPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+                string configuration = testAssemblyPath.Contains("Debug") ? "Debug" : "Release";
+
+                var diDllPath = Path.Combine(
+                    solutionDir,
+                    "StateMachine.DependencyInjection",
+                    "bin",
+                    configuration,
+                    "net9.0",
+                    "StateMachine.DependencyInjection.dll");
+
+                if (File.Exists(diDllPath))
+                    refs.Add(MetadataReference.CreateFromFile(diDllPath));
+                // jeśli brak – test pokaże diagnostykę, co ułatwi debug.
+            }
+        }
+
+        // netstandard (potrzebny przy niektórych runtime’ach)
+        var netstandard = Path.Combine(RuntimeEnvironment.GetRuntimeDirectory(), "netstandard.dll");
         if (File.Exists(netstandard))
             refs.Add(MetadataReference.CreateFromFile(netstandard));
 
         var compilation = CSharpCompilation.Create(
             "FsmTestAssembly",
-            trees, // Przekazujemy tablicę drzew składni
+            trees,
             refs,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        var driver = CSharpGeneratorDriver.Create(generator);
+        var driver = CSharpGeneratorDriver.Create(
+            new[] { generator.AsSourceGenerator() },
+            additionalTexts: null,
+            parseOptions,
+            optionsProvider);
 
-        var driverAfterRun = driver.RunGeneratorsAndUpdateCompilation(compilation,
+        var driverAfterRun = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
             out var outCompilation,
-            out var generatorRunDiagnostics);
+            out var genDiags);
 
-        var generatedSources = new Dictionary<string, string>();
-        var generatorDriverRunResult = driverAfterRun.GetRunResult();
-        foreach (var generatorResult in generatorDriverRunResult.Results)
-        {
-            foreach (var generatedSource in generatorResult.GeneratedSources)
-            {
-                generatedSources[generatedSource.HintName] = generatedSource.SourceText.ToString();
-            }
-        }
+        // ─── zebrane kody wygenerowane ───
+        var generated = new Dictionary<string, string>();
+        foreach (var result in driverAfterRun.GetRunResult().Results)
+            foreach (var src in result.GeneratedSources)
+                generated[src.HintName] = src.SourceText.ToString();
 
         using var ms = new MemoryStream();
         var emitResult = outCompilation.Emit(ms);
-        var allDiagnostics = generatorRunDiagnostics.AddRange(emitResult.Diagnostics);
+        var allDiagnostics = genDiags.AddRange(emitResult.Diagnostics);
 
-        Assembly? assembly = null;
+        Assembly? asm = null;
         if (emitResult.Success)
         {
             ms.Position = 0;
-            assembly = Assembly.Load(ms.ToArray());
+            asm = Assembly.Load(ms.ToArray());
         }
 
-        return (assembly, allDiagnostics, generatedSources);
+        return (asm, allDiagnostics, generated);
     }
+
+
+
 
 }
