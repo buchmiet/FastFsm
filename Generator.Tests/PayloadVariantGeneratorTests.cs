@@ -275,7 +275,7 @@ public class PayloadVariantGeneratorTests(ITestOutputHelper output) : GeneratorB
         }
         """;
 
-        var (asm, diags, generatedSources) = CompileAndRunGenerator([userSource], new StateMachineGenerator());
+        var (asm, diags, generatedSources) = CompileAndRunGenerator([userSource], new StateMachineGenerator(), enableLogging: true, enableDependencyInjection: true);
 
         // Check that factory file was generated
         Assert.Contains(generatedSources.Keys, k => k.Contains("FactoryPayloadMachine.Factory.g.cs"));
@@ -602,7 +602,10 @@ public class PayloadVariantGeneratorTests(ITestOutputHelper output) : GeneratorB
         }
         """;
 
-        var (asm, diags, generatedSources) = CompileAndRunGenerator([userSource], new StateMachineGenerator());
+        var (asm, diags, generatedSources) = CompileAndRunGenerator([userSource], new StateMachineGenerator(),
+            enableLogging: true,            // DI‑pakiet ustawia to domyślnie,
+            enableDependencyInjection: true // ← kluczowe dla klas Factory
+        );
 
         // Check factory file contains extension methods
         var factorySource = generatedSources.FirstOrDefault(kvp => kvp.Key.Contains("DIPayloadMachine.Factory")).Value;
@@ -640,7 +643,10 @@ public class PayloadVariantGeneratorTests(ITestOutputHelper output) : GeneratorB
         }
         """;
 
-        var (asm, diags, generatedSources) = CompileAndRunGenerator([userSource], new StateMachineGenerator());
+        var (asm, diags, generatedSources) = CompileAndRunGenerator([userSource], new StateMachineGenerator(),
+            enableLogging: true,            // DI‑pakiet ustawia to domyślnie,
+            enableDependencyInjection: true // ← kluczowe dla klas Factory
+        );
         OutputGeneratedCode(generatedSources, "FactoryInterfacePayloadMachine");
         Assert.DoesNotContain(diags, d => d.Severity == DiagnosticSeverity.Error);
         Assert.NotNull(asm);

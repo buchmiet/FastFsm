@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Abstractions.Attributes;
-using StateMachine.Tests.DI.TestMachines;
 
 namespace StateMachine.Tests.Machines
 {

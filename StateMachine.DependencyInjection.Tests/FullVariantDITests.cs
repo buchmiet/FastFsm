@@ -60,7 +60,7 @@ public class FullVariantDiTests : DITestBase
         var testData = new TestData { Id = 456, Name = "Important" };
 
         // Act
-  
+
         var machine = GetService<IFullTestMachine>() as FullTestMachine; // Użyj var lub FullTestMachine
         Assert.NotNull(machine);
         var result = machine.TryFire(TestTrigger.Next, testData);

@@ -1,10 +1,9 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using StateMachine.Contracts;
-using StateMachine.DependencyInjection;
+using StateMachine.Tests.DI;
 using StateMachine.Tests.DI.TestMachines;
-using Xunit;
 
-namespace StateMachine.Tests.DI;
+namespace StateMachine.DependencyInjection.Tests;
 
 /// <summary>
 /// Tests that should pass for all state machine variants

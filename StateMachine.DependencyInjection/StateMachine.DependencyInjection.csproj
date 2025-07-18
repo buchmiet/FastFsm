@@ -10,24 +10,55 @@
 
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<PackageOutputPath>../nupkgs</PackageOutputPath>
-		<IncludeBuildOutput>true</IncludeBuildOutput>
+		<IncludeBuildOutput>false</IncludeBuildOutput>
 
 		<!-- Włącz DI i Logging -->
 		<FsmGenerateDI>true</FsmGenerateDI>
 		<FsmGenerateLogging>true</FsmGenerateLogging>
-		<DefineConstants>$(DefineConstants);FSM_DI_ENABLED;FSM_LOGGING_ENABLED</DefineConstants>
+		<DefineConstants>$(DefineConstants);FSM_DI_ENABLED</DefineConstants>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="FastFsm.Net" Version="*-dev.*" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.7" />
 		<PackageReference Include="Dorssel.GitVersion.MsBuild" Version="1.1.1" PrivateAssets="all" />
-		<PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.7" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<None Include="build\FastFsm.Net.DependencyInjection.props" Pack="true" PackagePath="buildTransitive" />
 	</ItemGroup>
+
+
+	<ItemGroup>
+
+		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
+		<None Include="..\StateMachine\Runtime\Extensions\ExtensionRunner.cs"
+		      Pack="true"
+		      PackagePath="contentFiles/cs/any"
+		      BuildAction="Compile"
+		      Visible="false" />
+
+
+		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
+		<None Include="..\StateMachine\DependencyInjection\FsmServiceCollectionExtensions.cs"
+		      Pack="true"
+		      PackagePath="contentFiles/cs/any"
+		      BuildAction="Compile"
+		      Visible="false" />
+
+	
+
+		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
+		<None Include="..\StateMachine\DependencyInjection\StateMachineFactory.cs"
+		      Pack="true"
+		      PackagePath="contentFiles/cs/any"
+		      BuildAction="Compile"
+		      Visible="false" />
+
+	</ItemGroup>
+
+
 
 	<!-- Timestamp version -->
 	<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
