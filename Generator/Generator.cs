@@ -31,7 +31,7 @@ public class StateMachineGenerator : IIncrementalGenerator
         PayloadTypeAttributeFullName
     ];
 
-   
+
     public void Initialize(IncrementalGeneratorInitializationContext ctx)
     {
         // ──────────────────────────────────────────────────────────────
@@ -61,7 +61,7 @@ public class StateMachineGenerator : IIncrementalGenerator
         // 4. Rejestrujemy główną produkcję źródła ──────────────────────
         // ──────────────────────────────────────────────────────────────
         ctx.RegisterSourceOutput(input, Execute);
-       
+
         // ──────────────────────────────────────────────────────────────
         // 5. Diagnostyka FSM004: klasy z atrybutami przejść bez
         //    [StateMachine] lub bez partial ───────────────────────────
@@ -147,125 +147,135 @@ public class StateMachineGenerator : IIncrementalGenerator
         title: "Generator Configuration Info",
         messageFormat: "Dla maszyny stanów '{0}': generowanie DI jest '{1}', a generowanie logowania jest '{2}'.",
         category: "StateMachineGenerator",
-        defaultSeverity: DiagnosticSeverity.Warning, 
+        defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         description: "Wyświetla informacje o tym, jakie funkcje generatora zostały włączone na podstawie właściwości build."
     );
 
     private static void Execute(
-   SourceProductionContext context,
-   (
-       (Compilation Compilation, AnalyzerConfigOptionsProvider OptionsProvider) compAndOpts,
-       ImmutableArray<ClassDeclarationSyntax> Classes
-   ) data)
-{
-    // ──────────────────────────────────────────────────────────────
-    // Rozbij krotkę wejściową na składniki
-    // ──────────────────────────────────────────────────────────────
-    var (compAndOpts, classes) = data;
-    var (compilation, optionsProvider) = compAndOpts;
-
-    // ──────────────────────────────────────────────────────────────
-    // Nic do roboty, jeśli nie ma klas
-    // ──────────────────────────────────────────────────────────────
-    if (classes.IsDefaultOrEmpty)
-        return;
-
-    // ──────────────────────────────────────────────────────────────
-    // Przygotuj parser i selector wariantów
-    // ──────────────────────────────────────────────────────────────
-    var parser = new StateMachineParser(compilation, context);
-    var variantSelector = new VariantSelector();
-
-    // ──────────────────────────────────────────────────────────────
-    // Iteracja po wszystkich klasach z [StateMachine]
-    // ──────────────────────────────────────────────────────────────
-    foreach (var classDeclaration in classes)
+     SourceProductionContext context,
+     (
+         (Compilation Compilation, AnalyzerConfigOptionsProvider OptionsProvider) compAndOpts,
+         ImmutableArray<ClassDeclarationSyntax> Classes
+     ) data)
     {
-        if (context.CancellationToken.IsCancellationRequested)
+        // ──────────────────────────────────────────────────────────────
+        // Rozbij krotkę wejściową na składniki
+        // ──────────────────────────────────────────────────────────────
+        var (compAndOpts, classes) = data;
+        var (compilation, optionsProvider) = compAndOpts;
+
+        // ──────────────────────────────────────────────────────────────
+        // Nic do roboty, jeśli nie ma klas
+        // ──────────────────────────────────────────────────────────────
+        if (classes.IsDefaultOrEmpty)
             return;
 
-        // ──────────────────────────────────────────────────────────
-        // Spróbuj sparsować definicję state machine
-        // ──────────────────────────────────────────────────────────
-        if (!parser.TryParse(classDeclaration, out StateMachineModel? model))
+        // ──────────────────────────────────────────────────────────────
+        // Przygotuj parser i selector wariantów
+        // ──────────────────────────────────────────────────────────────
+        var parser = new StateMachineParser(compilation, context);
+        var variantSelector = new VariantSelector();
+
+        // ──────────────────────────────────────────────────────────────
+        // Iteracja po wszystkich klasach z [StateMachine]
+        // ──────────────────────────────────────────────────────────────
+        foreach (var classDeclaration in classes)
         {
-            // Parser już zgłosił diagnostykę; pomiń
-            continue;
-        }
+            if (context.CancellationToken.IsCancellationRequested)
+                return;
 
-        // ──────────────────────────────────────────────────────────
-        // Pobierz symbol klasy i skonfiguruj model
-        // ──────────────────────────────────────────────────────────
-        var semanticModel = compilation.GetSemanticModel(classDeclaration.SyntaxTree);
-        if (semanticModel.GetDeclaredSymbol(classDeclaration) is not INamedTypeSymbol classSymbol)
-        {
-            // Nie powinno się zdarzyć – bezpieczeństwo
-            continue;
-        }
+            // ──────────────────────────────────────────────────────────
+            // Spróbuj sparsować definicję state machine
+            // ──────────────────────────────────────────────────────────
+            if (!parser.TryParse(classDeclaration, out StateMachineModel? model))
+            {
+                // Parser już zgłosił diagnostykę; pomiń
+                continue;
+            }
 
-        // Wybór wariantu generatora
-        variantSelector.DetermineVariant(model!, classSymbol);
+            // ──────────────────────────────────────────────────────────
+            // Pobierz symbol klasy i skonfiguruj model
+            // ──────────────────────────────────────────────────────────
+            var semanticModel = compilation.GetSemanticModel(classDeclaration.SyntaxTree);
+            if (semanticModel.GetDeclaredSymbol(classDeclaration) is not INamedTypeSymbol classSymbol)
+            {
+                // Nie powinno się zdarzyć – bezpieczeństwo
+                continue;
+            }
 
-        model!.GenerateLogging = BuildProperties.GetGenerateLogging(
-            optionsProvider.GlobalOptions);
+            // Wybór wariantu generatora (dla maszyn sync)
+            variantSelector.DetermineVariant(model!, classSymbol);
 
-        model!.GenerateDependencyInjection = BuildProperties.GetGenerateDI(
-            optionsProvider.GlobalOptions);
+            // Ustaw flagi dla DI i logowania
+            model!.GenerateLogging = BuildProperties.GetGenerateLogging(
+                optionsProvider.GlobalOptions);
 
-        // ==========================================================
-        // NOWA CZĘŚĆ: Zgłoś diagnostykę z informacją o flagach
-        // ==========================================================
-        context.ReportDiagnostic(Diagnostic.Create(
-            descriptor: GeneratorSettingsInfo,
-            location: classDeclaration.GetLocation(), // Wskaż na deklarację klasy
-            messageArgs: new object[] {
+            model!.GenerateDependencyInjection = BuildProperties.GetGenerateDI(
+                optionsProvider.GlobalOptions);
+
+            // ==========================================================
+            // Zgłoś diagnostykę z informacją o flagach
+            // ==========================================================
+            context.ReportDiagnostic(Diagnostic.Create(
+                descriptor: GeneratorSettingsInfo,
+                location: classDeclaration.GetLocation(), // Wskaż na deklarację klasy
+                messageArgs: new object[] {
                 model.ClassName,
                 model.GenerateDependencyInjection ? "włączone" : "wyłączone",
                 model.GenerateLogging ? "włączone" : "wyłączone"
+                }
+            ));
+            // ==========================================================
+
+            // ──────────────────────────────────────────────────────────
+            // 1. Wybierz i uruchom odpowiedni generator kodu
+            // ──────────────────────────────────────────────────────────
+            StateMachineCodeGenerator generator;
+
+
+            // Istniejąca logika dla maszyn synchronicznych
+            generator = model.Variant switch
+            {
+                GenerationVariant.Full => new FullVariantGenerator(model),
+                GenerationVariant.WithPayload => new PayloadVariantGenerator(model),
+                GenerationVariant.WithExtensions => new ExtensionsVariantGenerator(model),
+                _ => new CoreVariantGenerator(model) // Pure / Basic
+            };
+
+
+            var source = generator.Generate();
+            context.AddSource(
+                $"{model.ClassName}.Generated.cs",
+                SourceText.From(source, Encoding.UTF8));
+
+            // ──────────────────────────────────────────────────────────
+            // 2. Generuj kod dla Dependency Injection (jeśli włączone)
+            // ──────────────────────────────────────────────────────────
+            if (model.GenerateDependencyInjection)
+            {
+                // TODO: Ta część będzie wymagała modyfikacji, aby poprawnie
+                // generować fabryki dla maszyn asynchronicznych.
+                // Na razie pozostaje bez zmian.
+                var factoryModel = FactoryGenerationModelBuilder.Create(model);
+                var factoryGenerator = new FactoryCodeGenerator(factoryModel);
+                var factorySource = factoryGenerator.Generate();
+                context.AddSource(
+                    $"{model.ClassName}.Factory.g.cs",
+                    SourceText.From(factorySource, Encoding.UTF8));
             }
-        ));
-        // ==========================================================
 
-        // ──────────────────────────────────────────────────────────
-        // 1. Generuj główną klasę state machine
-        // ──────────────────────────────────────────────────────────
-        StateMachineCodeGenerator generator = model.Variant switch
-        {
-            GenerationVariant.Full => new FullVariantGenerator(model),
-            GenerationVariant.WithPayload => new PayloadVariantGenerator(model),
-            GenerationVariant.WithExtensions => new ExtensionsVariantGenerator(model),
-            _ => new CoreVariantGenerator(model) // Pure / Basic
-        };
-        var source = generator.Generate();
-        context.AddSource(
-            $"{model.ClassName}.Generated.cs",
-            SourceText.From(source, Encoding.UTF8));
-
-        if (model.GenerateDependencyInjection)
-        {
             // ──────────────────────────────────────────────────────────
-            // 2. Generuj fabrykę i extension-methods dla DI
+            // 3. Generuj klasę helperów logowania (jeśli włączone)
             // ──────────────────────────────────────────────────────────
-            var factoryModel = FactoryGenerationModelBuilder.Create(model);
-            var factoryGenerator = new FactoryCodeGenerator(factoryModel);
-            var factorySource = factoryGenerator.Generate();
-            context.AddSource(
-                $"{model.ClassName}.Factory.g.cs",
-                SourceText.From(factorySource, Encoding.UTF8));
-        }
-
-        // ──────────────────────────────────────────────────────────
-        // 3. Generuj klasę helperów logowania (jeśli włączone)
-        // ──────────────────────────────────────────────────────────
-        if (model.GenerateLogging)
-        {
-            var loggingGenerator = new Generator.Log.LoggingClassGenerator(model.ClassName, model.Namespace);
-            var loggingSource = loggingGenerator.Generate();
-            context.AddSource(
-                $"{model.ClassName}Log.g.cs",
-                SourceText.From(loggingSource, Encoding.UTF8));
+            if (model.GenerateLogging)
+            {
+                var loggingGenerator = new Generator.Log.LoggingClassGenerator(model.ClassName, model.Namespace);
+                var loggingSource = loggingGenerator.Generate();
+                context.AddSource(
+                    $"{model.ClassName}Log.g.cs",
+                    SourceText.From(loggingSource, Encoding.UTF8));
+            }
         }
     }
-}
 }

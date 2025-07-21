@@ -13,4 +13,6 @@ public class TransitionModel
     public bool ActionExpectsPayload { get; set; }
     public bool GuardHasParameterlessOverload { get; set; }
     public bool ActionHasParameterlessOverload { get; set; }
+    public bool GuardIsAsync { get; set; }
+    public bool ActionIsAsync { get; set; }
 }

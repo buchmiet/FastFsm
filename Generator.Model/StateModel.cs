@@ -9,5 +9,7 @@ public class StateModel
     public bool OnExitHasParameterlessOverload { get; set; }
     public bool OnEntryExpectsPayload { get; set; }
     public bool OnExitExpectsPayload { get; set; }
+    public bool OnEntryIsAsync { get; set; }
+    public bool OnExitIsAsync { get; set; }
 
 }

@@ -43,10 +43,7 @@
 
 	<!-- analyzer (DLL generatora) -->
 	<ItemGroup>
-		<None Include="..\Generator\bin\$(Configuration)\netstandard2.0\*.dll"
-			  Pack="true"
-			  PackagePath="analyzers/dotnet/cs"
-			  Visible="false" />
+		<None Include="..\Generator\bin\$(Configuration)\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
 	</ItemGroup>
 
 	
@@ -55,36 +52,23 @@
 		<Compile Remove="Runtime\Extensions\ExtensionRunner.cs" />
 
 		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
-		<None Include="Runtime\Extensions\ExtensionRunner.cs"
-		      Pack="true"
-		      PackagePath="contentFiles/cs/any"
-		      BuildAction="Compile"
-		      Visible="false" />
+		<None Include="Runtime\Extensions\ExtensionRunner.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
 
 		<Compile Remove="DependencyInjection\FsmServiceCollectionExtensions.cs" />
 
 		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
-		<None Include="DependencyInjection\FsmServiceCollectionExtensions.cs"
-		      Pack="true"
-		      PackagePath="contentFiles/cs/any"
-		      BuildAction="Compile"
-		      Visible="false" />
+		<None Include="DependencyInjection\FsmServiceCollectionExtensions.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
 
 		<Compile Remove="DependencyInjection\StateMachineFactory.cs" />
 
 		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
-		<None Include="DependencyInjection\StateMachineFactory.cs"
-		      Pack="true"
-		      PackagePath="contentFiles/cs/any"
-		      BuildAction="Compile"
-		      Visible="false" />
+		<None Include="DependencyInjection\StateMachineFactory.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
 
 	</ItemGroup>
 
 	
 	<!-- Abstractions.dll do paczki -->
-	<Target Name="CopyProjectReferencesToPackage"
-			DependsOnTargets="BuildOnlySettings;ResolveReferences">
+	<Target Name="CopyProjectReferencesToPackage" DependsOnTargets="BuildOnlySettings;ResolveReferences">
 		<ItemGroup>
 			<BuildOutputInPackage Include="$(OutputPath)Abstractions.dll" />
 		</ItemGroup>
