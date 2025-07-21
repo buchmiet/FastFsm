@@ -34,5 +34,10 @@ public sealed class StateMachineAttribute : Attribute
         StateType = stateType;
         TriggerType = triggerType;
     }
+    /// <summary>
+    /// Controls whether async continuations should be posted back to the original context.
+    /// Only applicable for async state machines. Defaults to false for better performance.
+    /// </summary>
+    public bool ContinueOnCapturedContext { get; set; } = false;
 }
 

@@ -21,9 +21,10 @@ public class StateMachineAnalyzer : DiagnosticAnalyzer
 
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        DefinedRules.All
-            .Select(ruleDef => DiagnosticFactory.Get(ruleDef.Id!))
-            .ToImmutableArray();
+        [
+            ..DefinedRules.All
+                .Select(ruleDef => DiagnosticFactory.Get(ruleDef.Id!))
+        ];
 
     // Rule instances
     private static readonly MissingStateMachineAttributeRule _missingStateMachineAttributeRule = new();

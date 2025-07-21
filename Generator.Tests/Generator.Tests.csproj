@@ -8,6 +8,7 @@
 
 	<!-- xUnit + FluentAssertions -->
 	<ItemGroup>
+		<PackageReference Include="FastFsm.Net" Version="*-dev.*" />
 		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
 		<PackageReference Include="Shouldly" Version="4.3.0" />
 		<PackageReference Include="xunit" Version="2.4.2" />
@@ -22,7 +23,6 @@
 	</ItemGroup>
 	<ItemGroup>
 	  <ProjectReference Include="..\Generator\Generator.csproj" />
-	  <ProjectReference Include="..\StateMachine\StateMachine.csproj" />
 	</ItemGroup>
 
 

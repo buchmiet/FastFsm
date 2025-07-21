@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Generator.Rules.Definitions;
 using Microsoft.CodeAnalysis;
 using Shouldly;
-using StateMachine.Contracts;
 using Xunit;
 using Xunit.Abstractions;
 

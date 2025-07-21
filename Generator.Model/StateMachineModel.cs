@@ -16,6 +16,6 @@ public class StateMachineModel
     public bool GenerateLogging { get; set; }
     public bool GenerateDependencyInjection { get; set; }
     public bool EmitStructuralHelpers { get; set; }
-
+    public bool ContinueOnCapturedContext { get; set; } = false;
 
 }

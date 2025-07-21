@@ -7,6 +7,7 @@ public class GenerationConfig
     public bool IsForced { get; set; }
 
     public bool HasPayload { get; set; }
-    public bool HasExtensions { get; set; }       
+    public bool HasExtensions { get; set; }
+    public bool IsAsync { get; set; }
 
 }

@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Text.RegularExpressions;          //  ←  NOWY using
+﻿//  ←  NOWY using
 
 namespace Generator;
 
@@ -89,6 +88,7 @@ internal static class Strings
     public const string NamespaceStateMachineRuntime = "StateMachine.Runtime";
     public const string NamespaceStateMachineRuntimeExtensions = "StateMachine.Runtime.Extensions";
     public const string NamespaceMicrosoftExtensionsLogging = "Microsoft.Extensions.Logging";
+    public const string NamespaceMicrosoftDependencyInjection = "Microsoft.Extensions.DependencyInjection";
 
     public const string GlobalNamespace = "global::";
     public const string DefaultObjectTypeName = "object";

@@ -14,6 +14,8 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     protected IndentedStringBuilder.IndentedStringBuilder Sb = new();
     protected readonly TypeSystemHelper TypeHelper = new();
     protected HashSet<string> AddedUsings = [];
+    protected readonly bool IsAsyncMachine = model.GenerationConfig.IsAsync;
+
     protected bool ShouldGenerateLogging => Model.GenerateLogging;
 
     // Hook variable names
@@ -95,10 +97,12 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         WriteTransitionFailureHook(stateTypeForUsage, triggerTypeForUsage);
     }
 
+
+
     protected virtual void WriteTransitionLogic(
-        TransitionModel transition,
-        string stateTypeForUsage,
-        string triggerTypeForUsage)
+     TransitionModel transition,
+     string stateTypeForUsage,
+     string triggerTypeForUsage)
     {
         var hasOnEntryExit = ShouldGenerateOnEntryExit();
 
@@ -117,7 +121,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             Model.States.TryGetValue(transition.FromState, out var fromStateDef) &&
             !string.IsNullOrEmpty(fromStateDef.OnExitMethod))
         {
-            WriteOnExitCall(fromStateDef, transition.ExpectedPayloadType);
+            WriteCallbackInvocation(fromStateDef.OnExitMethod, fromStateDef.OnExitIsAsync);
             WriteLogStatement("Debug",
                 $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
         }
@@ -125,17 +129,17 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         // Action
         if (!string.IsNullOrEmpty(transition.ActionMethod))
         {
-            WriteActionCall(transition);
+            WriteCallbackInvocation(transition.ActionMethod, transition.ActionIsAsync);
             WriteLogStatement("Debug",
                 $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
         }
 
-        // OnEntry
+        // OnEntry  
         if (!transition.IsInternal && hasOnEntryExit &&
             Model.States.TryGetValue(transition.ToState, out var toStateDef) &&
             !string.IsNullOrEmpty(toStateDef.OnEntryMethod))
         {
-            WriteOnEntryCall(toStateDef, transition.ExpectedPayloadType);
+            WriteCallbackInvocation(toStateDef.OnEntryMethod, toStateDef.OnEntryIsAsync);
             WriteLogStatement("Debug",
                 $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
         }
@@ -368,7 +372,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
 
     #endregion
 
-        #region Helper Methods
+    #region Helper Methods
 
     protected void WriteMethodAttribute() =>
         Sb.AppendLine($"[{MethodImplAttribute}({AggressiveInliningAttribute})]");
@@ -445,7 +449,12 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         {
             AddUsing(NamespaceMicrosoftExtensionsLogging);
         }
-
+        if (IsAsyncMachine)
+        {
+            AddUsing("System.Threading");
+            AddUsing("System.Threading.Tasks");
+            AddUsing("StateMachine.Exceptions");
+        }
         // Type-specific namespaces
         var allNamespaces = new HashSet<string>();
         allNamespaces.UnionWith(TypeHelper.GetRequiredNamespaces(Model.StateType));
@@ -494,7 +503,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
 
     #region Common Methods
 
-    protected void WriteCanFireMethod(string stateTypeForUsage, string triggerTypeForUsage)
+    protected virtual void WriteCanFireMethod(string stateTypeForUsage, string triggerTypeForUsage)
     {
         Sb.WriteSummary("Checks if the specified trigger can be fired in the current state (runtime evaluation including guards)");
         Sb.AppendLine($"/// <param name=\"trigger\">The trigger to check</param>");
@@ -543,7 +552,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine();
     }
 
-    protected void WriteGetPermittedTriggersMethod(string stateTypeForUsage, string triggerTypeForUsage)
+    protected virtual void WriteGetPermittedTriggersMethod(string stateTypeForUsage, string triggerTypeForUsage)
     {
         Sb.WriteSummary("Gets the list of triggers that can be fired in the current state (runtime evaluation including guards)");
         Sb.AppendLine($"/// <returns>List of triggers that can be fired in the current state</returns>");
@@ -732,12 +741,12 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     protected void WriteLoggerField(string className)
     {
         if (!ShouldGenerateLogging) return;
-        LoggingClassGenerator.WriteLoggerField(className,ref Sb);
+        LoggingClassGenerator.WriteLoggerField(className, ref Sb);
     }
 
     protected string GetLoggerConstructorParameter(string className) =>
 
-    ShouldGenerateLogging ? LoggingClassGenerator.GetLoggerConstructorParameter(className,ref Sb) : string.Empty;
+    ShouldGenerateLogging ? LoggingClassGenerator.GetLoggerConstructorParameter(className, ref Sb) : string.Empty;
     protected void WriteLoggerAssignment()
     {
         if (!ShouldGenerateLogging) return;
@@ -747,7 +756,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     protected void WriteLogStatement(string logLevel, string logMethodCall)
     {
         if (!ShouldGenerateLogging) return;
-        LoggingClassGenerator.WriteLogStatement(Model.ClassName,logLevel,logMethodCall,ref Sb);
+        LoggingClassGenerator.WriteLogStatement(Model.ClassName, logLevel, logMethodCall, ref Sb);
     }
 
     protected void AddUsing(string usingStatement)
@@ -812,6 +821,96 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         {
             Sb.AppendLine($"bool {resultVar} = {payloadExpr};");
         }
+    }
+    // Helper do generowania sygnatur metod
+    protected string GetMethodReturnType(string syncReturnType)
+    {
+        if (!IsAsyncMachine) return syncReturnType;
+
+        return syncReturnType switch
+        {
+            "void" => "Task",
+            "bool" => "ValueTask<bool>",
+            _ => throw new InvalidOperationException($"Unsupported return type for async: {syncReturnType}")
+        };
+    }
+
+    // Helper do słowa kluczowego async
+    protected string GetAsyncKeyword() => IsAsyncMachine ? "async " : "";
+
+    // Helper do await
+    protected string GetAwaitKeyword() => IsAsyncMachine ? "await " : "";
+
+    // Helper do ConfigureAwait
+    protected string GetConfigureAwait() => IsAsyncMachine ? ".ConfigureAwait(_continueOnCapturedContext)" : "";
+
+    // Helper do nazwy metody (TryFire vs TryFireInternalAsync)
+    protected string GetTryFireMethodName() => IsAsyncMachine ? "TryFireInternalAsync" : "TryFire";
+
+    // Helper do parametrów metody
+    protected string GetTryFireParameters(string triggerType)
+    {
+        return IsAsyncMachine
+            ? $"{triggerType} trigger, object? payload, CancellationToken cancellationToken"
+            : $"{triggerType} trigger, object? payload = null";
+    }
+
+    // Helper do wywołania callback
+    protected void WriteCallbackInvocation(string methodName, bool isCallbackAsync, string? payload = null)
+    {
+        if (isCallbackAsync && IsAsyncMachine)
+        {
+            Sb.Append($"{GetAwaitKeyword()}{methodName}(");
+            if (payload != null) Sb.Append(payload);
+            Sb.Append($"){GetConfigureAwait()}");
+        }
+        else
+        {
+            Sb.Append($"{methodName}(");
+            if (payload != null) Sb.Append(payload);
+            Sb.Append(")");
+        }
+        Sb.AppendLine(";");
+    }
+
+    // Helper do klasy bazowej
+    protected string GetBaseClassName(string stateType, string triggerType)
+    {
+        return IsAsyncMachine
+            ? $"AsyncStateMachineBase<{stateType}, {triggerType}>"
+            : $"StateMachineBase<{stateType}, {triggerType}>";
+    }
+
+    // Helper do interfejsu
+    protected string GetInterfaceName(string stateType, string triggerType)
+    {
+        return IsAsyncMachine
+            ? $"IAsyncStateMachine<{stateType}, {triggerType}>"
+            : $"IStateMachine<{stateType}, {triggerType}>";
+    }
+    /// <summary>
+    /// Zwraca nazwę metody z odpowiednim sufiksem.
+    /// </summary>
+    protected string GetMethodName(string baseName, bool addAsyncSuffix = true)
+    {
+        if (!IsAsyncMachine || !addAsyncSuffix) return baseName;
+
+        // Sprawdź czy nazwa już kończy się na "Async"
+        if (baseName.EndsWith("Async", StringComparison.Ordinal))
+            return baseName;
+
+        return baseName + "Async";
+    }
+
+
+   
+
+    /// <summary>
+    /// Zwraca visibility dla metody TryFire.
+    /// </summary>
+    protected string GetTryFireVisibility()
+    {
+        return IsAsyncMachine ? "protected override" : "public override";
     }
 
 }

@@ -106,8 +106,36 @@ public static class DefinedRules
         defaultSeverity: RuleSeverity.Error,
         isEnabledByDefault: true,
         description: "Guards that expect payload parameters cannot be used in state machines without payload support.");
+    public static readonly RuleDefinition MixedSyncAsyncCallbacks = new(
+        id: RuleIdentifiers.MixedSyncAsyncCallbacks,
+        title: "Mixed synchronous and asynchronous callbacks",
+        messageFormat: "Cannot mix synchronous and asynchronous callbacks in the same state machine. Method '{0}' is {1}, but the machine is already configured as {2}.",
+        category: "FSM.Generator.Async",
+        defaultSeverity: RuleSeverity.Error,
+        description: "All state machine callbacks (OnEntry, OnExit, Action, Guard) must be either all synchronous or all asynchronous to ensure consistent behavior.");
 
-    // Lista wszystkich zdefiniowanych reguł dla łatwiejszego dostępu
+    public static readonly RuleDefinition InvalidGuardTaskReturnType = new(
+        id: RuleIdentifiers.InvalidGuardTaskReturnType,
+        title: "Invalid async guard return type",
+        messageFormat: "Asynchronous guards must return 'ValueTask<bool>', not 'Task<bool>'. Method '{0}' has an invalid return type.",
+        category: "FSM.Generator.Async",
+        defaultSeverity: RuleSeverity.Error,
+        description: "Using Task<bool> for guards causes unnecessary memory allocations. Use ValueTask<bool> for optimal performance.");
+
+    public static readonly RuleDefinition InvalidAsyncVoid = new(
+        id: RuleIdentifiers.InvalidAsyncVoid,
+        title: "Callback returns 'async void'",
+        messageFormat: "Callback method '{0}' returns 'async void'. Use 'Task' or 'ValueTask' instead to allow the state machine to correctly await its completion and handle exceptions.",
+        category: "FSM.Generator.Async",
+        defaultSeverity: RuleSeverity.Warning,
+        description: "'async void' methods are fire-and-forget and can lead to unhandled exceptions and race conditions. State machine callbacks should always be awaitable.");
+    public static readonly RuleDefinition AsyncCallbackInSyncMachine = new(
+        id: RuleIdentifiers.AsyncCallbackInSyncMachine,
+        title: "Asynchronous callback in synchronous state machine",
+        messageFormat: "Method '{0}' is asynchronous, but the state machine is synchronous. Either make all callbacks asynchronous or change the return type of this method.",
+        category: "FSM.Generator.Async",
+        defaultSeverity: RuleSeverity.Error,
+        description: "A state machine must be consistently synchronous or asynchronous. Mixing callback types can lead to unexpected behavior and deadlocks.");
     public static readonly IReadOnlyList<RuleDefinition> All = new List<RuleDefinition>
     {
         DuplicateTransition,
@@ -119,6 +147,10 @@ public static class DefinedRules
         MissingPayloadType,  
         ConflictingPayloadConfiguration,  
         InvalidForcedVariantConfiguration,
-        GuardWithPayloadInNonPayloadMachine
+        GuardWithPayloadInNonPayloadMachine,
+        MixedSyncAsyncCallbacks,
+        InvalidGuardTaskReturnType,
+        InvalidAsyncVoid,
+        AsyncCallbackInSyncMachine,
     }.AsReadOnly();
 }
