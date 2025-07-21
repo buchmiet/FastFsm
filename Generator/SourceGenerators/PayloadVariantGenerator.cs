@@ -628,7 +628,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
     protected void WriteGetPermittedTriggersWithResolver(string stateTypeForUsage, string triggerTypeForUsage)
     {
         // Call base method first
-       // base.WriteGetPermittedTriggersMethod(stateTypeForUsage, triggerTypeForUsage);
+        // base.WriteGetPermittedTriggersMethod(stateTypeForUsage, triggerTypeForUsage);
 
         // Add overload with payload resolver
         Sb.WriteSummary("Gets the list of triggers that can be fired in the current state with payload resolution (runtime evaluation including guards)");
