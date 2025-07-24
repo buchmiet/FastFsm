@@ -14,6 +14,63 @@ namespace Generator.Infrastructure;
 /// </summary>
 public class TypeSystemHelper
 {
+    private readonly INamedTypeSymbol _taskSymbol;
+    private readonly INamedTypeSymbol _taskOfTSymbol;
+    private readonly INamedTypeSymbol _valueTaskSymbol;
+    private readonly INamedTypeSymbol _valueTaskOfTSymbol;
+    private bool compilationProvided;
+
+    //todo:W generatorze najczęściej chcesz zawsze przekazywać context.Compilation
+    //(bez compilationProvided i bez null – wyłapiesz błąd w miejsce
+    //tworzenia helpera, a nie w środku analizy).
+    public TypeSystemHelper(Compilation compilation=null)
+    {
+
+        if (compilation is not null)
+        {
+            compilationProvided= true;
+            _taskSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task")!;
+            _taskOfTSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1")!;
+            _valueTaskSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask")!;
+            _valueTaskOfTSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask`1")!;
+        }
+        
+    }
+    /// <summary>
+    /// Sprawdza czy zwracany typ jest:
+    ///   * Task
+    ///   * ValueTask
+    ///   * Task&lt;bool&gt;
+    ///   * ValueTask&lt;bool&gt;
+    /// </summary>
+    public (bool isAsync, bool isBoolEquivalent) AnalyzeAwaitable(ITypeSymbol returnType)
+    {
+        if (!compilationProvided)
+        {
+            throw new ArgumentNullException("compilation", "Compilation cannot be null in the constructor");
+        }
+        if (SymbolEqualityComparer.Default.Equals(returnType, _taskSymbol))
+            return (true, false);
+
+        if (SymbolEqualityComparer.Default.Equals(returnType, _valueTaskSymbol))
+            return (true, false);
+
+        if (returnType is INamedTypeSymbol named &&
+            named.TypeArguments.Length == 1)
+        {
+            // otwarta definicja generyka: Task<T> / ValueTask<T>
+            var open = named.ConstructedFrom;
+
+            if (SymbolEqualityComparer.Default.Equals(open, _taskOfTSymbol) ||
+                SymbolEqualityComparer.Default.Equals(open, _valueTaskOfTSymbol))
+            {
+                bool boolLike = named.TypeArguments[0].SpecialType == SpecialType.System_Boolean;
+                return (true, boolLike);
+            }
+        }
+
+        return (false, false);
+    }
     private readonly HashSet<string> _csharpKeywords =
     [
         "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char", "checked",
@@ -338,7 +395,7 @@ public class TypeSystemHelper
                 catch { return raw; }
 
                 string[] formattedArgs = argList
-                    .Select(a => FormatTypeForUsage(a.Trim(), false)) // aliasy OK
+                    .Select(a => FormatTypeForUsage(a.Trim())) // aliasy OK
                     .ToArray();
 
                 string baseNorm = baseName.Replace('+', '.');

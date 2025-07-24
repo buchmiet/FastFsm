@@ -29,12 +29,20 @@ public sealed class AsyncSignatureAnalyzer
         _typeHelper = typeHelper;
     }
 
+
     /// <summary>
     /// Analizuje sygnaturę metody z cache'owaniem wyników.
     /// </summary>
-    public AsyncSignatureInfo Analyze(IMethodSymbol methodSymbol)
+    public AsyncSignatureInfo Analyze(IMethodSymbol method)
     {
-        return _cache.GetOrAdd(methodSymbol, symbol => AnalyzeInternal(symbol));
+        var (isAsync, isBoolEquivalent) =
+            _typeHelper.AnalyzeAwaitable(method.ReturnType);
+
+        return new AsyncSignatureInfo
+        {
+            IsAsync = isAsync,
+            IsBoolEquivalent = isBoolEquivalent,
+        };
     }
 
     /// <summary>

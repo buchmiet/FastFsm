@@ -11,29 +11,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using Xunit.Abstractions;
 
 namespace Generator.Tests;
-/*
- *
- *### Propozycja zestawu test-case’ów (tylko nazwy + krótki opis)
-   
-   | #        | Scenariusz                                                                               | Cel testu                                                                                                                |
-   | -------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-   | **F-01** | **Forced WithPayload bez `[PayloadType]`**                                               | Sprawdzić, że generator zgłasza błąd **FSM007** (brak typu payload) zamiast wyjątku wewnętrznego.                        |
-   | **F-02** | **Forced WithPayload + wiele `[PayloadType(trigger,…)]`**                                | Oczekiwana eskalacja do wariantu *multi* lub błąd diagnostyczny – upewnić się, że Force nie tworzy niepoprawnej maszyny. |
-   | **F-03** | **Forced WithPayload + guard z parametrem innego typu**                                  | Walidacja **FSM003** powinna wychwycić złą sygnaturę metody.                                                             |
-   | **F-04** | **Forced WithPayload + brak overloadu bezparametrowego**                                 | Zweryfikować, że payload-metody działają, a brak parametru powoduje poprawne wywołanie/odrzucenie.                       |
-   | **F-05** | **Forced WithPayload + wywołanie `TryFire(trigger, object?)` z błędnym typem w runtime** | Potwierdzić, że wariant *single* nie rzuca wyjątku, tylko przechodzi ścieżkę „fallback” (is + wersja bezparametrowa).    |
-   | **F-06** | **Forced Full bez `[PayloadType]`**                                                      | Błąd diagnostyczny jak w F-01.                                                                                           |
-   | **F-07** | **Forced Full + `GenerateExtensibleVersion=false`**                                      | Generator powinien zignorować flagę Force lub zgłosić spójny błąd („Full wymaga extensible”).                            |
-   | **F-08** | **Forced Pure przy obecnych `[PayloadType]`**                                            | Oczekiwana seria błędów **FSM003** (nadmiarowe parametry) – kod nie powinien się wygenerować.                            |
-   | **F-09** | **Forced Pure, ale klasa zawiera OnEntry/OnExit**                                        | Should downgrade zawartość (ignorować metody) lub wyemitować ostrzeżenie, brak crashu.                                   |
-   | **F-10** | **Brak Force → autodetekcja Single vs Multi**                                            | Referencyjny przypadek poprawnej detekcji (kontrola regresji).                                                           |
-   | **F-11** | **Multi-payload: złe dane w runtime (`_payloadMap` check)**                              | `TryFire` zwraca `false`, `Fire` rzuca `InvalidOperationException`.                                                      |
-   | **F-12** | **Single-payload: poprawny typ, ale `null` payload**                                     | Metody z parametrem pomijane, wywołania bezparametrowe działają – brak wyjątków.                                         |
-   
-   > *Lista obejmuje zarówno walidację kompilacji (diagnostyki FSM00x) jak i zachowanie w trakcie wykonywania dla najczęstszych „mismatchy” pomiędzy deklaracjami a realnym użyciem.*
-   
- *
- */
+
 public abstract class GeneratorBaseClass(ITestOutputHelper output)
 {
     private sealed class DictionaryAnalyzerConfigOptionsProvider(IDictionary<string, string> global)
@@ -43,8 +21,6 @@ public abstract class GeneratorBaseClass(ITestOutputHelper output)
 
         public override AnalyzerConfigOptions GlobalOptions => _globalOptions;
 
-        // Generator i tak patrzy wyłącznie w GlobalOptions,
-        // więc dla SyntaxTree / AdditionalText zwracamy te same.
         public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => _globalOptions;
         public override AnalyzerConfigOptions GetOptions(AdditionalText text) => _globalOptions;
 
