@@ -1,4 +1,22 @@
 ﻿using Abstractions.Attributes;
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
+
+
+var vaultUri = new Uri("https://denmain.vault.azure.net/");
+
+var client = new SecretClient(vaultUri, new DefaultAzureCredential());
+
+Console.WriteLine("Pobieram sekret z Azure Key Vault...");
+try
+{
+    KeyVaultSecret secret = await client.GetSecretAsync("test-secret");
+    Console.WriteLine($"Sekret ‘test-secret’: {secret.Value}");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Błąd: {ex.Message}");
+}
 
 var machine = new OrderMachine(OrderState.New);
 machine.Fire(OrderTrigger.Submit);
