@@ -197,8 +197,6 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         ref bool? isMachineAsyncMode) 
     {
         ParsePayloadTypeAttributes(classSymbol, model, ref criticalErrorOccurred);
-
-        // << Przekaż 'isMachineAsyncMode' do wszystkich metod >>
         ParseTransitionAttributes(classSymbol, model, stateTypeSymbol, triggerTypeSymbol, ref criticalErrorOccurred, ref isMachineAsyncMode);
         ParseInternalTransitionAttributes(classSymbol, model, stateTypeSymbol, triggerTypeSymbol, ref criticalErrorOccurred, ref isMachineAsyncMode);
         ParseStateAttributes(classSymbol, model, stateTypeSymbol, ref criticalErrorOccurred, ref isMachineAsyncMode);
@@ -318,8 +316,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                                                    ref bool criticalErrorOccurred,
                                                    ref bool? isMachineAsyncMode) 
     {
-        var boolType = compilation.GetSpecialType(System_Boolean);
-        var voidType = compilation.GetSpecialType(System_Void);
+
 
         foreach (var methodSymbol in classSymbolContainingMethods.GetMembers().OfType<IMethodSymbol>())
         {
