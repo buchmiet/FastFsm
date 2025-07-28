@@ -14,26 +14,16 @@ namespace Generator.Infrastructure;
 /// </summary>
 public class TypeSystemHelper
 {
-    private readonly INamedTypeSymbol _taskSymbol;
-    private readonly INamedTypeSymbol _taskOfTSymbol;
-    private readonly INamedTypeSymbol _valueTaskSymbol;
-    private readonly INamedTypeSymbol _valueTaskOfTSymbol;
-    private bool compilationProvided;
+    private  INamedTypeSymbol _taskSymbol;
+    private  INamedTypeSymbol _taskOfTSymbol;
+    private  INamedTypeSymbol _valueTaskSymbol;
+    private  INamedTypeSymbol _valueTaskOfTSymbol;
 
-    //todo:W generatorze najczęściej chcesz zawsze przekazywać context.Compilation
-    //(bez compilationProvided i bez null – wyłapiesz błąd w miejsce
-    //tworzenia helpera, a nie w środku analizy).
-    public TypeSystemHelper(Compilation compilation=null)
+
+    public TypeSystemHelper()
     {
 
-        if (compilation is not null)
-        {
-            compilationProvided= true;
-            _taskSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task")!;
-            _taskOfTSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1")!;
-            _valueTaskSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask")!;
-            _valueTaskOfTSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask`1")!;
-        }
+
         
     }
     /// <summary>
@@ -43,12 +33,13 @@ public class TypeSystemHelper
     ///   * Task&lt;bool&gt;
     ///   * ValueTask&lt;bool&gt;
     /// </summary>
-    public (bool isAsync, bool isBoolEquivalent) AnalyzeAwaitable(ITypeSymbol returnType)
+    public (bool isAsync, bool isBoolEquivalent) AnalyzeAwaitable(ITypeSymbol returnType, Compilation compilation)
     {
-        if (!compilationProvided)
-        {
-            throw new ArgumentNullException("compilation", "Compilation cannot be null in the constructor");
-        }
+        _taskSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task")!;
+        _taskOfTSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1")!;
+        _valueTaskSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask")!;
+        _valueTaskOfTSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask`1")!;
+        
         if (SymbolEqualityComparer.Default.Equals(returnType, _taskSymbol))
             return (true, false);
 

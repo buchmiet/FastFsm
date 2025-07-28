@@ -17,10 +17,10 @@ public class AsyncStateMachineBaseTests
         var fsm = new TestAsyncFsm(TestState.A);
 
         // Act & Assert
-        var exTryFire = Assert.Throws<InvalidOperationException>(() => fsm.TryFire(TestTrigger.Go));
-        var exFire = Assert.Throws<InvalidOperationException>(() => fsm.Fire(TestTrigger.Go));
-        var exCanFire = Assert.Throws<InvalidOperationException>(() => fsm.CanFire(TestTrigger.Go));
-        var exGetTriggers = Assert.Throws<InvalidOperationException>(() => fsm.GetPermittedTriggers());
+        var exTryFire = Assert.Throws<StateMachine.Exceptions.SyncCallOnAsyncMachineException>(() => fsm.TryFire(TestTrigger.Go));
+        var exFire = Assert.Throws<StateMachine.Exceptions.SyncCallOnAsyncMachineException>(() => fsm.Fire(TestTrigger.Go));
+        var exCanFire = Assert.Throws<StateMachine.Exceptions.SyncCallOnAsyncMachineException>(() => fsm.CanFire(TestTrigger.Go));
+        var exGetTriggers = Assert.Throws<StateMachine.Exceptions.SyncCallOnAsyncMachineException>(() => fsm.GetPermittedTriggers());
 
         // Sprawdź, czy komunikaty o błędach są pomocne
         Assert.Contains("Use the 'TryFireAsync' method instead", exTryFire.Message);

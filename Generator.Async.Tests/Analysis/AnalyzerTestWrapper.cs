@@ -3,7 +3,7 @@ using Generator.Infrastructure;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using System;
-using Generator.Helpers; // Potrzebne dla Action
+using Generator.Helpers;
 
 namespace Generator.Async.Tests.Analysis;
 
@@ -28,14 +28,14 @@ public class AnalyzerTestWrapper : DiagnosticAnalyzer // <-- Musi być public
 
     private void AnalyzeMethod(SymbolAnalysisContext context)
     {
-        if (context.Symbol is not IMethodSymbol methodSymbol || methodSymbol.Name != "MethodToTest")
+        if (context.Symbol is not IMethodSymbol { Name: "MethodToTest" } methodSymbol)
         {
             return;
         }
 
         var typeHelper = new TypeSystemHelper();
         var analyzer = new AsyncSignatureAnalyzer(typeHelper);
-        var result = analyzer.Analyze(methodSymbol);
+        var result = analyzer.Analyze(methodSymbol,context.Compilation);
 
         // Wywołaj callback, jeśli został ustawiony
         OnResultCallback?.Invoke(result);
