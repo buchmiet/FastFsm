@@ -23,7 +23,7 @@
 	<!-- wersjonowanie -->
 	<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
 		<PropertyGroup>
-			<Version>$(GitVersion_MajorMinorPatch)-dev.$([System.DateTime]::UtcNow.ToString("yyyyMMddHHmmss"))</Version>
+			<Version>0.5.0-dev.$([System.DateTime]::UtcNow.ToString("yyyyMMddHHmmss"))</Version>
 			<PackageVersion>$(Version)</PackageVersion>
 		</PropertyGroup>
 	</Target>
@@ -32,7 +32,6 @@
 	<ItemGroup>
 		<PackageReference Include="FastFsm.Net" Version="*-dev.*" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
-		<PackageReference Include="Dorssel.GitVersion.MsBuild" Version="1.1.1" PrivateAssets="all" />
 	</ItemGroup>
 
 	<!-- buildTransitive props -->

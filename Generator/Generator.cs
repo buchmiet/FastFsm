@@ -141,16 +141,7 @@ public class StateMachineGenerator : IIncrementalGenerator
         return (!hasStateMachineAttr || !isPartial) ? cls : null;
     }
 
-    // Umieść to w klasie zawierającej metodę Execute
-    private static readonly DiagnosticDescriptor GeneratorSettingsInfo = new(
-        id: "SMG001", // Unikalny ID dla naszej diagnostyki (S)tate(M)achine(G)enerator
-        title: "Generator Configuration Info",
-        messageFormat: "Dla maszyny stanów '{0}': generowanie DI jest '{1}', a generowanie logowania jest '{2}'.",
-        category: "StateMachineGenerator",
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description: "Wyświetla informacje o tym, jakie funkcje generatora zostały włączone na podstawie właściwości build."
-    );
+
 
     private static void Execute(
      SourceProductionContext context,
@@ -213,20 +204,6 @@ public class StateMachineGenerator : IIncrementalGenerator
 
             model!.GenerateDependencyInjection = BuildProperties.GetGenerateDI(
                 optionsProvider.GlobalOptions);
-
-            // ==========================================================
-            // Zgłoś diagnostykę z informacją o flagach
-            // ==========================================================
-            context.ReportDiagnostic(Diagnostic.Create(
-                descriptor: GeneratorSettingsInfo,
-                location: classDeclaration.GetLocation(), // Wskaż na deklarację klasy
-                messageArgs: new object[] {
-                model.ClassName,
-                model.GenerateDependencyInjection ? "włączone" : "wyłączone",
-                model.GenerateLogging ? "włączone" : "wyłączone"
-                }
-            ));
-            // ==========================================================
 
             // ──────────────────────────────────────────────────────────
             // 1. Wybierz i uruchom odpowiedni generator kodu

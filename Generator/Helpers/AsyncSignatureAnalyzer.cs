@@ -33,24 +33,49 @@ public sealed class AsyncSignatureAnalyzer
     /// <summary>
     /// Analizuje sygnaturę metody z cache'owaniem wyników.
     /// </summary>
-    public AsyncSignatureInfo Analyze(IMethodSymbol method)
+    public AsyncSignatureInfo Analyze(IMethodSymbol method, Compilation compilation)
     {
-        var (isAsync, isBoolEquivalent) =
-            _typeHelper.AnalyzeAwaitable(method.ReturnType);
-
-        return new AsyncSignatureInfo
+        return _cache.GetOrAdd(method, _ =>
         {
-            IsAsync = isAsync,
-            IsBoolEquivalent = isBoolEquivalent,
-        };
+            var (isAsync, isBoolEquivalent) = _typeHelper.AnalyzeAwaitable(method.ReturnType, compilation);
+
+            var taskSym = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task");
+            var valueTaskSym = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask");
+            var taskOfTSym = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
+
+            var info = new AsyncSignatureInfo
+            {
+                IsAsync = isAsync,
+                IsBoolEquivalent = isBoolEquivalent,
+                IsVoidEquivalent =
+                    method.ReturnType.SpecialType == SpecialType.System_Void ||
+                    (isAsync && (SymbolEqualityComparer.Default.Equals(method.ReturnType, taskSym) ||
+                                 SymbolEqualityComparer.Default.Equals(method.ReturnType, valueTaskSym)))
+            };
+
+            // async void
+            if (method.IsAsync && method.ReturnsVoid)
+                info.IsInvalidAsyncVoid = true;
+
+            // Guard: Task<bool> (ValueTask<bool> jest OK)
+            if (isBoolEquivalent &&
+                method.ReturnType is INamedTypeSymbol nts &&
+                SymbolEqualityComparer.Default.Equals(nts.ConstructedFrom, taskOfTSym))
+            {
+                info.IsInvalidGuardTask = true;
+            }
+
+            return info;
+        });
     }
+
 
     /// <summary>
     /// Analizuje sygnaturę metody z dodatkową walidacją dla konkretnego typu callbacku.
     /// </summary>
-    public AsyncSignatureInfo AnalyzeCallback(IMethodSymbol methodSymbol, string callbackType)
+    public AsyncSignatureInfo AnalyzeCallback(IMethodSymbol methodSymbol, string callbackType, Compilation compilation)
     {
-        var info = Analyze(methodSymbol);
+        var info = Analyze(methodSymbol, compilation);
 
         // Dodatkowa walidacja per typ callbacku
         if (callbackType == "Guard" && info.IsAsync)
@@ -65,23 +90,7 @@ public sealed class AsyncSignatureAnalyzer
         return info;
     }
 
-    /// <summary>
-    /// Sprawdza czy sygnatura metody jest poprawna dla danego typu callbacku.
-    /// </summary>
-    public bool IsValidForCallback(IMethodSymbol methodSymbol, string callbackType)
-    {
-        var info = AnalyzeCallback(methodSymbol, callbackType);
 
-        // Sprawdzenie podstawowej poprawności
-        bool isValid = callbackType switch
-        {
-            "Guard" => info.IsBoolEquivalent && !info.IsInvalidAsyncVoid && !info.IsInvalidGuardTask,
-            "Action" or "OnEntry" or "OnExit" => info.IsVoidEquivalent && !info.IsInvalidAsyncVoid,
-            _ => false
-        };
-
-        return isValid;
-    }
 
     /// <summary>
     /// Zwraca oczekiwany typ zwracany dla danego typu callbacku i trybu.

@@ -5,7 +5,7 @@ using static Generator.Strings;
 namespace Generator.SourceGenerators;
 
 /// <summary>
-/// Generuje kod dla wariantów z payloadem.
+/// Generuje kod dla wariantów z payloadem (sync i async).
 /// </summary>
 internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCodeGenerator(model)
 {
@@ -31,9 +31,18 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
 
             Sb.AppendLine();
 
-            // Generowanie klasy
-            using (Sb.Block($"public partial class {className} : StateMachineBase<{stateTypeForUsage}, {triggerTypeForUsage}>, I{className}"))
+            // Generowanie klasy z odpowiednią klasą bazową
+            var baseClass = GetBaseClassName(stateTypeForUsage, triggerTypeForUsage);
+
+            using (Sb.Block($"public partial class {className} : {baseClass}, I{className}"))
             {
+                // Pola dla async
+                if (IsAsyncMachine)
+                {
+                    Sb.AppendLine("private readonly string _instanceId = Guid.NewGuid().ToString();");
+                    Sb.AppendLine();
+                }
+
                 WriteLoggerField(className);
 
                 if (IsMultiPayloadVariant())
@@ -47,6 +56,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 WriteCanFireMethods(stateTypeForUsage, triggerTypeForUsage);
                 WriteGetPermittedTriggersMethod(stateTypeForUsage, triggerTypeForUsage);
                 WriteGetPermittedTriggersWithResolver(stateTypeForUsage, triggerTypeForUsage);
+                WriteStructuralApiMethods(stateTypeForUsage, triggerTypeForUsage);
             }
         }
 
@@ -67,31 +77,79 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
     {
         var paramList = BuildConstructorParameters(stateTypeForUsage, GetLoggerConstructorParameter(className));
 
-        using (Sb.Block($"public {className}({string.Join(", ", paramList)}) : base(initialState)"))
+        // Dla async maszyn przekaż continueOnCapturedContext
+        var baseCall = IsAsyncMachine
+            ? $"base(initialState, continueOnCapturedContext: {Model.ContinueOnCapturedContext.ToString().ToLowerInvariant()})"
+            : "base(initialState)";
+
+        using (Sb.Block($"public {className}({string.Join(", ", paramList)}) : {baseCall}"))
         {
             WriteLoggerAssignment();
 
             if (ShouldGenerateInitialOnEntry())
             {
                 Sb.AppendLine();
-                WriteInitialOnEntryDispatch(stateTypeForUsage);
+                if (IsAsyncMachine)
+                    WriteAsyncInitialOnEntryDispatch(stateTypeForUsage);
+                else
+                    WriteInitialOnEntryDispatch(stateTypeForUsage);
             }
         }
         Sb.AppendLine();
     }
 
+    private void WriteAsyncInitialOnEntryDispatch(string stateTypeForUsage)
+    {
+        Sb.AppendLine(InitialOnEntryComment);
+        Sb.AppendLine("// Note: Constructor cannot be async, so initial OnEntry is fire-and-forget");
+
+        // Sprawdź czy jakikolwiek stan ma bezparametrową OnEntry
+        var statesWithParameterlessOnEntry = Model.States.Values
+            .Where(s => !string.IsNullOrEmpty(s.OnEntryMethod) && s.OnEntryHasParameterlessOverload)
+            .ToList();
+
+        if (statesWithParameterlessOnEntry.Any())
+        {
+            Sb.AppendLine("_ = Task.Run(async () =>");
+            using (Sb.Block("{"))
+            {
+                using (Sb.Block("switch (initialState)"))
+                {
+                    foreach (var stateEntry in statesWithParameterlessOnEntry)
+                    {
+                        Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                        using (Sb.Indent())
+                        {
+                            WriteCallbackInvocation(stateEntry.OnEntryMethod, stateEntry.OnEntryIsAsync);
+                            Sb.AppendLine("break;");
+                        }
+                    }
+                }
+            }
+            Sb.AppendLine("});");
+        }
+    }
+
     protected override void WriteInitialOnEntryDispatch(string stateTypeForUsage)
     {
         Sb.AppendLine(InitialOnEntryComment);
-        using (Sb.Block("switch (initialState)"))
+
+        var statesWithParameterlessOnEntry = Model.States.Values
+            .Where(s => !string.IsNullOrEmpty(s.OnEntryMethod) && s.OnEntryHasParameterlessOverload)
+            .ToList();
+
+        if (statesWithParameterlessOnEntry.Any())
         {
-            foreach (var stateEntry in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod) && s.OnEntryHasParameterlessOverload))
+            using (Sb.Block("switch (initialState)"))
             {
-                Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
-                using (Sb.Indent())
+                foreach (var stateEntry in statesWithParameterlessOnEntry)
                 {
-                    Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
-                    Sb.AppendLine("break;");
+                    Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                    using (Sb.Indent())
+                    {
+                        Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                        Sb.AppendLine("break;");
+                    }
                 }
             }
         }
@@ -115,45 +173,117 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
 
     protected virtual void WriteTryFireMethods(string stateTypeForUsage, string triggerTypeForUsage)
     {
-        // 1. Internal method with logic
-        WriteTryFireInternal(stateTypeForUsage, triggerTypeForUsage);
-
-        // 2. Public typed overloads
-        if (IsSinglePayloadVariant())
+        if (IsAsyncMachine)
         {
-            var single = GetSinglePayloadType();
-            if (single is not null)
+            // 1. Internal async method with logic
+            WriteTryFireInternalAsync(stateTypeForUsage, triggerTypeForUsage);
+
+            // 2. Public typed async overloads
+            if (IsSinglePayloadVariant())
             {
-                var payloadType = GetTypeNameForUsage(single);
-                // Skip if it's 'object' to avoid duplicate
-                if (payloadType != "object")
+                var single = GetSinglePayloadType();
+                if (single is not null)
                 {
-                    WriteMethodAttribute();
-                    using (Sb.Block($"public bool TryFire({triggerTypeForUsage} trigger, {payloadType} {PayloadVar})"))
+                    var payloadType = GetTypeNameForUsage(single);
+                    // Skip if it's 'object' to avoid duplicate
+                    if (payloadType != "object")
                     {
-                        Sb.AppendLine($"return TryFireInternal(trigger, {PayloadVar});");
+                        WriteMethodAttribute();
+                        using (Sb.Block($"public async ValueTask<bool> TryFireAsync({triggerTypeForUsage} trigger, {payloadType} {PayloadVar}, CancellationToken cancellationToken = default)"))
+                        {
+                            Sb.AppendLine($"return await TryFireInternalAsync(trigger, {PayloadVar}, cancellationToken){GetConfigureAwait()};");
+                        }
+                        Sb.AppendLine();
                     }
-                    Sb.AppendLine();
                 }
             }
-        }
-        else if (IsMultiPayloadVariant())
-        {
+            else if (IsMultiPayloadVariant())
+            {
+                WriteMethodAttribute();
+                using (Sb.Block($"public async ValueTask<bool> TryFireAsync<TPayload>({triggerTypeForUsage} trigger, TPayload {PayloadVar}, CancellationToken cancellationToken = default)"))
+                {
+                    Sb.AppendLine($"return await TryFireInternalAsync(trigger, {PayloadVar}, cancellationToken){GetConfigureAwait()};");
+                }
+                Sb.AppendLine();
+            }
+
+            // 3. Sync methods that throw for async machines (required by interface)
+            if (IsSinglePayloadVariant())
+            {
+                var single = GetSinglePayloadType();
+                if (single is not null)
+                {
+                    var payloadType = GetTypeNameForUsage(single);
+                    if (payloadType != "object")
+                    {
+                        WriteMethodAttribute();
+                        using (Sb.Block($"public bool TryFire({triggerTypeForUsage} trigger, {payloadType} {PayloadVar})"))
+                        {
+                            Sb.AppendLine("throw new SyncCallOnAsyncMachineException();");
+                        }
+                        Sb.AppendLine();
+                    }
+                }
+            }
+            else if (IsMultiPayloadVariant())
+            {
+                WriteMethodAttribute();
+                using (Sb.Block($"public bool TryFire<TPayload>({triggerTypeForUsage} trigger, TPayload {PayloadVar})"))
+                {
+                    Sb.AppendLine("throw new SyncCallOnAsyncMachineException();");
+                }
+                Sb.AppendLine();
+            }
+
+            // Override with object? - użyj override bo nadpisujemy metodę virtual z klasy bazowej
             WriteMethodAttribute();
-            using (Sb.Block($"public bool TryFire<TPayload>({triggerTypeForUsage} trigger, TPayload {PayloadVar})"))
+            using (Sb.Block($"public override bool TryFire({triggerTypeForUsage} trigger, object? {PayloadVar} = null)"))
+            {
+                Sb.AppendLine("throw new SyncCallOnAsyncMachineException();");
+            }
+            Sb.AppendLine();
+        }
+        else
+        {
+            // Sync-only implementation
+            WriteTryFireInternal(stateTypeForUsage, triggerTypeForUsage);
+
+            // Public typed overloads
+            if (IsSinglePayloadVariant())
+            {
+                var single = GetSinglePayloadType();
+                if (single is not null)
+                {
+                    var payloadType = GetTypeNameForUsage(single);
+                    if (payloadType != "object")
+                    {
+                        WriteMethodAttribute();
+                        using (Sb.Block($"public bool TryFire({triggerTypeForUsage} trigger, {payloadType} {PayloadVar})"))
+                        {
+                            Sb.AppendLine($"return TryFireInternal(trigger, {PayloadVar});");
+                        }
+                        Sb.AppendLine();
+                    }
+                }
+            }
+            else if (IsMultiPayloadVariant())
+            {
+                WriteMethodAttribute();
+                using (Sb.Block($"public bool TryFire<TPayload>({triggerTypeForUsage} trigger, TPayload {PayloadVar})"))
+                {
+                    Sb.AppendLine($"return TryFireInternal(trigger, {PayloadVar});");
+                }
+                Sb.AppendLine();
+            }
+
+            // Override with object?
+            WriteMethodAttribute();
+            using (Sb.Block($"public override bool TryFire({triggerTypeForUsage} trigger, object? {PayloadVar} = null)"))
             {
                 Sb.AppendLine($"return TryFireInternal(trigger, {PayloadVar});");
             }
             Sb.AppendLine();
         }
-
-        // 3. Override with object?
-        WriteMethodAttribute();
-        using (Sb.Block($"public override bool TryFire({triggerTypeForUsage} trigger, object? {PayloadVar} = null)"))
-        {
-            Sb.AppendLine($"return TryFireInternal(trigger, {PayloadVar});");
-        }
-        Sb.AppendLine();
     }
 
     private void WriteTryFireInternal(string stateTypeForUsage, string triggerTypeForUsage)
@@ -192,6 +322,64 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 WriteTransitionLogic);
 
             Sb.AppendLine($"{EndOfTryFireLabel}:;");
+
+            // Logowanie niepowodzenia
+            using (Sb.Block($"if (!{SuccessVar})"))
+            {
+                WriteLogStatement("Warning",
+                    $"TransitionFailed(_logger, _instanceId, {OriginalStateVar}.ToString(), trigger.ToString());");
+            }
+
+            Sb.AppendLine($"return {SuccessVar};");
+        }
+        Sb.AppendLine();
+    }
+
+    private void WriteTryFireInternalAsync(string stateTypeForUsage, string triggerTypeForUsage)
+    {
+        WriteMethodAttribute();
+        using (Sb.Block($"protected override async ValueTask<bool> TryFireInternalAsync({triggerTypeForUsage} trigger, object? {PayloadVar}, CancellationToken cancellationToken)"))
+        {
+            if (!Model.Transitions.Any())
+            {
+                Sb.AppendLine($"return false; {NoTransitionsComment}");
+                return;
+            }
+
+            Sb.AppendLine($"var {OriginalStateVar} = {CurrentStateField};");
+            Sb.AppendLine($"bool {SuccessVar} = false;");
+            Sb.AppendLine();
+
+            // Payload validation for multi-payload variant
+            if (IsMultiPayloadVariant())
+            {
+                Sb.AppendLine("// Payload-type validation for multi-payload variant");
+                using (Sb.Block(
+                    $"if ({PayloadMapField}.TryGetValue(trigger, out var expectedType) && " +
+                    $"({PayloadVar} == null || !expectedType.IsInstanceOfType({PayloadVar})))"))
+                {
+                    WriteLogStatement("Warning",
+                        $"PayloadValidationFailed(_logger, _instanceId, trigger.ToString(), expectedType?.Name ?? \"unknown\", {PayloadVar}?.GetType().Name ?? \"null\");");
+                    Sb.AppendLine("return false; // wrong payload type");
+                }
+                Sb.AppendLine();
+            }
+
+            WriteTryFireStructure(
+                stateTypeForUsage,
+                triggerTypeForUsage,
+                WriteTransitionLogic);
+
+            Sb.AppendLine($"{EndOfTryFireLabel}:;");
+            Sb.AppendLine();
+
+            // Logowanie niepowodzenia
+            using (Sb.Block($"if (!{SuccessVar})"))
+            {
+                WriteLogStatement("Warning",
+                    $"TransitionFailed(_logger, _instanceId, {OriginalStateVar}.ToString(), trigger.ToString());");
+            }
+
             Sb.AppendLine($"return {SuccessVar};");
         }
         Sb.AppendLine();
@@ -211,22 +399,50 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 Sb.AppendLine($"bool {GuardResultVar};");
                 using (Sb.Block($"if ({PayloadVar} is {payloadType} typedGuardPayload)"))
                 {
-                    Sb.AppendLine($"{GuardResultVar} = {transition.GuardMethod}(typedGuardPayload);");
+                    if (IsAsyncMachine && transition.GuardIsAsync)
+                    {
+                        Sb.AppendLine($"{GuardResultVar} = {GetAwaitKeyword()}{transition.GuardMethod}(typedGuardPayload){GetConfigureAwait()};");
+                    }
+                    else
+                    {
+                        Sb.AppendLine($"{GuardResultVar} = {transition.GuardMethod}(typedGuardPayload);");
+                    }
                 }
                 Sb.AppendLine("else");
                 using (Sb.Indent())
                 {
-                    Sb.AppendLine($"{GuardResultVar} = {transition.GuardMethod}();");
+                    if (IsAsyncMachine && transition.GuardIsAsync)
+                    {
+                        Sb.AppendLine($"{GuardResultVar} = {GetAwaitKeyword()}{transition.GuardMethod}(){GetConfigureAwait()};");
+                    }
+                    else
+                    {
+                        Sb.AppendLine($"{GuardResultVar} = {transition.GuardMethod}();");
+                    }
                 }
             }
             else if (transition.GuardExpectsPayload)
             {
                 var payloadType = GetTypeNameForUsage(transition.ExpectedPayloadType!);
-                Sb.AppendLine($"bool {GuardResultVar} = {PayloadVar} is {payloadType} typedGuardPayload && {transition.GuardMethod}(typedGuardPayload);");
+                if (IsAsyncMachine && transition.GuardIsAsync)
+                {
+                    Sb.AppendLine($"bool {GuardResultVar} = {PayloadVar} is {payloadType} typedGuardPayload && {GetAwaitKeyword()}{transition.GuardMethod}(typedGuardPayload){GetConfigureAwait()};");
+                }
+                else
+                {
+                    Sb.AppendLine($"bool {GuardResultVar} = {PayloadVar} is {payloadType} typedGuardPayload && {transition.GuardMethod}(typedGuardPayload);");
+                }
             }
             else if (transition.GuardHasParameterlessOverload)
             {
-                Sb.AddProperty($"bool {GuardResultVar}", $"{transition.GuardMethod}()");
+                if (IsAsyncMachine && transition.GuardIsAsync)
+                {
+                    Sb.AppendLine($"bool {GuardResultVar} = {GetAwaitKeyword()}{transition.GuardMethod}(){GetConfigureAwait()};");
+                }
+                else
+                {
+                    Sb.AddProperty($"bool {GuardResultVar}", $"{transition.GuardMethod}()");
+                }
             }
             else
             {
@@ -268,6 +484,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             Sb.AppendLine($"goto {EndOfTryFireLabel};");
         }
     }
+
     protected override void WriteActionCall(TransitionModel transition)
     {
         if (string.IsNullOrEmpty(transition.ActionMethod)) return;
@@ -282,12 +499,12 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 var payloadType = GetTypeNameForUsage(transition.ExpectedPayloadType!);
                 using (Sb.Block($"if ({PayloadVar} is {payloadType} typedActionPayload)"))
                 {
-                    Sb.AppendLine($"{transition.ActionMethod}(typedActionPayload);");
+                    WriteCallbackInvocation(transition.ActionMethod, transition.ActionIsAsync, "typedActionPayload");
                 }
                 Sb.AppendLine("else");
                 using (Sb.Indent())
                 {
-                    Sb.AppendLine($"{transition.ActionMethod}();");
+                    WriteCallbackInvocation(transition.ActionMethod, transition.ActionIsAsync);
                 }
             }
             else if (transition.ActionExpectsPayload)
@@ -295,12 +512,12 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 var payloadType = GetTypeNameForUsage(transition.ExpectedPayloadType!);
                 using (Sb.Block($"if ({PayloadVar} is {payloadType} typedActionPayload)"))
                 {
-                    Sb.AppendLine($"{transition.ActionMethod}(typedActionPayload);");
+                    WriteCallbackInvocation(transition.ActionMethod, transition.ActionIsAsync, "typedActionPayload");
                 }
             }
             else if (transition.ActionHasParameterlessOverload)
             {
-                Sb.AppendLine($"{transition.ActionMethod}();");
+                WriteCallbackInvocation(transition.ActionMethod, transition.ActionIsAsync);
             }
         }
         Sb.AppendLine("catch (Exception ex)");
@@ -317,6 +534,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             Sb.AppendLine($"goto {EndOfTryFireLabel};");
         }
     }
+
     protected override void WriteOnEntryCall(StateModel state, string? expectedPayloadType)
     {
         if (string.IsNullOrEmpty(state.OnEntryMethod)) return;
@@ -329,7 +547,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         {
             if (!state.OnEntryExpectsPayload || effectiveType == null)
             {
-                Sb.AppendLine($"{state.OnEntryMethod}();");
+                WriteCallbackInvocation(state.OnEntryMethod, state.OnEntryIsAsync);
             }
             else
             {
@@ -342,19 +560,19 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                     {
                         using (Sb.Block($"if ({PayloadVar} is {payloadType} typedPayload)"))
                         {
-                            Sb.AppendLine($"{state.OnEntryMethod}(typedPayload);");
+                            WriteCallbackInvocation(state.OnEntryMethod, state.OnEntryIsAsync, "typedPayload");
                         }
                         Sb.AppendLine("else");
                         using (Sb.Indent())
                         {
-                            Sb.AppendLine($"{state.OnEntryMethod}();");
+                            WriteCallbackInvocation(state.OnEntryMethod, state.OnEntryIsAsync);
                         }
                     }
                     else
                     {
                         using (Sb.Block($"if ({PayloadVar} is {payloadType} typedPayload)"))
                         {
-                            Sb.AppendLine($"{state.OnEntryMethod}(typedPayload);");
+                            WriteCallbackInvocation(state.OnEntryMethod, state.OnEntryIsAsync, "typedPayload");
                         }
                     }
                 }
@@ -369,19 +587,19 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                         {
                             using (Sb.Block($"if ({PayloadVar} is {payloadTypeForUsage} typedPayload)"))
                             {
-                                Sb.AppendLine($"{state.OnEntryMethod}(typedPayload);");
+                                WriteCallbackInvocation(state.OnEntryMethod, state.OnEntryIsAsync, "typedPayload");
                             }
                             Sb.AppendLine("else");
                             using (Sb.Indent())
                             {
-                                Sb.AppendLine($"{state.OnEntryMethod}();");
+                                WriteCallbackInvocation(state.OnEntryMethod, state.OnEntryIsAsync);
                             }
                         }
                         else
                         {
                             using (Sb.Block($"if ({PayloadVar} is {payloadTypeForUsage} typedPayload)"))
                             {
-                                Sb.AppendLine($"{state.OnEntryMethod}(typedPayload);");
+                                WriteCallbackInvocation(state.OnEntryMethod, state.OnEntryIsAsync, "typedPayload");
                             }
                         }
                     }
@@ -389,7 +607,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                     {
                         if (state.OnEntryHasParameterlessOverload)
                         {
-                            Sb.AppendLine($"{state.OnEntryMethod}();");
+                            WriteCallbackInvocation(state.OnEntryMethod, state.OnEntryIsAsync);
                         }
                     }
                 }
@@ -403,6 +621,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             Sb.AppendLine($"goto {EndOfTryFireLabel};");
         }
     }
+
     protected override void WriteOnExitCall(StateModel fromState, string? expectedPayloadType)
     {
         if (string.IsNullOrEmpty(fromState.OnExitMethod)) return;
@@ -415,7 +634,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         {
             if (!fromState.OnExitExpectsPayload || effectiveType == null)
             {
-                Sb.AppendLine($"{fromState.OnExitMethod}();");
+                WriteCallbackInvocation(fromState.OnExitMethod, fromState.OnExitIsAsync);
             }
             else
             {
@@ -427,19 +646,19 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                     {
                         using (Sb.Block($"if ({PayloadVar} is {payloadType} typedPayload)"))
                         {
-                            Sb.AppendLine($"{fromState.OnExitMethod}(typedPayload);");
+                            WriteCallbackInvocation(fromState.OnExitMethod, fromState.OnExitIsAsync, "typedPayload");
                         }
                         Sb.AppendLine("else");
                         using (Sb.Indent())
                         {
-                            Sb.AppendLine($"{fromState.OnExitMethod}();");
+                            WriteCallbackInvocation(fromState.OnExitMethod, fromState.OnExitIsAsync);
                         }
                     }
                     else
                     {
                         using (Sb.Block($"if ({PayloadVar} is {payloadType} typedPayload)"))
                         {
-                            Sb.AppendLine($"{fromState.OnExitMethod}(typedPayload);");
+                            WriteCallbackInvocation(fromState.OnExitMethod, fromState.OnExitIsAsync, "typedPayload");
                         }
                     }
                 }
@@ -455,7 +674,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                         Sb.AppendLine("else");
                         using (Sb.Indent())
                         {
-                            Sb.AppendLine($"{fromState.OnExitMethod}();");
+                            WriteCallbackInvocation(fromState.OnExitMethod, fromState.OnExitIsAsync);
                         }
                     }
                     else
@@ -479,95 +698,395 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
 
     protected void WriteFireMethods(string stateTypeForUsage, string triggerTypeForUsage)
     {
-        if (IsSinglePayloadVariant())
+        if (IsAsyncMachine)
         {
-            var payloadType = GetTypeNameForUsage(GetSinglePayloadType()!);
-            using (Sb.Block($"public void Fire({triggerTypeForUsage} trigger, {payloadType} {PayloadVar})"))
+            // Async Fire methods
+            if (IsSinglePayloadVariant())
             {
-                using (Sb.Block($"if (!TryFire(trigger, {PayloadVar}))"))
+                var payloadType = GetTypeNameForUsage(GetSinglePayloadType()!);
+                using (Sb.Block($"public async Task FireAsync({triggerTypeForUsage} trigger, {payloadType} {PayloadVar}, CancellationToken cancellationToken = default)"))
                 {
-                    Sb.AppendLine($"throw new InvalidOperationException($\"No valid transition from state '{{{{CurrentStateField}}}}' on trigger '{{trigger}}' with payload of type '{payloadType}'\");");
+                    using (Sb.Block($"if (!await TryFireAsync(trigger, {PayloadVar}, cancellationToken){GetConfigureAwait()})"))
+                    {
+                        Sb.AppendLine($"throw new InvalidOperationException($\"No valid transition from state '{{CurrentState}}' on trigger '{{trigger}}' with payload of type '{payloadType}'\");");
+                    }
                 }
+                Sb.AppendLine();
             }
-            Sb.AppendLine();
+            else if (IsMultiPayloadVariant())
+            {
+                using (Sb.Block($"public async Task FireAsync<TPayload>({triggerTypeForUsage} trigger, TPayload {PayloadVar}, CancellationToken cancellationToken = default)"))
+                {
+                    using (Sb.Block($"if (!await TryFireAsync(trigger, {PayloadVar}, cancellationToken){GetConfigureAwait()})"))
+                    {
+                        Sb.AppendLine("throw new InvalidOperationException($\"No valid transition from state '{CurrentState}' on trigger '{trigger}' with payload of type '{typeof(TPayload).Name}'\");");
+                    }
+                }
+                Sb.AppendLine();
+            }
+
+            // Sync Fire methods that throw for async machines
+            if (IsSinglePayloadVariant())
+            {
+                var payloadType = GetTypeNameForUsage(GetSinglePayloadType()!);
+                using (Sb.Block($"public void Fire({triggerTypeForUsage} trigger, {payloadType} {PayloadVar})"))
+                {
+                    Sb.AppendLine("throw new SyncCallOnAsyncMachineException();");
+                }
+                Sb.AppendLine();
+            }
+            else if (IsMultiPayloadVariant())
+            {
+                using (Sb.Block($"public void Fire<TPayload>({triggerTypeForUsage} trigger, TPayload {PayloadVar})"))
+                {
+                    Sb.AppendLine("throw new SyncCallOnAsyncMachineException();");
+                }
+                Sb.AppendLine();
+            }
         }
-        else if (IsMultiPayloadVariant())
+        else
         {
-            using (Sb.Block($"public void Fire<TPayload>({triggerTypeForUsage} trigger, TPayload {PayloadVar})"))
+            // Sync Fire methods
+            if (IsSinglePayloadVariant())
             {
-                using (Sb.Block($"if (!TryFire(trigger, {PayloadVar}))"))
+                var payloadType = GetTypeNameForUsage(GetSinglePayloadType()!);
+                using (Sb.Block($"public void Fire({triggerTypeForUsage} trigger, {payloadType} {PayloadVar})"))
                 {
-                    Sb.AppendLine($"throw new InvalidOperationException($\"No valid transition from state '{{{{CurrentStateField}}}}' on trigger '{{trigger}}' with payload of type '{{typeof(TPayload).Name}}'\");");
+                    using (Sb.Block($"if (!TryFire(trigger, {PayloadVar}))"))
+                    {
+                        Sb.AppendLine($"throw new InvalidOperationException($\"No valid transition from state '{{CurrentState}}' on trigger '{{trigger}}' with payload of type '{payloadType}'\");");
+                    }
                 }
+                Sb.AppendLine();
             }
-            Sb.AppendLine();
+            else if (IsMultiPayloadVariant())
+            {
+                using (Sb.Block($"public void Fire<TPayload>({triggerTypeForUsage} trigger, TPayload {PayloadVar})"))
+                {
+                    using (Sb.Block($"if (!TryFire(trigger, {PayloadVar}))"))
+                    {
+                        Sb.AppendLine("throw new InvalidOperationException($\"No valid transition from state '{CurrentState}' on trigger '{trigger}' with payload of type '{typeof(TPayload).Name}'\");");
+                    }
+                }
+                Sb.AppendLine();
+            }
         }
     }
 
     protected void WriteCanFireMethods(string stateTypeForUsage, string triggerTypeForUsage)
     {
-        //------------------------------------------------------------
-        // 1.  OBOWIĄZKOWY   override  z  bazowej klasy
-        //------------------------------------------------------------
-        base.WriteCanFireMethod(stateTypeForUsage, triggerTypeForUsage);
-        //  (base.WriteCanFireMethod generuje:
-        //   public override bool CanFire({triggerType} trigger) { … })
-
-        //------------------------------------------------------------
-        // 2.  DODATKOWE przeciążenia z payloadem  (bez override!)
-        //------------------------------------------------------------
-
-        // wspólna prywatna logika:
-        WriteCanFireWithPayload(stateTypeForUsage, triggerTypeForUsage);
-
-        // --- single‑payload ---------------------------------------
-        if (IsSinglePayloadVariant())
+        if (IsAsyncMachine)
         {
-            var single = GetSinglePayloadType();
-            if (single is not null)
+            // Async CanFire methods
+            WriteAsyncCanFireMethod(stateTypeForUsage, triggerTypeForUsage);
+            WriteAsyncCanFireWithPayload(stateTypeForUsage, triggerTypeForUsage);
+
+            // Additional async overloads
+            if (IsSinglePayloadVariant())
             {
-                var payloadType = GetTypeNameForUsage(single);
-                if (payloadType != "object")          // uniknij duplikatu
+                var single = GetSinglePayloadType();
+                if (single is not null)
                 {
-                    Sb.WriteSummary("Checks if the specified trigger can be fired " +
-                                    "with the given payload (runtime evaluation incl. guards)");
+                    var payloadType = GetTypeNameForUsage(single);
+                    if (payloadType != "object")
+                    {
+                        Sb.WriteSummary("Asynchronously checks if the specified trigger can be fired " +
+                                        "with the given payload (runtime evaluation incl. guards)");
+                        WriteMethodAttribute();
+                        using (Sb.Block($"public async ValueTask<bool> CanFireAsync({triggerTypeForUsage} trigger, {payloadType} {PayloadVar}, CancellationToken cancellationToken = default)"))
+                        {
+                            Sb.AppendLine($"return await CanFireWithPayloadAsync(trigger, {PayloadVar}, cancellationToken){GetConfigureAwait()};");
+                        }
+                        Sb.AppendLine();
+                    }
+                }
+            }
+            else if (IsMultiPayloadVariant())
+            {
+                Sb.WriteSummary("Asynchronously checks if the specified trigger can be fired " +
+                                "with the given payload (runtime evaluation incl. guards)");
+                WriteMethodAttribute();
+                using (Sb.Block($"public async ValueTask<bool> CanFireAsync<TPayload>({triggerTypeForUsage} trigger, TPayload {PayloadVar}, CancellationToken cancellationToken = default)"))
+                {
+                    using (Sb.Block(
+                        $"if ({PayloadMapField}.TryGetValue(trigger, out var expectedType) && " +
+                        $"!expectedType.IsInstanceOfType({PayloadVar}))"))
+                    {
+                        Sb.AppendLine("return false;");
+                    }
+                    Sb.AppendLine($"return await CanFireWithPayloadAsync(trigger, {PayloadVar}, cancellationToken){GetConfigureAwait()};");
+                }
+                Sb.AppendLine();
+            }
+
+            // Universal async overload with object?
+            Sb.WriteSummary("Asynchronously checks if the specified trigger can be fired " +
+                            "with an optional payload (runtime evaluation incl. guards)");
+            WriteMethodAttribute();
+            using (Sb.Block($"public async ValueTask<bool> CanFireAsync({triggerTypeForUsage} trigger, object? {PayloadVar} = null, CancellationToken cancellationToken = default)"))
+            {
+                Sb.AppendLine($"return await CanFireWithPayloadAsync(trigger, {PayloadVar}, cancellationToken){GetConfigureAwait()};");
+            }
+            Sb.AppendLine();
+
+            // Sync CanFire methods required by interface - NIE używaj override
+            if (IsSinglePayloadVariant())
+            {
+                var single = GetSinglePayloadType();
+                if (single is not null)
+                {
+                    var payloadType = GetTypeNameForUsage(single);
                     WriteMethodAttribute();
                     using (Sb.Block($"public bool CanFire({triggerTypeForUsage} trigger, {payloadType} {PayloadVar})"))
                     {
-                        Sb.AppendLine($"return CanFireWithPayload(trigger, {PayloadVar});");
+                        Sb.AppendLine("throw new SyncCallOnAsyncMachineException();");
                     }
                     Sb.AppendLine();
                 }
             }
         }
-        // --- multi‑payload ----------------------------------------
-        else if (IsMultiPayloadVariant())
+        else
         {
-            Sb.WriteSummary("Checks if the specified trigger can be fired " +
-                            "with the given payload (runtime evaluation incl. guards)");
-            WriteMethodAttribute();
-            using (Sb.Block($"public bool CanFire<TPayload>({triggerTypeForUsage} trigger, TPayload {PayloadVar})"))
+            // Sync CanFire methods
+            base.WriteCanFireMethod(stateTypeForUsage, triggerTypeForUsage);
+            WriteCanFireWithPayload(stateTypeForUsage, triggerTypeForUsage);
+
+            // Additional sync overloads
+            if (IsSinglePayloadVariant())
             {
-                using (Sb.Block(
-                    $"if ({PayloadMapField}.TryGetValue(trigger, out var expectedType) && " +
-                    $"!expectedType.IsInstanceOfType({PayloadVar}))"))
+                var single = GetSinglePayloadType();
+                if (single is not null)
                 {
-                    Sb.AppendLine("return false;");    // payload nie‑pasuje → false
+                    var payloadType = GetTypeNameForUsage(single);
+                    if (payloadType != "object")
+                    {
+                        Sb.WriteSummary("Checks if the specified trigger can be fired " +
+                                        "with the given payload (runtime evaluation incl. guards)");
+                        WriteMethodAttribute();
+                        using (Sb.Block($"public bool CanFire({triggerTypeForUsage} trigger, {payloadType} {PayloadVar})"))
+                        {
+                            Sb.AppendLine($"return CanFireWithPayload(trigger, {PayloadVar});");
+                        }
+                        Sb.AppendLine();
+                    }
                 }
+            }
+            else if (IsMultiPayloadVariant())
+            {
+                Sb.WriteSummary("Checks if the specified trigger can be fired " +
+                                "with the given payload (runtime evaluation incl. guards)");
+                WriteMethodAttribute();
+                using (Sb.Block($"public bool CanFire<TPayload>({triggerTypeForUsage} trigger, TPayload {PayloadVar})"))
+                {
+                    using (Sb.Block(
+                        $"if ({PayloadMapField}.TryGetValue(trigger, out var expectedType) && " +
+                        $"!expectedType.IsInstanceOfType({PayloadVar}))"))
+                    {
+                        Sb.AppendLine("return false;");
+                    }
+                    Sb.AppendLine($"return CanFireWithPayload(trigger, {PayloadVar});");
+                }
+                Sb.AppendLine();
+            }
+
+            // Universal sync overload with object?
+            Sb.WriteSummary("Checks if the specified trigger can be fired " +
+                            "with an optional payload (runtime evaluation incl. guards)");
+            WriteMethodAttribute();
+            using (Sb.Block($"public bool CanFire({triggerTypeForUsage} trigger, object? {PayloadVar} = null)"))
+            {
                 Sb.AppendLine($"return CanFireWithPayload(trigger, {PayloadVar});");
             }
             Sb.AppendLine();
         }
+    }
 
-        // --- uniwersalne przeciążenie z object? --------------------
-        Sb.WriteSummary("Checks if the specified trigger can be fired " +
-                        "with an optional payload (runtime evaluation incl. guards)");
-        WriteMethodAttribute();
-        using (Sb.Block($"public bool CanFire({triggerTypeForUsage} trigger, object? {PayloadVar} = null)"))
+    private void WriteAsyncCanFireMethod(string stateTypeForUsage, string triggerTypeForUsage)
+    {
+        Sb.WriteSummary("Asynchronously checks if the specified trigger can be fired in the current state (runtime evaluation including guards)");
+        Sb.AppendLine("/// <param name=\"trigger\">The trigger to check</param>");
+        Sb.AppendLine("/// <param name=\"cancellationToken\">A token to observe for cancellation requests</param>");
+        Sb.AppendLine("/// <returns>True if the trigger can be fired, false otherwise</returns>");
+
+        using (Sb.Block($"public override async ValueTask<bool> CanFireAsync({triggerTypeForUsage} trigger, CancellationToken cancellationToken = default)"))
         {
-            Sb.AppendLine($"return CanFireWithPayload(trigger, {PayloadVar});");
+            using (Sb.Block($"switch ({CurrentStateField})"))
+            {
+                var allHandledFromStates = Model.Transitions.Select(t => t.FromState).Distinct().OrderBy(s => s);
+
+                foreach (var stateName in allHandledFromStates)
+                {
+                    Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}:");
+                    using (Sb.Indent())
+                    {
+                        using (Sb.Block("switch (trigger)"))
+                        {
+                            var transitionsFromThisState = Model.Transitions
+                                .Where(t => t.FromState == stateName);
+
+                            foreach (var transition in transitionsFromThisState)
+                            {
+                                Sb.AppendLine($"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}:");
+                                using (Sb.Indent())
+                                {
+                                    if (!string.IsNullOrEmpty(transition.GuardMethod))
+                                    {
+                                        if (transition.GuardIsAsync)
+                                        {
+                                            Sb.AppendLine("try");
+                                            using (Sb.Block(""))
+                                            {
+                                                Sb.AppendLine(transition.GuardHasParameterlessOverload
+                                                    ? $"return await {transition.GuardMethod}(){GetConfigureAwait()};"
+                                                    : "return false; // Guard expects payload but none provided");
+                                            }
+                                            Sb.AppendLine("catch");
+                                            using (Sb.Block(""))
+                                            {
+                                                Sb.AppendLine("return false;");
+                                            }
+                                        }
+                                        else
+                                        {
+                                            WriteGuardCall(transition, "guardResult", "null", throwOnException: false);
+                                            Sb.AppendLine("return guardResult;");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Sb.AppendLine("return true;");
+                                    }
+                                }
+                            }
+                            Sb.AppendLine("default: return false;");
+                        }
+                    }
+                }
+                Sb.AppendLine("default: return false;");
+            }
         }
         Sb.AppendLine();
+    }
+
+    private void WriteAsyncCanFireWithPayload(string stateTypeForUsage, string triggerTypeForUsage)
+    {
+        WriteMethodAttribute();
+        using (Sb.Block($"private async ValueTask<bool> CanFireWithPayloadAsync({triggerTypeForUsage} trigger, object? {PayloadVar}, CancellationToken cancellationToken)"))
+        {
+            // Payload validation for multi-payload variant
+            if (IsMultiPayloadVariant())
+            {
+                using (Sb.Block(
+                    $"if ({PayloadMapField}.TryGetValue(trigger, out var expectedType) && " +
+                    $"{PayloadVar} != null && !expectedType.IsInstanceOfType({PayloadVar}))"))
+                {
+                    Sb.AppendLine("return false;");
+                }
+            }
+
+            using (Sb.Block($"switch ({CurrentStateField})"))
+            {
+                var allHandledFromStates = Model.Transitions.Select(t => t.FromState).Distinct().OrderBy(s => s);
+
+                foreach (var stateName in allHandledFromStates)
+                {
+                    Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}:");
+                    using (Sb.Indent())
+                    {
+                        using (Sb.Block("switch (trigger)"))
+                        {
+                            var transitionsFromThisState = Model.Transitions
+                                .Where(t => t.FromState == stateName);
+
+                            foreach (var transition in transitionsFromThisState)
+                            {
+                                Sb.AppendLine($"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}:");
+                                using (Sb.Indent())
+                                {
+                                    if (!string.IsNullOrEmpty(transition.GuardMethod))
+                                    {
+                                        WriteAsyncGuardCallForCanFire(transition, "guardResult", PayloadVar);
+                                        Sb.AppendLine("return guardResult;");
+                                    }
+                                    else
+                                    {
+                                        Sb.AppendLine("return true;");
+                                    }
+                                }
+                            }
+                            Sb.AppendLine("default: return false;");
+                        }
+                    }
+                }
+                Sb.AppendLine("default: return false;");
+            }
+        }
+        Sb.AppendLine();
+    }
+
+    private void WriteAsyncGuardCallForCanFire(TransitionModel transition, string resultVar, string payloadVar)
+    {
+        Sb.AppendLine("bool guardResult;"); 
+        Sb.AppendLine("try");
+        using (Sb.Block(""))
+        {
+            if (transition.GuardIsAsync)
+            {
+                if (transition is { GuardExpectsPayload: true, GuardHasParameterlessOverload: true })
+                {
+                    var payloadType = GetTypeNameForUsage(transition.ExpectedPayloadType!);
+                    using (Sb.Block($"if ({payloadVar} is {payloadType} typedGuardPayload)"))
+                    {
+                        Sb.AppendLine($"guardResult = await {transition.GuardMethod}(typedGuardPayload){GetConfigureAwait()};");
+                    }
+                    Sb.AppendLine("else");
+                    using (Sb.Indent())
+                    {
+                        Sb.AppendLine($"guardResult = await {transition.GuardMethod}(){GetConfigureAwait()};");
+                    }
+                }
+                else if (transition.GuardExpectsPayload)
+                {
+                    var payloadType = GetTypeNameForUsage(transition.ExpectedPayloadType!);
+                    Sb.AppendLine($"guardResult = {payloadVar} is {payloadType} typedGuardPayload && await {transition.GuardMethod}(typedGuardPayload){GetConfigureAwait()};");
+                }
+                else
+                {
+                    Sb.AppendLine($"guardResult = await {transition.GuardMethod}(){GetConfigureAwait()};");
+                }
+            }
+            else
+            {
+                // Sync guard in async method
+                if (transition is { GuardExpectsPayload: true, GuardHasParameterlessOverload: true })
+                {
+                    var payloadType = GetTypeNameForUsage(transition.ExpectedPayloadType!);
+                    using (Sb.Block($"if ({payloadVar} is {payloadType} typedGuardPayload)"))
+                    {
+                        Sb.AppendLine($"guardResult = {transition.GuardMethod}(typedGuardPayload);");
+                    }
+                    Sb.AppendLine("else");
+                    using (Sb.Indent())
+                    {
+                        Sb.AppendLine($"guardResult = {transition.GuardMethod}();");
+                    }
+                }
+                else if (transition.GuardExpectsPayload)
+                {
+                    var payloadType = GetTypeNameForUsage(transition.ExpectedPayloadType!);
+                    Sb.AppendLine($"guardResult = {payloadVar} is {payloadType} typedGuardPayload && {transition.GuardMethod}(typedGuardPayload);");
+                }
+                else
+                {
+                    Sb.AppendLine($"guardResult = {transition.GuardMethod}();");
+                }
+            }
+        }
+        Sb.AppendLine("catch");
+        using (Sb.Block(""))
+        {
+            Sb.AppendLine("guardResult = false;");
+        }
     }
 
     private void WriteCanFireWithPayload(string stateTypeForUsage, string triggerTypeForUsage)
@@ -625,15 +1144,210 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         }
         Sb.AppendLine();
     }
+
+    protected override void WriteGetPermittedTriggersMethod(string stateTypeForUsage, string triggerTypeForUsage)
+    {
+        if (IsAsyncMachine)
+        {
+            WriteAsyncGetPermittedTriggersMethod(stateTypeForUsage, triggerTypeForUsage);
+        }
+        else
+        {
+            base.WriteGetPermittedTriggersMethod(stateTypeForUsage, triggerTypeForUsage);
+        }
+    }
+
+    private void WriteAsyncGetPermittedTriggersMethod(string stateTypeForUsage, string triggerTypeForUsage)
+    {
+        Sb.WriteSummary("Asynchronously gets the list of triggers that can be fired in the current state (runtime evaluation including guards)");
+        Sb.AppendLine("/// <param name=\"cancellationToken\">A token to observe for cancellation requests</param>");
+        Sb.AppendLine("/// <returns>List of triggers that can be fired in the current state</returns>");
+
+        using (Sb.Block($"public override async ValueTask<{ReadOnlyListType}<{triggerTypeForUsage}>> GetPermittedTriggersAsync(CancellationToken cancellationToken = default)"))
+        {
+            using (Sb.Block($"switch ({CurrentStateField})"))
+            {
+                var transitionsByFromState = Model.Transitions
+                    .GroupBy(t => t.FromState)
+                    .OrderBy(g => g.Key);
+
+                foreach (var stateGroup in transitionsByFromState)
+                {
+                    var stateName = stateGroup.Key;
+                    Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}:");
+                    using (Sb.Block(""))
+                    {
+                        // Check if any transition has a guard
+                        var hasAsyncGuards = stateGroup.Any(t => !string.IsNullOrEmpty(t.GuardMethod) && t.GuardIsAsync);
+
+                        if (!hasAsyncGuards && !stateGroup.Any(t => !string.IsNullOrEmpty(t.GuardMethod)))
+                        {
+                            // No guards - return static array
+                            var triggers = stateGroup.Select(t => t.Trigger).Distinct().ToList();
+                            if (triggers.Any())
+                            {
+                                var triggerList = string.Join(", ", triggers.Select(t => $"{triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(t)}"));
+                                Sb.AppendLine($"return new {triggerTypeForUsage}[] {{ {triggerList} }};");
+                            }
+                            else
+                            {
+                                Sb.AppendLine($"return {ArrayEmptyMethod}<{triggerTypeForUsage}>();");
+                            }
+                        }
+                        else
+                        {
+                            // Has guards - build list dynamically
+                            Sb.AppendLine($"var permitted = new List<{triggerTypeForUsage}>();");
+
+                            foreach (var transition in stateGroup)
+                            {
+                                if (!string.IsNullOrEmpty(transition.GuardMethod))
+                                {
+                                    if (transition.GuardIsAsync)
+                                    {
+                                        Sb.AppendLine("try");
+                                        using (Sb.Block(""))
+                                        {
+                                            if (transition.GuardHasParameterlessOverload || !transition.GuardExpectsPayload)
+                                            {
+                                                Sb.AppendLine($"if (await {transition.GuardMethod}(){GetConfigureAwait()})");
+                                                using (Sb.Block(""))
+                                                {
+                                                    Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+                                                }
+                                            }
+                                        }
+                                        Sb.AppendLine("catch { }");
+                                    }
+                                    else
+                                    {
+                                        WriteGuardCall(transition, "canFire", "null", throwOnException: false);
+                                        using (Sb.Block("if (canFire)"))
+                                        {
+                                            Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+                                }
+                            }
+
+                            Sb.AppendLine("return permitted.Count == 0 ? ");
+                            using (Sb.Indent())
+                            {
+                                Sb.AppendLine($"{ArrayEmptyMethod}<{triggerTypeForUsage}>() :");
+                                Sb.AppendLine("permitted.ToArray();");
+                            }
+                        }
+                    }
+                }
+
+                var statesWithNoOutgoingTransitions = Model.States.Keys
+                    .Except(transitionsByFromState.Select(g => g.Key))
+                    .OrderBy(s => s);
+
+                foreach (var stateName in statesWithNoOutgoingTransitions)
+                {
+                    Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}: return {ArrayEmptyMethod}<{triggerTypeForUsage}>();");
+                }
+
+                Sb.AppendLine($"default: return {ArrayEmptyMethod}<{triggerTypeForUsage}>();");
+            }
+        }
+        Sb.AppendLine();
+    }
+
     protected void WriteGetPermittedTriggersWithResolver(string stateTypeForUsage, string triggerTypeForUsage)
     {
-        // Call base method first
-        // base.WriteGetPermittedTriggersMethod(stateTypeForUsage, triggerTypeForUsage);
+        // Sync version
+        if (!IsAsyncMachine)
+        {
+            Sb.WriteSummary("Gets the list of triggers that can be fired in the current state with payload resolution (runtime evaluation including guards)");
+            Sb.AppendLine("/// <param name=\"payloadResolver\">Function to resolve payload for triggers that require it. Called only for triggers with guards expecting parameters.</param>");
+            using (Sb.Block($"public {ReadOnlyListType}<{triggerTypeForUsage}> GetPermittedTriggers(Func<{triggerTypeForUsage}, object?> payloadResolver)"))
+            {
+                Sb.AppendLine("if (payloadResolver == null) throw new ArgumentNullException(nameof(payloadResolver));");
+                Sb.AppendLine();
 
-        // Add overload with payload resolver
-        Sb.WriteSummary("Gets the list of triggers that can be fired in the current state with payload resolution (runtime evaluation including guards)");
+                using (Sb.Block($"switch ({CurrentStateField})"))
+                {
+                    var transitionsByFromState = Model.Transitions
+                        .GroupBy(t => t.FromState)
+                        .OrderBy(g => g.Key);
+
+                    foreach (var stateGroup in transitionsByFromState)
+                    {
+                        var stateName = stateGroup.Key;
+                        Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}:");
+                        using (Sb.Block(""))
+                        {
+                            Sb.AppendLine($"var permitted = new List<{triggerTypeForUsage}>();");
+
+                            foreach (var transition in stateGroup)
+                            {
+                                if (!string.IsNullOrEmpty(transition.GuardMethod))
+                                {
+                                    if (transition.GuardExpectsPayload)
+                                    {
+                                        // Guard needs payload - use resolver
+                                        Sb.AppendLine($"var payload_{transition.Trigger} = payloadResolver({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+                                        WriteGuardCall(transition, "canFire", $"payload_{transition.Trigger}", throwOnException: false);
+                                    }
+                                    else
+                                    {
+                                        // Guard doesn't need payload
+                                        WriteGuardCall(transition, "canFire", "null", throwOnException: false);
+                                    }
+
+                                    using (Sb.Block("if (canFire)"))
+                                    {
+                                        Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+                                    }
+                                }
+                                else
+                                {
+                                    Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+                                }
+                            }
+
+                            Sb.AppendLine("return permitted.Count == 0 ? ");
+                            using (Sb.Indent())
+                            {
+                                Sb.AppendLine($"{ArrayEmptyMethod}<{triggerTypeForUsage}>() :");
+                                Sb.AppendLine("permitted.ToArray();");
+                            }
+                        }
+                    }
+
+                    var statesWithNoOutgoingTransitions = Model.States.Keys
+                        .Except(transitionsByFromState.Select(g => g.Key))
+                        .OrderBy(s => s);
+
+                    foreach (var stateName in statesWithNoOutgoingTransitions)
+                    {
+                        Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}: return {ArrayEmptyMethod}<{triggerTypeForUsage}>();");
+                    }
+
+                    Sb.AppendLine($"default: return {ArrayEmptyMethod}<{triggerTypeForUsage}>();");
+                }
+            }
+            Sb.AppendLine();
+        }
+        else
+        {
+            // Async version
+            WriteAsyncGetPermittedTriggersWithResolver(stateTypeForUsage, triggerTypeForUsage);
+        }
+    }
+
+    private void WriteAsyncGetPermittedTriggersWithResolver(string stateTypeForUsage, string triggerTypeForUsage)
+    {
+        Sb.WriteSummary("Asynchronously gets the list of triggers that can be fired in the current state with payload resolution (runtime evaluation including guards)");
         Sb.AppendLine("/// <param name=\"payloadResolver\">Function to resolve payload for triggers that require it. Called only for triggers with guards expecting parameters.</param>");
-        using (Sb.Block($"public {ReadOnlyListType}<{triggerTypeForUsage}> GetPermittedTriggers(Func<{triggerTypeForUsage}, object?> payloadResolver)"))
+        Sb.AppendLine("/// <param name=\"cancellationToken\">A token to observe for cancellation requests</param>");
+        using (Sb.Block($"public async ValueTask<{ReadOnlyListType}<{triggerTypeForUsage}>> GetPermittedTriggersAsync(Func<{triggerTypeForUsage}, object?> payloadResolver, CancellationToken cancellationToken = default)"))
         {
             Sb.AppendLine("if (payloadResolver == null) throw new ArgumentNullException(nameof(payloadResolver));");
             Sb.AppendLine();
@@ -660,12 +1374,12 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                                 {
                                     // Guard needs payload - use resolver
                                     Sb.AppendLine($"var payload_{transition.Trigger} = payloadResolver({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
-                                    WriteGuardCall(transition, "canFire", $"payload_{transition.Trigger}", throwOnException: false);
+                                    WriteAsyncGuardCallForGetPermitted(transition, "canFire", $"payload_{transition.Trigger}");
                                 }
                                 else
                                 {
                                     // Guard doesn't need payload
-                                    WriteGuardCall(transition, "canFire", "null", throwOnException: false);
+                                    WriteAsyncGuardCallForGetPermitted(transition, "canFire", "null");
                                 }
 
                                 using (Sb.Block("if (canFire)"))
@@ -701,5 +1415,36 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             }
         }
         Sb.AppendLine();
+    }
+
+    private void WriteAsyncGuardCallForGetPermitted(TransitionModel transition, string resultVar, string payloadVar)
+    {
+        // Similar to WriteAsyncGuardCallForCanFire but inline
+        if (transition.GuardIsAsync)
+        {
+            Sb.AppendLine("bool canFire;");
+            Sb.AppendLine("try");
+            using (Sb.Block(""))
+            {
+                if (transition.GuardExpectsPayload && payloadVar != "null")
+                {
+                    var payloadType = GetTypeNameForUsage(transition.ExpectedPayloadType!);
+                    Sb.AppendLine($"canFire = {payloadVar} is {payloadType} typedPayload && await {transition.GuardMethod}(typedPayload){GetConfigureAwait()};");
+                }
+                else if (transition.GuardHasParameterlessOverload || !transition.GuardExpectsPayload)
+                {
+                    Sb.AppendLine($"canFire = await {transition.GuardMethod}(){GetConfigureAwait()};");
+                }
+                else
+                {
+                    Sb.AppendLine("canFire = false; // Guard expects payload but none provided");
+                }
+            }
+            Sb.AppendLine("catch { canFire = false; }");
+        }
+        else
+        {
+            WriteGuardCall(transition, resultVar, payloadVar, throwOnException: false);
+        }
     }
 }

@@ -44,28 +44,28 @@ public abstract class AsyncStateMachineBase<TState, TTrigger> : IAsyncStateMachi
     /// This method is not supported in an asynchronous state machine. Use <see cref="TryFireAsync"/> instead.
     /// </summary>
     /// <exception cref="SyncCallOnAsyncMachineException">Always thrown.</exception>
-    public bool TryFire(TTrigger trigger, object? payload = null) =>
+    public virtual bool TryFire(TTrigger trigger, object? payload = null) =>
         throw new SyncCallOnAsyncMachineException(string.Format(ErrorMessage, GetType().Name, nameof(TryFire)));
 
     /// <summary>
     /// This method is not supported in an asynchronous state machine. Use <see cref="FireAsync"/> instead.
     /// </summary>
     /// <exception cref="SyncCallOnAsyncMachineException">Always thrown.</exception>
-    public void Fire(TTrigger trigger, object? payload = null) =>
+    public virtual void Fire(TTrigger trigger, object? payload = null) =>
         throw new SyncCallOnAsyncMachineException(string.Format(ErrorMessage, GetType().Name, nameof(Fire)));
 
     /// <summary>
     /// This method is not supported in an asynchronous state machine. Use <see cref="CanFireAsync"/> instead.
     /// </summary>
     /// <exception cref="SyncCallOnAsyncMachineException">Always thrown.</exception>
-    public bool CanFire(TTrigger trigger) =>
+    public virtual bool CanFire(TTrigger trigger) =>
         throw new SyncCallOnAsyncMachineException(string.Format(ErrorMessage, GetType().Name, nameof(CanFire)));
 
     /// <summary>
     /// This method is not supported in an asynchronous state machine. Use <see cref="GetPermittedTriggersAsync"/> instead.
     /// </summary>
     /// <exception cref="SyncCallOnAsyncMachineException">Always thrown.</exception>
-    public IReadOnlyList<TTrigger> GetPermittedTriggers() =>
+    public virtual IReadOnlyList<TTrigger> GetPermittedTriggers() =>
         throw new SyncCallOnAsyncMachineException(string.Format(ErrorMessage, GetType().Name, nameof(GetPermittedTriggers)));
 
     #endregion
