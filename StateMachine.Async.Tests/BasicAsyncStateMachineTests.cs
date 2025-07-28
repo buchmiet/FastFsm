@@ -4,6 +4,7 @@ using StateMachine.Contracts;
 using StateMachine.Exceptions;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -165,5 +166,98 @@ public class BasicAsyncStateMachineTests
         // Assert
         await Should.ThrowAsync<OperationCanceledException>(
             async () => await machine.TryFireAsync(AsyncTriggers.Start, cancellationToken: cts.Token));
+    }
+
+    [Fact]
+    public async Task Initial_OnEntry_Is_FireAndForget_When_Constructed_In_Processing()
+    {
+        // Arrange – stan startowy ma OnEntry async
+        var machine = new SimpleAsyncMachine(AsyncStates.Processing);
+
+        // Act – konstruktor wystartował fire-and-forget Task
+        await Task.Delay(50); // dajemy czas na zakończenie OnEntry
+
+        // Assert
+        machine.ExecutionLog.ShouldContain("OnProcessingEntry:Begin");
+        machine.ExecutionLog.ShouldContain("OnProcessingEntry:End");
+        machine.ExecutionLog.IndexOf("OnProcessingEntry:Begin")
+               .ShouldBeLessThan(machine.ExecutionLog.IndexOf("OnProcessingEntry:End"));
+    }
+
+    [Fact]
+    public async Task GetPermittedTriggersAsync_Evaluates_Async_Guards()
+    {
+        // Arrange
+        var machine = new SimpleAsyncMachine(AsyncStates.Initial);
+
+        // Act
+        var triggers = await machine.GetPermittedTriggersAsync();
+
+        // Assert
+        triggers.ShouldContain(AsyncTriggers.Start);
+        triggers.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task GetPermittedTriggersAsync_Returns_Empty_For_Terminal_State()
+    {
+        // Arrange
+        var machine = new SimpleAsyncMachine(AsyncStates.Completed);
+
+        // Act
+        var triggers = await machine.GetPermittedTriggersAsync();
+
+        // Assert
+        triggers.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task CanFireAsync_Returns_False_For_Unknown_Trigger_In_Current_State()
+    {
+        // Arrange
+        var machine = new SimpleAsyncMachine(AsyncStates.Processing);
+
+        // Act
+        var canReset = await machine.CanFireAsync(AsyncTriggers.Reset);
+
+        // Assert
+        canReset.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Parallel_Fires_Do_Not_Break_State_And_All_Internal_Actions_Run()
+    {
+        // Arrange
+        var machine = new SimpleAsyncMachine(AsyncStates.Processing);
+
+        // Act
+        var tasks = new List<Task>();
+        const int fires = 5;
+        var vtasks = new List<ValueTask>();
+        for (int i = 0; i < fires; i++)
+            vtasks.Add(machine.FireAsync(AsyncTriggers.Process));
+
+        await Task.WhenAll(vtasks.Select(vt => vt.AsTask()));
+
+
+        // Assert – stan się nie zmienia (internal transition)
+        machine.CurrentState.ShouldBe(AsyncStates.Processing);
+
+        // Powinno być tyle samo Begin/End co wywołań
+        machine.ExecutionLog.Count(s => s == "ProcessAsync:Begin").ShouldBe(fires);
+        machine.ExecutionLog.Count(s => s == "ProcessAsync:End").ShouldBe(fires);
+    }
+
+}
+internal static class ReadOnlyListExtensions
+{
+    public static int IndexOf<T>(this IReadOnlyList<T> list, T value)
+    {
+        for (int i = 0; i < list.Count; i++)
+        {
+            if (EqualityComparer<T>.Default.Equals(list[i], value))
+                return i;
+        }
+        return -1;
     }
 }

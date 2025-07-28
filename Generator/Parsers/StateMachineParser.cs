@@ -506,7 +506,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
     }
 
     /// <summary>
-    /// Waliduje sygnaturę metody zwrotnej (callback) opisaną w atrybucie FSM.
+    /// Waliduje sygnaturę metody zwrotnej (callback) opisanej w atrybucie FSM.
     /// Zwraca <c>true</c>, gdy nie wykryto błędów krytycznych.
     /// </summary>
     private bool ValidateCallbackMethodSignature(
@@ -553,7 +553,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         // ---------------------------------------------------------------------
         IMethodSymbol? matching = null;
 
-        // -- a) Najpierw spróbuj dobrać wariant z 1 parametrem (payload), jeśli jest spodziewany --
+        // a) preferuj wariant z 1 parametrem (payload), jeśli jest spodziewany
         if (expectedPayloadType is not null && expectedPayloadType != "*")
         {
             var payloadSymbol = compilation.GetTypeByMetadataName(expectedPayloadType);
@@ -566,19 +566,19 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         }
         else if (expectedPayloadType == "*")
         {
-            // Multi-payload - akceptuj dowolny jednopametrowy wariant
+            // Multi-payload - akceptuj dowolny jednoparametrowy wariant
             matching = overloads.FirstOrDefault(m => m.Parameters.Length == 1);
         }
 
-        // -- b) Jeśli nic nie znaleziono, szukamy wariantu bezparametrowego --
+        // b) jeśli nic nie znaleziono, spróbuj bezparametrowego
         matching ??= overloads.FirstOrDefault(m => m.Parameters.IsEmpty);
 
-        // -- c) Jeśli nadal nic, a są jakieś przeciążenia, weź pierwsze z brzegu do analizy błędów --
+        // c) ostatecznie – pierwszy lepszy
         matching ??= overloads.FirstOrDefault();
 
         if (matching is null)
         {
-            return false; // Zabezpieczenie, nie powinno się zdarzyć
+            return false; // safeguard
         }
 
         if (matching.Parameters.Length == 1)
@@ -587,33 +587,37 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         }
 
         // ---------------------------------------------------------------------
-        // 3. Kluczowy moment: analiza sygnatury wybranego przeciążenia
+        // 3. Analiza sygnatury wybranego przeciążenia
         // ---------------------------------------------------------------------
-        var signatureInfo = _asyncAnalyzer.AnalyzeCallback(matching, callbackType);
+        var signatureInfo = _asyncAnalyzer.AnalyzeCallback(matching, callbackType, compilation);
         isAsync = signatureInfo.IsAsync;
 
         // ---------------------------------------------------------------------
-        // 4. Walidacja spójności trybu (sync vs async) w całej maszynie
+        // 4. Spójność trybu maszyny (SYNC/ASYNC)
+        //    Dozwolone:
+        //      • maszyna ASYNC  -> callback SYNC lub ASYNC
+        //    Niedozwolone:
+        //      • maszyna SYNC   -> callback ASYNC
         // ---------------------------------------------------------------------
         if (isMachineAsyncMode is null)
         {
-            // Pierwsza metoda określa tryb maszyny
+            // Pierwszy napotkany callback definiuje tryb maszyny
             isMachineAsyncMode = signatureInfo.IsAsync;
         }
-        else if (isMachineAsyncMode.Value != signatureInfo.IsAsync)
+        else if (isMachineAsyncMode.Value == false && signatureInfo.IsAsync)
         {
-            // BŁĄD: Wykryto mieszanie trybów!
-            var callbackMode = isAsync ? "asynchronous" : "synchronous";
-            var machineMode = isMachineAsyncMode.Value ? "asynchronous" : "synchronous";
+            // Maszyna była SYNC, a trafiliśmy na ASYNC callback → błąd FSM011
+            var callbackMode = "asynchronous";
+            var machineMode = "synchronous";
 
             var mixedModeCtx = new MixedModeValidationContext(methodName, callbackMode, machineMode);
             ProcessRuleResults(_mixedModeRule.Validate(mixedModeCtx), loc, ref criticalErrorOccurred);
-
-            return false; // Błąd krytyczny, przerywamy
+            return false;
         }
+        // jeśli maszyna jest ASYNC, sync callback jest OK – nic nie robimy
 
         // ---------------------------------------------------------------------
-        // 5. Walidacja poprawności sygnatur ASYNCHRONICZNYCH
+        // 5. Walidacja detali async (async void, Task<bool> dla guarda)
         // ---------------------------------------------------------------------
         if (signatureInfo.IsInvalidAsyncVoid)
         {
@@ -626,7 +630,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             {
                 context.ReportDiagnostic(diag);
             }
-            // To jest tylko ostrzeżenie, więc nie przerywamy
+            // Ostrzeżenie – nie przerywamy
         }
 
         if (callbackType == GuardCallbackType && signatureInfo.IsInvalidGuardTask)
@@ -642,18 +646,16 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             }
 
             criticalErrorOccurred = true;
-            return false; // Błąd krytyczny
+            return false; // błąd krytyczny
         }
 
         // ---------------------------------------------------------------------
-        // 6. Walidacja ogólnej poprawności sygnatury (FSM003)
+        // 6. Ogólna poprawność sygnatury (FSM003)
         // ---------------------------------------------------------------------
         bool isReturnTypeCorrect = (callbackType == GuardCallbackType && signatureInfo.IsBoolEquivalent) ||
                                    (callbackType != GuardCallbackType && signatureInfo.IsVoidEquivalent);
 
-        // Weryfikacja parametrów jest bardziej złożona. Jeśli oczekujemy payloadu,
-        // dopuszczalny jest zarówno overload z payloadem, jak i bez niego.
-        // Tutaj sprawdzamy tylko najprostszy błąd: więcej niż 1 parametr.
+        // Prosta walidacja parametrów – >1 param = błąd
         bool hasTooManyParams = matching.Parameters.Length > 1;
 
         if (!isReturnTypeCorrect || hasTooManyParams)
@@ -672,7 +674,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         }
 
         // ---------------------------------------------------------------------
-        // 7. Walidacja regułą FSM010 (guard z payloadem w maszynie bez payloadu)
+        // 7. FSM010 – guard z payloadem w maszynie bez payloadu
         // ---------------------------------------------------------------------
         if (callbackType == GuardCallbackType && expectsPayload && !machineHasPayload)
         {
@@ -681,7 +683,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         }
 
         // ---------------------------------------------------------------------
-        // 8. Zwracamy wynik globalny
+        // 8. Wynik
         // ---------------------------------------------------------------------
         return !criticalErrorOccurred;
     }

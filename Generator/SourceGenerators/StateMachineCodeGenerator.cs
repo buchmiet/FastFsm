@@ -1,6 +1,8 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Generator.Infrastructure;
 using Generator.Log;
 using Generator.Model;
@@ -8,26 +10,35 @@ using static Generator.Strings;
 
 namespace Generator.SourceGenerators;
 
+/// <summary>
+/// Baza dla wszystkich generatorów-wariantów.
+/// Posiada kompletny zestaw helperów sync/async oraz hooków.
+/// </summary>
 public abstract class StateMachineCodeGenerator(StateMachineModel model)
 {
+    #region Fields / Ctor
     protected readonly StateMachineModel Model = model;
     protected IndentedStringBuilder.IndentedStringBuilder Sb = new();
     protected readonly TypeSystemHelper TypeHelper = new();
-    protected HashSet<string> AddedUsings = [];
     protected readonly bool IsAsyncMachine = model.GenerationConfig.IsAsync;
-
     protected bool ShouldGenerateLogging => Model.GenerateLogging;
+    protected HashSet<string> AddedUsings = [];
 
     // Hook variable names
     protected const string HookVarContext = "smCtx";
     protected const string EndOfTryFireLabel = "END_TRY_FIRE";
+    #endregion
 
+    #region Public entry
     public virtual string Generate()
     {
         WriteHeader();
         WriteNamespaceAndClass();
         return Sb.ToString();
     }
+    #endregion
+
+    #region Common implementation snippets
 
     #region Common Implementation Methods
 
@@ -41,6 +52,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                 Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
                 using (Sb.Indent())
                 {
+                    // Direct call without WriteCallbackInvocation to avoid try-catch in constructor
                     Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
                     WriteLogStatement("Debug",
                         $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
@@ -97,8 +109,6 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         WriteTransitionFailureHook(stateTypeForUsage, triggerTypeForUsage);
     }
 
-
-
     protected virtual void WriteTransitionLogic(
      TransitionModel transition,
      string stateTypeForUsage,
@@ -121,7 +131,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             Model.States.TryGetValue(transition.FromState, out var fromStateDef) &&
             !string.IsNullOrEmpty(fromStateDef.OnExitMethod))
         {
-            WriteCallbackInvocation(fromStateDef.OnExitMethod, fromStateDef.OnExitIsAsync);
+            WriteOnExitCall(fromStateDef, transition.ExpectedPayloadType);
             WriteLogStatement("Debug",
                 $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
         }
@@ -129,7 +139,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         // Action
         if (!string.IsNullOrEmpty(transition.ActionMethod))
         {
-            WriteCallbackInvocation(transition.ActionMethod, transition.ActionIsAsync);
+            WriteActionCall(transition);
             WriteLogStatement("Debug",
                 $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
         }
@@ -139,7 +149,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             Model.States.TryGetValue(transition.ToState, out var toStateDef) &&
             !string.IsNullOrEmpty(toStateDef.OnEntryMethod))
         {
-            WriteCallbackInvocation(toStateDef.OnEntryMethod, toStateDef.OnEntryIsAsync);
+            WriteOnEntryCall(toStateDef, transition.ExpectedPayloadType);
             WriteLogStatement("Debug",
                 $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
         }
@@ -243,131 +253,36 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
 
             Sb.AppendLine($"{SuccessVar} = false;");
 
+            // Hook: After failed transition
+            WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+
             // Skok do końca metody
             Sb.AppendLine($"goto {EndOfTryFireLabel};");
         }
     }
+
     protected virtual void WriteActionCall(TransitionModel transition)
     {
         if (string.IsNullOrEmpty(transition.ActionMethod)) return;
 
-        // Owijamy wywołanie akcji w try-catch
-        Sb.AppendLine("try");
-        using (Sb.Block(""))
-        {
-            // Istniejący kod wywołania akcji
-            Sb.AppendLine($"{transition.ActionMethod}();");
-        }
-        Sb.AppendLine("catch (Exception ex)");
-        using (Sb.Block(""))
-        {
-            // Ustawiamy success na false
-            Sb.AppendLine($"{SuccessVar} = false;");
-
-            // Logowanie (jeśli włączone)
-            WriteLogStatement("Warning",
-                $"TransitionFailed(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\");");
-
-            // Skok do końca metody
-            Sb.AppendLine($"goto {EndOfTryFireLabel};");
-        }
+        // For base implementation, just call the method without parameters
+        WriteCallbackInvocation(transition.ActionMethod, transition.ActionIsAsync);
     }
 
     protected virtual void WriteOnEntryCall(StateModel state, string? expectedPayloadType)
     {
         if (string.IsNullOrEmpty(state.OnEntryMethod)) return;
 
-        // Owijamy wywołanie OnEntry w try-catch
-        Sb.AppendLine("try");
-        using (Sb.Block(""))
-        {
-            // Istniejący kod wywołania OnEntry
-            if (expectedPayloadType == null || !state.OnEntryExpectsPayload)
-            {
-                Sb.AppendLine($"{state.OnEntryMethod}();");
-            }
-            else
-            {
-                var payloadTypeForUsage = GetTypeNameForUsage(expectedPayloadType);
-
-                if (state.OnEntryHasParameterlessOverload)
-                {
-                    using (Sb.Block($"if ({PayloadVar} is {payloadTypeForUsage} typedPayload)"))
-                    {
-                        Sb.AppendLine($"{state.OnEntryMethod}(typedPayload);");
-                    }
-                    Sb.AppendLine("else");
-                    using (Sb.Indent())
-                    {
-                        Sb.AppendLine($"{state.OnEntryMethod}();");
-                    }
-                }
-                else
-                {
-                    using (Sb.Block($"if ({PayloadVar} is {payloadTypeForUsage} typedPayload)"))
-                    {
-                        Sb.AppendLine($"{state.OnEntryMethod}(typedPayload);");
-                    }
-                }
-            }
-        }
-        Sb.AppendLine("catch (Exception ex)");
-        using (Sb.Block(""))
-        {
-            // Ustawiamy success na false i skaczemy do końca
-            Sb.AppendLine($"{SuccessVar} = false;");
-            Sb.AppendLine($"goto {EndOfTryFireLabel};");
-        }
+        // For base implementation, just call the parameterless version
+        WriteCallbackInvocation(state.OnEntryMethod, state.OnEntryIsAsync);
     }
-
 
     protected virtual void WriteOnExitCall(StateModel fromState, string? expectedPayloadType)
     {
         if (string.IsNullOrEmpty(fromState.OnExitMethod)) return;
 
-        // Owijamy wywołanie OnExit w try-catch
-        Sb.AppendLine("try");
-        using (Sb.Block(""))
-        {
-            // Istniejący kod wywołania OnExit
-            if (expectedPayloadType == null || !fromState.OnExitExpectsPayload)
-            {
-                Sb.AppendLine($"{fromState.OnExitMethod}();");
-            }
-            else
-            {
-                var payloadTypeForUsage = GetTypeNameForUsage(expectedPayloadType);
-
-                if (fromState.OnExitHasParameterlessOverload)
-                {
-                    using (Sb.Block($"if ({PayloadVar} is {payloadTypeForUsage} typedPayload)"))
-                    {
-                        Sb.AppendLine($"{fromState.OnExitMethod}(typedPayload);");
-                    }
-
-                    Sb.AppendLine("else");
-                    using (Sb.Indent())
-                    {
-                        Sb.AppendLine($"{fromState.OnExitMethod}();");
-                    }
-                }
-                else
-                {
-                    using (Sb.Block($"if ({PayloadVar} is {payloadTypeForUsage} typedPayload)"))
-                    {
-                        Sb.AppendLine($"{fromState.OnExitMethod}(typedPayload);");
-                    }
-                }
-            }
-        }
-
-        Sb.AppendLine("catch (Exception ex)");
-        using (Sb.Block(""))
-        {
-            // Ustawiamy success na false i skaczemy do końca
-            Sb.AppendLine($"{SuccessVar} = false;");
-            Sb.AppendLine($"goto {EndOfTryFireLabel};");
-        }
+        // For base implementation, just call the parameterless version
+        WriteCallbackInvocation(fromState.OnExitMethod, fromState.OnExitIsAsync);
     }
 
     #endregion
@@ -375,7 +290,8 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     #region Helper Methods
 
     protected void WriteMethodAttribute() =>
-        Sb.AppendLine($"[{MethodImplAttribute}({AggressiveInliningAttribute})]");
+        Sb.AppendLine($"[{Strings.MethodImplAttribute}({AggressiveInliningAttribute})]");
+
 
     protected bool IsPayloadVariant() =>
         Model.Variant is GenerationVariant.WithPayload or GenerationVariant.Full;
@@ -421,7 +337,6 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         parameters.AddRange(extras.Where(e => !string.IsNullOrWhiteSpace(e)));
         return parameters;
     }
-
 
     #endregion
 
@@ -498,7 +413,6 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     protected string GetTypeNameForUsage(string fullyQualifiedName) =>
         TypeHelper.FormatTypeForUsage(fullyQualifiedName, useGlobalPrefix: false);
 
-
     #endregion
 
     #region Common Methods
@@ -506,8 +420,8 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     protected virtual void WriteCanFireMethod(string stateTypeForUsage, string triggerTypeForUsage)
     {
         Sb.WriteSummary("Checks if the specified trigger can be fired in the current state (runtime evaluation including guards)");
-        Sb.AppendLine($"/// <param name=\"trigger\">The trigger to check</param>");
-        Sb.AppendLine($"/// <returns>True if the trigger can be fired, false otherwise</returns>");
+        Sb.AppendLine("/// <param name=\"trigger\">The trigger to check</param>");
+        Sb.AppendLine("/// <returns>True if the trigger can be fired, false otherwise</returns>");
         WriteMethodAttribute();
         using (Sb.Block($"public override bool CanFire({triggerTypeForUsage} trigger)"))
         {
@@ -555,7 +469,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     protected virtual void WriteGetPermittedTriggersMethod(string stateTypeForUsage, string triggerTypeForUsage)
     {
         Sb.WriteSummary("Gets the list of triggers that can be fired in the current state (runtime evaluation including guards)");
-        Sb.AppendLine($"/// <returns>List of triggers that can be fired in the current state</returns>");
+        Sb.AppendLine("/// <returns>List of triggers that can be fired in the current state</returns>");
         using (Sb.Block($"public override {ReadOnlyListType}<{triggerTypeForUsage}> GetPermittedTriggers()"))
         {
             using (Sb.Block($"switch ({CurrentStateField})"))
@@ -651,8 +565,8 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     protected void WriteHasTransitionMethod(string stateTypeForUsage, string triggerTypeForUsage)
     {
         Sb.WriteSummary("Checks if a transition is defined in the state machine structure (ignores guards)");
-        Sb.AppendLine($"/// <param name=\"trigger\">The trigger to check</param>");
-        Sb.AppendLine($"/// <returns>True if a transition is defined for the trigger in current state, false otherwise</returns>");
+        Sb.AppendLine("/// <param name=\"trigger\">The trigger to check</param>");
+        Sb.AppendLine("/// <returns>True if a transition is defined for the trigger in current state, false otherwise</returns>");
         WriteMethodAttribute();
         using (Sb.Block($"public bool HasTransition({triggerTypeForUsage} trigger)"))
         {
@@ -696,7 +610,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     protected void WriteGetDefinedTriggersMethod(string stateTypeForUsage, string triggerTypeForUsage)
     {
         Sb.WriteSummary("Gets all triggers defined for the current state in the state machine structure (ignores guards)");
-        Sb.AppendLine($"/// <returns>List of all triggers defined for the current state, regardless of guard conditions</returns>");
+        Sb.AppendLine("/// <returns>List of all triggers defined for the current state, regardless of guard conditions</returns>");
         using (Sb.Block($"public {ReadOnlyListType}<{triggerTypeForUsage}> GetDefinedTriggers()"))
         {
             using (Sb.Block($"switch ({CurrentStateField})"))
@@ -737,7 +651,6 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine();
     }
 
-
     protected void WriteLoggerField(string className)
     {
         if (!ShouldGenerateLogging) return;
@@ -745,8 +658,8 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     }
 
     protected string GetLoggerConstructorParameter(string className) =>
+        ShouldGenerateLogging ? LoggingClassGenerator.GetLoggerConstructorParameter(className, ref Sb) : string.Empty;
 
-    ShouldGenerateLogging ? LoggingClassGenerator.GetLoggerConstructorParameter(className, ref Sb) : string.Empty;
     protected void WriteLoggerAssignment()
     {
         if (!ShouldGenerateLogging) return;
@@ -769,11 +682,12 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
 
     #endregion
 
-    protected abstract void WriteNamespaceAndClass();
+    #endregion
 
+    #region Guard Call Helpers
 
     /// <summary>
-    /// Generates code to call a guard method with proper exception handling
+    /// Generates code to call a guard method with proper exception handling (older version)
     /// </summary>
     protected void WriteGuardCall(
         TransitionModel transition,
@@ -789,15 +703,15 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         }
 
         // 2. Guard Z PARAMETREM, ale metoda, do której wstawiamy kod,
-        //    NIE dysponuje zmienną payloadu („null” przekazane w argumencie)
+        //    NIE dysponuje zmienną payloadu („null" przekazane w argumencie)
         if (transition.GuardExpectsPayload && payloadVar == "null")
         {
             Sb.AppendLine($"bool {resultVar} = false; // brak payloadu → guard = false");
             return;
         }
 
-        // 3. Standardowy przypadek – payloadVar to zmienna
-        var needsTryCatch = !throwOnException;      // CanFire/GetPermittedTriggers – zbijamy wyjątki
+        // 3. Standardowy przypadek – payloadVar to zmienna
+        var needsTryCatch = !throwOnException;      // CanFire/GetPermittedTriggers – zbijamy wyjątki
         var payloadExpr = transition.GuardExpectsPayload
             ? $"{payloadVar} is {GetTypeNameForUsage(transition.ExpectedPayloadType!)} typedPayload && " +
               $"{transition.GuardMethod}(typedPayload)"
@@ -814,7 +728,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             Sb.AppendLine("catch");
             using (Sb.Block(""))
             {
-                Sb.AppendLine($"{resultVar} = false;");      // guard rzucił – traktuj jako false
+                Sb.AppendLine($"{resultVar} = false;");      // guard rzucił – traktuj jako false
             }
         }
         else
@@ -822,6 +736,90 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             Sb.AppendLine($"bool {resultVar} = {payloadExpr};");
         }
     }
+
+    /// <summary>
+    /// Generuje wywołanie guarda, obsługując:
+    /// – synchroniczne i asynchroniczne metody  
+    /// – oczekiwanie (await/ConfigureAwait)  
+    /// – payload wymagany / opcjonalny / brak  
+    /// – wariant z przechwyceniem wyjątków (dla CanFire / GetPermittedTriggers)
+    /// </summary>
+    protected void WriteGuardCallUniversal(
+        TransitionModel tr,
+        string resultVar,
+        string payloadExpr,  // zmienna z payloadem lub "null"
+        bool wrapInTryCatch,
+        bool shouldAwait)
+    {
+        var pType = tr.ExpectedPayloadType is null
+            ? string.Empty
+            : GetTypeNameForUsage(tr.ExpectedPayloadType);
+
+        // Definicja zmiennej wyniku
+        Sb.AppendLine($"bool {resultVar};");
+
+        // try { … } catch { result = false; }   (gdy wrapInTryCatch == true)
+        if (wrapInTryCatch)
+        {
+            Sb.AppendLine("try");
+            using (Sb.Block(""))
+            {
+                GenerateBody();
+            }
+            Sb.AppendLine("catch");
+            using (Sb.Block(""))
+            {
+                Sb.AppendLine($"{resultVar} = false;");
+            }
+        }
+        else
+        {
+            GenerateBody();
+        }
+
+        //------------------------------------------------------------
+        //  Lokalna funkcja generująca właściwe wywołanie guarda
+        //------------------------------------------------------------
+        void GenerateBody()
+        {
+            string call;
+            if (tr.GuardExpectsPayload)
+            {
+                call = $"{tr.GuardMethod}({(payloadExpr == "null" ? "default!" : "typedGuardPayload")})";
+            }
+            else
+            {
+                call = $"{tr.GuardMethod}()";
+            }
+
+            if (shouldAwait && tr.GuardIsAsync)
+                call = $"{GetAwaitKeyword()}{call}{GetConfigureAwait()}";
+
+            // Payload-aware selekcja przeciążenia / rzutowanie
+            if (tr.GuardExpectsPayload && tr.GuardHasParameterlessOverload)
+            {
+                // if (payload is P typed) { result = Guard(typed); } else { result = Guard(); }
+                Sb.AppendLine($"if ({payloadExpr} is {pType} typedGuardPayload)");
+                using (Sb.Indent())
+                    Sb.AppendLine($"{resultVar} = {call};");
+                Sb.AppendLine("else");
+                using (Sb.Indent())
+                    Sb.AppendLine($"{resultVar} = {(shouldAwait && tr.GuardIsAsync ? $"{GetAwaitKeyword()}{tr.GuardMethod}(){GetConfigureAwait()}" : $"{tr.GuardMethod}()")};");
+            }
+            else if (tr.GuardExpectsPayload)
+            {
+                // result = payload is P typed && Guard(typed);
+                Sb.AppendLine($"{resultVar} = {payloadExpr} is {pType} typedGuardPayload && {call};");
+            }
+            else
+            {
+                Sb.AppendLine($"{resultVar} = {call};");
+            }
+        }
+    }
+    #endregion
+
+    #region Async helpers
     // Helper do generowania sygnatur metod
     protected string GetMethodReturnType(string syncReturnType)
     {
@@ -902,9 +900,6 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         return baseName + "Async";
     }
 
-
-   
-
     /// <summary>
     /// Zwraca visibility dla metody TryFire.
     /// </summary>
@@ -912,5 +907,9 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     {
         return IsAsyncMachine ? "protected override" : "public override";
     }
+    #endregion
 
+    #region Abstractions to be implemented by concrete generators
+    protected abstract void WriteNamespaceAndClass();
+    #endregion
 }

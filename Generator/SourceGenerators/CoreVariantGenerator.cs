@@ -79,8 +79,8 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
     private void WriteAsyncGetPermittedTriggersMethod(string stateTypeForUsage, string triggerTypeForUsage)
     {
         Sb.WriteSummary("Asynchronously gets the list of triggers that can be fired in the current state (runtime evaluation including guards)");
-        Sb.AppendLine($"/// <param name=\"cancellationToken\">A token to observe for cancellation requests</param>");
-        Sb.AppendLine($"/// <returns>List of triggers that can be fired in the current state</returns>");
+        Sb.AppendLine("/// <param name=\"cancellationToken\">A token to observe for cancellation requests</param>");
+        Sb.AppendLine("/// <returns>List of triggers that can be fired in the current state</returns>");
 
         using (Sb.Block($"public override async ValueTask<{ReadOnlyListType}<{triggerTypeForUsage}>> GetPermittedTriggersAsync(CancellationToken cancellationToken = default)"))
         {
@@ -195,9 +195,9 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
     private void WriteAsyncCanFireMethod(string stateTypeForUsage, string triggerTypeForUsage)
     {
         Sb.WriteSummary("Asynchronously checks if the specified trigger can be fired in the current state (runtime evaluation including guards)");
-        Sb.AppendLine($"/// <param name=\"trigger\">The trigger to check</param>");
-        Sb.AppendLine($"/// <param name=\"cancellationToken\">A token to observe for cancellation requests</param>");
-        Sb.AppendLine($"/// <returns>True if the trigger can be fired, false otherwise</returns>");
+        Sb.AppendLine("/// <param name=\"trigger\">The trigger to check</param>");
+        Sb.AppendLine("/// <param name=\"cancellationToken\">A token to observe for cancellation requests</param>");
+        Sb.AppendLine("/// <returns>True if the trigger can be fired, false otherwise</returns>");
 
         using (Sb.Block($"public override async ValueTask<bool> CanFireAsync({triggerTypeForUsage} trigger, CancellationToken cancellationToken = default)"))
         {
@@ -320,11 +320,10 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
         {
             if (!Model.Transitions.Any())
             {
-                Sb.AppendLine($"return {(IsAsyncMachine ? "new ValueTask<bool>(false)" : "false")}; {NoTransitionsComment}");
+                Sb.AppendLine($"return false; {NoTransitionsComment}");
                 return;
             }
 
-            // Deklaracje zmiennych
             Sb.AppendLine($"var {OriginalStateVar} = {CurrentStateField};");
             Sb.AppendLine($"bool {SuccessVar} = false;");
             Sb.AppendLine();
@@ -343,19 +342,11 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
                 WriteLogStatement("Warning",
                     $"TransitionFailed(_logger, _instanceId, {OriginalStateVar}.ToString(), trigger.ToString());");
             }
-
-            // Return
-            if (IsAsyncMachine)
-            {
-                Sb.AppendLine($"return new ValueTask<bool>({SuccessVar});");
-            }
-            else
-            {
-                Sb.AppendLine($"return {SuccessVar};");
-            }
+            Sb.AppendLine($"return {SuccessVar};");
         }
         Sb.AppendLine();
     }
+
 
     protected override bool ShouldGenerateInitialOnEntry()
     {
@@ -368,6 +359,24 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
         var config = Model.GenerationConfig;
         return config.Variant != GenerationVariant.Pure && config.HasOnEntryExit;
     }
+
+    protected override void WriteInitialOnEntryDispatch(string stateTypeForUsage)
+    {
+        Sb.AppendLine(InitialOnEntryComment);
+        using (Sb.Block("switch (initialState)"))
+        {
+            foreach (var stateEntry in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
+            {
+                Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                using (Sb.Indent())
+                {
+                    Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                    Sb.AppendLine("break;");
+                }
+            }
+        }
+    }
+
     protected override void WriteTransitionLogic(
       TransitionModel transition,
       string stateTypeForUsage,
@@ -390,17 +399,57 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
             Model.States.TryGetValue(transition.FromState, out var fromStateDef) &&
             !string.IsNullOrEmpty(fromStateDef.OnExitMethod))
         {
-            WriteCallbackInvocation(fromStateDef.OnExitMethod, fromStateDef.OnExitIsAsync);
-            WriteLogStatement("Debug",
-                $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
+            if (IsAsyncMachine)
+            {
+                Sb.AppendLine("try");
+                using (Sb.Block(""))
+                {
+                    WriteCallbackInvocation(fromStateDef.OnExitMethod, fromStateDef.OnExitIsAsync);
+                    WriteLogStatement("Debug",
+                        $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
+                }
+                Sb.AppendLine("catch (Exception)");
+                using (Sb.Block(""))
+                {
+                    Sb.AppendLine($"{SuccessVar} = false;");
+                    WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                    Sb.AppendLine($"goto {EndOfTryFireLabel};");
+                }
+            }
+            else
+            {
+                WriteCallbackInvocation(fromStateDef.OnExitMethod, fromStateDef.OnExitIsAsync);
+                WriteLogStatement("Debug",
+                    $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
+            }
         }
 
         // Action
         if (!string.IsNullOrEmpty(transition.ActionMethod))
         {
-            WriteCallbackInvocation(transition.ActionMethod, transition.ActionIsAsync);
-            WriteLogStatement("Debug",
-                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+            if (IsAsyncMachine)
+            {
+                Sb.AppendLine("try");
+                using (Sb.Block(""))
+                {
+                    WriteCallbackInvocation(transition.ActionMethod, transition.ActionIsAsync);
+                    WriteLogStatement("Debug",
+                        $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+                }
+                Sb.AppendLine("catch (Exception)");
+                using (Sb.Block(""))
+                {
+                    Sb.AppendLine($"{SuccessVar} = false;");
+                    WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                    Sb.AppendLine($"goto {EndOfTryFireLabel};");
+                }
+            }
+            else
+            {
+                WriteCallbackInvocation(transition.ActionMethod, transition.ActionIsAsync);
+                WriteLogStatement("Debug",
+                    $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+            }
         }
 
         // OnEntry  
@@ -408,9 +457,29 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
             Model.States.TryGetValue(transition.ToState, out var toStateDef) &&
             !string.IsNullOrEmpty(toStateDef.OnEntryMethod))
         {
-            WriteCallbackInvocation(toStateDef.OnEntryMethod, toStateDef.OnEntryIsAsync);
-            WriteLogStatement("Debug",
-                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
+            if (IsAsyncMachine)
+            {
+                Sb.AppendLine("try");
+                using (Sb.Block(""))
+                {
+                    WriteCallbackInvocation(toStateDef.OnEntryMethod, toStateDef.OnEntryIsAsync);
+                    WriteLogStatement("Debug",
+                        $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
+                }
+                Sb.AppendLine("catch (Exception)");
+                using (Sb.Block(""))
+                {
+                    Sb.AppendLine($"{SuccessVar} = false;");
+                    WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                    Sb.AppendLine($"goto {EndOfTryFireLabel};");
+                }
+            }
+            else
+            {
+                WriteCallbackInvocation(toStateDef.OnEntryMethod, toStateDef.OnEntryIsAsync);
+                WriteLogStatement("Debug",
+                    $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
+            }
         }
 
         // State change

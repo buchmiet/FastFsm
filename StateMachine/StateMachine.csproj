@@ -26,10 +26,6 @@
 		</TargetsForTfmSpecificBuildOutput>
 	</PropertyGroup>
 
-	<!-- zależności NuGet -->
-	<ItemGroup>
-		<PackageReference Include="Dorssel.GitVersion.MsBuild" Version="1.1.1" PrivateAssets="all" />
-	</ItemGroup>
 
 	<!-- generator -->
 	<ItemGroup>
@@ -77,7 +73,7 @@
 	<!-- wersja z timestampem -->
 	<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
 		<PropertyGroup>
-			<Version>$(GitVersion_MajorMinorPatch)-dev.$([System.DateTime]::UtcNow.ToString("yyyyMMddHHmmss"))</Version>
+			<Version>0.5.0-dev.$([System.DateTime]::UtcNow.ToString("yyyyMMddHHmmss"))</Version>
 			<PackageVersion>$(Version)</PackageVersion>
 		</PropertyGroup>
 	</Target>
