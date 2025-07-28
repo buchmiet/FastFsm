@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Generator.DependencyInjection;
+using Generator.FeatureDetection;
 using Generator.Helpers;
+using Generator.Model;
 using Generator.Parsers;
 using Generator.Rules.Definitions;
 using Generator.SourceGenerators;
@@ -8,13 +10,12 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using Generator.DependencyInjection;
-using Generator.Model;
 using static Generator.Strings;
 
 namespace Generator;
@@ -95,13 +96,11 @@ public class StateMachineGenerator : IIncrementalGenerator
             foreach (var attribute in attributeList.Attributes)
             {
                 var symbolInfo = context.SemanticModel.GetSymbolInfo(attribute);
-                if (symbolInfo.Symbol is IMethodSymbol methodSymbol)
+                if (symbolInfo.Symbol is not IMethodSymbol methodSymbol) continue;
+                var containingType = methodSymbol.ContainingType;
+                if (containingType.ToDisplayString() == StateMachineAttributeFullName)
                 {
-                    var containingType = methodSymbol.ContainingType;
-                    if (containingType.ToDisplayString() == StateMachineAttributeFullName)
-                    {
-                        return classDeclaration;
-                    }
+                    return classDeclaration;
                 }
             }
         }
@@ -197,6 +196,98 @@ public class StateMachineGenerator : IIncrementalGenerator
 
             // Wybór wariantu generatora (dla maszyn sync)
             variantSelector.DetermineVariant(model!, classSymbol);
+
+
+            // W metodzie Execute, zaktualizuj sekcję Feature Detection:
+
+            // ──────────────────────────────────────────────────────────
+            // Feature Detection i Walidacja (Milestone 0)
+            // ──────────────────────────────────────────────────────────
+            var detector = new FeatureDetector();
+            var features = detector.Detect(model!);
+
+            // Loguj wykryte cechy (pomocne przy debugowaniu)
+            context.ReportDiagnostic(Diagnostic.Create(
+                new DiagnosticDescriptor(
+                    "FSM999",
+                    "Feature Detection",
+                    $"Detected features: {features.GetDescription()}",
+                    "Debug",
+                    DiagnosticSeverity.Info,
+                    isEnabledByDefault: true),
+                Location.None));
+
+            // Waliduj czy wybrany wariant jest zgodny z wykrytymi cechami
+            var matcher = new VariantMatcher();
+            var validation = matcher.ValidateVariant(features, model!.Variant, model!.GenerationConfig.IsForced);
+
+            if (validation.HasIssues())
+            {
+                // Jeśli to tylko ostrzeżenia (Force = true), zgłoś je ale kontynuuj
+                if (validation.IsWarningOnly)
+                {
+                    foreach (var warning in validation.Warnings)
+                    {
+                        context.ReportDiagnostic(Diagnostic.Create(
+                            new DiagnosticDescriptor(
+                                "FSM997",
+                                "Variant Mismatch Warning",
+                                $"Forced variant '{model!.Variant}' may not work correctly: {warning}",
+                                "Generation",
+                                DiagnosticSeverity.Warning,
+                                isEnabledByDefault: true),
+                            classDeclaration.GetLocation()));
+                    }
+                    // Kontynuuj generację mimo ostrzeżeń
+                }
+                else if (!validation.IsValid)
+                {
+                    // Zgłoś błąd jeśli wariant nie pasuje do cech i nie jest wymuszony
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        new DiagnosticDescriptor(
+                            "FSM998",
+                            "Variant Mismatch",
+                            $"Selected variant '{model!.Variant}' is incompatible with detected features: {validation.GetErrorMessage()}",
+                            "Generation",
+                            DiagnosticSeverity.Error,
+                            isEnabledByDefault: true),
+                        classDeclaration.GetLocation()));
+
+                    continue; // Pomiń generację tylko dla błędów
+                }
+            }
+
+            // Dodaj też informację o sugerowanym wariancie
+            var suggestedVariant = features.GetSuggestedVariant();
+            if (suggestedVariant != model!.Variant && !model!.GenerationConfig.IsForced)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        "FSM996",
+                        "Variant Suggestion",
+                        $"Based on detected features, consider using variant '{suggestedVariant}' instead of '{model!.Variant}'",
+                        "Generation",
+                        DiagnosticSeverity.Info,
+                        isEnabledByDefault: true),
+                    classDeclaration.GetLocation()));
+            }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
             // Ustaw flagi dla DI i logowania
             model!.GenerateLogging = BuildProperties.GetGenerateLogging(
