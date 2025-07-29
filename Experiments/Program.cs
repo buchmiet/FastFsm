@@ -4,78 +4,138 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-Console.WriteLine("=== Milestone 2 Testing - CoreFeature ===\n");
+Console.WriteLine("=== Milestone 3 Testing - Payload Support ===\n");
 
-// Test tylko Pure i Basic wariantów (które używają nowego CoreFeature)
-TestVariant("Pure", GenerationVariant.Pure, false);
-TestVariant("Basic", GenerationVariant.Basic, true);
-TestVariant("Async Pure", GenerationVariant.Pure, false, isAsync: true);
-TestVariant("Async Basic", GenerationVariant.Basic, true, isAsync: true);
+// Test Single Payload
+TestSinglePayload();
 
-// Test że inne warianty nadal działają przez legacy
-Console.WriteLine("\n--- Legacy variants (should still work) ---");
-TestVariant("WithPayload", GenerationVariant.WithPayload, true);
-TestVariant("WithExtensions", GenerationVariant.WithExtensions, true);
-TestVariant("Full", GenerationVariant.Full, true);
+// Test Multi Payload  
+TestMultiPayload();
 
-// Test AsyncPolicy
-Console.WriteLine("\n=== AsyncPolicy Test ===");
-TestAsyncPolicy();
+// Test Guard Policy combinations
+TestGuardPolicyCombinations();
 
-Console.WriteLine("\n✨ Milestone 2 Testing Complete!");
+Console.WriteLine("\n✨ Milestone 3 Testing Complete!");
 
-void TestVariant(string name, GenerationVariant variant, bool hasOnEntryExit, bool isAsync = false)
+void TestSinglePayload()
 {
-    Console.WriteLine($"\n--- Testing {name} ---");
+    Console.WriteLine("\n--- Testing Single Payload ---");
 
     var runner = new ParallelGeneratorRunner(enableModernGenerator: true);
 
     var model = new StateMachineModel
     {
-        ClassName = "TestMachine",
+        ClassName = "SinglePayloadMachine",
         Namespace = "TestNamespace",
-        StateType = "TestState",
-        TriggerType = "TestTrigger",
+        StateType = "MachineState",
+        TriggerType = "MachineTrigger",
         GenerationConfig = new GenerationConfig
         {
-            Variant = variant,
-            IsAsync = isAsync,
-            HasOnEntryExit = hasOnEntryExit
+            Variant = GenerationVariant.WithPayload,
+            IsAsync = false,
+            HasPayload = true
         },
+        DefaultPayloadType = "PayloadData", // Single payload type
         States = new Dictionary<string, StateModel>
         {
-            ["Off"] = new StateModel
+            ["Idle"] = new StateModel { Name = "Idle" },
+            ["Processing"] = new StateModel
             {
-                Name = "Off",
-                OnEntryMethod = hasOnEntryExit ? "OnOffEntry" : null,
-                OnExitMethod = hasOnEntryExit ? "OnOffExit" : null
-            },
-            ["On"] = new StateModel
-            {
-                Name = "On",
-                OnEntryMethod = hasOnEntryExit ? "OnOnEntry" : null,
-                OnExitMethod = hasOnEntryExit ? "OnOnExit" : null
+                Name = "Processing",
+                OnEntryMethod = "OnProcessingEntry",
+                OnEntryExpectsPayload = true,
+                OnEntryHasParameterlessOverload = false
             }
         },
         Transitions = new List<TransitionModel>
         {
             new TransitionModel
             {
-                FromState = "Off",
-                Trigger = "TurnOn",
-                ToState = "On",
-                GuardMethod = "CanTurnOn",
-                ActionMethod = "LogTransition"
+                FromState = "Idle",
+                Trigger = "StartProcessing",
+                ToState = "Processing",
+                GuardMethod = "CanStartProcessing",
+                GuardExpectsPayload = true,
+                GuardHasParameterlessOverload = true,
+                ActionMethod = "DoProcess",
+                ActionExpectsPayload = true
+            }
+        },
+        EmitStructuralHelpers = true
+    };
+
+    var result = runner.GenerateBoth(model);
+    var comparison = runner.Compare(result.LegacyCode, result.ModernCode);
+
+    Console.WriteLine($"Legacy: {result.LegacyCode.Length} chars");
+    Console.WriteLine($"Modern: {result.ModernCode?.Length ?? 0} chars");
+    Console.WriteLine($"Status: {comparison.Status}");
+
+    if (comparison.Status != ComparisonStatus.Identical)
+    {
+        Console.WriteLine("⚠️ Differences found!");
+        SaveFiles("SinglePayload", result);
+    }
+    else
+    {
+        Console.WriteLine("✅ Identical!");
+    }
+}
+
+void TestMultiPayload()
+{
+    Console.WriteLine("\n--- Testing Multi Payload ---");
+
+    var runner = new ParallelGeneratorRunner(enableModernGenerator: true);
+
+    var model = new StateMachineModel
+    {
+        ClassName = "MultiPayloadMachine",
+        Namespace = "TestNamespace",
+        StateType = "MachineState",
+        TriggerType = "MachineTrigger",
+        GenerationConfig = new GenerationConfig
+        {
+            Variant = GenerationVariant.WithPayload,
+            IsAsync = true,
+            HasPayload = true
+        },
+        TriggerPayloadTypes = new Dictionary<string, string>
+        {
+            ["SendMessage"] = "MessagePayload",
+            ["ProcessData"] = "DataPayload",
+            ["UpdateConfig"] = "ConfigPayload"
+        },
+        States = new Dictionary<string, StateModel>
+        {
+            ["Ready"] = new StateModel { Name = "Ready" },
+            ["Sending"] = new StateModel { Name = "Sending" },
+            ["Processing"] = new StateModel { Name = "Processing" },
+            ["Configuring"] = new StateModel { Name = "Configuring" }
+        },
+        Transitions = new List<TransitionModel>
+        {
+            new TransitionModel
+            {
+                FromState = "Ready",
+                Trigger = "SendMessage",
+                ToState = "Sending",
+                ExpectedPayloadType = "MessagePayload",
+                GuardMethod = "CanSendMessage",
+                GuardExpectsPayload = true,
+                GuardIsAsync = true
             },
             new TransitionModel
             {
-                FromState = "On",
-                Trigger = "TurnOff",
-                ToState = "Off"
+                FromState = "Ready",
+                Trigger = "ProcessData",
+                ToState = "Processing",
+                ExpectedPayloadType = "DataPayload",
+                ActionMethod = "StartProcessing",
+                ActionExpectsPayload = true,
+                ActionIsAsync = true
             }
         },
-        GenerateLogging = false,
-        GenerateDependencyInjection = false,
         EmitStructuralHelpers = true,
         ContinueOnCapturedContext = false
     };
@@ -87,54 +147,10 @@ void TestVariant(string name, GenerationVariant variant, bool hasOnEntryExit, bo
     Console.WriteLine($"Modern: {result.ModernCode?.Length ?? 0} chars");
     Console.WriteLine($"Status: {comparison.Status}");
 
-    // Zapisuj pliki dla async lub gdy są różnice
-    if (comparison.Status != ComparisonStatus.Identical || isAsync)
+    if (comparison.Status != ComparisonStatus.Identical)
     {
-        if (comparison.Status != ComparisonStatus.Identical)
-        {
-            Console.WriteLine("⚠️ Differences found!");
-            Console.WriteLine(comparison.GetSummary());
-
-            // Wypisz pierwsze różnice
-            Console.WriteLine("\n=== First 1000 chars of legacy ===");
-            Console.WriteLine(result.LegacyCode.Substring(0, Math.Min(1000, result.LegacyCode.Length)));
-            Console.WriteLine("\n=== First 1000 chars of modern ===");
-            Console.WriteLine(result.ModernCode?.Substring(0, Math.Min(1000, result.ModernCode?.Length ?? 0)) ?? "NULL");
-
-            // Szukaj konkretnych różnic
-            Console.WriteLine("\n=== Specific checks ===");
-            Console.WriteLine($"Legacy has interface I{model.ClassName}: {result.LegacyCode.Contains($"interface I{model.ClassName}")}");
-            Console.WriteLine($"Modern has interface I{model.ClassName}: {result.ModernCode?.Contains($"interface I{model.ClassName}") ?? false}");
-            Console.WriteLine($"Legacy has CurrentState property: {result.LegacyCode.Contains("CurrentState =>")}");
-            Console.WriteLine($"Modern has CurrentState property: {result.ModernCode?.Contains("CurrentState =>") ?? false}");
-            Console.WriteLine($"Legacy has _currentState field: {result.LegacyCode.Contains("_currentState")}");
-            Console.WriteLine($"Modern has _currentState field: {result.ModernCode?.Contains("_currentState") ?? false}");
-
-            // Liczba metod
-            var legacyMethods = System.Text.RegularExpressions.Regex.Matches(result.LegacyCode, @"(public|protected|private)\s+.*?\s+\w+\s*\(").Count;
-            var modernMethods = System.Text.RegularExpressions.Regex.Matches(result.ModernCode ?? "", @"(public|protected|private)\s+.*?\s+\w+\s*\(").Count;
-            Console.WriteLine($"Legacy method count: {legacyMethods}");
-            Console.WriteLine($"Modern method count: {modernMethods}");
-        }
-        else
-        {
-            Console.WriteLine("✅ Identical! (but saving async files for inspection)");
-        }
-
-        // Zapisz pliki
-        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        var fileName = $"{name.Replace(" ", "_")}_{timestamp}";
-        var currentDir = Directory.GetCurrentDirectory();
-        var legacyPath = Path.Combine(currentDir, $"legacy_{fileName}.cs");
-        var modernPath = Path.Combine(currentDir, $"modern_{fileName}.cs");
-
-        File.WriteAllText(legacyPath, result.LegacyCode);
-        if (result.ModernCode != null)
-            File.WriteAllText(modernPath, result.ModernCode);
-
-        Console.WriteLine($"\n📁 Saved files to:");
-        Console.WriteLine($"   {legacyPath}");
-        Console.WriteLine($"   {modernPath}");
+        Console.WriteLine("⚠️ Differences found!");
+        SaveFiles("MultiPayload", result);
     }
     else
     {
@@ -142,41 +158,96 @@ void TestVariant(string name, GenerationVariant variant, bool hasOnEntryExit, bo
     }
 }
 
-void TestAsyncPolicy()
+void TestGuardPolicyCombinations()
 {
-    var syncPolicy = new Generator.ModernGeneration.Policies.AsyncPolicySync();
-    var asyncPolicy = new Generator.ModernGeneration.Policies.AsyncPolicyAsync();
+    Console.WriteLine("\n--- Testing Guard Policy Combinations ---");
 
-    // Test return types
-    Console.WriteLine("\nReturn Type Transformations:");
-    Console.WriteLine($"  Sync: bool -> {syncPolicy.ReturnType("bool")}");
-    Console.WriteLine($"  Async: bool -> {asyncPolicy.ReturnType("bool")}");
-    Console.WriteLine($"  Sync: void -> {syncPolicy.ReturnType("void")}");
-    Console.WriteLine($"  Async: void -> {asyncPolicy.ReturnType("void")}");
+    // Test wszystkich 8 kombinacji guardów
+    var guardCombinations = new[]
+    {
+        (Name: "No payload, sync", ExpectsPayload: false, HasOverload: false, IsAsync: false),
+        (Name: "No payload, async", ExpectsPayload: false, HasOverload: false, IsAsync: true),
+        (Name: "Payload required, sync", ExpectsPayload: true, HasOverload: false, IsAsync: false),
+        (Name: "Payload required, async", ExpectsPayload: true, HasOverload: false, IsAsync: true),
+        (Name: "Payload + overload, sync", ExpectsPayload: true, HasOverload: true, IsAsync: false),
+        (Name: "Payload + overload, async", ExpectsPayload: true, HasOverload: true, IsAsync: true),
+    };
 
-    // Test method names
-    Console.WriteLine("\nMethod Name Transformations:");
-    Console.WriteLine($"  Sync: TryFire -> {syncPolicy.MethodName("TryFire")}");
-    Console.WriteLine($"  Async: TryFire -> {asyncPolicy.MethodName("TryFire")}");
-    Console.WriteLine($"  Async: FireAsync -> {asyncPolicy.MethodName("FireAsync")}");
+    foreach (var combo in guardCombinations)
+    {
+        Console.WriteLine($"\n  Testing: {combo.Name}");
+        TestGuardCombination(combo.ExpectsPayload, combo.HasOverload, combo.IsAsync);
+    }
+}
 
-    // Test keywords
-    Console.WriteLine("\nKeywords:");
-    Console.WriteLine($"  Sync async keyword: '{syncPolicy.AsyncKeyword()}'");
-    Console.WriteLine($"  Async async keyword: '{asyncPolicy.AsyncKeyword()}'");
-    Console.WriteLine($"  Sync await keyword: '{syncPolicy.AwaitKeyword(true)}'");
-    Console.WriteLine($"  Async await keyword: '{asyncPolicy.AwaitKeyword(true)}'");
+void TestGuardCombination(bool expectsPayload, bool hasOverload, bool isAsync)
+{
+    var runner = new ParallelGeneratorRunner(enableModernGenerator: true);
 
-    // Test invocation
-    Console.WriteLine("\nMethod Invocation:");
-    var sb = new System.Text.StringBuilder();
+    var model = new StateMachineModel
+    {
+        ClassName = "GuardTestMachine",
+        Namespace = "TestNamespace",
+        StateType = "TestState",
+        TriggerType = "TestTrigger",
+        GenerationConfig = new GenerationConfig
+        {
+            Variant = expectsPayload ? GenerationVariant.WithPayload : GenerationVariant.Basic,
+            IsAsync = isAsync,
+            HasPayload = expectsPayload
+        },
+        DefaultPayloadType = expectsPayload ? "TestPayload" : null,
+        States = new Dictionary<string, StateModel>
+        {
+            ["StateA"] = new StateModel { Name = "StateA" },
+            ["StateB"] = new StateModel { Name = "StateB" }
+        },
+        Transitions = new List<TransitionModel>
+        {
+            new TransitionModel
+            {
+                FromState = "StateA",
+                Trigger = "GoToB",
+                ToState = "StateB",
+                GuardMethod = "TestGuard",
+                GuardExpectsPayload = expectsPayload,
+                GuardHasParameterlessOverload = hasOverload,
+                GuardIsAsync = isAsync
+            }
+        }
+    };
 
-    Console.WriteLine("  Sync call:");
-    syncPolicy.EmitInvocation(sb, "DoWork", false, "arg1", "arg2");
-    Console.WriteLine($"    {sb.ToString().Trim()}");
+    GenerationResult result = runner.GenerateBoth(model);
+    var comparison = runner.Compare(result.LegacyCode, result.ModernCode);
 
-    sb.Clear();
-    Console.WriteLine("  Async call:");
-    asyncPolicy.EmitInvocation(sb, "DoWorkAsync", true, "arg1", "arg2");
-    Console.WriteLine($"    {sb.ToString().Trim()}");
+    Console.WriteLine($"    Status: {comparison.Status}");
+
+    if (comparison.Status != ComparisonStatus.Identical)
+    {
+        var name = $"Guard_{(expectsPayload ? "P" : "NoP")}_{(hasOverload ? "O" : "NoO")}_{(isAsync ? "A" : "S")}";
+        SaveFiles(name, result);
+    }
+}
+
+void SaveFiles(string prefix, GenerationResult result)
+{
+    if (string.IsNullOrEmpty(result.ModernCode))
+        Console.WriteLine("    ⚠️  Modern generator nic nie zwrócił – zapisuję tylko legacy");
+
+    var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+    var currentDir = Directory.GetCurrentDirectory();
+
+    var legacyPath = Path.Combine(currentDir, $"{prefix}_legacy_{timestamp}.cs");
+    File.WriteAllText(legacyPath, result.LegacyCode);
+
+    if (!string.IsNullOrEmpty(result.ModernCode))
+    {
+        var modernPath = Path.Combine(currentDir, $"{prefix}_modern_{timestamp}.cs");
+        File.WriteAllText(modernPath, result.ModernCode);
+        Console.WriteLine($"    📁 Zapisano: {Path.GetFileName(legacyPath)} & {Path.GetFileName(modernPath)}");
+    }
+    else
+    {
+        Console.WriteLine($"    📁 Zapisano: {Path.GetFileName(legacyPath)}");
+    }
 }

@@ -23,12 +23,12 @@ namespace Generator.ModernGeneration.Context
         public FieldRegistry Fields { get; }
         public MethodRegistry Methods { get; }
 
-        // Polityki (na razie tylko interfejsy)
-        public IAsyncPolicy AsyncPolicy { get; private set; } 
-        public IGuardPolicy GuardPolicy { get; private set; } 
-        public IHookDispatchPolicy HookPolicy { get; private set; } 
+        // Polityki
+        public IAsyncPolicy AsyncPolicy { get; private set; } = default!;
+        public IGuardPolicy GuardPolicy { get; private set; } = default!;
+        public IHookDispatchPolicy HookPolicy { get; private set; } = default!;
 
-        // Zarejestrowane moduły (na razie pusta lista)
+        // Zarejestrowane moduły
         public IReadOnlyList<IFeatureModule> Modules { get; private set; }
 
         // Bufory dla różnych części kodu
@@ -122,5 +122,4 @@ namespace Generator.ModernGeneration.Context
             }
         }
     }
-
 }
