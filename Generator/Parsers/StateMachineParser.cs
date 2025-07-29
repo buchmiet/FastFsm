@@ -411,80 +411,107 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             }
         }
     }
-    private void ParseStateAttributes(INamedTypeSymbol classSymbolContainingMethods, StateMachineModel model,
-                                      INamedTypeSymbol stateTypeSymbol, ref bool criticalErrorOccurred,
-                                      ref bool? isMachineAsyncMode) 
+    private void ParseStateAttributes(
+     INamedTypeSymbol classSymbolContainingMethods,
+     StateMachineModel model,
+     INamedTypeSymbol stateTypeSymbol,
+     ref bool criticalErrorOccurred,
+     ref bool? isMachineAsyncMode)
     {
+        // Potrzebne tylko do walidacji (brak zmian)
         var voidType = compilation.GetSpecialType(System_Void);
 
-        foreach (var methodSymbol in classSymbolContainingMethods.GetMembers().OfType<IMethodSymbol>())
+        // Przechodzimy po wszystkich metodach klasy
+        foreach (var methodSymbol in classSymbolContainingMethods.GetMembers()
+                                                                 .OfType<IMethodSymbol>())
         {
             var stateAttributesData = methodSymbol.GetAttributes()
-                .Where(a => a.AttributeClass?.ToDisplayString() == StateAttributeFullName);
+                                                  .Where(a => a.AttributeClass?.ToDisplayString() ==
+                                                              StateAttributeFullName);
 
             foreach (var attrData in stateAttributesData)
             {
+                // [State] bez argumentu → błąd krytyczny
                 if (attrData.ConstructorArguments.Length < 1)
                 {
                     criticalErrorOccurred = true;
                     continue;
                 }
 
-                var stateName = GetEnumMemberName(attrData.ConstructorArguments[0], stateTypeSymbol, attrData,
-                    ref criticalErrorOccurred);
-                if (stateName == null)
-                {
+                // Nazwa stanu z argumentu atrybutu
+                var stateName = GetEnumMemberName(attrData.ConstructorArguments[0],
+                                                  stateTypeSymbol,
+                                                  attrData,
+                                                  ref criticalErrorOccurred);
+                if (stateName is null)
                     continue;
-                }
 
+                // Pobierz lub utwórz definicję stanu w modelu
                 if (!model.States.TryGetValue(stateName, out var stateModel))
                 {
                     stateModel = new StateModel { Name = stateName };
                     model.States[stateName] = stateModel;
                 }
 
+                // Przetwarzamy argumenty nazwane (OnEntry / OnExit)
                 foreach (var namedArg in attrData.NamedArguments)
                 {
+                    // ---------- OnEntry ----------
                     if (namedArg is { Key: OnEntryCallbackType, Value.Value: string onEntryMethodName })
                     {
-                        string? expectedPayloadTypeForValidation = GetExpectedPayloadForStateCallback(model);
+                        string? expectedPayloadType = GetExpectedPayloadForStateCallback(model);
 
-                    
-                        if (ValidateCallbackMethodSignature(classSymbolContainingMethods, onEntryMethodName, OnEntryCallbackType,
-                                attrData,  ref criticalErrorOccurred, ref isMachineAsyncMode,
-                                out bool onEntryIsAsync, out var onEntryExpectsPayload,
-                                model.GenerationConfig.HasPayload, expectedPayloadTypeForValidation))
+                        if (ValidateCallbackMethodSignature(classSymbolContainingMethods,
+                                                            onEntryMethodName,
+                                                            OnEntryCallbackType,
+                                                            attrData,
+                                                            ref criticalErrorOccurred,
+                                                            ref isMachineAsyncMode,
+                                                            out bool onEntryIsAsync,
+                                                            out var onEntryExpectsPayload,
+                                                            model.GenerationConfig.HasPayload,
+                                                            expectedPayloadType))
                         {
                             stateModel.OnEntryMethod = onEntryMethodName;
-                            stateModel.OnEntryIsAsync = onEntryIsAsync; 
+                            stateModel.OnEntryIsAsync = onEntryIsAsync;
                             stateModel.OnEntryExpectsPayload = onEntryExpectsPayload;
 
+                      
                             var parameterlessOverload = classSymbolContainingMethods
                                 .GetMembers(onEntryMethodName)
                                 .OfType<IMethodSymbol>()
-                                .FirstOrDefault(m => m.Parameters.IsEmpty && SymbolEqualityComparer.Default.Equals(m.ReturnType, voidType));
+                                .FirstOrDefault(m => m.Parameters.IsEmpty);
+
                             stateModel.OnEntryHasParameterlessOverload = parameterlessOverload != null;
                         }
                     }
 
+                    // ---------- OnExit ----------
                     if (namedArg is { Key: OnExitCallbackType, Value.Value: string onExitMethodName })
                     {
-                        string? expectedPayloadTypeForValidation = GetExpectedPayloadForStateCallback(model);
+                        string? expectedPayloadType = GetExpectedPayloadForStateCallback(model);
 
-    
-                        if (ValidateCallbackMethodSignature(classSymbolContainingMethods, onExitMethodName, OnExitCallbackType,
-                                attrData,  ref criticalErrorOccurred, ref isMachineAsyncMode,
-                                out bool onExitIsAsync, out var onExitExpectsPayload,
-                                model.GenerationConfig.HasPayload, expectedPayloadTypeForValidation))
+                        if (ValidateCallbackMethodSignature(classSymbolContainingMethods,
+                                                            onExitMethodName,
+                                                            OnExitCallbackType,
+                                                            attrData,
+                                                            ref criticalErrorOccurred,
+                                                            ref isMachineAsyncMode,
+                                                            out bool onExitIsAsync,
+                                                            out var onExitExpectsPayload,
+                                                            model.GenerationConfig.HasPayload,
+                                                            expectedPayloadType))
                         {
                             stateModel.OnExitMethod = onExitMethodName;
-                            stateModel.OnExitIsAsync = onExitIsAsync; 
+                            stateModel.OnExitIsAsync = onExitIsAsync;
                             stateModel.OnExitExpectsPayload = onExitExpectsPayload;
 
+                         
                             var parameterlessOverload = classSymbolContainingMethods
                                 .GetMembers(onExitMethodName)
                                 .OfType<IMethodSymbol>()
-                                .FirstOrDefault(m => m.Parameters.IsEmpty && SymbolEqualityComparer.Default.Equals(m.ReturnType, voidType));
+                                .FirstOrDefault(m => m.Parameters.IsEmpty);
+
                             stateModel.OnExitHasParameterlessOverload = parameterlessOverload != null;
                         }
                     }
