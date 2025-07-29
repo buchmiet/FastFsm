@@ -71,7 +71,7 @@ namespace Generator.FeatureDetection
             return modernGenerator.Generate();
         }
 
-        public ComparisonResult Compare(string legacy, string modern)
+        public ComparisonResult Compare(string legacy, string? modern)
         {
             if (string.IsNullOrEmpty(modern))
             {
@@ -160,7 +160,7 @@ namespace Generator.FeatureDetection
     public class GenerationResult
     {
         public string LegacyCode { get; set; }
-        public string ModernCode { get; set; }
+        public string? ModernCode { get; set; }
         public StateMachineModel Model { get; set; }
     }
 

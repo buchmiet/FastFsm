@@ -187,29 +187,30 @@ namespace Generator.ModernGeneration.Features
             var hasOnEntryExit = ShouldGenerateOnEntryExit(ctx);
             var isAsync = ctx.Model.GenerationConfig.IsAsync;
 
-            // Guard check
+            // Guard check - używamy GuardPolicy
             if (!string.IsNullOrEmpty(transition.GuardMethod))
             {
-                sb.AppendLine("try");
-                using (sb.Block(""))
-                {
-                    if (isAsync && transition.GuardIsAsync)
-                    {
-                        sb.AppendLine($"var {GuardResultVar} = await {transition.GuardMethod}().ConfigureAwait({ctx.Model.ContinueOnCapturedContext.ToString().ToLowerInvariant()});");
-                    }
-                    else
-                    {
-                        sb.AppendLine($"var {GuardResultVar} = {transition.GuardMethod}();");
-                    }
+                // Tworzymy SliceContext dla GuardPolicy
+                var sliceCtx = new SliceContext(
+                    ctx,
+                    PublicApiSlice.TryFire,
+                    OriginalStateVar,
+                    SuccessVar,
+                    "null", // CoreFeature nie ma payloadu
+                    GuardResultVar,
+                    EndOfTryFireLabel
+                );
 
-                    using (sb.Block($"if (!{GuardResultVar})"))
-                    {
-                        sb.AppendLine($"{SuccessVar} = false;");
-                        sb.AppendLine($"goto {EndOfTryFireLabel};");
-                    }
-                }
-                sb.AppendLine("catch (Exception ex)");
-                using (sb.Block(""))
+                // Używamy GuardPolicy
+                ctx.GuardPolicy.EmitGuardCheck(
+                    sliceCtx,
+                    transition,
+                    GuardResultVar,
+                    "null", // brak payloadu w Core
+                    throwOnException: false // w try-catch
+                );
+
+                using (sb.Block($"if (!{GuardResultVar})"))
                 {
                     sb.AppendLine($"{SuccessVar} = false;");
                     sb.AppendLine($"goto {EndOfTryFireLabel};");
@@ -326,34 +327,23 @@ namespace Generator.ModernGeneration.Features
                                     {
                                         if (!string.IsNullOrEmpty(transition.GuardMethod))
                                         {
-                                            if (isAsync && transition.GuardIsAsync)
-                                            {
-                                                sb.AppendLine("try");
-                                                using (sb.Block(""))
-                                                {
-                                                    sb.AppendLine($"return await {transition.GuardMethod}().ConfigureAwait({ctx.Model.ContinueOnCapturedContext.ToString().ToLowerInvariant()});");
-                                                }
-                                                sb.AppendLine("catch");
-                                                using (sb.Block(""))
-                                                {
-                                                    sb.AppendLine("return false;");
-                                                }
-                                            }
-                                            else
-                                            {
-                                                sb.AppendLine("bool guardResult;");
-                                                sb.AppendLine("try");
-                                                using (sb.Block(""))
-                                                {
-                                                    sb.AppendLine($"guardResult = {transition.GuardMethod}();");
-                                                }
-                                                sb.AppendLine("catch");
-                                                using (sb.Block(""))
-                                                {
-                                                    sb.AppendLine("guardResult = false;");
-                                                }
-                                                sb.AppendLine("return guardResult;");
-                                            }
+                                            // Używamy GuardPolicy dla CanFire
+                                            var sliceCtx = new SliceContext(
+                                                ctx,
+                                                PublicApiSlice.CanFire,
+                                                "", // nie używane w CanFire
+                                                "", // nie używane w CanFire
+                                                "null",
+                                                "guardResult",
+                                                "" // nie używane w CanFire
+                                            );
+
+                                            ctx.GuardPolicy.EmitGuardCheckForCanFire(
+                                                sliceCtx,
+                                                transition,
+                                                "guardResult",
+                                                "null"
+                                            );
                                         }
                                         else
                                         {

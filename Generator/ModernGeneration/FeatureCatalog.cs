@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using Generator.Model;
 using Generator.ModernGeneration.Features;
+using Generator.ModernGeneration.Features.Shared;
+using Generator.ModernGeneration.Policies;
 
 namespace Generator.ModernGeneration
 {
@@ -14,19 +16,54 @@ namespace Generator.ModernGeneration
         {
             var modules = new List<IFeatureModule>();
 
-            // Na razie tylko Core dla Pure/Basic
-            if (model.Variant == GenerationVariant.Pure || model.Variant == GenerationVariant.Basic)
+            // Core feature - zawsze wymagany
+            modules.Add(new CoreFeature());
+
+            // Payload feature - dla WithPayload i Full
+            var payloadFeature = PayloadHelper.CreatePayloadFeature(model);
+            if (payloadFeature != null)
             {
-                modules.Add(new CoreFeature());
+                modules.Add(payloadFeature);
             }
 
-            // TODO: Dodać więcej modułów w kolejnych milestone'ach
-            // if (model.Variant == GenerationVariant.WithPayload || model.Variant == GenerationVariant.Full)
+            // TODO: W Milestone 4
+            // if (model.Variant == GenerationVariant.WithExtensions || model.Variant == GenerationVariant.Full)
             // {
-            //     modules.Add(new PayloadFeature());
+            //     modules.Add(new ExtensionsFeature());
+            // }
+
+            // TODO: W Milestone 4
+            // if (model.GenerateLogging)
+            // {
+            //     modules.Add(new LoggingFeature());
             // }
 
             return modules;
         }
+
+        public static (IAsyncPolicy asyncPolicy, IGuardPolicy guardPolicy, IHookDispatchPolicy hookPolicy)
+            CreatePolicies(StateMachineModel model)
+        {
+            // Async policy
+            IAsyncPolicy asyncPolicy = model.GenerationConfig.IsAsync
+                ? new AsyncPolicyAsync(model.ContinueOnCapturedContext)
+                : new AsyncPolicySync();
+
+            // Guard policy - uniwersalna
+            IGuardPolicy guardPolicy = new GuardPolicy();
+
+            // Hook policy - TODO w Milestone 4
+            IHookDispatchPolicy hookPolicy = new NoOpHookDispatchPolicy(); // Tymczasowa implementacja
+
+            return (asyncPolicy, guardPolicy, hookPolicy);
+        }
+    }
+
+    /// <summary>
+    /// Tymczasowa implementacja HookDispatchPolicy która nic nie robi.
+    /// </summary>
+    internal class NoOpHookDispatchPolicy : IHookDispatchPolicy
+    {
+        // Pusta implementacja - zostanie zastąpiona w Milestone 4
     }
 }

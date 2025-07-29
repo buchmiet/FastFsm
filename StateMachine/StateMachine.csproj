@@ -19,7 +19,6 @@
 		<!-- Pakowanie -->
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<PackageOutputPath>../nupkgs</PackageOutputPath>
-		<!-- wrzuć Abstractions.dll do nupkg -->
 		<TargetsForTfmSpecificBuildOutput>
 			$(TargetsForTfmSpecificBuildOutput);
 			CopyProjectReferencesToPackage

@@ -81,9 +81,33 @@ namespace Generator.ModernGeneration.Director
             var stateType = _typeHelper.FormatTypeForUsage(model.StateType, useGlobalPrefix: false);
             var triggerType = _typeHelper.FormatTypeForUsage(model.TriggerType, useGlobalPrefix: false);
 
-            var baseInterface = model.GenerationConfig.IsAsync
-                ? $"IAsyncStateMachine<{stateType}, {triggerType}>"
-                : $"IStateMachine<{stateType}, {triggerType}>";
+            // Określ interfejs bazowy
+            string baseInterface;
+            if (model.GenerationConfig.HasPayload)
+            {
+                // Payload warianty
+                var payloadFeature = _modules.OfType<IPayloadFeature>().FirstOrDefault();
+                if (payloadFeature?.IsSinglePayload == true)
+                {
+                    var payloadType = _typeHelper.FormatTypeForUsage(model.DefaultPayloadType ?? "object", useGlobalPrefix: false);
+                    baseInterface = model.GenerationConfig.IsAsync
+                        ? $"IAsyncStateMachineWithPayload<{stateType}, {triggerType}, {payloadType}>"
+                        : $"IStateMachineWithPayload<{stateType}, {triggerType}, {payloadType}>";
+                }
+                else
+                {
+                    baseInterface = model.GenerationConfig.IsAsync
+                        ? $"IAsyncStateMachineWithMultiPayload<{stateType}, {triggerType}>"
+                        : $"IStateMachineWithMultiPayload<{stateType}, {triggerType}>";
+                }
+            }
+            else
+            {
+                // Standard warianty
+                baseInterface = model.GenerationConfig.IsAsync
+                    ? $"IAsyncStateMachine<{stateType}, {triggerType}>"
+                    : $"IStateMachine<{stateType}, {triggerType}>";
+            }
 
             // Generate interface
             sb.AppendLine($"public interface I{model.ClassName} : {baseInterface} {{ }}");
@@ -110,10 +134,16 @@ namespace Generator.ModernGeneration.Director
                     module.EmitFields(_ctx);
                 }
 
+                // Flush fields after all modules contributed
+                _ctx.FlushFields();
+
                 // Constructor
-                foreach (var module in _modules.OfType<IEmitConstructor>())
+                EmitConstructor();
+
+                // Payload internal methods jeśli potrzebne
+                if (_ctx.Model.GenerationConfig.HasPayload)
                 {
-                    module.ContributeConstructor(_ctx);
+                    EmitPayloadInternalMethods();
                 }
 
                 // Methods
@@ -121,6 +151,175 @@ namespace Generator.ModernGeneration.Director
                 {
                     module.EmitMethods(_ctx);
                 }
+            }
+        }
+
+        private void EmitConstructor()
+        {
+            var sb = _ctx.Sb;
+            var stateType = _typeHelper.FormatTypeForUsage(_ctx.Model.StateType, useGlobalPrefix: false);
+
+            // Zbierz wszystkie kontrybuty do konstruktora
+            foreach (var module in _modules.OfType<IEmitConstructor>())
+            {
+                module.ContributeConstructor(_ctx);
+            }
+
+            // Teraz wygeneruj konstruktor - CoreFeature już to robi
+            // Więc tutaj nic nie musimy robić
+        }
+
+        private void EmitPayloadInternalMethods()
+        {
+            var sb = _ctx.Sb;
+            var stateType = _typeHelper.FormatTypeForUsage(_ctx.Model.StateType, useGlobalPrefix: false);
+            var triggerType = _typeHelper.FormatTypeForUsage(_ctx.Model.TriggerType, useGlobalPrefix: false);
+            var isAsync = _ctx.Model.GenerationConfig.IsAsync;
+
+            // Znajdź moduł payload
+            var payloadFeature = _modules.OfType<IPayloadFeature>().FirstOrDefault();
+            if (payloadFeature == null) return;
+
+            // TryFireInternal z payloadem
+            sb.AppendLine($"[{MethodImplAttribute}({AggressiveInliningAttribute})]");
+
+            if (isAsync)
+            {
+                sb.AppendLine($"protected override async ValueTask<bool> TryFireInternalAsync({triggerType} trigger, object? payload, CancellationToken cancellationToken)");
+            }
+            else
+            {
+                sb.AppendLine($"private bool TryFireInternal({triggerType} trigger, object? payload)");
+            }
+
+            using (sb.Block(""))
+            {
+                // Walidacja payloadu (dla multi)
+                if (payloadFeature.IsMultiPayload)
+                {
+                    var sliceCtx = new SliceContext(_ctx, PublicApiSlice.TryFireInternal,
+                        "originalState", "success", "payload", "guardResult", "END_TRY_FIRE");
+                    payloadFeature.EmitPayloadValidation(sliceCtx);
+                }
+
+                // TODO: Zrefaktorować CoreFeature aby współdzielił logikę
+                sb.AppendLine("// TODO: Implement core TryFire logic with payload support");
+                sb.AppendLine("return false;");
+            }
+            sb.AppendLine();
+
+            // CanFireWithPayload
+            sb.AppendLine($"[{MethodImplAttribute}({AggressiveInliningAttribute})]");
+
+            if (isAsync)
+            {
+                sb.AppendLine($"private async ValueTask<bool> CanFireWithPayloadAsync({triggerType} trigger, object? payload, CancellationToken cancellationToken)");
+            }
+            else
+            {
+                sb.AppendLine($"private bool CanFireWithPayload({triggerType} trigger, object? payload)");
+            }
+
+            using (sb.Block(""))
+            {
+                // Walidacja payloadu (dla multi)
+                if (payloadFeature.IsMultiPayload)
+                {
+                    using (sb.Block($"if ({PayloadMapField}.TryGetValue(trigger, out var expectedType) && " +
+                                    $"payload != null && !expectedType.IsInstanceOfType(payload))"))
+                    {
+                        sb.AppendLine("return false;");
+                    }
+                }
+
+                // TODO: Core CanFire logic
+                sb.AppendLine("// TODO: Implement core CanFire logic with payload support");
+                sb.AppendLine("return false;");
+            }
+            sb.AppendLine();
+
+            // Override metod z object? payload
+            sb.AppendLine($"[{MethodImplAttribute}({AggressiveInliningAttribute})]");
+            sb.AppendLine($"public override bool TryFire({triggerType} trigger, object? payload = null)");
+            using (sb.Block(""))
+            {
+                if (isAsync)
+                {
+                    sb.AppendLine("throw new SyncCallOnAsyncMachineException();");
+                }
+                else
+                {
+                    sb.AppendLine($"return TryFireInternal(trigger, payload);");
+                }
+            }
+            sb.AppendLine();
+
+            // Sync wersje dla async maszyn - rzucają wyjątki
+            if (isAsync)
+            {
+                EmitSyncThrowMethods(triggerType, payloadFeature);
+            }
+        }
+
+        private void EmitSyncThrowMethods(string triggerType, IPayloadFeature payloadFeature)
+        {
+            var sb = _ctx.Sb;
+
+            if (payloadFeature.IsSinglePayload)
+            {
+                var payloadType = _typeHelper.FormatTypeForUsage(
+                    _ctx.Model.DefaultPayloadType ?? "object",
+                    useGlobalPrefix: false);
+
+                // Skip if payload type is 'object' to avoid duplicates
+                if (payloadType != "object")
+                {
+                    sb.AppendLine($"[{MethodImplAttribute}({AggressiveInliningAttribute})]");
+                    sb.AppendLine($"public bool TryFire({triggerType} trigger, {payloadType} payload)");
+                    using (sb.Block(""))
+                    {
+                        sb.AppendLine("throw new SyncCallOnAsyncMachineException();");
+                    }
+                    sb.AppendLine();
+
+                    sb.AppendLine($"public void Fire({triggerType} trigger, {payloadType} payload)");
+                    using (sb.Block(""))
+                    {
+                        sb.AppendLine("throw new SyncCallOnAsyncMachineException();");
+                    }
+                    sb.AppendLine();
+
+                    sb.AppendLine($"public bool CanFire({triggerType} trigger, {payloadType} payload)");
+                    using (sb.Block(""))
+                    {
+                        sb.AppendLine("throw new SyncCallOnAsyncMachineException();");
+                    }
+                    sb.AppendLine();
+                }
+            }
+            else if (payloadFeature.IsMultiPayload)
+            {
+                sb.AppendLine($"[{MethodImplAttribute}({AggressiveInliningAttribute})]");
+                sb.AppendLine($"public bool TryFire<TPayload>({triggerType} trigger, TPayload payload)");
+                using (sb.Block(""))
+                {
+                    sb.AppendLine("throw new SyncCallOnAsyncMachineException();");
+                }
+                sb.AppendLine();
+
+                sb.AppendLine($"public void Fire<TPayload>({triggerType} trigger, TPayload payload)");
+                using (sb.Block(""))
+                {
+                    sb.AppendLine("throw new SyncCallOnAsyncMachineException();");
+                }
+                sb.AppendLine();
+
+                sb.AppendLine($"public bool CanFire<TPayload>({triggerType} trigger, TPayload payload)");
+                using (sb.Block(""))
+                {
+                    sb.AppendLine("throw new SyncCallOnAsyncMachineException();");
+                }
+                sb.AppendLine();
             }
         }
     }
