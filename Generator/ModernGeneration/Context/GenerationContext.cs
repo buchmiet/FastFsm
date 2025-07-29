@@ -1,8 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Generator.Model;
 using Generator.ModernGeneration.Registries;
+using Generator.ModernGeneration.Policies;
+using Generator.ModernGeneration.Features;
 using IndentedStringBuilder;
 
 namespace Generator.ModernGeneration.Context
@@ -22,9 +24,9 @@ namespace Generator.ModernGeneration.Context
         public MethodRegistry Methods { get; }
 
         // Polityki (na razie tylko interfejsy)
-        public IAsyncPolicy AsyncPolicy { get; private set; }
-        public IGuardPolicy GuardPolicy { get; private set; }
-        public IHookDispatchPolicy HookPolicy { get; private set; }
+        public IAsyncPolicy AsyncPolicy { get; private set; } 
+        public IGuardPolicy GuardPolicy { get; private set; } 
+        public IHookDispatchPolicy HookPolicy { get; private set; } 
 
         // Zarejestrowane moduły (na razie pusta lista)
         public IReadOnlyList<IFeatureModule> Modules { get; private set; }
@@ -121,9 +123,4 @@ namespace Generator.ModernGeneration.Context
         }
     }
 
-    // Placeholder interfejsy - będziemy implementować w kolejnych krokach
-    public interface IAsyncPolicy { }
-    public interface IGuardPolicy { }
-    public interface IHookDispatchPolicy { }
-    public interface IFeatureModule { }
 }

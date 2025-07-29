@@ -289,8 +289,10 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
     {
         Sb.AppendLine(InitialOnEntryComment);
         Sb.AppendLine("// Note: Constructor cannot be async, so initial OnEntry is fire-and-forget");
-        Sb.AppendLine("_ = Task.Run(async () =>");
-        using (Sb.Block("{"))
+
+  
+        Sb.AppendLine("_ = Task.Run(async () => {");
+        using (Sb.Indent())
         {
             using (Sb.Block("switch (initialState)"))
             {
@@ -299,14 +301,16 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
                     Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
                     using (Sb.Indent())
                     {
+                        // Bez try-catch w ctorze – tak jak wcześniej
                         WriteCallbackInvocation(stateEntry.OnEntryMethod, stateEntry.OnEntryIsAsync);
                         Sb.AppendLine("break;");
                     }
                 }
             }
         }
-        Sb.AppendLine("});");
+        Sb.AppendLine("});"); // domknięcie Task.Run
     }
+
     private void WriteTryFireMethod(string stateTypeForUsage, string triggerTypeForUsage)
     {
         var returnType = GetMethodReturnType("bool");

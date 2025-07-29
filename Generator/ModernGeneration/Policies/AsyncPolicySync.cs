@@ -1,25 +1,29 @@
 using System;
 using System.Text;
 
-namespace FastStateMachine.Generator.ModernGeneration.Policies;
-
-public sealed class AsyncPolicySync : IAsyncPolicy
+namespace Generator.ModernGeneration.Policies
 {
-    public bool IsAsync => false;
-    public bool UseSyncAdapter => false;
-
-    public string ReturnType(string syncType) => syncType;
-    public string AsyncKeyword() => "";
-    public string AwaitKeyword(bool targetIsAsync) => "";
-    public string ConfigureAwait() => "";
-    public string CancellationTokenParam() => "";
-    public string CancellationTokenArg() => "";
-    
-    public string MethodName(string baseName, bool addAsyncSuffix = true) => baseName;
-    
-    public void EmitInvocation(StringBuilder sb, string methodName, bool methodIsAsync, params string[]? args)
+    /// <summary>
+    /// Polityka dla maszyn synchronicznych - wszystkie transformacje zwracają wartości synchroniczne.
+    /// </summary>
+    public sealed class AsyncPolicySync : IAsyncPolicy
     {
-        var argsList = args is { Length: > 0 } ? string.Join(", ", args) : "";
-        sb.AppendLine($"{methodName}({argsList});");
+        public bool IsAsync => false;
+        public bool UseSyncAdapter => false;
+
+        public string ReturnType(string syncType) => syncType;
+        public string AsyncKeyword() => "";
+        public string AwaitKeyword(bool targetIsAsync) => "";
+        public string ConfigureAwait() => "";
+        public string CancellationTokenParam() => "";
+        public string CancellationTokenArg() => "";
+        
+        public string MethodName(string baseName, bool addAsyncSuffix = true) => baseName;
+        
+        public void EmitInvocation(StringBuilder sb, string methodName, bool methodIsAsync, params string[]? args)
+        {
+            var argsList = args is { Length: > 0 } ? string.Join(", ", args) : "";
+            sb.AppendLine($"{methodName}({argsList});");
+        }
     }
 }

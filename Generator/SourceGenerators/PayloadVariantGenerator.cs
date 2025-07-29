@@ -130,6 +130,74 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         }
     }
 
+    protected override void WriteTransitionLogic(
+       TransitionModel transition,
+       string stateTypeForUsage,
+       string triggerTypeForUsage)
+    {
+        // Pobierz definicje stanów z mapy (jawne przypisanie, żeby uniknąć CS0165)
+        StateModel? fromStateDef;
+        Model.States.TryGetValue(transition.FromState, out fromStateDef);
+
+        StateModel? toStateDef;
+        Model.States.TryGetValue(transition.ToState, out toStateDef);
+
+        bool fromHasExit = !transition.IsInternal
+                           && fromStateDef != null
+                           && !string.IsNullOrEmpty(fromStateDef.OnExitMethod);
+
+        bool toHasEntry = !transition.IsInternal
+                          && toStateDef != null
+                          && !string.IsNullOrEmpty(toStateDef.OnEntryMethod);
+
+        // Hook przed przejściem
+        WriteBeforeTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage);
+
+        // Guard
+        if (!string.IsNullOrEmpty(transition.GuardMethod))
+        {
+            WriteGuardEvaluationHook(transition, stateTypeForUsage, triggerTypeForUsage);
+            WriteGuardCheck(transition, stateTypeForUsage, triggerTypeForUsage);
+        }
+
+        // OnExit
+        if (fromHasExit)
+        {
+            WriteOnExitCall(fromStateDef!, transition.ExpectedPayloadType);
+            WriteLogStatement("Debug",
+                $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef!.OnExitMethod}\", \"{transition.FromState}\");");
+        }
+
+        // *** KOLEJNOŚĆ: OnEntry -> Action ***
+        if (toHasEntry)
+        {
+            WriteOnEntryCall(toStateDef!, transition.ExpectedPayloadType);
+            WriteLogStatement("Debug",
+                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef!.OnEntryMethod}\", \"{transition.ToState}\");");
+        }
+
+        if (!string.IsNullOrEmpty(transition.ActionMethod))
+        {
+            WriteActionCall(transition);
+            WriteLogStatement("Debug",
+                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+        }
+
+        // Zmiana stanu
+        if (!transition.IsInternal)
+        {
+            Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            WriteLogStatement("Information",
+                $"TransitionSucceeded(_logger, _instanceId, \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+        }
+
+        Sb.AppendLine($"{SuccessVar} = true;");
+        WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
+        Sb.AppendLine($"goto {EndOfTryFireLabel};");
+    }
+
+
+
     protected override void WriteInitialOnEntryDispatch(string stateTypeForUsage)
     {
         Sb.AppendLine(InitialOnEntryComment);

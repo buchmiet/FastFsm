@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using Generator.Model;
 using Generator.SourceGenerators;
+using Generator.ModernGeneration;
 
 namespace Generator.FeatureDetection
 {
@@ -66,9 +67,8 @@ namespace Generator.FeatureDetection
 
         private string GenerateModern(StateMachineModel model)
         {
-            // TODO: Implementacja w Milestone 1+
-            // Na razie zwracamy placeholder
-            return "// Modern generator not implemented yet";
+            var modernGenerator = new ModernGenerator(model);
+            return modernGenerator.Generate();
         }
 
         public ComparisonResult Compare(string legacy, string modern)
