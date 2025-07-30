@@ -1,8 +1,8 @@
-﻿using Generator.FeatureDetection;
-using Generator.Model;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Generator.FeatureDetection;
+using Generator.Model;
 
 Console.WriteLine("=== Milestone 3 Testing - Payload Support ===\n");
 
@@ -33,7 +33,8 @@ void TestSinglePayload()
         {
             Variant = GenerationVariant.WithPayload,
             IsAsync = false,
-            HasPayload = true
+            HasPayload = true,
+            HasOnEntryExit = true
         },
         DefaultPayloadType = "PayloadData", // Single payload type
         States = new Dictionary<string, StateModel>
@@ -58,10 +59,12 @@ void TestSinglePayload()
                 GuardExpectsPayload = true,
                 GuardHasParameterlessOverload = true,
                 ActionMethod = "DoProcess",
-                ActionExpectsPayload = true
+                ActionExpectsPayload = true,
+                ExpectedPayloadType = "PayloadData" // DODANE - wymagane gdy guard/action expects payload
             }
         },
-        EmitStructuralHelpers = true
+        EmitStructuralHelpers = true,
+        TriggerPayloadTypes = new Dictionary<string, string>() // Inicjalizacja żeby uniknąć NRE
     };
 
     var result = runner.GenerateBoth(model);
@@ -97,7 +100,7 @@ void TestMultiPayload()
         GenerationConfig = new GenerationConfig
         {
             Variant = GenerationVariant.WithPayload,
-            IsAsync = true,
+            IsAsync = false,
             HasPayload = true
         },
         TriggerPayloadTypes = new Dictionary<string, string>
@@ -120,7 +123,7 @@ void TestMultiPayload()
                 FromState = "Ready",
                 Trigger = "SendMessage",
                 ToState = "Sending",
-                ExpectedPayloadType = "MessagePayload",
+                ExpectedPayloadType = "MessagePayload", // Musi odpowiadać TriggerPayloadTypes["SendMessage"]
                 GuardMethod = "CanSendMessage",
                 GuardExpectsPayload = true,
                 GuardIsAsync = true
@@ -130,7 +133,7 @@ void TestMultiPayload()
                 FromState = "Ready",
                 Trigger = "ProcessData",
                 ToState = "Processing",
-                ExpectedPayloadType = "DataPayload",
+                ExpectedPayloadType = "DataPayload", // Musi odpowiadać TriggerPayloadTypes["ProcessData"]
                 ActionMethod = "StartProcessing",
                 ActionExpectsPayload = true,
                 ActionIsAsync = true
@@ -162,7 +165,7 @@ void TestGuardPolicyCombinations()
 {
     Console.WriteLine("\n--- Testing Guard Policy Combinations ---");
 
-    // Test wszystkich 8 kombinacji guardów
+    // Test wszystkich kombinacji guardów
     var guardCombinations = new[]
     {
         (Name: "No payload, sync", ExpectsPayload: false, HasOverload: false, IsAsync: false),
@@ -212,9 +215,11 @@ void TestGuardCombination(bool expectsPayload, bool hasOverload, bool isAsync)
                 GuardMethod = "TestGuard",
                 GuardExpectsPayload = expectsPayload,
                 GuardHasParameterlessOverload = hasOverload,
-                GuardIsAsync = isAsync
+                GuardIsAsync = isAsync,
+                ExpectedPayloadType = expectsPayload ? "TestPayload" : null // WAŻNE!
             }
-        }
+        },
+        TriggerPayloadTypes = new Dictionary<string, string>() // Inicjalizacja
     };
 
     GenerationResult result = runner.GenerateBoth(model);

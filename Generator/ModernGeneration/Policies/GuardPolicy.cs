@@ -86,13 +86,24 @@ namespace Generator.ModernGeneration.Policies
             sb.AppendLine("try");
             using (sb.Block(""))
             {
-                if (sctx.IsAsync && transition.GuardIsAsync)
+                // Sprawdź czy guard oczekuje payloadu ale nie mamy go (payloadExpr == "null")
+                if (transition.GuardExpectsPayload && payloadExpr == "null")
                 {
-                    var awaitExpr = BuildGuardExpression(sctx, transition, payloadExpr);
-                    sb.AppendLine($"return {awaitExpr};");
+                    if (transition.GuardHasParameterlessOverload)
+                    {
+                        // Wywołaj wersję bezparametrową
+                        var methodCall = BuildMethodCall(sctx, transition, null);
+                        sb.AppendLine($"return {methodCall};");
+                    }
+                    else
+                    {
+                        // Guard wymaga payloadu którego nie mamy
+                        sb.AppendLine("return false;");
+                    }
                 }
                 else
                 {
+                    // Normalna logika
                     var guardExpr = BuildGuardExpression(sctx, transition, payloadExpr);
                     sb.AppendLine($"return {guardExpr};");
                 }
@@ -224,17 +235,22 @@ namespace Generator.ModernGeneration.Policies
         {
             var asyncPolicy = sctx.Root.AsyncPolicy;
 
+            // TODO: W przyszłości ta logika powinna być w GuardFeature
             if (transition.GuardExpectsPayload && transition.GuardHasParameterlessOverload)
             {
-                // Dla direct return w CanFire lepiej użyć prostszej formy
                 if (payloadExpr == "null")
                 {
                     return BuildMethodCall(sctx, transition, null);
                 }
                 else
                 {
-                    // Użyjemy parametrless overload jako fallback
-                    return BuildMethodCall(sctx, transition, null);
+                    // NAPRAWIONE: Teraz poprawnie obsługujemy payload z overloadem
+                    var payloadType = GetPayloadType(transition);
+                    var typedCall = BuildMethodCall(sctx, transition, "typedGuardPayload");
+                    var parameterlessCall = BuildMethodCall(sctx, transition, null);
+
+                    // Pattern dla inline: payload is T typed ? Guard(typed) : Guard()
+                    return $"({payloadExpr} is {payloadType} typedGuardPayload ? {typedCall} : {parameterlessCall})";
                 }
             }
             else if (transition.GuardExpectsPayload)

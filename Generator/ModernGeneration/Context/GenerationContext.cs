@@ -5,16 +5,19 @@ using Generator.Model;
 using Generator.ModernGeneration.Registries;
 using Generator.ModernGeneration.Policies;
 using Generator.ModernGeneration.Features;
+using Generator.ModernGeneration.Hooks;
 using IndentedStringBuilder;
 
 namespace Generator.ModernGeneration.Context
 {
     /// <summary>
-    /// Główny kontekst generacji przechowujący stan i zasoby
-    /// używane podczas generowania kodu maszyny stanów.
+    /// Główny kontekst generacji – trzyma stan, rejestry oraz narzędzia
+    /// wykorzystywane przez wszystkie moduły podczas budowania kodu maszyny.
     /// </summary>
     public sealed class GenerationContext
     {
+        // ───────────────────────────────────── Public API ─────────────────────────────────────
+
         public StateMachineModel Model { get; }
         public IndentedStringBuilder.IndentedStringBuilder Sb { get; }
 
@@ -23,16 +26,22 @@ namespace Generator.ModernGeneration.Context
         public FieldRegistry Fields { get; }
         public MethodRegistry Methods { get; }
 
-        // Polityki
+        // Polityki (ustawiane przez etap konfiguracji Director‑a)
         public IAsyncPolicy AsyncPolicy { get; private set; } = default!;
         public IGuardPolicy GuardPolicy { get; private set; } = default!;
         public IHookDispatchPolicy HookPolicy { get; private set; } = default!;
 
-        // Zarejestrowane moduły
+        /// <summary>Dispatcher hooków – moduły rejestrują w nim emitery kodu.</summary>
+        public HookDispatcher Hooks { get; }
+
+        /// <summary>Lista wszystkich zarejestrowanych modułów funkcjonalnych.</summary>
         public IReadOnlyList<IFeatureModule> Modules { get; private set; }
 
-        // Bufory dla różnych części kodu
+        // ───────────────────────────────────── Internal state ──────────────────────────────────
+
         private readonly Dictionary<string, List<string>> _codeBuffers;
+
+        // ───────────────────────────────────── Constructor ─────────────────────────────────────
 
         public GenerationContext(StateMachineModel model)
         {
@@ -42,14 +51,17 @@ namespace Generator.ModernGeneration.Context
             Usings = new UsingsCollector();
             Fields = new FieldRegistry();
             Methods = new MethodRegistry();
+            Hooks = new HookDispatcher();
 
             _codeBuffers = new Dictionary<string, List<string>>();
             Modules = new List<IFeatureModule>();
-
-            // Domyślne polityki będą ustawiane przez SetPolicies
         }
 
-        public void SetPolicies(IAsyncPolicy asyncPolicy, IGuardPolicy guardPolicy, IHookDispatchPolicy hookPolicy)
+        // ───────────────────────────────────── Configuration ──────────────────────────────────
+
+        public void SetPolicies(IAsyncPolicy asyncPolicy,
+                                IGuardPolicy guardPolicy,
+                                IHookDispatchPolicy hookPolicy)
         {
             AsyncPolicy = asyncPolicy ?? throw new ArgumentNullException(nameof(asyncPolicy));
             GuardPolicy = guardPolicy ?? throw new ArgumentNullException(nameof(guardPolicy));
@@ -58,38 +70,36 @@ namespace Generator.ModernGeneration.Context
 
         public void RegisterModules(IEnumerable<IFeatureModule> modules)
         {
-            if (modules == null) throw new ArgumentNullException(nameof(modules));
+            if (modules is null) throw new ArgumentNullException(nameof(modules));
             Modules = modules.ToList();
         }
 
-        // Metody pomocnicze do buforowania kodu
+        // ───────────────────────────────────── Buffer helpers ──────────────────────────────────
+
         public void AddToBuffer(string bufferName, string code)
         {
-            if (!_codeBuffers.ContainsKey(bufferName))
+            if (!_codeBuffers.TryGetValue(bufferName, out var list))
             {
-                _codeBuffers[bufferName] = new List<string>();
+                list = new List<string>();
+                _codeBuffers[bufferName] = list;
             }
-            _codeBuffers[bufferName].Add(code);
+            list.Add(code);
         }
 
-        public IEnumerable<string> GetBuffer(string bufferName)
-        {
-            return _codeBuffers.ContainsKey(bufferName)
-                ? _codeBuffers[bufferName]
+        public IEnumerable<string> GetBuffer(string bufferName) =>
+            _codeBuffers.TryGetValue(bufferName, out var list)
+                ? list
                 : Enumerable.Empty<string>();
-        }
 
-        // Helpery do generowania
+        // ───────────────────────────────────── Flush helpers ───────────────────────────────────
+
         public void FlushUsings()
         {
             foreach (var ns in Usings.GetSorted())
-            {
                 Sb.AppendLine($"using {ns};");
-            }
+
             if (Usings.GetSorted().Any())
-            {
                 Sb.AppendLine();
-            }
         }
 
         public void FlushFields()
@@ -97,29 +107,20 @@ namespace Generator.ModernGeneration.Context
             foreach (var field in Fields.GetAll())
             {
                 Sb.Append(field.Visibility);
+
                 if (!string.IsNullOrEmpty(field.Modifiers))
-                {
-                    Sb.Append(" ");
-                    Sb.Append(field.Modifiers);
-                }
-                Sb.Append(" ");
-                Sb.Append(field.Type);
-                Sb.Append(" ");
-                Sb.Append(field.Name);
+                    Sb.Append($" {field.Modifiers}");
+
+                Sb.Append($" {field.Type} {field.Name}");
 
                 if (!string.IsNullOrEmpty(field.Initializer))
-                {
-                    Sb.Append(" = ");
-                    Sb.Append(field.Initializer);
-                }
+                    Sb.Append($" = {field.Initializer}");
 
                 Sb.AppendLine(";");
             }
 
             if (Fields.GetAll().Any())
-            {
                 Sb.AppendLine();
-            }
         }
     }
 }

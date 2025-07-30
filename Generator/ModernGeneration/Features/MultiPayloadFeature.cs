@@ -1,197 +1,48 @@
-﻿using System;
+﻿// -----------------------------------------------------------------------------
+//  Features/MultiPayloadFeature.cs
+// -----------------------------------------------------------------------------
+using System;
+using System.Collections.Generic;
 using System.Linq;
-using Generator.Infrastructure;
-using Generator.Model;
 using Generator.ModernGeneration.Context;
+using Generator.ModernGeneration.Hooks;
 using Generator.ModernGeneration.Registries;
-using static Generator.Strings;
+using Generator.Infrastructure;            // ← TypeSystemHelper
+using Generator.Model;
 
 namespace Generator.ModernGeneration.Features
 {
     /// <summary>
-    /// Moduł obsługujący maszyny z różnymi typami payloadu per trigger.
+    /// Moduł obsługujący mapę Trigger → typ payloadu.
     /// </summary>
-    public class MultiPayloadFeature : IPayloadFeature, IEmitUsings, IEmitFields, IEmitMethods
+    public sealed class MultiPayloadFeature :
+        IPayloadFeature,
+        IFeatureModule,
+        IEmitUsings,
+        IEmitFields
     {
+        private const string MapFieldName =Strings.PayloadMapField;
+
         private readonly TypeSystemHelper _typeHelper = new();
 
+        #region flagi IPayloadFeature
         public bool IsSinglePayload => false;
         public bool IsMultiPayload => true;
+        #endregion
 
-        public void EmitUsings(GenerationContext ctx)
+        // ───────────────────────── constructor ─────────────────────────
+        // (bez parametrów – tak wywołuje go Twój ModernGenerator)
+        public MultiPayloadFeature() { }
+
+        // ───────────────────────── IFeatureModule ──────────────────────
+        public void Initialize(GenerationContext ctx)
         {
-            // Dodaj namespace'y dla wszystkich typów payloadu
-            foreach (var payloadType in ctx.Model.TriggerPayloadTypes.Values.Distinct())
-            {
-                var namespaces = _typeHelper.GetRequiredNamespaces(payloadType);
-                foreach (var ns in namespaces)
-                {
-                    ctx.Usings.Add(ns);
-                }
-            }
+            RegisterUsings(ctx);
+            RegisterHooks(ctx);
         }
 
-        public void EmitFields(GenerationContext ctx)
-        {
-            // Rejestruj pole mapy payload
-            var triggerType = GetTriggerType(ctx);
-
-            ctx.Fields.Register(new FieldSpec(
-                visibility: "private static readonly",
-                type: $"Dictionary<{triggerType}, Type>",
-                name: PayloadMapField,
-                initializer: "new()"
-            ));
-
-            // Generuj inicjalizację mapy
-            EmitPayloadMapInitialization(ctx);
-        }
-
-        private void EmitPayloadMapInitialization(GenerationContext ctx)
-        {
-            var sb = ctx.Sb;
-            var triggerType = GetTriggerType(ctx);
-
-            sb.AppendLine();
-            sb.AppendLine("// Static constructor to initialize payload map");
-            sb.AppendLine($"static {ctx.Model.ClassName}()");
-            using (sb.Block(""))
-            {
-                foreach (var kvp in ctx.Model.TriggerPayloadTypes)
-                {
-                    var trigger = kvp.Key;
-                    var payloadType = kvp.Value;
-                    var typeForTypeof = _typeHelper.FormatForTypeof(payloadType);
-
-                    sb.AppendLine($"{PayloadMapField}.Add({triggerType}.{_typeHelper.EscapeIdentifier(trigger)}, typeof({typeForTypeof}));");
-                }
-            }
-            sb.AppendLine();
-        }
-
-        public void EmitMethods(GenerationContext ctx)
-        {
-            var sb = ctx.Sb;
-            var triggerType = GetTriggerType(ctx);
-            var isAsync = ctx.Model.GenerationConfig.IsAsync;
-
-            // Generic TryFire<TPayload> overload
-            EmitGenericTryFireOverload(ctx, triggerType);
-
-            // Generic Fire<TPayload> overload
-            EmitGenericFireOverload(ctx, triggerType);
-
-            // Generic CanFire<TPayload> overload
-            EmitGenericCanFireOverload(ctx, triggerType);
-        }
-
-        private void EmitGenericTryFireOverload(GenerationContext ctx, string triggerType)
-        {
-            var sb = ctx.Sb;
-            var isAsync = ctx.Model.GenerationConfig.IsAsync;
-
-            sb.AppendLine($"[{MethodImplAttribute}({AggressiveInliningAttribute})]");
-
-            if (isAsync)
-            {
-                sb.AppendLine($"public async ValueTask<bool> TryFireAsync<TPayload>({triggerType} trigger, TPayload {PayloadVar}, CancellationToken cancellationToken = default)");
-                using (sb.Block(""))
-                {
-                    sb.AppendLine($"return await TryFireInternalAsync(trigger, {PayloadVar}, cancellationToken).ConfigureAwait({ctx.Model.ContinueOnCapturedContext.ToString().ToLowerInvariant()});");
-                }
-            }
-            else
-            {
-                sb.AppendLine($"public bool TryFire<TPayload>({triggerType} trigger, TPayload {PayloadVar})");
-                using (sb.Block(""))
-                {
-                    sb.AppendLine($"return TryFireInternal(trigger, {PayloadVar});");
-                }
-            }
-            sb.AppendLine();
-        }
-
-        private void EmitGenericFireOverload(GenerationContext ctx, string triggerType)
-        {
-            var sb = ctx.Sb;
-            var isAsync = ctx.Model.GenerationConfig.IsAsync;
-
-            if (isAsync)
-            {
-                sb.AppendLine($"public async Task FireAsync<TPayload>({triggerType} trigger, TPayload {PayloadVar}, CancellationToken cancellationToken = default)");
-                using (sb.Block(""))
-                {
-                    using (sb.Block($"if (!await TryFireAsync(trigger, {PayloadVar}, cancellationToken).ConfigureAwait({ctx.Model.ContinueOnCapturedContext.ToString().ToLowerInvariant()}))"))
-                    {
-                        sb.AppendLine("throw new InvalidOperationException($\"No valid transition from state '{CurrentState}' on trigger '{trigger}' with payload of type '{typeof(TPayload).Name}'\");");
-                    }
-                }
-            }
-            else
-            {
-                sb.AppendLine($"public void Fire<TPayload>({triggerType} trigger, TPayload {PayloadVar})");
-                using (sb.Block(""))
-                {
-                    using (sb.Block($"if (!TryFire(trigger, {PayloadVar}))"))
-                    {
-                        sb.AppendLine("throw new InvalidOperationException($\"No valid transition from state '{CurrentState}' on trigger '{trigger}' with payload of type '{typeof(TPayload).Name}'\");");
-                    }
-                }
-            }
-            sb.AppendLine();
-        }
-
-        private void EmitGenericCanFireOverload(GenerationContext ctx, string triggerType)
-        {
-            var sb = ctx.Sb;
-            var isAsync = ctx.Model.GenerationConfig.IsAsync;
-
-            sb.WriteSummary("Checks if the specified trigger can be fired with the given payload");
-            sb.AppendLine($"[{MethodImplAttribute}({AggressiveInliningAttribute})]");
-
-            if (isAsync)
-            {
-                sb.AppendLine($"public async ValueTask<bool> CanFireAsync<TPayload>({triggerType} trigger, TPayload {PayloadVar}, CancellationToken cancellationToken = default)");
-                using (sb.Block(""))
-                {
-                    // Walidacja typu
-                    using (sb.Block($"if ({PayloadMapField}.TryGetValue(trigger, out var expectedType) && !expectedType.IsInstanceOfType({PayloadVar}))"))
-                    {
-                        sb.AppendLine("return false;");
-                    }
-                    sb.AppendLine($"return await CanFireWithPayloadAsync(trigger, {PayloadVar}, cancellationToken).ConfigureAwait({ctx.Model.ContinueOnCapturedContext.ToString().ToLowerInvariant()});");
-                }
-            }
-            else
-            {
-                sb.AppendLine($"public bool CanFire<TPayload>({triggerType} trigger, TPayload {PayloadVar})");
-                using (sb.Block(""))
-                {
-                    // Walidacja typu
-                    using (sb.Block($"if ({PayloadMapField}.TryGetValue(trigger, out var expectedType) && !expectedType.IsInstanceOfType({PayloadVar}))"))
-                    {
-                        sb.AppendLine("return false;");
-                    }
-                    sb.AppendLine($"return CanFireWithPayload(trigger, {PayloadVar});");
-                }
-            }
-            sb.AppendLine();
-        }
-
-        public void EmitPayloadValidation(SliceContext sctx)
-        {
-            var sb = sctx.Sb;
-
-            // Walidacja typu payloadu dla multi-payload
-            sb.AppendLine("// Payload-type validation for multi-payload variant");
-            using (sb.Block($"if ({PayloadMapField}.TryGetValue(trigger, out var expectedType) && " +
-                           $"({sctx.PayloadVar} == null || !expectedType.IsInstanceOfType({sctx.PayloadVar})))"))
-            {
-                // TODO: Dodać logging gdy będzie LoggingFeature
-                sb.AppendLine($"return false; // wrong payload type");
-            }
-            sb.AppendLine();
-        }
+        // ───────────────────────── IPayloadFeature ─────────────────────
+        public void EmitPayloadValidation(SliceContext _) { /* hook załatwia wszystko */ }
 
         public void EmitPayloadAwareCall(
             SliceContext sctx,
@@ -201,87 +52,72 @@ namespace Generator.ModernGeneration.Features
             bool hasParameterlessOverload,
             string? expectedPayloadType)
         {
-            var sb = sctx.Sb;
-            var asyncPolicy = sctx.Root.AsyncPolicy;
+            var sb = sctx.Root.Sb;
 
-            if (!expectsPayload)
+            if (expectsPayload)
             {
-                // Metoda nie oczekuje payloadu
-                EmitSimpleCall(sctx, methodName, isMethodAsync);
-                return;
+                var call = $"{methodName}(payload!)";
+                sb.AppendLine(isMethodAsync ? $"await {call}.ConfigureAwait(false);" : $"{call};");
             }
-
-            // Multi-payload - musimy znać konkretny typ
-            if (string.IsNullOrEmpty(expectedPayloadType))
+            else if (hasParameterlessOverload)
             {
-                // Nie znamy typu - użyj overloadu bezparametrowego jeśli istnieje
-                if (hasParameterlessOverload)
-                {
-                    EmitSimpleCall(sctx, methodName, isMethodAsync);
-                }
-                // W przeciwnym razie - skip (nie możemy wywołać)
-                return;
-            }
-
-            var payloadType = _typeHelper.FormatTypeForUsage(expectedPayloadType, useGlobalPrefix: false);
-
-            if (hasParameterlessOverload)
-            {
-                // Ma overload - użyj if/else
-                sb.AppendLine($"if ({sctx.PayloadVar} is {payloadType} typedPayload)");
-                using (sb.Block(""))
-                {
-                    EmitCallWithPayload(sctx, methodName, isMethodAsync, "typedPayload");
-                }
-                sb.AppendLine("else");
-                using (sb.Indent())
-                {
-                    EmitSimpleCall(sctx, methodName, isMethodAsync);
-                }
-            }
-            else
-            {
-                // Nie ma overloadu - sprawdź typ
-                using (sb.Block($"if ({sctx.PayloadVar} is {payloadType} typedPayload)"))
-                {
-                    EmitCallWithPayload(sctx, methodName, isMethodAsync, "typedPayload");
-                }
+                var call = $"{methodName}()";
+                sb.AppendLine(isMethodAsync ? $"await {call}.ConfigureAwait(false);" : $"{call};");
             }
         }
 
-        private void EmitSimpleCall(SliceContext sctx, string methodName, bool isMethodAsync)
-        {
-            var sb = sctx.Sb;
-            var asyncPolicy = sctx.Root.AsyncPolicy;
+        // ───────────────────────── IEmitUsings ─────────────────────────
+        public void EmitUsings(GenerationContext _) { /* już dodane w Initialize */ }
 
-            if (sctx.IsAsync && isMethodAsync)
-            {
-                sb.AppendLine($"{asyncPolicy.AwaitKeyword(true)}{methodName}(){asyncPolicy.ConfigureAwait()};");
-            }
-            else
-            {
-                sb.AppendLine($"{methodName}();");
-            }
+        // ───────────────────────── IEmitFields ─────────────────────────
+        public void EmitFields(GenerationContext ctx)
+        {
+            var triggerType = _typeHelper.FormatTypeForUsage(
+                ctx.Model.TriggerType,
+                useGlobalPrefix: false);
+
+            var mapEntries = string.Join(",\n",
+                ctx.Model.TriggerPayloadTypes.Select(kvp =>
+                    $"    {{ {triggerType}.{kvp.Key}, typeof({_typeHelper.FormatTypeForUsage(kvp.Value, false)}) }}"));
+
+            var initializer =
+                $"new Dictionary<{triggerType}, Type>\n{{\n{mapEntries}\n}}";
+
+            ctx.Fields.Register(new FieldSpec(
+                visibility: "private",
+                type: $"Dictionary<{triggerType}, Type>",
+                name: MapFieldName,
+                modifiers: "static readonly",
+                initializer: initializer));
         }
 
-        private void EmitCallWithPayload(SliceContext sctx, string methodName, bool isMethodAsync, string payloadVar)
+        // ───────────────────────── helpers ─────────────────────────────
+        private void RegisterUsings(GenerationContext ctx)
         {
-            var sb = sctx.Sb;
-            var asyncPolicy = sctx.Root.AsyncPolicy;
+            var payloadNamespaces = ctx.Model.TriggerPayloadTypes
+                                         .SelectMany(kvp => _typeHelper.GetRequiredNamespaces(kvp.Value))
+                                         .Distinct();
 
-            if (sctx.IsAsync && isMethodAsync)
-            {
-                sb.AppendLine($"{asyncPolicy.AwaitKeyword(true)}{methodName}({payloadVar}){asyncPolicy.ConfigureAwait()};");
-            }
-            else
-            {
-                sb.AppendLine($"{methodName}({payloadVar});");
-            }
+            foreach (var ns in payloadNamespaces)
+                ctx.Usings.Add(ns);
+
+            // również potrzebujemy przestrzeni nazw dla Dictionary i Type
+            ctx.Usings.Add("System");
+            ctx.Usings.Add("System.Collections.Generic");
         }
 
-        private string GetTriggerType(GenerationContext ctx)
+        private void RegisterHooks(GenerationContext ctx)
         {
-            return _typeHelper.FormatTypeForUsage(ctx.Model.TriggerType, useGlobalPrefix: false);
+            var triggerType = _typeHelper.FormatTypeForUsage(
+                ctx.Model.TriggerType,
+                useGlobalPrefix: false);
+
+            ctx.Hooks.Register(HookSlot.PayloadValidation, sb =>
+            {
+                sb.AppendLine($"if ({MapFieldName}.TryGetValue(trigger, out var expected) &&");
+                sb.AppendLine("    payload is not null && !expected.IsInstanceOfType(payload))");
+                sb.AppendLine("    return false;");
+            });
         }
     }
 }
