@@ -1,14 +1,15 @@
 using System;
+using System.Linq;
 using Generator.Model;
 using Generator.ModernGeneration.Context;
 using Generator.ModernGeneration.Director;
+using Generator.ModernGeneration.Features;
 using Generator.SourceGenerators;
 
 namespace Generator.ModernGeneration
 {
     /// <summary>
     /// Nowy generator używający modularnej architektury.
-    /// W Milestone 3 obsługuje Pure, Basic i WithPayload.
     /// </summary>
     public class ModernGenerator
     {
@@ -21,62 +22,66 @@ namespace Generator.ModernGeneration
 
         public string Generate()
         {
-            // Sprawdź czy możemy obsłużyć ten wariant
-            if (CanHandleVariant(_model.Variant))
-            {
-                return GenerateViaModern();
-            }
-
-            // Fallback do legacy dla nieobsługiwanych wariantów
-            return GenerateViaLegacy();
-        }
-
-        private bool CanHandleVariant(GenerationVariant variant)
-        {
-            // W Milestone 3 obsługujemy Pure, Basic i WithPayload
-            return variant == GenerationVariant.Pure ||
-                   variant == GenerationVariant.Basic ||
-                   variant == GenerationVariant.WithPayload;
-        }
-
-        private string GenerateViaModern()
-        {
-            // Tworzenie kontekstu
             var context = new GenerationContext(_model);
-
-            // Tworzenie polityk
-            var (asyncPolicy, guardPolicy, hookPolicy) = FeatureCatalog.CreatePolicies(_model);
-            context.SetPolicies(asyncPolicy, guardPolicy, hookPolicy);
-
-            // Wybór modułów
-            var modules = FeatureCatalog.SelectModules(_model);
-            context.RegisterModules(modules);
-
-            // Tworzenie directora
             var director = new Director.Director(context);
 
-            // Rejestracja modułów w directorze
-            foreach (var module in modules)
-            {
-                director.RegisterModule(module);
-            }
+            // Rejestruj moduły w zależności od wariantu
+            RegisterModules(director);
 
-            // Generowanie kodu
             return director.Generate();
         }
 
-        private string GenerateViaLegacy()
+        private void RegisterModules(Director.Director director)
         {
-            StateMachineCodeGenerator generator;
+            // Zawsze rejestruj CoreFeature
+            director.RegisterModule(new CoreFeature());
 
-            generator = _model.Variant switch
+            // Dodaj moduły w zależności od wariantu
+            switch (_model.Variant)
             {
-                GenerationVariant.Full => new FullVariantGenerator(_model),
-                GenerationVariant.WithExtensions => new ExtensionsVariantGenerator(_model),
-                _ => new CoreVariantGenerator(_model)
-            };
+                case GenerationVariant.Pure:
+                    // Tylko Core
+                    break;
 
-            return generator.Generate();
+                case GenerationVariant.Basic:
+                    // Core + OnEntry/OnExit (CoreFeature już to obsługuje)
+                    break;
+
+                case GenerationVariant.WithPayload:
+                    RegisterPayloadModules(director);
+                    break;
+
+                case GenerationVariant.WithExtensions:
+                    // Core + Extensions (TODO w przyszłości)
+                    // director.RegisterModule(new ExtensionsFeature());
+                    break;
+
+                case GenerationVariant.Full:
+                    RegisterPayloadModules(director);
+                    // TODO: Extensions
+                    // director.RegisterModule(new ExtensionsFeature());
+                    break;
+            }
+
+            // TODO: Dodaj LoggingFeature jeśli włączone
+            // if (_model.GenerateLogging)
+            // {
+            //     director.RegisterModule(new LoggingFeature());
+            // }
+        }
+
+        private void RegisterPayloadModules(Director.Director director)
+        {
+            if (_model.TriggerPayloadTypes.Any())
+            {
+                // Multi-payload
+                director.RegisterModule(new MultiPayloadFeature());
+            }
+            else if (_model.DefaultPayloadType != null)
+            {
+                // Single-payload
+                director.RegisterModule(new SinglePayloadFeature(_model.DefaultPayloadType));
+            }
         }
     }
 }
