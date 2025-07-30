@@ -61,7 +61,15 @@ public sealed class IndentedStringBuilder(string indentUnit = "    ")
         AppendLine($"/// {summary}");
         AppendLine("/// </summary>");
     }
+    public void WriteParam(string paramName, string description)
+    {
+        AppendLine($"/// <param name=\"{paramName}\">{description}</param>");
+    }
 
+    public void WriteReturns( string description)
+    {
+        AppendLine($"/// <returns>{description}</returns>");
+    }
     public void AddProperty(string typeAndName, string? value = null)
     {
         AppendLine($"{typeAndName}{(value is not null ? $"={value}" : string.Empty)};");

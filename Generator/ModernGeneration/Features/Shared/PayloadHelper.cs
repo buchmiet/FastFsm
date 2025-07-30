@@ -29,7 +29,8 @@ namespace Generator.ModernGeneration.Features.Shared
                 return null;
 
             // Multi-payload jeśli mamy mapę trigger->type
-            if (model.TriggerPayloadTypes.Count > 0)
+            // POPRAWKA: Dodano sprawdzenie null
+            if (model.TriggerPayloadTypes?.Count > 0)
             {
                 return new MultiPayloadFeature();
             }
