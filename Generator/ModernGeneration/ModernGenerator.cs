@@ -35,7 +35,7 @@ namespace Generator.ModernGeneration
         {
             // Zawsze rejestruj CoreFeature
             director.RegisterModule(new CoreFeature());
-
+            director.RegisterModule(new StructuralHelpersFeature());
             // Dodaj moduły w zależności od wariantu
             switch (_model.Variant)
             {
@@ -44,19 +44,23 @@ namespace Generator.ModernGeneration
                     break;
 
                 case GenerationVariant.Basic:
+                    director.RegisterModule(new GuardFeature());
                     // Core + OnEntry/OnExit (CoreFeature już to obsługuje)
                     break;
 
                 case GenerationVariant.WithPayload:
+                    director.RegisterModule(new GuardFeature());
                     RegisterPayloadModules(director);
                     break;
 
                 case GenerationVariant.WithExtensions:
+                    director.RegisterModule(new GuardFeature());
                     // Core + Extensions (TODO w przyszłości)
                     // director.RegisterModule(new ExtensionsFeature());
                     break;
 
                 case GenerationVariant.Full:
+                    director.RegisterModule(new GuardFeature());
                     RegisterPayloadModules(director);
                     // TODO: Extensions
                     // director.RegisterModule(new ExtensionsFeature());
