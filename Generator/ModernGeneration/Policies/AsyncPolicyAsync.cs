@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text;
 using System.Threading;
 
@@ -32,12 +32,19 @@ namespace Generator.ModernGeneration.Policies
         
         public string CancellationTokenParam() => ", CancellationToken cancellationToken = default";
         public string CancellationTokenArg() => ", cancellationToken";
-        
+
+       
         public string MethodName(string baseName, bool addAsyncSuffix = true)
-            => addAsyncSuffix && !baseName.EndsWith("Async", StringComparison.Ordinal)
+        {
+            // Upewnij się że zawsze dodajesz Async suffix dla metod wewnętrznych
+            if (baseName.Contains("Internal") && !baseName.EndsWith("Async"))
+                return baseName + "Async";
+
+            return addAsyncSuffix && !baseName.EndsWith("Async", StringComparison.Ordinal)
                 ? baseName + "Async"
                 : baseName;
-        
+        }
+
         public void EmitInvocation(StringBuilder sb, string methodName, bool methodIsAsync, params string[]? args)
         {
             var argsList = args is { Length: > 0 } ? string.Join(", ", args) : "";
