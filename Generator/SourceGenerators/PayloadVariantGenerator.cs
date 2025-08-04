@@ -1,5 +1,6 @@
-﻿using System.Linq;
+﻿using Generator.Helpers;
 using Generator.Model;
+using System.Linq;
 using static Generator.Strings;
 
 namespace Generator.SourceGenerators;
@@ -103,30 +104,33 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         Sb.AppendLine(InitialOnEntryComment);
         Sb.AppendLine("// Note: Constructor cannot be async, so initial OnEntry is fire-and-forget");
 
-        // Sprawdź czy jakikolwiek stan ma bezparametrową OnEntry
         var statesWithParameterlessOnEntry = Model.States.Values
             .Where(s => !string.IsNullOrEmpty(s.OnEntryMethod) && s.OnEntryHasParameterlessOverload)
             .ToList();
 
         if (statesWithParameterlessOnEntry.Any())
         {
-            Sb.AppendLine("_ = Task.Run(async () =>");
-            using (Sb.Block("{"))
+            AsyncGenerationHelper.EmitFireAndForgetAsyncCall(Sb, sb =>
             {
-                using (Sb.Block("switch (initialState)"))
+                using (sb.Block("switch (initialState)"))
                 {
                     foreach (var stateEntry in statesWithParameterlessOnEntry)
                     {
-                        Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
-                        using (Sb.Indent())
+                        sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                        using (sb.Indent())
                         {
-                            WriteCallbackInvocation(stateEntry.OnEntryMethod, stateEntry.OnEntryIsAsync);
-                            Sb.AppendLine("break;");
+                            AsyncGenerationHelper.EmitMethodInvocation(
+                                sb,
+                                stateEntry.OnEntryMethod,
+                                stateEntry.OnEntryIsAsync,
+                                callerIsAsync: true,
+                                Model.ContinueOnCapturedContext
+                            );
+                            sb.AppendLine("break;");
                         }
                     }
                 }
-            }
-            Sb.AppendLine("});");
+            });
         }
     }
 
@@ -136,19 +140,17 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
        string triggerTypeForUsage)
     {
         // Pobierz definicje stanów z mapy (jawne przypisanie, żeby uniknąć CS0165)
-        StateModel? fromStateDef;
-        Model.States.TryGetValue(transition.FromState, out fromStateDef);
+        Model.States.TryGetValue(transition.FromState, out var fromStateDef);
 
-        StateModel? toStateDef;
-        Model.States.TryGetValue(transition.ToState, out toStateDef);
+        Model.States.TryGetValue(transition.ToState, out var toStateDef);
 
         bool fromHasExit = !transition.IsInternal
-                           && fromStateDef != null
-                           && !string.IsNullOrEmpty(fromStateDef.OnExitMethod);
+                            && fromStateDef != null
+                            && !string.IsNullOrEmpty(fromStateDef.OnExitMethod);
 
         bool toHasEntry = !transition.IsInternal
-                          && toStateDef != null
-                          && !string.IsNullOrEmpty(toStateDef.OnEntryMethod);
+                            && toStateDef != null
+                            && !string.IsNullOrEmpty(toStateDef.OnEntryMethod);
 
         // Hook przed przejściem
         WriteBeforeTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage);
@@ -163,7 +165,19 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         // OnExit
         if (fromHasExit)
         {
-            WriteOnExitCall(fromStateDef!, transition.ExpectedPayloadType);
+            CallbackGenerationHelper.EmitOnExitCall(
+                Sb,
+                fromStateDef!,
+                transition.ExpectedPayloadType,
+                Model.DefaultPayloadType,
+                PayloadVar,
+                IsAsyncMachine,
+                wrapInTryCatch: true,
+                Model.ContinueOnCapturedContext,
+                IsSinglePayloadVariant(),
+                IsMultiPayloadVariant()
+            );
+
             WriteLogStatement("Debug",
                 $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef!.OnExitMethod}\", \"{transition.FromState}\");");
         }
@@ -196,16 +210,12 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         Sb.AppendLine($"goto {EndOfTryFireLabel};");
     }
 
-
-
     protected override void WriteInitialOnEntryDispatch(string stateTypeForUsage)
     {
         Sb.AppendLine(InitialOnEntryComment);
-
         var statesWithParameterlessOnEntry = Model.States.Values
             .Where(s => !string.IsNullOrEmpty(s.OnEntryMethod) && s.OnEntryHasParameterlessOverload)
             .ToList();
-
         if (statesWithParameterlessOnEntry.Any())
         {
             using (Sb.Block("switch (initialState)"))
@@ -216,13 +226,14 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                     using (Sb.Indent())
                     {
                         Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                        WriteLogStatement("Debug",
+                            $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
                         Sb.AppendLine("break;");
                     }
                 }
             }
         }
     }
-
     protected void WritePayloadMap(string triggerTypeForUsage)
     {
         using (Sb.Block($"private static readonly Dictionary<{triggerTypeForUsage}, Type> {PayloadMapField} = new()"))
@@ -457,311 +468,76 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
     {
         if (string.IsNullOrEmpty(transition.GuardMethod)) return;
 
-        // Owijamy całą logikę guard w try-catch
-        Sb.AppendLine("try");
-        using (Sb.Block(""))
+        GuardGenerationHelper.EmitGuardCheck(
+            Sb,
+            transition,
+            GuardResultVar,
+            PayloadVar,
+            IsAsyncMachine,
+            wrapInTryCatch: true,
+            Model.ContinueOnCapturedContext,
+            handleResultAfterTry: true
+        );
+
+        // Hook: After guard evaluated
+        WriteAfterGuardEvaluatedHook(transition, GuardResultVar, stateTypeForUsage, triggerTypeForUsage);
+
+        using (Sb.Block($"if (!{GuardResultVar})"))
         {
-            if (transition is { GuardExpectsPayload: true, GuardHasParameterlessOverload: true })
-            {
-                var payloadType = GetTypeNameForUsage(transition.ExpectedPayloadType!);
-                Sb.AppendLine($"bool {GuardResultVar};");
-                using (Sb.Block($"if ({PayloadVar} is {payloadType} typedGuardPayload)"))
-                {
-                    if (IsAsyncMachine && transition.GuardIsAsync)
-                    {
-                        Sb.AppendLine($"{GuardResultVar} = {GetAwaitKeyword()}{transition.GuardMethod}(typedGuardPayload){GetConfigureAwait()};");
-                    }
-                    else
-                    {
-                        Sb.AppendLine($"{GuardResultVar} = {transition.GuardMethod}(typedGuardPayload);");
-                    }
-                }
-                Sb.AppendLine("else");
-                using (Sb.Indent())
-                {
-                    if (IsAsyncMachine && transition.GuardIsAsync)
-                    {
-                        Sb.AppendLine($"{GuardResultVar} = {GetAwaitKeyword()}{transition.GuardMethod}(){GetConfigureAwait()};");
-                    }
-                    else
-                    {
-                        Sb.AppendLine($"{GuardResultVar} = {transition.GuardMethod}();");
-                    }
-                }
-            }
-            else if (transition.GuardExpectsPayload)
-            {
-                var payloadType = GetTypeNameForUsage(transition.ExpectedPayloadType!);
-                if (IsAsyncMachine && transition.GuardIsAsync)
-                {
-                    Sb.AppendLine($"bool {GuardResultVar} = {PayloadVar} is {payloadType} typedGuardPayload && {GetAwaitKeyword()}{transition.GuardMethod}(typedGuardPayload){GetConfigureAwait()};");
-                }
-                else
-                {
-                    Sb.AppendLine($"bool {GuardResultVar} = {PayloadVar} is {payloadType} typedGuardPayload && {transition.GuardMethod}(typedGuardPayload);");
-                }
-            }
-            else if (transition.GuardHasParameterlessOverload)
-            {
-                if (IsAsyncMachine && transition.GuardIsAsync)
-                {
-                    Sb.AppendLine($"bool {GuardResultVar} = {GetAwaitKeyword()}{transition.GuardMethod}(){GetConfigureAwait()};");
-                }
-                else
-                {
-                    Sb.AddProperty($"bool {GuardResultVar}", $"{transition.GuardMethod}()");
-                }
-            }
-            else
-            {
-                Sb.AddProperty($"bool {GuardResultVar}", "true");
-            }
-
-            // Hook: After guard evaluated
-            WriteAfterGuardEvaluatedHook(transition, GuardResultVar, stateTypeForUsage, triggerTypeForUsage);
-
-            using (Sb.Block($"if (!{GuardResultVar})"))
-            {
-                WriteLogStatement("Warning",
-                    $"GuardFailed(_logger, _instanceId, \"{transition.GuardMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
-                WriteLogStatement("Warning",
-                    $"TransitionFailed(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\");");
-
-                Sb.AppendLine($"{SuccessVar} = false;");
-
-                // Hook: After failed transition
-                WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-
-                Sb.AppendLine($"goto {EndOfTryFireLabel};");
-            }
-        }
-        Sb.AppendLine("catch (Exception ex)");
-        using (Sb.Block(""))
-        {
-            // Traktujemy wyjątek w guard jako false (guard nie przeszedł)
             WriteLogStatement("Warning",
                 $"GuardFailed(_logger, _instanceId, \"{transition.GuardMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
             WriteLogStatement("Warning",
                 $"TransitionFailed(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\");");
 
             Sb.AppendLine($"{SuccessVar} = false;");
-
-            // Hook: After failed transition
             WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-
             Sb.AppendLine($"goto {EndOfTryFireLabel};");
         }
     }
 
+    // Odchudzone metody - cała logika jest teraz w helperze
     protected override void WriteActionCall(TransitionModel transition)
     {
-        if (string.IsNullOrEmpty(transition.ActionMethod)) return;
-
-        // Owijamy całe wywołanie akcji w try-catch
-        Sb.AppendLine("try");
-        using (Sb.Block(""))
-        {
-            // Istniejąca logika z payloadami
-            if (transition is { ActionExpectsPayload: true, ActionHasParameterlessOverload: true })
-            {
-                var payloadType = GetTypeNameForUsage(transition.ExpectedPayloadType!);
-                using (Sb.Block($"if ({PayloadVar} is {payloadType} typedActionPayload)"))
-                {
-                    WriteCallbackInvocation(transition.ActionMethod, transition.ActionIsAsync, "typedActionPayload");
-                }
-                Sb.AppendLine("else");
-                using (Sb.Indent())
-                {
-                    WriteCallbackInvocation(transition.ActionMethod, transition.ActionIsAsync);
-                }
-            }
-            else if (transition.ActionExpectsPayload)
-            {
-                var payloadType = GetTypeNameForUsage(transition.ExpectedPayloadType!);
-                using (Sb.Block($"if ({PayloadVar} is {payloadType} typedActionPayload)"))
-                {
-                    WriteCallbackInvocation(transition.ActionMethod, transition.ActionIsAsync, "typedActionPayload");
-                }
-            }
-            else if (transition.ActionHasParameterlessOverload)
-            {
-                WriteCallbackInvocation(transition.ActionMethod, transition.ActionIsAsync);
-            }
-        }
-        Sb.AppendLine("catch (Exception ex)");
-        using (Sb.Block(""))
-        {
-            // Ustawiamy success na false
-            Sb.AppendLine($"{SuccessVar} = false;");
-
-            // Logowanie (jeśli włączone)
-            WriteLogStatement("Warning",
-                $"TransitionFailed(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\");");
-
-            // Skok do końca metody
-            Sb.AppendLine($"goto {EndOfTryFireLabel};");
-        }
+        CallbackGenerationHelper.EmitActionCall(
+            Sb,
+            transition,
+            PayloadVar,
+            IsAsyncMachine,
+            wrapInTryCatch: true,
+            Model.ContinueOnCapturedContext
+        );
     }
 
     protected override void WriteOnEntryCall(StateModel state, string? expectedPayloadType)
     {
-        if (string.IsNullOrEmpty(state.OnEntryMethod)) return;
-
-        var effectiveType = expectedPayloadType ?? Model.DefaultPayloadType;
-
-        // Owijamy całe wywołanie w try-catch
-        Sb.AppendLine("try");
-        using (Sb.Block(""))
-        {
-            if (!state.OnEntryExpectsPayload || effectiveType == null)
-            {
-                WriteCallbackInvocation(state.OnEntryMethod, state.OnEntryIsAsync);
-            }
-            else
-            {
-                // Single payload variant
-                if (IsSinglePayloadVariant())
-                {
-                    var payloadType = GetTypeNameForUsage(effectiveType);
-
-                    if (state.OnEntryHasParameterlessOverload)
-                    {
-                        using (Sb.Block($"if ({PayloadVar} is {payloadType} typedPayload)"))
-                        {
-                            WriteCallbackInvocation(state.OnEntryMethod, state.OnEntryIsAsync, "typedPayload");
-                        }
-                        Sb.AppendLine("else");
-                        using (Sb.Indent())
-                        {
-                            WriteCallbackInvocation(state.OnEntryMethod, state.OnEntryIsAsync);
-                        }
-                    }
-                    else
-                    {
-                        using (Sb.Block($"if ({PayloadVar} is {payloadType} typedPayload)"))
-                        {
-                            WriteCallbackInvocation(state.OnEntryMethod, state.OnEntryIsAsync, "typedPayload");
-                        }
-                    }
-                }
-                // Multi payload variant
-                else if (IsMultiPayloadVariant())
-                {
-                    if (expectedPayloadType != null)
-                    {
-                        var payloadTypeForUsage = GetTypeNameForUsage(expectedPayloadType);
-
-                        if (state.OnEntryHasParameterlessOverload)
-                        {
-                            using (Sb.Block($"if ({PayloadVar} is {payloadTypeForUsage} typedPayload)"))
-                            {
-                                WriteCallbackInvocation(state.OnEntryMethod, state.OnEntryIsAsync, "typedPayload");
-                            }
-                            Sb.AppendLine("else");
-                            using (Sb.Indent())
-                            {
-                                WriteCallbackInvocation(state.OnEntryMethod, state.OnEntryIsAsync);
-                            }
-                        }
-                        else
-                        {
-                            using (Sb.Block($"if ({PayloadVar} is {payloadTypeForUsage} typedPayload)"))
-                            {
-                                WriteCallbackInvocation(state.OnEntryMethod, state.OnEntryIsAsync, "typedPayload");
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (state.OnEntryHasParameterlessOverload)
-                        {
-                            WriteCallbackInvocation(state.OnEntryMethod, state.OnEntryIsAsync);
-                        }
-                    }
-                }
-            }
-        }
-        Sb.AppendLine("catch (Exception ex)");
-        using (Sb.Block(""))
-        {
-            // Ustawiamy success na false i skaczemy do końca
-            Sb.AppendLine($"{SuccessVar} = false;");
-            Sb.AppendLine($"goto {EndOfTryFireLabel};");
-        }
+        CallbackGenerationHelper.EmitOnEntryCall(
+            Sb,
+            state,
+            expectedPayloadType,
+            Model.DefaultPayloadType,
+            PayloadVar,
+            IsAsyncMachine,
+            wrapInTryCatch: true,
+            Model.ContinueOnCapturedContext,
+            IsSinglePayloadVariant(),
+            IsMultiPayloadVariant()
+        );
     }
 
     protected override void WriteOnExitCall(StateModel fromState, string? expectedPayloadType)
     {
-        if (string.IsNullOrEmpty(fromState.OnExitMethod)) return;
-
-        var effectiveType = expectedPayloadType ?? Model.DefaultPayloadType;
-
-        // Owijamy całe wywołanie w try-catch
-        Sb.AppendLine("try");
-        using (Sb.Block(""))
-        {
-            if (!fromState.OnExitExpectsPayload || effectiveType == null)
-            {
-                WriteCallbackInvocation(fromState.OnExitMethod, fromState.OnExitIsAsync);
-            }
-            else
-            {
-                if (IsSinglePayloadVariant())
-                {
-                    var payloadType = GetTypeNameForUsage(effectiveType);
-
-                    if (fromState.OnExitHasParameterlessOverload)
-                    {
-                        using (Sb.Block($"if ({PayloadVar} is {payloadType} typedPayload)"))
-                        {
-                            WriteCallbackInvocation(fromState.OnExitMethod, fromState.OnExitIsAsync, "typedPayload");
-                        }
-                        Sb.AppendLine("else");
-                        using (Sb.Indent())
-                        {
-                            WriteCallbackInvocation(fromState.OnExitMethod, fromState.OnExitIsAsync);
-                        }
-                    }
-                    else
-                    {
-                        using (Sb.Block($"if ({PayloadVar} is {payloadType} typedPayload)"))
-                        {
-                            WriteCallbackInvocation(fromState.OnExitMethod, fromState.OnExitIsAsync, "typedPayload");
-                        }
-                    }
-                }
-                // Multi-payload
-                else
-                {
-                    if (fromState.OnExitHasParameterlessOverload)
-                    {
-                        using (Sb.Block($"if ({PayloadVar} != null)"))
-                        {
-                            Sb.AppendLine($"{fromState.OnExitMethod}({PayloadVar});");
-                        }
-                        Sb.AppendLine("else");
-                        using (Sb.Indent())
-                        {
-                            WriteCallbackInvocation(fromState.OnExitMethod, fromState.OnExitIsAsync);
-                        }
-                    }
-                    else
-                    {
-                        using (Sb.Block($"if ({PayloadVar} != null)"))
-                        {
-                            Sb.AppendLine($"{fromState.OnExitMethod}({PayloadVar});");
-                        }
-                    }
-                }
-            }
-        }
-        Sb.AppendLine("catch (Exception ex)");
-        using (Sb.Block(""))
-        {
-            // Ustawiamy success na false i skaczemy do końca
-            Sb.AppendLine($"{SuccessVar} = false;");
-            Sb.AppendLine($"goto {EndOfTryFireLabel};");
-        }
+        CallbackGenerationHelper.EmitOnExitCall(
+            Sb,
+            fromState,
+            expectedPayloadType,
+            Model.DefaultPayloadType,
+            PayloadVar,
+            IsAsyncMachine,
+            wrapInTryCatch: true,
+            Model.ContinueOnCapturedContext,
+            IsSinglePayloadVariant(),
+            IsMultiPayloadVariant()
+        );
     }
 
     protected void WriteFireMethods(string stateTypeForUsage, string triggerTypeForUsage)
@@ -999,26 +775,18 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                                 {
                                     if (!string.IsNullOrEmpty(transition.GuardMethod))
                                     {
-                                        if (transition.GuardIsAsync)
-                                        {
-                                            Sb.AppendLine("try");
-                                            using (Sb.Block(""))
-                                            {
-                                                Sb.AppendLine(transition.GuardHasParameterlessOverload
-                                                    ? $"return await {transition.GuardMethod}(){GetConfigureAwait()};"
-                                                    : "return false; // Guard expects payload but none provided");
-                                            }
-                                            Sb.AppendLine("catch");
-                                            using (Sb.Block(""))
-                                            {
-                                                Sb.AppendLine("return false;");
-                                            }
-                                        }
-                                        else
-                                        {
-                                            WriteGuardCall(transition, "guardResult", "null", throwOnException: false);
-                                            Sb.AppendLine("return guardResult;");
-                                        }
+                                        // Użyj helpera dla wszystkich przypadków
+                                        GuardGenerationHelper.EmitGuardCheck(
+                                            Sb,
+                                            transition,
+                                            "guardResult",
+                                            "null", // CanFire bez payloadu
+                                            IsAsyncMachine, // dla async guards będzie true
+                                            wrapInTryCatch: true,
+                                            Model.ContinueOnCapturedContext,
+                                            handleResultAfterTry: true
+                                        );
+                                        Sb.AppendLine("return guardResult;");
                                     }
                                     else
                                     {
@@ -1094,69 +862,17 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
 
     private void WriteAsyncGuardCallForCanFire(TransitionModel transition, string resultVar, string payloadVar)
     {
-        Sb.AppendLine("bool guardResult;"); 
-        Sb.AppendLine("try");
-        using (Sb.Block(""))
-        {
-            if (transition.GuardIsAsync)
-            {
-                if (transition is { GuardExpectsPayload: true, GuardHasParameterlessOverload: true })
-                {
-                    var payloadType = GetTypeNameForUsage(transition.ExpectedPayloadType!);
-                    using (Sb.Block($"if ({payloadVar} is {payloadType} typedGuardPayload)"))
-                    {
-                        Sb.AppendLine($"guardResult = await {transition.GuardMethod}(typedGuardPayload){GetConfigureAwait()};");
-                    }
-                    Sb.AppendLine("else");
-                    using (Sb.Indent())
-                    {
-                        Sb.AppendLine($"guardResult = await {transition.GuardMethod}(){GetConfigureAwait()};");
-                    }
-                }
-                else if (transition.GuardExpectsPayload)
-                {
-                    var payloadType = GetTypeNameForUsage(transition.ExpectedPayloadType!);
-                    Sb.AppendLine($"guardResult = {payloadVar} is {payloadType} typedGuardPayload && await {transition.GuardMethod}(typedGuardPayload){GetConfigureAwait()};");
-                }
-                else
-                {
-                    Sb.AppendLine($"guardResult = await {transition.GuardMethod}(){GetConfigureAwait()};");
-                }
-            }
-            else
-            {
-                // Sync guard in async method
-                if (transition is { GuardExpectsPayload: true, GuardHasParameterlessOverload: true })
-                {
-                    var payloadType = GetTypeNameForUsage(transition.ExpectedPayloadType!);
-                    using (Sb.Block($"if ({payloadVar} is {payloadType} typedGuardPayload)"))
-                    {
-                        Sb.AppendLine($"guardResult = {transition.GuardMethod}(typedGuardPayload);");
-                    }
-                    Sb.AppendLine("else");
-                    using (Sb.Indent())
-                    {
-                        Sb.AppendLine($"guardResult = {transition.GuardMethod}();");
-                    }
-                }
-                else if (transition.GuardExpectsPayload)
-                {
-                    var payloadType = GetTypeNameForUsage(transition.ExpectedPayloadType!);
-                    Sb.AppendLine($"guardResult = {payloadVar} is {payloadType} typedGuardPayload && {transition.GuardMethod}(typedGuardPayload);");
-                }
-                else
-                {
-                    Sb.AppendLine($"guardResult = {transition.GuardMethod}();");
-                }
-            }
-        }
-        Sb.AppendLine("catch");
-        using (Sb.Block(""))
-        {
-            Sb.AppendLine("guardResult = false;");
-        }
+        GuardGenerationHelper.EmitGuardCheck(
+            Sb,
+            transition,
+            resultVar,
+            payloadVar,
+            isAsync: true, // Zawsze async w tej metodzie
+            wrapInTryCatch: true,
+            Model.ContinueOnCapturedContext,
+            handleResultAfterTry: true
+        );
     }
-
     private void WriteCanFireWithPayload(string stateTypeForUsage, string triggerTypeForUsage)
     {
         WriteMethodAttribute();
@@ -1194,7 +910,17 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                                 {
                                     if (!string.IsNullOrEmpty(transition.GuardMethod))
                                     {
-                                        WriteGuardCall(transition, "guardResult", PayloadVar, throwOnException: false);
+                                        // ZMIANA: Użyj helpera zamiast WriteGuardCall
+                                        GuardGenerationHelper.EmitGuardCheck(
+                                            Sb,
+                                            transition,
+                                            "guardResult",
+                                            PayloadVar,
+                                            IsAsyncMachine,
+                                            wrapInTryCatch: true,
+                                            Model.ContinueOnCapturedContext,
+                                            handleResultAfterTry: true
+                                        );
                                         Sb.AppendLine("return guardResult;");
                                     }
                                     else
@@ -1271,29 +997,20 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                             {
                                 if (!string.IsNullOrEmpty(transition.GuardMethod))
                                 {
-                                    if (transition.GuardIsAsync)
+                                    // Użyj helpera dla wszystkich przypadków
+                                    GuardGenerationHelper.EmitGuardCheck(
+                                        Sb,
+                                        transition,
+                                        "canFire",
+                                        "null", // GetPermittedTriggers nie ma payloadu
+                                        IsAsyncMachine, // dla async guards będzie true
+                                        wrapInTryCatch: true,
+                                        Model.ContinueOnCapturedContext,
+                                        handleResultAfterTry: true
+                                    );
+                                    using (Sb.Block("if (canFire)"))
                                     {
-                                        Sb.AppendLine("try");
-                                        using (Sb.Block(""))
-                                        {
-                                            if (transition.GuardHasParameterlessOverload || !transition.GuardExpectsPayload)
-                                            {
-                                                Sb.AppendLine($"if (await {transition.GuardMethod}(){GetConfigureAwait()})");
-                                                using (Sb.Block(""))
-                                                {
-                                                    Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
-                                                }
-                                            }
-                                        }
-                                        Sb.AppendLine("catch { }");
-                                    }
-                                    else
-                                    {
-                                        WriteGuardCall(transition, "canFire", "null", throwOnException: false);
-                                        using (Sb.Block("if (canFire)"))
-                                        {
-                                            Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
-                                        }
+                                        Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
                                     }
                                 }
                                 else
@@ -1361,12 +1078,32 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                                     {
                                         // Guard needs payload - use resolver
                                         Sb.AppendLine($"var payload_{transition.Trigger} = payloadResolver({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
-                                        WriteGuardCall(transition, "canFire", $"payload_{transition.Trigger}", throwOnException: false);
+                                        // ZMIANA: Użyj helpera z rzeczywistym payloadem
+                                        GuardGenerationHelper.EmitGuardCheck(
+                                            Sb,
+                                            transition,
+                                            "canFire",
+                                            $"payload_{transition.Trigger}",
+                                            IsAsyncMachine,
+                                            wrapInTryCatch: true,
+                                            Model.ContinueOnCapturedContext,
+                                            handleResultAfterTry: true
+                                        );
                                     }
                                     else
                                     {
                                         // Guard doesn't need payload
-                                        WriteGuardCall(transition, "canFire", "null", throwOnException: false);
+                                        // ZMIANA: Użyj helpera bez payloadu
+                                        GuardGenerationHelper.EmitGuardCheck(
+                                            Sb,
+                                            transition,
+                                            "canFire",
+                                            "null",
+                                            IsAsyncMachine,
+                                            wrapInTryCatch: true,
+                                            Model.ContinueOnCapturedContext,
+                                            handleResultAfterTry: true
+                                        );
                                     }
 
                                     using (Sb.Block("if (canFire)"))
@@ -1487,32 +1224,58 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
 
     private void WriteAsyncGuardCallForGetPermitted(TransitionModel transition, string resultVar, string payloadVar)
     {
-        // Similar to WriteAsyncGuardCallForCanFire but inline
-        if (transition.GuardIsAsync)
+        // Cała logika jest teraz w helperze
+        GuardGenerationHelper.EmitGuardCheck(
+            Sb,
+            transition,
+            resultVar,
+            payloadVar,
+            isAsync: true, // To jest async metoda
+            wrapInTryCatch: true,
+            Model.ContinueOnCapturedContext,
+            handleResultAfterTry: true
+        );
+    }
+
+    protected void WriteStructuralApiMethods(string stateTypeForUsage, string triggerTypeForUsage)
+    {
+        if (!Model.EmitStructuralHelpers)
+            return;
+        // GetExpectedPayloadType
+        using (Sb.Block($"public Type? GetExpectedPayloadType({triggerTypeForUsage} trigger)"))
         {
-            Sb.AppendLine("bool canFire;");
-            Sb.AppendLine("try");
-            using (Sb.Block(""))
+            if (IsSinglePayloadVariant())
             {
-                if (transition.GuardExpectsPayload && payloadVar != "null")
-                {
-                    var payloadType = GetTypeNameForUsage(transition.ExpectedPayloadType!);
-                    Sb.AppendLine($"canFire = {payloadVar} is {payloadType} typedPayload && await {transition.GuardMethod}(typedPayload){GetConfigureAwait()};");
-                }
-                else if (transition.GuardHasParameterlessOverload || !transition.GuardExpectsPayload)
-                {
-                    Sb.AppendLine($"canFire = await {transition.GuardMethod}(){GetConfigureAwait()};");
-                }
-                else
-                {
-                    Sb.AppendLine("canFire = false; // Guard expects payload but none provided");
-                }
+                Sb.AppendLine($"return typeof({GetTypeNameForUsage(GetSinglePayloadType()!)});");
             }
-            Sb.AppendLine("catch { canFire = false; }");
+            else if (IsMultiPayloadVariant())
+            {
+                Sb.AppendLine($"{PayloadMapField}.TryGetValue(trigger, out var type);");
+                Sb.AppendLine("return type;");
+            }
+            else
+            {
+                Sb.AppendLine("return null;");
+            }
         }
-        else
+        Sb.AppendLine();
+
+        // GetPayloadVariant
+        using (Sb.Block("public PayloadVariant GetPayloadVariant()"))
         {
-            WriteGuardCall(transition, resultVar, payloadVar, throwOnException: false);
+            if (IsSinglePayloadVariant())
+            {
+                Sb.AppendLine("return PayloadVariant.SinglePayload;");
+            }
+            else if (IsMultiPayloadVariant())
+            {
+                Sb.AppendLine("return PayloadVariant.MultiPayload;");
+            }
+            else
+            {
+                Sb.AppendLine("return PayloadVariant.NoPayload;");
+            }
         }
+        Sb.AppendLine();
     }
 }

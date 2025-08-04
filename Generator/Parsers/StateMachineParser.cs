@@ -1,4 +1,5 @@
-﻿using Generator.Infrastructure;
+﻿using System;
+using Generator.Infrastructure;
 using Generator.Rules.Contexts;
 using Generator.Rules.Definitions;
 using Generator.Rules.Rules;
@@ -26,7 +27,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
     private readonly UnreachableStateRule _unreachableStateRule = new();
     private readonly GuardWithPayloadInNonPayloadMachineRule _guardWithPayloadRule = new();
     private readonly TypeSystemHelper _typeHelper = new();
-    private readonly AsyncSignatureAnalyzer _asyncAnalyzer = new(new TypeSystemHelper()); 
+    private readonly AsyncSignatureAnalyzer _asyncAnalyzer = new(new TypeSystemHelper());
     private readonly HashSet<TransitionDefinition> _processedTransitionsInCurrentFsm = [];
     private readonly MixedModeRule _mixedModeRule = new();
     private void ProcessRuleResults(IEnumerable<ValidationResult> ruleResults,
@@ -50,40 +51,59 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         }
     }
 
-     
+
 
     public bool TryParse(
-        ClassDeclarationSyntax classDeclaration,
-        out StateMachineModel? model)
+     ClassDeclarationSyntax classDeclaration,
+     out StateMachineModel? model,
+     Action<string>? report = null)
     {
         model = null;
         _processedTransitionsInCurrentFsm.Clear();
         bool criticalErrorOccurred = false;
-        bool? isMachineAsyncMode = null; 
+        bool? isMachineAsyncMode = null;
 
+        report?.Invoke("=== START TryParse ===");
+        report?.Invoke($"Parsing class: {classDeclaration.Identifier.Text}");
+
+        // === SEKCJA 1: Pobieranie semantic model i class symbol ===
+        report?.Invoke("Section 1: Getting semantic model and class symbol");
         var semanticModel = compilation.GetSemanticModel(classDeclaration.SyntaxTree);
-        if (semanticModel.GetDeclaredSymbol(classDeclaration) is not INamedTypeSymbol classSymbol) return false;
+        if (semanticModel.GetDeclaredSymbol(classDeclaration) is not INamedTypeSymbol classSymbol)
+        {
+            report?.Invoke("ERROR: Failed to get class symbol");
+            return false;
+        }
+        report?.Invoke($"Class symbol obtained: {classSymbol.Name}");
 
+        // === SEKCJA 2: Tworzenie początkowego modelu ===
+        report?.Invoke("Section 2: Creating initial model");
         var currentModel = new StateMachineModel
         {
             Namespace = classSymbol.ContainingNamespace.IsGlobalNamespace ? string.Empty : classSymbol.ContainingNamespace.ToDisplayString(),
             ClassName = classSymbol.Name
         };
+        report?.Invoke($"Model created - Namespace: {currentModel.Namespace}, ClassName: {currentModel.ClassName}");
 
+        // === SEKCJA 3: Pobieranie atrybutu StateMachine ===
+        report?.Invoke("Section 3: Getting StateMachine attribute");
         var fsmAttribute = classSymbol.GetAttributes()
             .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == StateMachineAttributeFullName);
+        report?.Invoke($"StateMachine attribute found: {fsmAttribute != null}");
 
-        // --- Odczyt argumentów z atrybutu [StateMachine] ---
+        // === SEKCJA 4: Odczyt argumentów z atrybutu [StateMachine] ===
         if (fsmAttribute is not null)
         {
+            report?.Invoke("Section 4: Reading StateMachine attribute arguments");
+
             // Odczyt DefaultPayloadType
             var defaultPayloadArg = fsmAttribute.NamedArguments
                 .FirstOrDefault(na => na.Key == nameof(StateMachineAttribute.DefaultPayloadType));
-            // Poprawka: Sprawdzamy klucz, bo FirstOrDefault na strukturach nie zwraca null
             if (defaultPayloadArg.Key is not null && defaultPayloadArg.Value.Value is INamedTypeSymbol payloadSym)
             {
                 currentModel.DefaultPayloadType = _typeHelper.BuildFullTypeName(payloadSym);
                 currentModel.GenerationConfig.HasPayload = true;
+                report?.Invoke($"DefaultPayloadType set: {currentModel.DefaultPayloadType}");
             }
 
             // Odczyt GenerateStructuralApi
@@ -92,20 +112,24 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             if (structuralApiArg.Key is not null && structuralApiArg.Value.Value is bool flag)
             {
                 currentModel.EmitStructuralHelpers = flag;
+                report?.Invoke($"GenerateStructuralApi set: {flag}");
             }
 
-     
+            // Odczyt ContinueOnCapturedContext
             var continueContextArg = fsmAttribute.NamedArguments
                 .FirstOrDefault(na => na.Key == "ContinueOnCapturedContext");
             if (continueContextArg.Key is not null && continueContextArg.Value.Value is bool continueOnContext)
             {
                 currentModel.ContinueOnCapturedContext = continueOnContext;
+                report?.Invoke($"ContinueOnCapturedContext set: {continueOnContext}");
             }
         }
 
-        // --- Podstawowa walidacja atrybutu i klasy ---
+        // === SEKCJA 5: Podstawowa walidacja atrybutu i klasy ===
+        report?.Invoke("Section 5: Basic attribute and class validation");
         Location fsmAttributeLocation = fsmAttribute?.ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation() ?? classDeclaration.Identifier.GetLocation();
         bool isPartial = classDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword));
+        report?.Invoke($"Class is partial: {isPartial}");
 
         var missingAttrCtx = new MissingStateMachineAttributeValidationContext(
             fsmAttribute != null,
@@ -113,16 +137,24 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             classSymbol.Name,
             isPartial
         );
+
+        report?.Invoke("Validating missing attribute rule");
         ProcessRuleResults(_missingStateMachineAttributeRule.Validate(missingAttrCtx), fsmAttributeLocation, ref criticalErrorOccurred);
+        report?.Invoke($"Critical error after missing attribute validation: {criticalErrorOccurred}");
 
         if (fsmAttribute == null || fsmAttribute.ConstructorArguments.Length < 2 || !isPartial)
         {
+            report?.Invoke("ERROR: Invalid attribute or not partial class - returning false");
             return false;
         }
 
-        // --- Walidacja typów State i Trigger ---
+        // === SEKCJA 6: Walidacja typów State i Trigger ===
+        report?.Invoke("Section 6: Validating State and Trigger types");
         var stateTypeArg = fsmAttribute.ConstructorArguments[0].Value as INamedTypeSymbol;
         var triggerTypeArg = fsmAttribute.ConstructorArguments[1].Value as INamedTypeSymbol;
+
+        report?.Invoke($"State type: {stateTypeArg?.ToDisplayString() ?? "null"}");
+        report?.Invoke($"Trigger type: {triggerTypeArg?.ToDisplayString() ?? "null"}");
 
         var attributeTypeValidationCtx = new AttributeTypeValidationContext(
             stateTypeArg?.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
@@ -130,17 +162,26 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             triggerTypeArg?.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
             triggerTypeArg?.TypeKind == TypeKind.Enum
         );
+
+        report?.Invoke("Validating attribute types");
         ProcessRuleResults(_invalidTypesInAttributeRule.Validate(attributeTypeValidationCtx), fsmAttributeLocation, ref criticalErrorOccurred);
+        report?.Invoke($"Critical error after type validation: {criticalErrorOccurred}");
 
         if (stateTypeArg is not { TypeKind: TypeKind.Enum } || triggerTypeArg is not { TypeKind: TypeKind.Enum })
         {
+            report?.Invoke("ERROR: State or Trigger type is not enum - returning false");
             return false;
         }
 
-        // --- Budowanie podstawowego modelu ---
+        // === SEKCJA 7: Budowanie podstawowego modelu ===
+        report?.Invoke("Section 7: Building basic model");
         currentModel.StateType = _typeHelper.BuildFullTypeName(stateTypeArg);
         currentModel.TriggerType = _typeHelper.BuildFullTypeName(triggerTypeArg);
+        report?.Invoke($"StateType: {currentModel.StateType}");
+        report?.Invoke($"TriggerType: {currentModel.TriggerType}");
 
+        report?.Invoke("Enumerating states from enum");
+        int stateCount = 0;
         foreach (var member in stateTypeArg.GetMembers().OfType<IFieldSymbol>())
         {
             if (member.IsConst)
@@ -148,53 +189,76 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                 if (!currentModel.States.ContainsKey(member.Name))
                 {
                     currentModel.States[member.Name] = new StateModel { Name = member.Name };
+                    stateCount++;
                 }
             }
         }
+        report?.Invoke($"Found {stateCount} states");
 
-        // >> ZMIENIONE WYWOŁANIE << Główna pętla parsowania atrybutów z memberów klasy
+        // === SEKCJA 8: Parsowanie atrybutów z memberów klasy ===
+        report?.Invoke("Section 8: Parsing member attributes");
+        report?.Invoke("Calling ParseMemberAttributes");
         ParseMemberAttributes(classSymbol, currentModel, stateTypeArg, triggerTypeArg, ref criticalErrorOccurred, ref isMachineAsyncMode);
+        report?.Invoke($"ParseMemberAttributes completed. Critical error: {criticalErrorOccurred}, IsAsync: {isMachineAsyncMode}");
 
-        // ========== Określenie wariantu generacji (automatyczne lub wymuszone) ==========\
+        // === SEKCJA 9: Określenie wariantu generacji ===
+        report?.Invoke("Section 9: Determining generation variant");
         var variantSelector = new VariantSelector();
+        report?.Invoke("Calling DetermineVariant");
         variantSelector.DetermineVariant(currentModel, classSymbol);
+        report?.Invoke($"Variant determined: {currentModel.GenerationConfig.Variant}");
 
-        // ========== Walidacje po ustaleniu wariantu (np. dla Force) ==========\
-        // ... cała istniejąca logika walidacji dla Force...
-        // FSM007 - Missing payload for WithPayload/Full
-        // FSM008 - Conflicting payload for WithPayload
-        // FSM009 - Various invalid configurations
-        // ...
-        // Sprawdzenie po walidacjach Force
+        // === SEKCJA 10: Walidacje po ustaleniu wariantu ===
+        report?.Invoke("Section 10: Post-variant validations");
+        // Tu powinna być logika walidacji dla Force (FSM007, FSM008, FSM009)
+        // Nie widzę jej w kodzie, ale zostawiam komentarz
+
         if (criticalErrorOccurred)
         {
+            report?.Invoke("ERROR: Critical error occurred during validations - returning false");
             return false;
         }
 
-        // ========== Walidacja osiągalności stanów (UnreachableState) ==========\
+        // === SEKCJA 11: Walidacja osiągalności stanów ===
+        report?.Invoke("Section 11: Validating state reachability");
         var allStateNames = currentModel.States.Keys.ToList();
+        report?.Invoke($"Total states count: {allStateNames.Count}");
+
         var transitionsForReachability = currentModel.Transitions
             .Where(t => !string.IsNullOrEmpty(t.ToState))
             .Select(t => new TransitionDefinition(t.FromState, t.Trigger, t.ToState!))
             .ToList();
-        string initialStateForReachability = allStateNames.FirstOrDefault() ?? string.Empty;
-        var unreachableCtx = new UnreachableStateContext(initialStateForReachability, allStateNames, transitionsForReachability);
-        ProcessRuleResults(_unreachableStateRule.Validate(unreachableCtx), classDeclaration.Identifier.GetLocation(), ref criticalErrorOccurred);
+        report?.Invoke($"Transitions count: {transitionsForReachability.Count}");
 
-        // --- Finalizacja i zwrot modelu ---
-        if (criticalErrorOccurred) return false;
+        string initialStateForReachability = allStateNames.FirstOrDefault() ?? string.Empty;
+        report?.Invoke($"Initial state: {initialStateForReachability}");
+
+        var unreachableCtx = new UnreachableStateContext(initialStateForReachability, allStateNames, transitionsForReachability);
+        report?.Invoke("Validating unreachable states");
+        ProcessRuleResults(_unreachableStateRule.Validate(unreachableCtx), classDeclaration.Identifier.GetLocation(), ref criticalErrorOccurred);
+        report?.Invoke($"Critical error after reachability validation: {criticalErrorOccurred}");
+
+        // === SEKCJA 12: Finalizacja ===
+        report?.Invoke("Section 12: Finalization");
+        if (criticalErrorOccurred)
+        {
+            report?.Invoke("ERROR: Critical error occurred - returning false");
+            return false;
+        }
 
         currentModel.GenerationConfig.IsAsync = isMachineAsyncMode ?? false;
+        report?.Invoke($"Final IsAsync: {currentModel.GenerationConfig.IsAsync}");
 
         model = currentModel;
+        report?.Invoke("=== SUCCESS: TryParse completed successfully ===");
         return true;
     }
 
-     
+
     private void ParseMemberAttributes(INamedTypeSymbol classSymbol, StateMachineModel model,
         INamedTypeSymbol stateTypeSymbol, INamedTypeSymbol triggerTypeSymbol,
         ref bool criticalErrorOccurred,
-        ref bool? isMachineAsyncMode) 
+        ref bool? isMachineAsyncMode)
     {
         ParsePayloadTypeAttributes(classSymbol, model, ref criticalErrorOccurred);
         ParseTransitionAttributes(classSymbol, model, stateTypeSymbol, triggerTypeSymbol, ref criticalErrorOccurred, ref isMachineAsyncMode);
@@ -202,13 +266,12 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         ParseStateAttributes(classSymbol, model, stateTypeSymbol, ref criticalErrorOccurred, ref isMachineAsyncMode);
     }
 
-     
+
     private void ParseTransitionAttributes(INamedTypeSymbol classSymbolContainingMethods, StateMachineModel model,
-                                           INamedTypeSymbol stateTypeSymbol, INamedTypeSymbol localTriggerTypeSymbol,
-                                           ref bool criticalErrorOccurred,
-                                           ref bool? isMachineAsyncMode) 
+                                       INamedTypeSymbol stateTypeSymbol, INamedTypeSymbol localTriggerTypeSymbol,
+                                       ref bool criticalErrorOccurred,
+                                       ref bool? isMachineAsyncMode)
     {
-        
         foreach (var methodSymbol in classSymbolContainingMethods.GetMembers().OfType<IMethodSymbol>())
         {
             var transitionAttributesData = methodSymbol.GetAttributes()
@@ -242,7 +305,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
 
                 bool isDuplicate = validationResults.Any(r => !r.IsValid && r.RuleId == RuleIdentifiers.DuplicateTransition);
 
-                var transition = new TransitionModel { FromState = fromState, Trigger = trigger, ToState = toState, IsInternal = false };
+                var transition = new TransitionModel { FromState = fromState, Trigger = trigger, ToState = toState };
 
                 if (model.TriggerPayloadTypes.TryGetValue(trigger, out var triggerPayloadType))
                 {
@@ -261,7 +324,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                     if (namedArg is { Key: GuardCallbackType, Value.Value: string guardMethodName })
                     {
                         if (!ValidateCallbackMethodSignature(classSymbolContainingMethods, guardMethodName, GuardCallbackType,
-                            attrData,  ref criticalErrorOccurred, ref isMachineAsyncMode,
+                            attrData, ref criticalErrorOccurred, ref isMachineAsyncMode,
                             out bool guardIsAsync, out var guardExpectsPayload,
                             model.GenerationConfig.HasPayload, transition.ExpectedPayloadType))
                         {
@@ -271,19 +334,27 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                         if (guardValid)
                         {
                             transition.GuardMethod = guardMethodName;
-                            transition.GuardIsAsync = guardIsAsync; 
+                            transition.GuardIsAsync = guardIsAsync;
                             transition.GuardExpectsPayload = guardExpectsPayload;
 
                             var parameterlessGuard = classSymbolContainingMethods
                                 .GetMembers(guardMethodName).OfType<IMethodSymbol>()
                                 .FirstOrDefault(m => m.Parameters.IsEmpty);
                             transition.GuardHasParameterlessOverload = parameterlessGuard != null;
+
+                            // Analyze full signature
+                            AnalyzeAndSetCallbackSignature(
+                                classSymbolContainingMethods,
+                                guardMethodName,
+                                "Guard",
+                                sig => transition.GuardSignature = sig
+                            );
                         }
                     }
                     if (namedArg is { Key: ActionCallbackType, Value.Value: string actionMethodName })
                     {
                         if (!ValidateCallbackMethodSignature(classSymbolContainingMethods, actionMethodName, ActionCallbackType,
-                            attrData,  ref criticalErrorOccurred, ref isMachineAsyncMode,
+                            attrData, ref criticalErrorOccurred, ref isMachineAsyncMode,
                             out bool actionIsAsync, out var actionExpectsPayload,
                             model.GenerationConfig.HasPayload, transition.ExpectedPayloadType))
                         {
@@ -292,13 +363,21 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                         if (actionValid)
                         {
                             transition.ActionMethod = actionMethodName;
-                            transition.ActionIsAsync = actionIsAsync; 
+                            transition.ActionIsAsync = actionIsAsync;
                             transition.ActionExpectsPayload = actionExpectsPayload;
 
                             var parameterlessAction = classSymbolContainingMethods
                                 .GetMembers(actionMethodName).OfType<IMethodSymbol>()
                                 .FirstOrDefault(m => m.Parameters.IsEmpty);
                             transition.ActionHasParameterlessOverload = parameterlessAction != null;
+
+                            // Analyze full signature
+                            AnalyzeAndSetCallbackSignature(
+                                classSymbolContainingMethods,
+                                actionMethodName,
+                                "Action",
+                                sig => transition.ActionSignature = sig
+                            );
                         }
                     }
                 }
@@ -310,14 +389,12 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         }
     }
 
-     
+
     private void ParseInternalTransitionAttributes(INamedTypeSymbol classSymbolContainingMethods, StateMachineModel model,
-                                                   INamedTypeSymbol stateTypeSymbol, INamedTypeSymbol localTriggerTypeSymbol,
-                                                   ref bool criticalErrorOccurred,
-                                                   ref bool? isMachineAsyncMode) 
+                                                INamedTypeSymbol stateTypeSymbol, INamedTypeSymbol localTriggerTypeSymbol,
+                                                ref bool criticalErrorOccurred,
+                                                ref bool? isMachineAsyncMode)
     {
-
-
         foreach (var methodSymbol in classSymbolContainingMethods.GetMembers().OfType<IMethodSymbol>())
         {
             var internalTransitionAttributesData = methodSymbol.GetAttributes()
@@ -349,7 +426,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
 
                 bool isDuplicate = validationResults.Any(r => !r.IsValid && r.RuleId == RuleIdentifiers.DuplicateTransition);
 
-                var transition = new TransitionModel { FromState = state, Trigger = trigger, ToState = state, IsInternal = true };
+                var transition = new TransitionModel { FromState = state, Trigger = trigger, ToState = state };
 
                 if (model.TriggerPayloadTypes.TryGetValue(trigger, out var triggerPayloadType))
                 {
@@ -360,22 +437,29 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                     transition.ExpectedPayloadType = model.DefaultPayloadType;
                 }
 
-             
                 bool actionValid = ValidateCallbackMethodSignature(classSymbolContainingMethods, actionMethodNameFromCtor,
-                    ActionCtorCallbackType, attrData,  ref criticalErrorOccurred, ref isMachineAsyncMode,
+                    ActionCtorCallbackType, attrData, ref criticalErrorOccurred, ref isMachineAsyncMode,
                     out bool actionIsAsync, out var actionExpectsPayload,
                     model.GenerationConfig.HasPayload, transition.ExpectedPayloadType);
 
                 if (actionValid)
                 {
                     transition.ActionMethod = actionMethodNameFromCtor;
-                    transition.ActionIsAsync = actionIsAsync; 
+                    transition.ActionIsAsync = actionIsAsync;
                     transition.ActionExpectsPayload = actionExpectsPayload;
 
                     var parameterlessAction = classSymbolContainingMethods
                         .GetMembers(actionMethodNameFromCtor).OfType<IMethodSymbol>()
                         .FirstOrDefault(m => m.Parameters.IsEmpty);
                     transition.ActionHasParameterlessOverload = parameterlessAction != null;
+
+                    // Analyze full signature
+                    AnalyzeAndSetCallbackSignature(
+                        classSymbolContainingMethods,
+                        actionMethodNameFromCtor,
+                        "Action",
+                        sig => transition.ActionSignature = sig
+                    );
                 }
 
                 bool guardValid = true;
@@ -383,9 +467,8 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                 {
                     if (namedArg.Key == GuardCallbackType && namedArg.Value.Value is string guardMethodName)
                     {
-                      
                         if (!ValidateCallbackMethodSignature(classSymbolContainingMethods, guardMethodName, GuardCallbackType,
-                            attrData,  ref criticalErrorOccurred, ref isMachineAsyncMode,
+                            attrData, ref criticalErrorOccurred, ref isMachineAsyncMode,
                             out bool guardIsAsync, out var guardExpectsPayload,
                             model.GenerationConfig.HasPayload, transition.ExpectedPayloadType))
                         {
@@ -394,13 +477,21 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                         if (guardValid)
                         {
                             transition.GuardMethod = guardMethodName;
-                            transition.GuardIsAsync = guardIsAsync; 
+                            transition.GuardIsAsync = guardIsAsync;
                             transition.GuardExpectsPayload = guardExpectsPayload;
 
                             var parameterlessGuard = classSymbolContainingMethods
                                 .GetMembers(guardMethodName).OfType<IMethodSymbol>()
                                 .FirstOrDefault(m => m.Parameters.IsEmpty);
                             transition.GuardHasParameterlessOverload = parameterlessGuard != null;
+
+                            // Analyze full signature
+                            AnalyzeAndSetCallbackSignature(
+                                classSymbolContainingMethods,
+                                guardMethodName,
+                                "Guard",
+                                sig => transition.GuardSignature = sig
+                            );
                         }
                     }
                 }
@@ -412,11 +503,11 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         }
     }
     private void ParseStateAttributes(
-     INamedTypeSymbol classSymbolContainingMethods,
-     StateMachineModel model,
-     INamedTypeSymbol stateTypeSymbol,
-     ref bool criticalErrorOccurred,
-     ref bool? isMachineAsyncMode)
+      INamedTypeSymbol classSymbolContainingMethods,
+      StateMachineModel model,
+      INamedTypeSymbol stateTypeSymbol,
+      ref bool criticalErrorOccurred,
+      ref bool? isMachineAsyncMode)
     {
         // Potrzebne tylko do walidacji (brak zmian)
         var voidType = compilation.GetSpecialType(System_Void);
@@ -459,7 +550,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                     // ---------- OnEntry ----------
                     if (namedArg is { Key: OnEntryCallbackType, Value.Value: string onEntryMethodName })
                     {
-                        string? expectedPayloadType = GetExpectedPayloadForStateCallback(model);
+                        string expectedPayloadType = GetExpectedPayloadForStateCallback(model);
 
                         if (ValidateCallbackMethodSignature(classSymbolContainingMethods,
                                                             onEntryMethodName,
@@ -476,20 +567,27 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                             stateModel.OnEntryIsAsync = onEntryIsAsync;
                             stateModel.OnEntryExpectsPayload = onEntryExpectsPayload;
 
-                      
                             var parameterlessOverload = classSymbolContainingMethods
                                 .GetMembers(onEntryMethodName)
                                 .OfType<IMethodSymbol>()
                                 .FirstOrDefault(m => m.Parameters.IsEmpty);
 
                             stateModel.OnEntryHasParameterlessOverload = parameterlessOverload != null;
+
+                            // Analyze full signature
+                            AnalyzeAndSetCallbackSignature(
+                                classSymbolContainingMethods,
+                                onEntryMethodName,
+                                "OnEntry",
+                                sig => stateModel.OnEntrySignature = sig
+                            );
                         }
                     }
 
                     // ---------- OnExit ----------
                     if (namedArg is { Key: OnExitCallbackType, Value.Value: string onExitMethodName })
                     {
-                        string? expectedPayloadType = GetExpectedPayloadForStateCallback(model);
+                        string expectedPayloadType = GetExpectedPayloadForStateCallback(model);
 
                         if (ValidateCallbackMethodSignature(classSymbolContainingMethods,
                                                             onExitMethodName,
@@ -506,13 +604,20 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                             stateModel.OnExitIsAsync = onExitIsAsync;
                             stateModel.OnExitExpectsPayload = onExitExpectsPayload;
 
-                         
                             var parameterlessOverload = classSymbolContainingMethods
                                 .GetMembers(onExitMethodName)
                                 .OfType<IMethodSymbol>()
                                 .FirstOrDefault(m => m.Parameters.IsEmpty);
 
                             stateModel.OnExitHasParameterlessOverload = parameterlessOverload != null;
+
+                            // Analyze full signature
+                            AnalyzeAndSetCallbackSignature(
+                                classSymbolContainingMethods,
+                                onExitMethodName,
+                                "OnExit",
+                                sig => stateModel.OnExitSignature = sig
+                            );
                         }
                     }
                 }
@@ -907,4 +1012,31 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             model.DefaultPayloadType is not null ||
             model.TriggerPayloadTypes.Count > 0;
     }
+
+    private void AnalyzeAndSetCallbackSignature(
+        INamedTypeSymbol classSymbol,
+        string callbackName,
+        string callbackType,
+        Action<CallbackSignatureInfo> setSigAction)
+    {
+        // Initialize analyzers if not already done
+        if (_callbackAnalyzer == null)
+        {
+            var typeHelper = new TypeSystemHelper();
+            var asyncAnalyzer = new AsyncSignatureAnalyzer(typeHelper);
+            _callbackAnalyzer = new CallbackSignatureAnalyzer(typeHelper, asyncAnalyzer);
+        }
+
+        var signature = _callbackAnalyzer.AnalyzeCallback(
+            classSymbol,
+            callbackName,
+            callbackType,
+            compilation);
+
+        setSigAction(signature);
+    }
+
+    // Add this field to your parser class:
+    private CallbackSignatureAnalyzer _callbackAnalyzer;
+
 }

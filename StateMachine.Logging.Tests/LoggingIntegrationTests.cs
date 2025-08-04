@@ -43,19 +43,36 @@ namespace StateMachine.Logging.Tests
         }
 
         [Fact]
-        public void InitialStateOnEntry_LoggedDuringConstruction()
+        public void InitialStateOnEntry_LoggedDuringConstruction_Machine_with_Actions()
         {
             // Arrange
             LoggedMessages.Clear(); // Clear any previous logs
 
             // Act - OnEntry for initial state should be called in constructor
-            var machine = new InitialOnEntryStateMachine(
+            var machine = new InitialOnEntryStateMachineActions(
                 TestInitialState.Ready,
-                GetLogger < InitialOnEntryStateMachine >());
+                GetLogger < InitialOnEntryStateMachineActions >());
 
             // Assert
             VerifyLogCount(1);
             VerifyLogMessage(LogLevel.Debug, "OnEntryExecuted", "OnReadyEntry", "Ready");
+        }
+
+        [Fact]
+        public void InitialStateOnEntry_LoggedDuringConstruction_Machine_with_Payload()
+        {
+            // Arrange
+            LoggedMessages.Clear();
+
+            // Act
+            var machine = new FullMultiPayloadMachine(
+                OrderStatePayload.New,
+                null,
+                GetLogger<FullMultiPayloadMachine>());
+
+            // Assert
+            VerifyLogCount(1);
+            VerifyLogMessage(LogLevel.Debug, "OnEntryExecuted", "OnNewEntry", "New");
         }
 
         [Fact]
@@ -224,11 +241,62 @@ namespace StateMachine.Logging.Tests
 
     [StateMachine(typeof(TestInitialState), typeof(TestInitialTrigger))]
     [GenerationMode(GenerationMode.Basic, Force = true)]
-    public partial class InitialOnEntryStateMachine
+    public partial class InitialOnEntryStateMachineActions
     {
         [State(TestInitialState.Ready, OnEntry = nameof(OnReadyEntry))]
         private void ConfigureReady() { }
 
         private void OnReadyEntry() { }
     }
+
+    public enum OrderStatePayload { New, Processing, Paid, Shipped, Delivered, Cancelled }
+    public enum OrderTriggerPayload { Process, Pay, Ship, Deliver, Cancel, Refund }
+
+    [StateMachine(typeof(OrderStatePayload), typeof(OrderTriggerPayload))]
+    [PayloadType(OrderTriggerPayload.Process, typeof(OrderPayload))]
+    [PayloadType(OrderTriggerPayload.Pay, typeof(PaymentPayload))]
+    [PayloadType(OrderTriggerPayload.Ship, typeof(ShippingPayload))]
+    [GenerationMode(GenerationMode.Full, Force = true)]
+    public partial class FullMultiPayloadMachine
+    {
+        // Konfiguracja stanu New z metodą OnEntry
+        [State(OrderStatePayload.New, OnEntry = nameof(OnNewEntry))]
+        private void ConfigureNew() { }
+
+        // Definicje przejść
+        [Transition(OrderStatePayload.New, OrderTriggerPayload.Process, OrderStatePayload.Processing, Action = nameof(HandleOrder))]
+        [Transition(OrderStatePayload.Processing, OrderTriggerPayload.Pay, OrderStatePayload.Paid, Action = nameof(HandlePayment))]
+        [Transition(OrderStatePayload.Paid, OrderTriggerPayload.Ship, OrderStatePayload.Shipped, Action = nameof(HandleShipping))]
+        private void Configure() { }
+
+        // Metoda OnEntry dla stanu New
+        private void OnNewEntry() { }
+
+        // Metody akcji
+        private void HandleOrder(OrderPayload order) { }
+        private void HandlePayment(PaymentPayload payment) { }
+        private void HandleShipping(ShippingPayload shipping) { }
+    }
+
+    // Klasy payload
+    public class OrderPayload
+    {
+        public int OrderId { get; set; }
+        public decimal Amount { get; set; }
+        public string? TrackingNumber { get; set; }
+    }
+
+    public class PaymentPayload : OrderPayload
+    {
+        public string PaymentMethod { get; set; } = "";
+        public DateTime PaymentDate { get; set; }
+    }
+
+    public class ShippingPayload : OrderPayload
+    {
+        public string Carrier { get; set; } = "";
+        public DateTime EstimatedDelivery { get; set; }
+    }
+
+
 }
