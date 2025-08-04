@@ -1,5 +1,6 @@
-﻿using System.Linq;
+﻿using Generator.Helpers;
 using Generator.Model;
+using System.Linq;
 using static Generator.Strings;
 
 namespace Generator.SourceGenerators;
@@ -73,9 +74,6 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
         }
     }
 
-    /// <summary>
-    /// Generuje asynchroniczną wersję GetPermittedTriggers.
-    /// </summary>
     private void WriteAsyncGetPermittedTriggersMethod(string stateTypeForUsage, string triggerTypeForUsage)
     {
         Sb.WriteSummary("Asynchronously gets the list of triggers that can be fired in the current state (runtime evaluation including guards)");
@@ -99,7 +97,7 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
                         // Check if any transition has a guard
                         var hasAsyncGuards = stateGroup.Any(t => !string.IsNullOrEmpty(t.GuardMethod) && t.GuardIsAsync);
 
-                        if (!hasAsyncGuards && !stateGroup.Any(t => !string.IsNullOrEmpty(t.GuardMethod)))
+                        if (!hasAsyncGuards && stateGroup.All(t => string.IsNullOrEmpty(t.GuardMethod)))
                         {
                             // No guards - return static array
                             var triggers = stateGroup.Select(t => t.Trigger).Distinct().ToList();
@@ -120,33 +118,45 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
 
                             foreach (var transition in stateGroup)
                             {
-                                if (!string.IsNullOrEmpty(transition.GuardMethod))
+                                // ✅ Dodaj blok dla każdej iteracji
+                                using (Sb.Block(""))
                                 {
-                                    if (transition.GuardIsAsync)
+                                    if (!string.IsNullOrEmpty(transition.GuardMethod))
                                     {
-                                        Sb.AppendLine("try");
-                                        using (Sb.Block(""))
+                                        if (transition.GuardIsAsync)
                                         {
-                                            Sb.AppendLine($"if (await {transition.GuardMethod}(){GetConfigureAwait()})");
-                                            using (Sb.Block(""))
+                                            // Używamy helpera z właściwymi parametrami
+                                            GuardGenerationHelper.EmitGuardCheck(
+                                                Sb,
+                                                transition,
+                                                "canFire",
+                                                "null",
+                                                IsAsyncMachine,
+                                                wrapInTryCatch: true,
+                                                Model.ContinueOnCapturedContext,
+                                                handleResultAfterTry: true,  // Zmienna będzie zadeklarowana przed try
+                                                cancellationTokenVar: GetCtVar(),
+                                                treatCancellationAsFailure: Model.GenerationConfig.TreatCancellationAsFailure
+                                            );
+
+                                            using (Sb.Block("if (canFire)"))
                                             {
                                                 Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
                                             }
                                         }
-                                        Sb.AppendLine("catch { }");
+                                        else
+                                        {
+                                            WriteGuardCall(transition, "canFire", "null", throwOnException: false);
+                                            using (Sb.Block("if (canFire)"))
+                                            {
+                                                Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+                                            }
+                                        }
                                     }
                                     else
                                     {
-                                        WriteGuardCall(transition, "canFire", "null", throwOnException: false);
-                                        using (Sb.Block("if (canFire)"))
-                                        {
-                                            Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
-                                        }
+                                        Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
                                     }
-                                }
-                                else
-                                {
-                                    Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
                                 }
                             }
 
@@ -218,28 +228,30 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
                             foreach (var transition in transitionsFromThisState)
                             {
                                 Sb.AppendLine($"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}:");
-                                using (Sb.Indent())
+                                using (Sb.Block(""))  // ✅ ZMIANA: Block zamiast Indent - każdy case ma własny scope
                                 {
                                     if (!string.IsNullOrEmpty(transition.GuardMethod))
                                     {
                                         if (transition.GuardIsAsync)
                                         {
-                                            Sb.AppendLine("try");
-                                            using (Sb.Block(""))
-                                            {
-                                                Sb.AppendLine($"return await {transition.GuardMethod}(){GetConfigureAwait()};");
-                                            }
-                                            Sb.AppendLine("catch");
-                                            using (Sb.Block(""))
-                                            {
-                                                Sb.AppendLine("return false;");
-                                            }
+                                            GuardGenerationHelper.EmitGuardCheck(
+                                                Sb,
+                                                transition,
+                                                "guardResult",
+                                                "null",
+                                                IsAsyncMachine,
+                                                wrapInTryCatch: true,
+                                                Model.ContinueOnCapturedContext,
+                                                handleResultAfterTry: true,
+                                                cancellationTokenVar: GetCtVar(),
+                                                treatCancellationAsFailure: Model.GenerationConfig.TreatCancellationAsFailure
+                                            );
                                         }
                                         else
                                         {
                                             WriteGuardCall(transition, "guardResult", "null", throwOnException: false);
-                                            Sb.AppendLine("return guardResult;");
                                         }
+                                        Sb.AppendLine("return guardResult;");
                                     }
                                     else
                                     {
@@ -290,25 +302,45 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
         Sb.AppendLine(InitialOnEntryComment);
         Sb.AppendLine("// Note: Constructor cannot be async, so initial OnEntry is fire-and-forget");
 
-  
-        Sb.AppendLine("_ = Task.Run(async () => {");
-        using (Sb.Indent())
+        AsyncGenerationHelper.EmitFireAndForgetAsyncCall(Sb, sb =>
         {
-            using (Sb.Block("switch (initialState)"))
+            using (sb.Block("switch (initialState)"))
             {
                 foreach (var stateEntry in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
                 {
-                    Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
-                    using (Sb.Indent())
+                    sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                    using (sb.Indent())
                     {
-                        // Bez try-catch w ctorze – tak jak wcześniej
-                        WriteCallbackInvocation(stateEntry.OnEntryMethod, stateEntry.OnEntryIsAsync);
-                        Sb.AppendLine("break;");
+                        // Check if OnEntry has token overload
+                        var sig = stateEntry.OnEntrySignature;
+
+                        // If it has token-only or payload+token overload, pass CancellationToken.None
+                        if (sig.HasTokenOnly || (sig.HasPayloadAndToken && !sig.HasParameterless))
+                        {
+                            AsyncGenerationHelper.EmitMethodInvocation(
+                                sb,
+                                stateEntry.OnEntryMethod,
+                                stateEntry.OnEntryIsAsync,
+                                callerIsAsync: true,
+                                Model.ContinueOnCapturedContext,
+                                "System.Threading.CancellationToken.None"
+                            );
+                        }
+                        else
+                        {
+                            AsyncGenerationHelper.EmitMethodInvocation(
+                                sb,
+                                stateEntry.OnEntryMethod,
+                                stateEntry.OnEntryIsAsync,
+                                callerIsAsync: true,
+                                Model.ContinueOnCapturedContext
+                            );
+                        }
+                        sb.AppendLine("break;");
                     }
                 }
             }
-        }
-        Sb.AppendLine("});"); // domknięcie Task.Run
+        });
     }
 
     private void WriteTryFireMethod(string stateTypeForUsage, string triggerTypeForUsage)
@@ -362,23 +394,6 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
     {
         var config = Model.GenerationConfig;
         return config.Variant != GenerationVariant.Pure && config.HasOnEntryExit;
-    }
-
-    protected override void WriteInitialOnEntryDispatch(string stateTypeForUsage)
-    {
-        Sb.AppendLine(InitialOnEntryComment);
-        using (Sb.Block("switch (initialState)"))
-        {
-            foreach (var stateEntry in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
-            {
-                Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
-                using (Sb.Indent())
-                {
-                    Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
-                    Sb.AppendLine("break;");
-                }
-            }
-        }
     }
 
     protected override void WriteTransitionLogic(
@@ -502,47 +517,29 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
 
         Sb.AppendLine($"goto {EndOfTryFireLabel};");
     }
-    /// <summary>
-    /// Generuje guard check z obsługą async.
-    /// </summary>
     private void WriteAsyncAwareGuardCheck(TransitionModel transition, string stateTypeForUsage, string triggerTypeForUsage)
     {
         if (string.IsNullOrEmpty(transition.GuardMethod)) return;
 
-        Sb.AppendLine("try");
-        using (Sb.Block(""))
+        // Używamy helpera z flagą handleResultAfterTry=true
+        GuardGenerationHelper.EmitGuardCheck(
+            Sb,
+            transition,
+            GuardResultVar,
+            "null", // Core variant nie ma payloadu
+            IsAsyncMachine,
+            wrapInTryCatch: true,
+            Model.ContinueOnCapturedContext,
+            handleResultAfterTry: true, // <-- WAŻNE: to sprawi że zmienna będzie zadeklarowana przed try
+            cancellationTokenVar: GetCtVar(),
+            treatCancellationAsFailure: Model.GenerationConfig.TreatCancellationAsFailure
+        );
+
+        // Hook: After guard evaluated
+        WriteAfterGuardEvaluatedHook(transition, GuardResultVar, stateTypeForUsage, triggerTypeForUsage);
+
+        using (Sb.Block($"if (!{GuardResultVar})"))
         {
-            if (IsAsyncMachine && transition.GuardIsAsync)
-            {
-                Sb.AppendLine($"var {GuardResultVar} = {GetAwaitKeyword()}{transition.GuardMethod}(){GetConfigureAwait()};");
-            }
-            else
-            {
-                Sb.AppendLine($"var {GuardResultVar} = {transition.GuardMethod}();");
-            }
-
-            // Hook: After guard evaluated
-            WriteAfterGuardEvaluatedHook(transition, GuardResultVar, stateTypeForUsage, triggerTypeForUsage);
-
-            using (Sb.Block($"if (!{GuardResultVar})"))
-            {
-                WriteLogStatement("Warning",
-                    $"GuardFailed(_logger, _instanceId, \"{transition.GuardMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
-                WriteLogStatement("Warning",
-                    $"TransitionFailed(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\");");
-
-                Sb.AppendLine($"{SuccessVar} = false;");
-
-                // Hook: After failed transition
-                WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-
-                Sb.AppendLine($"goto {EndOfTryFireLabel};");
-            }
-        }
-        Sb.AppendLine("catch (Exception ex)");
-        using (Sb.Block(""))
-        {
-            // Traktujemy wyjątek w guard jako false (guard nie przeszedł)
             WriteLogStatement("Warning",
                 $"GuardFailed(_logger, _instanceId, \"{transition.GuardMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
             WriteLogStatement("Warning",

@@ -1,5 +1,4 @@
 ﻿using Generator.DependencyInjection;
-using Generator.FeatureDetection;
 using Generator.Helpers;
 using Generator.Model;
 using Generator.Parsers;
@@ -149,201 +148,341 @@ public class StateMachineGenerator : IIncrementalGenerator
          ImmutableArray<ClassDeclarationSyntax> Classes
      ) data)
     {
-        // ──────────────────────────────────────────────────────────────
-        // Rozbij krotkę wejściową na składniki
-        // ──────────────────────────────────────────────────────────────
-        var (compAndOpts, classes) = data;
-        var (compilation, optionsProvider) = compAndOpts;
-
-        // ──────────────────────────────────────────────────────────────
-        // Nic do roboty, jeśli nie ma klas
-        // ──────────────────────────────────────────────────────────────
-        if (classes.IsDefaultOrEmpty)
-            return;
-
-        // ──────────────────────────────────────────────────────────────
-        // Przygotuj parser i selector wariantów
-        // ──────────────────────────────────────────────────────────────
-        var parser = new StateMachineParser(compilation, context);
-        var variantSelector = new VariantSelector();
-
-        // ──────────────────────────────────────────────────────────────
-        // Iteracja po wszystkich klasach z [StateMachine]
-        // ──────────────────────────────────────────────────────────────
-        foreach (var classDeclaration in classes)
+        try
         {
-            if (context.CancellationToken.IsCancellationRequested)
-                return;
-
-            // ──────────────────────────────────────────────────────────
-            // Spróbuj sparsować definicję state machine
-            // ──────────────────────────────────────────────────────────
-            if (!parser.TryParse(classDeclaration, out StateMachineModel? model))
-            {
-                // Parser już zgłosił diagnostykę; pomiń
-                continue;
-            }
-
-            // ──────────────────────────────────────────────────────────
-            // Pobierz symbol klasy i skonfiguruj model
-            // ──────────────────────────────────────────────────────────
-            var semanticModel = compilation.GetSemanticModel(classDeclaration.SyntaxTree);
-            if (semanticModel.GetDeclaredSymbol(classDeclaration) is not INamedTypeSymbol classSymbol)
-            {
-                // Nie powinno się zdarzyć – bezpieczeństwo
-                continue;
-            }
-
-            // Wybór wariantu generatora (dla maszyn sync)
-            variantSelector.DetermineVariant(model!, classSymbol);
-
-
-            // W metodzie Execute, zaktualizuj sekcję Feature Detection:
-
-            // ──────────────────────────────────────────────────────────
-            // Feature Detection i Walidacja (Milestone 0)
-            // ──────────────────────────────────────────────────────────
-            var detector = new FeatureDetector();
-            var features = detector.Detect(model!);
-
-            // Loguj wykryte cechy (pomocne przy debugowaniu)
             context.ReportDiagnostic(Diagnostic.Create(
                 new DiagnosticDescriptor(
-                    "FSM999",
-                    "Feature Detection",
-                    $"Detected features: {features.GetDescription()}",
-                    "Debug",
-                    DiagnosticSeverity.Info,
-                    isEnabledByDefault: true),
-                Location.None));
+                    "FSMDEBUG",
+                    "Debugging Generator",
+                    "🧪 Generator executed on {0}",
+                    "FastFSM",
+                    DiagnosticSeverity.Warning,
+                    true),
+                Location.None,
+                DateTime.Now.ToString("T")));
 
-            // Waliduj czy wybrany wariant jest zgodny z wykrytymi cechami
-            var matcher = new VariantMatcher();
-            var validation = matcher.ValidateVariant(features, model!.Variant, model!.GenerationConfig.IsForced);
+            // ──────────────────────────────────────────────────────────────
+            // Rozbij krotkę wejściową na składniki
+            // ──────────────────────────────────────────────────────────────
+            var (compAndOpts, classes) = data;
+            var (compilation, optionsProvider) = compAndOpts;
 
-            if (validation.HasIssues())
-            {
-                // Jeśli to tylko ostrzeżenia (Force = true), zgłoś je ale kontynuuj
-                if (validation.IsWarningOnly)
-                {
-                    foreach (var warning in validation.Warnings)
-                    {
-                        context.ReportDiagnostic(Diagnostic.Create(
-                            new DiagnosticDescriptor(
-                                "FSM997",
-                                "Variant Mismatch Warning",
-                                $"Forced variant '{model!.Variant}' may not work correctly: {warning}",
-                                "Generation",
-                                DiagnosticSeverity.Warning,
-                                isEnabledByDefault: true),
-                            classDeclaration.GetLocation()));
-                    }
-                    // Kontynuuj generację mimo ostrzeżeń
-                }
-                else if (!validation.IsValid)
-                {
-                    // Zgłoś błąd jeśli wariant nie pasuje do cech i nie jest wymuszony
-                    context.ReportDiagnostic(Diagnostic.Create(
-                        new DiagnosticDescriptor(
-                            "FSM998",
-                            "Variant Mismatch",
-                            $"Selected variant '{model!.Variant}' is incompatible with detected features: {validation.GetErrorMessage()}",
-                            "Generation",
-                            DiagnosticSeverity.Error,
-                            isEnabledByDefault: true),
-                        classDeclaration.GetLocation()));
-
-                    continue; // Pomiń generację tylko dla błędów
-                }
-            }
-
-            // Dodaj też informację o sugerowanym wariancie
-            var suggestedVariant = features.GetSuggestedVariant();
-            if (suggestedVariant != model!.Variant && !model!.GenerationConfig.IsForced)
+            // ──────────────────────────────────────────────────────────────
+            // Nic do roboty, jeśli nie ma klas
+            // ──────────────────────────────────────────────────────────────
+            if (classes.IsDefaultOrEmpty)
             {
                 context.ReportDiagnostic(Diagnostic.Create(
                     new DiagnosticDescriptor(
-                        "FSM996",
-                        "Variant Suggestion",
-                        $"Based on detected features, consider using variant '{suggestedVariant}' instead of '{model!.Variant}'",
-                        "Generation",
-                        DiagnosticSeverity.Info,
-                        isEnabledByDefault: true),
-                    classDeclaration.GetLocation()));
+                        "FSMDEBUG",
+                        "Debugging Generator",
+                        "🧪 No classes to process",
+                        "FastFSM",
+                        DiagnosticSeverity.Warning,
+                        true),
+                    Location.None));
+                return;
             }
 
+            context.ReportDiagnostic(Diagnostic.Create(
+                new DiagnosticDescriptor(
+                    "FSMDEBUG",
+                    "Debugging Generator",
+                    $"🧪 Processing {classes.Length} classes",
+                    "FastFSM",
+                    DiagnosticSeverity.Warning,
+                    true),
+                Location.None));
 
+            // ──────────────────────────────────────────────────────────────
+            // Przygotuj parser i selector wariantów
+            // ──────────────────────────────────────────────────────────────
+            StateMachineParser parser = null;
+            VariantSelector variantSelector = null;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            // Ustaw flagi dla DI i logowania
-            model!.GenerateLogging = BuildProperties.GetGenerateLogging(
-                optionsProvider.GlobalOptions);
-
-            model!.GenerateDependencyInjection = BuildProperties.GetGenerateDI(
-                optionsProvider.GlobalOptions);
-
-            // ──────────────────────────────────────────────────────────
-            // 1. Wybierz i uruchom odpowiedni generator kodu
-            // ──────────────────────────────────────────────────────────
-            StateMachineCodeGenerator generator;
-
-
-            // Istniejąca logika dla maszyn synchronicznych
-            generator = model.Variant switch
+            try
             {
-                GenerationVariant.Full => new FullVariantGenerator(model),
-                GenerationVariant.WithPayload => new PayloadVariantGenerator(model),
-                GenerationVariant.WithExtensions => new ExtensionsVariantGenerator(model),
-                _ => new CoreVariantGenerator(model) // Pure / Basic
-            };
+                parser = new StateMachineParser(compilation, context);
+                variantSelector = new VariantSelector();
 
-
-            var source = generator.Generate();
-            context.AddSource(
-                $"{model.ClassName}.Generated.cs",
-                SourceText.From(source, Encoding.UTF8));
-
-            // ──────────────────────────────────────────────────────────
-            // 2. Generuj kod dla Dependency Injection (jeśli włączone)
-            // ──────────────────────────────────────────────────────────
-            if (model.GenerateDependencyInjection)
+                context.ReportDiagnostic(Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        "FSMDEBUG",
+                        "Debugging Generator",
+                        "🧪 Parser and variant selector created",
+                        "FastFSM",
+                        DiagnosticSeverity.Warning,
+                        true),
+                    Location.None));
+            }
+            catch (Exception ex)
             {
-                // TODO: Ta część będzie wymagała modyfikacji, aby poprawnie
-                // generować fabryki dla maszyn asynchronicznych.
-                // Na razie pozostaje bez zmian.
-                var factoryModel = FactoryGenerationModelBuilder.Create(model);
-                var factoryGenerator = new FactoryCodeGenerator(factoryModel);
-                var factorySource = factoryGenerator.Generate();
-                context.AddSource(
-                    $"{model.ClassName}.Factory.g.cs",
-                    SourceText.From(factorySource, Encoding.UTF8));
+                context.ReportDiagnostic(Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        "FSMERROR",
+                        "Generator Error",
+                        $"🔥 Failed to create parser: {ex.GetType().Name}: {ex.Message}",
+                        "FastFSM",
+                        DiagnosticSeverity.Warning,
+                        true),
+                    Location.None));
+                return;
             }
 
-            // ──────────────────────────────────────────────────────────
-            // 3. Generuj klasę helperów logowania (jeśli włączone)
-            // ──────────────────────────────────────────────────────────
-            if (model.GenerateLogging)
+            // ──────────────────────────────────────────────────────────────
+            // Iteracja po wszystkich klasach z [StateMachine]
+            // ──────────────────────────────────────────────────────────────
+            int classIndex = 0;
+            foreach (var classDeclaration in classes)
             {
-                var loggingGenerator = new Generator.Log.LoggingClassGenerator(model.ClassName, model.Namespace);
-                var loggingSource = loggingGenerator.Generate();
-                context.AddSource(
-                    $"{model.ClassName}Log.g.cs",
-                    SourceText.From(loggingSource, Encoding.UTF8));
+                if (context.CancellationToken.IsCancellationRequested)
+                    return;
+
+                classIndex++;
+                string className = classDeclaration.Identifier.Text;
+
+                context.ReportDiagnostic(Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        "FSMDEBUG",
+                        "Debugging Generator",
+                        $"🧪 Processing class {classIndex}/{classes.Length}: {className}",
+                        "FastFSM",
+                        DiagnosticSeverity.Warning,
+                        true),
+                    Location.None));
+
+                // ──────────────────────────────────────────────────────────
+                // Spróbuj sparsować definicję state machine
+                // ──────────────────────────────────────────────────────────
+                void reportParsingError(string message)
+                {
+                    var diagnostic = Diagnostic.Create(
+                        new DiagnosticDescriptor(
+                            id: "FSM002",
+                            title: "StateMachine parsing error",
+                            messageFormat: $"[{className}] {message}",
+                            category: "FastFSM.Generator",
+                            DiagnosticSeverity.Warning,
+                            isEnabledByDefault: true),
+                        classDeclaration.GetLocation());
+                    context.ReportDiagnostic(diagnostic);
+                }
+
+                StateMachineModel model = null;
+                try
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        new DiagnosticDescriptor(
+                            "FSMDEBUG",
+                            "Debugging Generator",
+                            $"🧪 Starting TryParse for {className}",
+                            "FastFSM",
+                            DiagnosticSeverity.Warning,
+                            true),
+                        Location.None));
+
+                    bool parseResult = parser.TryParse(classDeclaration, out model, reportParsingError);
+
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        new DiagnosticDescriptor(
+                            "FSMDEBUG",
+                            "Debugging Generator",
+                            $"🧪 TryParse completed for {className}, result: {parseResult}",
+                            "FastFSM",
+                            DiagnosticSeverity.Warning,
+                            true),
+                        Location.None));
+
+                    if (!parseResult)
+                    {
+                        var diagnostic = Diagnostic.Create(
+                            new DiagnosticDescriptor(
+                                id: "FSM001",
+                                title: "StateMachine parsing failed",
+                                messageFormat: "Could not parse class '{0}' as a valid state machine.",
+                                category: "FastFSM.Generator",
+                                DiagnosticSeverity.Warning,
+                                isEnabledByDefault: true),
+                            classDeclaration.GetLocation(),
+                            className);
+
+                        context.ReportDiagnostic(diagnostic);
+                        continue;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        new DiagnosticDescriptor(
+                            "FSMERROR",
+                            "Generator Error",
+                            $"🔥 Exception in TryParse for {className}: {ex.GetType().Name}: {ex.Message}\nStackTrace: {ex.StackTrace}",
+                            "FastFSM",
+                            DiagnosticSeverity.Warning,
+                            true),
+                        Location.None));
+                    continue;
+                }
+
+                context.ReportDiagnostic(Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        "FSMDEBUG",
+                        "Debugging Generator",
+                        $"🧪 Parsing done for {className}",
+                        "FastFSM",
+                        DiagnosticSeverity.Warning,
+                        true),
+                    Location.None));
+
+                try
+                {
+                    // ──────────────────────────────────────────────────────────
+                    // Pobierz symbol klasy i skonfiguruj model
+                    // ──────────────────────────────────────────────────────────
+                    var semanticModel = compilation.GetSemanticModel(classDeclaration.SyntaxTree);
+                    if (semanticModel.GetDeclaredSymbol(classDeclaration) is not INamedTypeSymbol classSymbol)
+                    {
+                        context.ReportDiagnostic(Diagnostic.Create(
+                            new DiagnosticDescriptor(
+                                "FSMERROR",
+                                "Generator Error",
+                                $"🔥 Could not get class symbol for {className}",
+                                "FastFSM",
+                                DiagnosticSeverity.Warning,
+                                true),
+                            Location.None));
+                        continue;
+                    }
+
+                    // Wybór wariantu generatora (dla maszyn sync)
+                    variantSelector.DetermineVariant(model!, classSymbol);
+
+                    // Ustaw flagi dla DI i logowania
+                    model!.GenerateLogging = BuildProperties.GetGenerateLogging(
+                        optionsProvider.GlobalOptions);
+
+                    model!.GenerateDependencyInjection = BuildProperties.GetGenerateDI(
+                        optionsProvider.GlobalOptions);
+
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        new DiagnosticDescriptor(
+                            "FSMDEBUG",
+                            "Debugging Generator",
+                            $"🧪 Model configured for {className}: Variant={model.Variant}, Logging={model.GenerateLogging}, DI={model.GenerateDependencyInjection}",
+                            "FastFSM",
+                            DiagnosticSeverity.Warning,
+                            true),
+                        Location.None));
+
+                    // ──────────────────────────────────────────────────────────
+                    // 1. Wybierz i uruchom odpowiedni generator kodu
+                    // ──────────────────────────────────────────────────────────
+                    StateMachineCodeGenerator generator;
+
+                    // Istniejąca logika dla maszyn synchronicznych
+                    generator = model.Variant switch
+                    {
+                        GenerationVariant.Full => new FullVariantGenerator(model),
+                        GenerationVariant.WithPayload => new PayloadVariantGenerator(model),
+                        GenerationVariant.WithExtensions => new ExtensionsVariantGenerator(model),
+                        _ => new CoreVariantGenerator(model) // Pure / Basic
+                    };
+
+                    var source = generator.Generate();
+                    context.AddSource(
+                        $"{model.ClassName}.Generated.cs",
+                        SourceText.From(source, Encoding.UTF8));
+
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        new DiagnosticDescriptor(
+                            "FSMDEBUG",
+                            "Debugging Generator",
+                            $"🧪 Main source generated for {className}",
+                            "FastFSM",
+                            DiagnosticSeverity.Warning,
+                            true),
+                        Location.None));
+
+                    // ──────────────────────────────────────────────────────────
+                    // 2. Generuj kod dla Dependency Injection (jeśli włączone)
+                    // ──────────────────────────────────────────────────────────
+                    if (model.GenerateDependencyInjection)
+                    {
+                        var factoryModel = FactoryGenerationModelBuilder.Create(model);
+                        var factoryGenerator = new FactoryCodeGenerator(factoryModel);
+                        var factorySource = factoryGenerator.Generate();
+                        context.AddSource(
+                            $"{model.ClassName}.Factory.g.cs",
+                            SourceText.From(factorySource, Encoding.UTF8));
+
+                        context.ReportDiagnostic(Diagnostic.Create(
+                            new DiagnosticDescriptor(
+                                "FSMDEBUG",
+                                "Debugging Generator",
+                                $"🧪 Factory generated for {className}",
+                                "FastFSM",
+                                DiagnosticSeverity.Warning,
+                                true),
+                            Location.None));
+                    }
+
+                    // ──────────────────────────────────────────────────────────
+                    // 3. Generuj klasę helperów logowania (jeśli włączone)
+                    // ──────────────────────────────────────────────────────────
+                    if (model.GenerateLogging)
+                    {
+                        var loggingGenerator = new Generator.Log.LoggingClassGenerator(model.ClassName, model.Namespace);
+                        var loggingSource = loggingGenerator.Generate();
+                        context.AddSource(
+                            $"{model.ClassName}Log.g.cs",
+                            SourceText.From(loggingSource, Encoding.UTF8));
+
+                        context.ReportDiagnostic(Diagnostic.Create(
+                            new DiagnosticDescriptor(
+                                "FSMDEBUG",
+                                "Debugging Generator",
+                                $"🧪 Logging helper generated for {className}",
+                                "FastFSM",
+                                DiagnosticSeverity.Warning,
+                                true),
+                            Location.None));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        new DiagnosticDescriptor(
+                            "FSMERROR",
+                            "Generator Error",
+                            $"🔥 Exception in generation for {className}: {ex.GetType().Name}: {ex.Message}\nStackTrace: {ex.StackTrace}",
+                            "FastFSM",
+                            DiagnosticSeverity.Warning,
+                            true),
+                        Location.None));
+                }
             }
+
+            context.ReportDiagnostic(Diagnostic.Create(
+                new DiagnosticDescriptor(
+                    "FSMDEBUG",
+                    "Debugging Generator",
+                    "🧪 Generator execution completed successfully",
+                    "FastFSM",
+                    DiagnosticSeverity.Warning,
+                    true),
+                Location.None));
+        }
+        catch (Exception ex)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                new DiagnosticDescriptor(
+                    "FSMERROR",
+                    "Generator Error",
+                    $"🔥 Unhandled exception in Execute: {ex.GetType().Name}: {ex.Message}\nStackTrace: {ex.StackTrace}",
+                    "FastFSM",
+                    DiagnosticSeverity.Warning,
+                    true),
+                Location.None));
         }
     }
 }

@@ -1,258 +1,114 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using Generator.FeatureDetection;
-using Generator.Model;
+﻿using Abstractions.Attributes;
+using System.Reflection.PortableExecutable;
+using StateMachine.Contracts;
 
-Console.WriteLine("=== Milestone 3 Testing - Payload Support ===\n");
+namespace Experiments;
 
-// Test Single Payload
-TestSinglePayload();
-
-// Test Multi Payload  
-TestMultiPayload();
-
-// Test Guard Policy combinations
-TestGuardPolicyCombinations();
-
-Console.WriteLine("\n✨ Milestone 3 Testing Complete!");
-
-void TestSinglePayload()
+public class Program
 {
-    Console.WriteLine("\n--- Testing Single Payload ---");
-
-    var runner = new ParallelGeneratorRunner(enableModernGenerator: true);
-
-    var model = new StateMachineModel
+    public static void Main()
     {
-        ClassName = "SinglePayloadMachine",
-        Namespace = "TestNamespace",
-        StateType = "MachineState",
-        TriggerType = "MachineTrigger",
-        GenerationConfig = new GenerationConfig
-        {
-            Variant = GenerationVariant.WithPayload,
-            IsAsync = false,
-            HasPayload = true,
-            HasOnEntryExit = true
-        },
-        DefaultPayloadType = "PayloadData", // Single payload type
-        States = new Dictionary<string, StateModel>
-        {
-            ["Idle"] = new StateModel { Name = "Idle" },
-            ["Processing"] = new StateModel
-            {
-                Name = "Processing",
-                OnEntryMethod = "OnProcessingEntry",
-                OnEntryExpectsPayload = true,
-                OnEntryHasParameterlessOverload = false
-            }
-        },
-        Transitions = new List<TransitionModel>
-        {
-            new TransitionModel
-            {
-                FromState = "Idle",
-                Trigger = "StartProcessing",
-                ToState = "Processing",
-                GuardMethod = "CanStartProcessing",
-                GuardExpectsPayload = true,
-                GuardHasParameterlessOverload = true,
-                ActionMethod = "DoProcess",
-                ActionExpectsPayload = true,
-                ExpectedPayloadType = "PayloadData" // DODANE - wymagane gdy guard/action expects payload
-            }
-        },
-        EmitStructuralHelpers = true,
-        TriggerPayloadTypes = new Dictionary<string, string>() // Inicjalizacja żeby uniknąć NRE
-    };
-
-    var result = runner.GenerateBoth(model);
-    var comparison = runner.Compare(result.LegacyCode, result.ModernCode);
-
-    Console.WriteLine($"Legacy: {result.LegacyCode.Length} chars");
-    Console.WriteLine($"Modern: {result.ModernCode?.Length ?? 0} chars");
-    Console.WriteLine($"Status: {comparison.Status}");
-
-    if (comparison.Status != ComparisonStatus.Identical)
-    {
-        Console.WriteLine("⚠️ Differences found!");
-        SaveFiles("SinglePayload", result);
+        Console.WriteLine("Testing StateMachine Generator...");
+        var withGuardMachine = new WithGuardBenchmarkMachine(BenchmarkState.A);
+        var otherMach = new FullOrderMachine();
+        otherMach.TryFire(OrderTrigger.Process, new OrderPayload { OrderId = 1, Amount = 100 });
+        withGuardMachine.TryFire(BenchmarkTrigger.Next);
     }
-    else
+}
+[StateMachine(typeof(BenchmarkState), typeof(BenchmarkTrigger))]
+[GenerationMode(GenerationMode.Pure, Force = true)]
+public partial class WithGuardBenchmarkMachine
+{
+    private int _counter;
+
+    [Transition(BenchmarkState.A, BenchmarkTrigger.Next, BenchmarkState.B, Guard = nameof(CanTransition))]
+    [Transition(BenchmarkState.B, BenchmarkTrigger.Next, BenchmarkState.A, Guard = nameof(CanTransition))]
+    private void Configure() { }
+
+    private bool CanTransition()
     {
-        Console.WriteLine("✅ Identical!");
+        _counter++;
+        return _counter % 2 == 0; // Simple condition
     }
 }
 
-void TestMultiPayload()
+public enum BenchmarkState { A, B, C, D }
+public enum BenchmarkTrigger { Previous, Next }
+public class OverloadPayload
 {
-    Console.WriteLine("\n--- Testing Multi Payload ---");
-
-    var runner = new ParallelGeneratorRunner(enableModernGenerator: true);
-
-    var model = new StateMachineModel
-    {
-        ClassName = "MultiPayloadMachine",
-        Namespace = "TestNamespace",
-        StateType = "MachineState",
-        TriggerType = "MachineTrigger",
-        GenerationConfig = new GenerationConfig
-        {
-            Variant = GenerationVariant.WithPayload,
-            IsAsync = false,
-            HasPayload = true
-        },
-        TriggerPayloadTypes = new Dictionary<string, string>
-        {
-            ["SendMessage"] = "MessagePayload",
-            ["ProcessData"] = "DataPayload",
-            ["UpdateConfig"] = "ConfigPayload"
-        },
-        States = new Dictionary<string, StateModel>
-        {
-            ["Ready"] = new StateModel { Name = "Ready" },
-            ["Sending"] = new StateModel { Name = "Sending" },
-            ["Processing"] = new StateModel { Name = "Processing" },
-            ["Configuring"] = new StateModel { Name = "Configuring" }
-        },
-        Transitions = new List<TransitionModel>
-        {
-            new TransitionModel
-            {
-                FromState = "Ready",
-                Trigger = "SendMessage",
-                ToState = "Sending",
-                ExpectedPayloadType = "MessagePayload", // Musi odpowiadać TriggerPayloadTypes["SendMessage"]
-                GuardMethod = "CanSendMessage",
-                GuardExpectsPayload = true,
-                GuardIsAsync = true
-            },
-            new TransitionModel
-            {
-                FromState = "Ready",
-                Trigger = "ProcessData",
-                ToState = "Processing",
-                ExpectedPayloadType = "DataPayload", // Musi odpowiadać TriggerPayloadTypes["ProcessData"]
-                ActionMethod = "StartProcessing",
-                ActionExpectsPayload = true,
-                ActionIsAsync = true
-            }
-        },
-        EmitStructuralHelpers = true,
-        ContinueOnCapturedContext = false
-    };
-
-    var result = runner.GenerateBoth(model);
-    var comparison = runner.Compare(result.LegacyCode, result.ModernCode);
-
-    Console.WriteLine($"Legacy: {result.LegacyCode.Length} chars");
-    Console.WriteLine($"Modern: {result.ModernCode?.Length ?? 0} chars");
-    Console.WriteLine($"Status: {comparison.Status}");
-
-    if (comparison.Status != ComparisonStatus.Identical)
-    {
-        Console.WriteLine("⚠️ Differences found!");
-        SaveFiles("MultiPayload", result);
-    }
-    else
-    {
-        Console.WriteLine("✅ Identical!");
-    }
+    public string Data { get; set; }
 }
 
-void TestGuardPolicyCombinations()
+[StateMachine(typeof(OrderState), typeof(OrderTrigger))]
+[PayloadType(typeof(OrderPayload))]
+[GenerationMode(GenerationMode.Full, Force = true)]
+
+
+
+public partial class FullOrderMachine
 {
-    Console.WriteLine("\n--- Testing Guard Policy Combinations ---");
+    public decimal TotalProcessed { get; private set; }
+    public List<int> ProcessedOrderIds { get; } = new();
 
-    // Test wszystkich kombinacji guardów
-    var guardCombinations = new[]
-    {
-        (Name: "No payload, sync", ExpectsPayload: false, HasOverload: false, IsAsync: false),
-        (Name: "No payload, async", ExpectsPayload: false, HasOverload: false, IsAsync: true),
-        (Name: "Payload required, sync", ExpectsPayload: true, HasOverload: false, IsAsync: false),
-        (Name: "Payload required, async", ExpectsPayload: true, HasOverload: false, IsAsync: true),
-        (Name: "Payload + overload, sync", ExpectsPayload: true, HasOverload: true, IsAsync: false),
-        (Name: "Payload + overload, async", ExpectsPayload: true, HasOverload: true, IsAsync: true),
-    };
+    [State(OrderState.New, OnEntry = nameof(OnEnterNew))]
+    [State(OrderState.Processing, OnEntry = nameof(OnEnterProcessing))]
+    [State(OrderState.Paid, OnEntry = nameof(OnEnterPaid))]
+    private void ConfigureStates() { }
 
-    foreach (var combo in guardCombinations)
+    [Transition(OrderState.New, OrderTrigger.Process, OrderState.Processing,
+        Guard = nameof(CanProcess), Action = nameof(ProcessOrder))]
+    [Transition(OrderState.Processing, OrderTrigger.Pay, OrderState.Paid,
+        Action = nameof(RecordPayment))]
+    [Transition(OrderState.Processing, OrderTrigger.Cancel, OrderState.Cancelled)]
+    [Transition(OrderState.Paid, OrderTrigger.Ship, OrderState.Shipped,
+        Guard = nameof(CanShip))]
+    private void Configure() { }
+
+    private bool CanProcess(OrderPayload order) => order.Amount > 0;
+
+    private void ProcessOrder(OrderPayload order)
     {
-        Console.WriteLine($"\n  Testing: {combo.Name}");
-        TestGuardCombination(combo.ExpectsPayload, combo.HasOverload, combo.IsAsync);
+        ProcessedOrderIds.Add(order.OrderId);
+        TotalProcessed += order.Amount;
     }
+
+    private void RecordPayment(OrderPayload order)
+    {
+        // Payment processing logic
+    }
+
+    private bool CanShip(OrderPayload order) => !string.IsNullOrEmpty(order.TrackingNumber);
+
+    private void OnEnterNew() { }
+    private void OnEnterProcessing(OrderPayload order) { }
+    private void OnEnterPaid(OrderPayload order) { }
+}
+public enum OrderState { New, Processing, Paid, Shipped, Delivered, Cancelled }
+public enum OrderTrigger { Process, Pay, Ship, Deliver, Cancel, Refund }
+public class OrderPayload
+{
+    public int OrderId { get; set; }
+    public decimal Amount { get; set; }
+    public string? TrackingNumber { get; set; }
 }
 
-void TestGuardCombination(bool expectsPayload, bool hasOverload, bool isAsync)
+public class BehaviorModifyingExtension : IStateMachineExtension
 {
-    var runner = new ParallelGeneratorRunner(enableModernGenerator: true);
+    public HashSet<int> BlockedOrderIds { get; } = new();
+    public Dictionary<int, DateTime> BlockedAttempts { get; } = new();
 
-    var model = new StateMachineModel
+    public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
     {
-        ClassName = "GuardTestMachine",
-        Namespace = "TestNamespace",
-        StateType = "TestState",
-        TriggerType = "TestTrigger",
-        GenerationConfig = new GenerationConfig
+        if (context is IStateMachineContext<OrderState, OrderTrigger> orderContext &&
+            orderContext.Trigger == OrderTrigger.Ship &&
+            orderContext.Payload is OrderPayload order &&
+            BlockedOrderIds.Contains(order.OrderId))
         {
-            Variant = expectsPayload ? GenerationVariant.WithPayload : GenerationVariant.Basic,
-            IsAsync = isAsync,
-            HasPayload = expectsPayload
-        },
-        DefaultPayloadType = expectsPayload ? "TestPayload" : null,
-        States = new Dictionary<string, StateModel>
-        {
-            ["StateA"] = new StateModel { Name = "StateA" },
-            ["StateB"] = new StateModel { Name = "StateB" }
-        },
-        Transitions = new List<TransitionModel>
-        {
-            new TransitionModel
-            {
-                FromState = "StateA",
-                Trigger = "GoToB",
-                ToState = "StateB",
-                GuardMethod = "TestGuard",
-                GuardExpectsPayload = expectsPayload,
-                GuardHasParameterlessOverload = hasOverload,
-                GuardIsAsync = isAsync,
-                ExpectedPayloadType = expectsPayload ? "TestPayload" : null // WAŻNE!
-            }
-        },
-        TriggerPayloadTypes = new Dictionary<string, string>() // Inicjalizacja
-    };
-
-    GenerationResult result = runner.GenerateBoth(model);
-    var comparison = runner.Compare(result.LegacyCode, result.ModernCode);
-
-    Console.WriteLine($"    Status: {comparison.Status}");
-
-    if (comparison.Status != ComparisonStatus.Identical)
-    {
-        var name = $"Guard_{(expectsPayload ? "P" : "NoP")}_{(hasOverload ? "O" : "NoO")}_{(isAsync ? "A" : "S")}";
-        SaveFiles(name, result);
+            BlockedAttempts[order.OrderId] = DateTime.Now;
+        }
     }
-}
 
-void SaveFiles(string prefix, GenerationResult result)
-{
-    if (string.IsNullOrEmpty(result.ModernCode))
-        Console.WriteLine("    ⚠️  Modern generator nic nie zwrócił – zapisuję tylko legacy");
-
-    var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-    var currentDir = Directory.GetCurrentDirectory();
-
-    var legacyPath = Path.Combine(currentDir, $"{prefix}_legacy_{timestamp}.cs");
-    File.WriteAllText(legacyPath, result.LegacyCode);
-
-    if (!string.IsNullOrEmpty(result.ModernCode))
-    {
-        var modernPath = Path.Combine(currentDir, $"{prefix}_modern_{timestamp}.cs");
-        File.WriteAllText(modernPath, result.ModernCode);
-        Console.WriteLine($"    📁 Zapisano: {Path.GetFileName(legacyPath)} & {Path.GetFileName(modernPath)}");
-    }
-    else
-    {
-        Console.WriteLine($"    📁 Zapisano: {Path.GetFileName(legacyPath)}");
-    }
+    public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext { }
+    public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext { }
+    public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext { }
 }

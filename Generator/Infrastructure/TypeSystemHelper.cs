@@ -723,7 +723,42 @@ public class TypeSystemHelper
 
         return basePath + "<" + string.Join(", ", argNames) + ">";
     }
+    // <summary>
+    /// Builds a fully qualified type name from any type symbol.
+    /// Handles INamedTypeSymbol, arrays, pointers, and other type kinds.
+    /// </summary>
+    public string BuildFullTypeName(ITypeSymbol typeSymbol)
+    {
+        if (typeSymbol == null)
+            throw new ArgumentNullException(nameof(typeSymbol));
 
+        // If it's a named type, use the existing method
+        if (typeSymbol is INamedTypeSymbol namedType)
+        {
+            return BuildFullTypeName(namedType);
+        }
+
+        // For arrays, pointers, and other special types, use display string
+        // This gives us the fully qualified name in a format like:
+        // System.String[] for arrays
+        // System.Int32* for pointers
+        // etc.
+        return typeSymbol.ToDisplayString(new SymbolDisplayFormat(
+            globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
+            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+            memberOptions: SymbolDisplayMemberOptions.None,
+            delegateStyle: SymbolDisplayDelegateStyle.NameOnly,
+            extensionMethodStyle: SymbolDisplayExtensionMethodStyle.Default,
+            parameterOptions: SymbolDisplayParameterOptions.None,
+            propertyStyle: SymbolDisplayPropertyStyle.NameOnly,
+            localOptions: SymbolDisplayLocalOptions.None,
+            kindOptions: SymbolDisplayKindOptions.None,
+            miscellaneousOptions:
+            SymbolDisplayMiscellaneousOptions.UseSpecialTypes | // Use int instead of Int32
+            SymbolDisplayMiscellaneousOptions.ExpandNullable    // int? instead of Nullable<int>
+        ));
+    }
 
     #endregion
 }

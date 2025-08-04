@@ -4,12 +4,13 @@
 		<TargetFramework>net9.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<PublishAot>true</PublishAot>
-		<InvariantGlobalization>true</InvariantGlobalization>
+
 		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
 		<CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\GeneratedFiles</CompilerGeneratedFilesOutputPath>
 	</PropertyGroup>
+
+
 	<ItemGroup>
-	  <ProjectReference Include="..\Generator\Generator.csproj" />
+		<PackageReference Include="FastFsm.Net" Version="*-dev.*" />
 	</ItemGroup>
 </Project>

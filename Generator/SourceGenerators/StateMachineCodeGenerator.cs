@@ -1,11 +1,13 @@
 ﻿#nullable enable
+using Abstractions.Attributes;
+using Generator.Helpers;
+using Generator.Infrastructure;
+using Generator.Log;
+using Generator.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using Generator.Infrastructure;
-using Generator.Log;
-using Generator.Model;
 using static Generator.Strings;
 
 namespace Generator.SourceGenerators;
@@ -16,6 +18,9 @@ namespace Generator.SourceGenerators;
 /// </summary>
 public abstract class StateMachineCodeGenerator(StateMachineModel model)
 {
+
+
+
     #region Fields / Ctor
     protected readonly StateMachineModel Model = model;
     protected IndentedStringBuilder.IndentedStringBuilder Sb = new();
@@ -444,12 +449,21 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                                 Sb.AppendLine($"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}:");
                                 using (Sb.Indent())
                                 {
-                                    if (!string.IsNullOrEmpty(transition.GuardMethod))
-                                    {
-                                        // Generate guard call with exception handling
-                                        WriteGuardCall(transition, "guardResult", "null", throwOnException: false);
-                                        Sb.AppendLine("return guardResult;");
-                                    }
+if (!string.IsNullOrEmpty(transition.GuardMethod))
+{
+    // Generate guard call with exception handling
+    GuardGenerationHelper.EmitGuardCheck(
+        Sb,
+        transition,
+        "guardResult",
+        "null",
+        IsAsyncMachine,
+        wrapInTryCatch: true,
+        Model.ContinueOnCapturedContext,
+        handleResultAfterTry: true  // <- zadeklaruje zmienną przed try
+    );
+    Sb.AppendLine("return guardResult;");
+}
                                     else
                                     {
                                         Sb.AppendLine("return true;");
@@ -687,163 +701,50 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     #region Guard Call Helpers
 
     /// <summary>
-    /// Generates code to call a guard method with proper exception handling (older version)
+    /// Generates code to call a guard method with proper exception handling
     /// </summary>
+
     protected void WriteGuardCall(
         TransitionModel transition,
         string resultVar,
         string payloadVar = "null",
         bool throwOnException = false)
     {
-        // 1. Brak guarda → zawsze true
-        if (string.IsNullOrEmpty(transition.GuardMethod))
-        {
-            Sb.AppendLine($"bool {resultVar} = true;");
-            return;
-        }
-
-        // 2. Guard Z PARAMETREM, ale metoda, do której wstawiamy kod,
-        //    NIE dysponuje zmienną payloadu („null" przekazane w argumencie)
-        if (transition.GuardExpectsPayload && payloadVar == "null")
-        {
-            Sb.AppendLine($"bool {resultVar} = false; // brak payloadu → guard = false");
-            return;
-        }
-
-        // 3. Standardowy przypadek – payloadVar to zmienna
-        var needsTryCatch = !throwOnException;      // CanFire/GetPermittedTriggers – zbijamy wyjątki
-        var payloadExpr = transition.GuardExpectsPayload
-            ? $"{payloadVar} is {GetTypeNameForUsage(transition.ExpectedPayloadType!)} typedPayload && " +
-              $"{transition.GuardMethod}(typedPayload)"
-            : $"{transition.GuardMethod}()";
-
-        if (needsTryCatch)
-        {
-            Sb.AppendLine($"bool {resultVar};");
-            Sb.AppendLine("try");
-            using (Sb.Block(""))
-            {
-                Sb.AppendLine($"{resultVar} = {payloadExpr};");
-            }
-            Sb.AppendLine("catch");
-            using (Sb.Block(""))
-            {
-                Sb.AppendLine($"{resultVar} = false;");      // guard rzucił – traktuj jako false
-            }
-        }
-        else
-        {
-            Sb.AppendLine($"bool {resultVar} = {payloadExpr};");
-        }
+        GuardGenerationHelper.EmitGuardCheck(
+            Sb,
+            transition,
+            resultVar,
+            payloadVar,
+            IsAsyncMachine,
+            wrapInTryCatch: !throwOnException,
+            Model.ContinueOnCapturedContext,
+            handleResultAfterTry: true,
+            cancellationTokenVar: GetCtVar(),
+            treatCancellationAsFailure: Model.GenerationConfig.TreatCancellationAsFailure
+        );
     }
 
-    /// <summary>
-    /// Generuje wywołanie guarda, obsługując:
-    /// – synchroniczne i asynchroniczne metody  
-    /// – oczekiwanie (await/ConfigureAwait)  
-    /// – payload wymagany / opcjonalny / brak  
-    /// – wariant z przechwyceniem wyjątków (dla CanFire / GetPermittedTriggers)
-    /// </summary>
-    protected void WriteGuardCallUniversal(
-        TransitionModel tr,
-        string resultVar,
-        string payloadExpr,  // zmienna z payloadem lub "null"
-        bool wrapInTryCatch,
-        bool shouldAwait)
-    {
-        var pType = tr.ExpectedPayloadType is null
-            ? string.Empty
-            : GetTypeNameForUsage(tr.ExpectedPayloadType);
-
-        // Definicja zmiennej wyniku
-        Sb.AppendLine($"bool {resultVar};");
-
-        // try { … } catch { result = false; }   (gdy wrapInTryCatch == true)
-        if (wrapInTryCatch)
-        {
-            Sb.AppendLine("try");
-            using (Sb.Block(""))
-            {
-                GenerateBody();
-            }
-            Sb.AppendLine("catch");
-            using (Sb.Block(""))
-            {
-                Sb.AppendLine($"{resultVar} = false;");
-            }
-        }
-        else
-        {
-            GenerateBody();
-        }
-
-        //------------------------------------------------------------
-        //  Lokalna funkcja generująca właściwe wywołanie guarda
-        //------------------------------------------------------------
-        void GenerateBody()
-        {
-            string call;
-            if (tr.GuardExpectsPayload)
-            {
-                call = $"{tr.GuardMethod}({(payloadExpr == "null" ? "default!" : "typedGuardPayload")})";
-            }
-            else
-            {
-                call = $"{tr.GuardMethod}()";
-            }
-
-            if (shouldAwait && tr.GuardIsAsync)
-                call = $"{GetAwaitKeyword()}{call}{GetConfigureAwait()}";
-
-            // Payload-aware selekcja przeciążenia / rzutowanie
-            if (tr.GuardExpectsPayload && tr.GuardHasParameterlessOverload)
-            {
-                // if (payload is P typed) { result = Guard(typed); } else { result = Guard(); }
-                Sb.AppendLine($"if ({payloadExpr} is {pType} typedGuardPayload)");
-                using (Sb.Indent())
-                    Sb.AppendLine($"{resultVar} = {call};");
-                Sb.AppendLine("else");
-                using (Sb.Indent())
-                    Sb.AppendLine($"{resultVar} = {(shouldAwait && tr.GuardIsAsync ? $"{GetAwaitKeyword()}{tr.GuardMethod}(){GetConfigureAwait()}" : $"{tr.GuardMethod}()")};");
-            }
-            else if (tr.GuardExpectsPayload)
-            {
-                // result = payload is P typed && Guard(typed);
-                Sb.AppendLine($"{resultVar} = {payloadExpr} is {pType} typedGuardPayload && {call};");
-            }
-            else
-            {
-                Sb.AppendLine($"{resultVar} = {call};");
-            }
-        }
-    }
     #endregion
 
     #region Async helpers
-    // Helper do generowania sygnatur metod
-    protected string GetMethodReturnType(string syncReturnType)
-    {
-        if (!IsAsyncMachine) return syncReturnType;
+    protected string GetMethodReturnType(string syncReturnType) => AsyncGenerationHelper.GetReturnType(syncReturnType, IsAsyncMachine);
 
-        return syncReturnType switch
-        {
-            "void" => "Task",
-            "bool" => "ValueTask<bool>",
-            _ => throw new InvalidOperationException($"Unsupported return type for async: {syncReturnType}")
-        };
-    }
+    protected string GetAsyncKeyword() => AsyncGenerationHelper.GetMethodModifiers(IsAsyncMachine);
 
-    // Helper do słowa kluczowego async
-    protected string GetAsyncKeyword() => IsAsyncMachine ? "async " : "";
+    protected string GetAwaitKeyword() => AsyncGenerationHelper.GetAwaitKeyword(true, IsAsyncMachine);
 
-    // Helper do await
-    protected string GetAwaitKeyword() => IsAsyncMachine ? "await " : "";
+    protected string GetConfigureAwait() => AsyncGenerationHelper.GetConfigureAwait(IsAsyncMachine, Model.ContinueOnCapturedContext);
 
-    // Helper do ConfigureAwait
-    protected string GetConfigureAwait() => IsAsyncMachine ? ".ConfigureAwait(_continueOnCapturedContext)" : "";
+    /// <summary>
+    /// Returns the cancellation token variable name or CancellationToken.None for sync machines.
+    /// </summary>
+    protected string GetCtVar() => IsAsyncMachine
+        ? "cancellationToken"
+        : "System.Threading.CancellationToken.None";
 
-    // Helper do nazwy metody (TryFire vs TryFireInternalAsync)
-    protected string GetTryFireMethodName() => IsAsyncMachine ? "TryFireInternalAsync" : "TryFire";
+    protected string GetTryFireMethodName() =>
+        AsyncGenerationHelper.GetMethodName("TryFire", IsAsyncMachine, addAsyncSuffix: false) +
+        (IsAsyncMachine ? "InternalAsync" : "");
 
     // Helper do parametrów metody
     protected string GetTryFireParameters(string triggerType)
@@ -853,52 +754,26 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             : $"{triggerType} trigger, object? payload = null";
     }
 
-    // Helper do wywołania callback
     protected void WriteCallbackInvocation(string methodName, bool isCallbackAsync, string? payload = null)
     {
-        if (isCallbackAsync && IsAsyncMachine)
-        {
-            Sb.Append($"{GetAwaitKeyword()}{methodName}(");
-            if (payload != null) Sb.Append(payload);
-            Sb.Append($"){GetConfigureAwait()}");
-        }
-        else
-        {
-            Sb.Append($"{methodName}(");
-            if (payload != null) Sb.Append(payload);
-            Sb.Append(")");
-        }
-        Sb.AppendLine(";");
+        var args = payload is not null ? [payload] : Array.Empty<string>();
+        AsyncGenerationHelper.EmitMethodInvocation(
+            Sb,
+            methodName,
+            isCallbackAsync,
+            IsAsyncMachine,
+            Model.ContinueOnCapturedContext,
+            args
+        );
     }
 
-    // Helper do klasy bazowej
-    protected string GetBaseClassName(string stateType, string triggerType)
-    {
-        return IsAsyncMachine
-            ? $"AsyncStateMachineBase<{stateType}, {triggerType}>"
-            : $"StateMachineBase<{stateType}, {triggerType}>";
-    }
+    protected string GetBaseClassName(string stateType, string triggerType) => AsyncGenerationHelper.GetBaseClassName(stateType, triggerType, IsAsyncMachine);
+    protected string GetInterfaceName(string stateType, string triggerType) => AsyncGenerationHelper.GetInterfaceName(stateType, triggerType, IsAsyncMachine);
 
-    // Helper do interfejsu
-    protected string GetInterfaceName(string stateType, string triggerType)
-    {
-        return IsAsyncMachine
-            ? $"IAsyncStateMachine<{stateType}, {triggerType}>"
-            : $"IStateMachine<{stateType}, {triggerType}>";
-    }
     /// <summary>
     /// Zwraca nazwę metody z odpowiednim sufiksem.
     /// </summary>
-    protected string GetMethodName(string baseName, bool addAsyncSuffix = true)
-    {
-        if (!IsAsyncMachine || !addAsyncSuffix) return baseName;
-
-        // Sprawdź czy nazwa już kończy się na "Async"
-        if (baseName.EndsWith("Async", StringComparison.Ordinal))
-            return baseName;
-
-        return baseName + "Async";
-    }
+    protected string GetMethodName(string baseName, bool addAsyncSuffix = true) => AsyncGenerationHelper.GetMethodName(baseName, IsAsyncMachine, addAsyncSuffix);
 
     /// <summary>
     /// Zwraca visibility dla metody TryFire.
