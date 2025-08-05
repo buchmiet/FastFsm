@@ -82,6 +82,9 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
 
         using (Sb.Block($"public override async ValueTask<{ReadOnlyListType}<{triggerTypeForUsage}>> GetPermittedTriggersAsync(CancellationToken cancellationToken = default)"))
         {
+            Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
+            Sb.AppendLine();
+            
             using (Sb.Block($"switch ({CurrentStateField})"))
             {
                 var transitionsByFromState = Model.Transitions
@@ -211,6 +214,9 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
 
         using (Sb.Block($"public override async ValueTask<bool> CanFireAsync({triggerTypeForUsage} trigger, CancellationToken cancellationToken = default)"))
         {
+            Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
+            Sb.AppendLine();
+            
             using (Sb.Block($"switch ({CurrentStateField})"))
             {
                 var allHandledFromStates = Model.Transitions.Select(t => t.FromState).Distinct().OrderBy(s => s);
@@ -354,6 +360,12 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
         WriteMethodAttribute();
         using (Sb.Block($"{visibility} {asyncKeyword}{returnType} {methodName}({parameters})"))
         {
+            if (IsAsyncMachine)
+            {
+                Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
+                Sb.AppendLine();
+            }
+            
             if (!Model.Transitions.Any())
             {
                 Sb.AppendLine($"return false; {NoTransitionsComment}");
@@ -413,7 +425,7 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
             WriteAsyncAwareGuardCheck(transition, stateTypeForUsage, triggerTypeForUsage);
         }
 
-        // OnExit
+        // OnExit (keep exception handling for now - it prevents transition if OnExit fails)
         if (!transition.IsInternal && hasOnEntryExit &&
             Model.States.TryGetValue(transition.FromState, out var fromStateDef) &&
             !string.IsNullOrEmpty(fromStateDef.OnExitMethod))
@@ -427,7 +439,7 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
                     WriteLogStatement("Debug",
                         $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
                 }
-                Sb.AppendLine("catch (Exception)");
+                Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
                 using (Sb.Block(""))
                 {
                     Sb.AppendLine($"{SuccessVar} = false;");
@@ -443,61 +455,28 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
             }
         }
 
-        // Action
-        if (!string.IsNullOrEmpty(transition.ActionMethod))
-        {
-            if (IsAsyncMachine)
-            {
-                Sb.AppendLine("try");
-                using (Sb.Block(""))
-                {
-                    WriteCallbackInvocation(transition.ActionMethod, transition.ActionIsAsync);
-                    WriteLogStatement("Debug",
-                        $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
-                }
-                Sb.AppendLine("catch (Exception)");
-                using (Sb.Block(""))
-                {
-                    Sb.AppendLine($"{SuccessVar} = false;");
-                    WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-                    Sb.AppendLine($"goto {EndOfTryFireLabel};");
-                }
-            }
-            else
-            {
-                WriteCallbackInvocation(transition.ActionMethod, transition.ActionIsAsync);
-                WriteLogStatement("Debug",
-                    $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
-            }
-        }
-
-        // State change
+        // State change (before OnEntry)
         if (!transition.IsInternal)
         {
             Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
         }
 
-        // OnEntry with rollback on failure
+        // OnEntry (no exception catching - let it propagate)
         if (!transition.IsInternal && hasOnEntryExit &&
             Model.States.TryGetValue(transition.ToState, out var toStateDef) &&
             !string.IsNullOrEmpty(toStateDef.OnEntryMethod))
         {
-            Sb.AppendLine("try");
-            using (Sb.Block(""))
-            {
-                WriteCallbackInvocation(toStateDef.OnEntryMethod, toStateDef.OnEntryIsAsync);
-                WriteLogStatement("Debug",
-                    $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
-            }
-            Sb.AppendLine("catch (Exception)");
-            using (Sb.Block(""))
-            {
-                // Rollback state change
-                Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.FromState)};");
-                Sb.AppendLine($"{SuccessVar} = false;");
-                WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-                Sb.AppendLine($"goto {EndOfTryFireLabel};");
-            }
+            WriteCallbackInvocation(toStateDef.OnEntryMethod, toStateDef.OnEntryIsAsync);
+            WriteLogStatement("Debug",
+                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
+        }
+
+        // Action (after OnEntry, no exception catching - let it propagate)
+        if (!string.IsNullOrEmpty(transition.ActionMethod))
+        {
+            WriteCallbackInvocation(transition.ActionMethod, transition.ActionIsAsync);
+            WriteLogStatement("Debug",
+                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
         }
 
         // Log successful transition only after OnEntry succeeds

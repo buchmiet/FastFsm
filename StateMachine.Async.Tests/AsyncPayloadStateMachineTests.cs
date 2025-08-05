@@ -495,36 +495,44 @@ public class AsyncPayloadStateMachineTests
     }
 
     [Fact]
-    public async Task TryFireAsync_When_Action_With_Payload_Throws_Should_Return_False()
+    public async Task TryFireAsync_When_Action_With_Payload_Throws_Should_Throw_And_State_Changed()
     {
         // Arrange
         var machine = new ExceptionAsyncPayloadMachine(AsyncPayloadStates.Initial);
         var payload = new ProcessPayload { Id = 888 };
 
-        // Act
-        var result = await machine.TryFireAsync(AsyncPayloadTriggers.Process, payload);
+        // Act + Assert: teraz oczekujemy wyjątku z akcji
+        await Should.ThrowAsync<InvalidOperationException>(
+            async () => await machine.TryFireAsync(AsyncPayloadTriggers.Process, payload));
 
-        // Assert
-        result.ShouldBeFalse();
-        machine.CurrentState.ShouldBe(AsyncPayloadStates.Initial);
+        // Stan: bez rollbacku, ustawiony na docelowy
+        machine.CurrentState.ShouldBe(AsyncPayloadStates.Processing);
+
+        // Log: akcja rozpoczęta i rzuciła; brak OnEntry/OnExit w tym scenariuszu
         machine.Log.ShouldContain("Action:Begin:888");
+        // (opcjonalnie)
+        // machine.Log.ShouldNotContain("OnEntry:Begin:888");
     }
 
+
     [Fact]
-    public async Task TryFireAsync_When_OnEntry_With_Payload_Throws_Should_Return_False()
+    public async Task TryFireAsync_When_OnEntry_With_Payload_Throws_Should_Throw_And_State_Changed()
     {
         // Arrange
         var machine = new ExceptionAsyncPayloadMachine(AsyncPayloadStates.Initial);
         var payload = new ProcessPayload { Id = 777 };
 
-        // Act
-        var result = await machine.TryFireAsync(AsyncPayloadTriggers.Fail, payload);
+        // Act + Assert: oczekujemy propagacji wyjątku z OnEntry
+        await Should.ThrowAsync<InvalidOperationException>(
+            async () => await machine.TryFireAsync(AsyncPayloadTriggers.Fail, payload));
 
-        // Assert
-        result.ShouldBeFalse();
-        machine.CurrentState.ShouldBe(AsyncPayloadStates.Initial);
+        // Brak rollbacku – stan docelowy ustawiony przed OnEntry
+        machine.CurrentState.ShouldBe(AsyncPayloadStates.Failed);
+
+        // Log: OnEntry rozpoczęte (i rzuciło)
         machine.Log.ShouldContain("OnEntry:Begin:777");
     }
+
 
     [Fact]
     public async Task CanFireAsync_With_Payload_Should_Evaluate_Guard_With_Correct_Payload()

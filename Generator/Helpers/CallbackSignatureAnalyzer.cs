@@ -194,7 +194,7 @@ public sealed class CallbackSignatureAnalyzer
                 else
                 {
                     info.HasPayloadOnly = true;
-                    payloadType = payloadType ?? paramTypeName;
+                    payloadType ??= paramTypeName;
                 }
             }
             else if (overloadParams.Length == 2)
@@ -205,7 +205,7 @@ public sealed class CallbackSignatureAnalyzer
                 if (secondParamType == CancellationTokenFullName)
                 {
                     info.HasPayloadAndToken = true;
-                    payloadType = payloadType ?? firstParamType;
+                    payloadType ??= firstParamType;
                 }
             }
         }
@@ -219,20 +219,5 @@ public sealed class CallbackSignatureAnalyzer
         return info;
     }
 
-    /// <summary>
-    /// Validation is now handled by the parser/validator layer.
-    /// This analyzer is descriptive only and should not throw exceptions.
-    /// </summary>
-    private void ValidateSignature(CallbackSignatureInfo info, string callbackType, string methodName)
-    {
-        // Validation moved to parser - this method is no longer used
-    }
-
-    /// <summary>
-    /// Clears the analysis cache. Useful for testing.
-    /// </summary>
-    public void ClearCache()
-    {
-        _cache.Clear();
-    }
+   
 }

@@ -1,5 +1,6 @@
 ﻿// AsyncExceptionHandlingTests.cs
 using Shouldly;
+using System;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -23,33 +24,46 @@ namespace StateMachine.Async.Tests
         }
 
         [Fact]
-        public async Task TryFireAsync_When_Action_Throws_Should_Return_False_And_State_Unchanged()
+        public async Task TryFireAsync_When_Action_Throws_Should_Throw_And_State_Changed()
         {
             var m = new ExceptionAsyncMachine(ExStates.Init);
 
-            var ok = await m.TryFireAsync(ExTriggers.ActionBoom);
+            // Teraz oczekujemy propagacji wyjątku z akcji:
+            await Should.ThrowAsync<InvalidOperationException>(
+                async () => await m.TryFireAsync(ExTriggers.ActionBoom));
 
-            ok.ShouldBeFalse();
-            m.CurrentState.ShouldBe(ExStates.Init);          // akcja rzuciła, więc stan nie zmieniony
+            // Brak rollbacku: stan docelowy ustawiony przed OnEntry/Action
+            m.CurrentState.ShouldBe(ExStates.Middle);
+
+            // Logi: guard przeszedł, akcja zaczęła i rzuciła
             m.Log.ShouldContain("GuardOk");
             m.Log.ShouldContain("Action:Begin");
-            m.Log.ShouldNotContain("OnEntry:Begin");          // nie doszliśmy do OnEntry
-            m.Log.ShouldNotContain("OnExit:Begin");           // nie wychodziliśmy ze stanu z OnExit
+
+            // Brak OnEntry/OnExit w tym scenariuszu:
+            // - Init nie ma OnExit
+            // - Middle nie ma OnEntry
+            m.Log.ShouldNotContain("OnEntry:Begin");
+            m.Log.ShouldNotContain("OnExit:Begin");
         }
 
+
         [Fact]
-        public async Task TryFireAsync_When_OnEntry_Throws_Should_Return_False_And_State_Unchanged()
+        public async Task TryFireAsync_When_OnEntry_Throws_Should_Throw_And_State_Changed()
         {
             var m = new ExceptionAsyncMachine(ExStates.Init);
 
-            var ok = await m.TryFireAsync(ExTriggers.EntryBoom);
+            await Should.ThrowAsync<InvalidOperationException>(
+                async () => await m.TryFireAsync(ExTriggers.EntryBoom));
 
-            ok.ShouldBeFalse();
-            m.CurrentState.ShouldBe(ExStates.Init);
+            // Brak rollbacku – stan docelowy ustawiony przed OnEntry
+            m.CurrentState.ShouldBe(ExStates.Next);
+
+            // Logi: guard przeszedł, OnEntry rozpoczęte i rzuciło, akcji nie ma
             m.Log.ShouldContain("GuardOk");
-            m.Log.ShouldContain("OnEntry:Begin");             // weszliśmy w OnEntry i boom
+            m.Log.ShouldContain("OnEntry:Begin");
             m.Log.ShouldNotContain("Action:Begin");
         }
+
 
         [Fact]
         public async Task TryFireAsync_When_OnExit_Throws_Should_Return_False_And_State_Unchanged()

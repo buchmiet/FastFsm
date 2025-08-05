@@ -162,7 +162,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             WriteGuardCheck(transition, stateTypeForUsage, triggerTypeForUsage);
         }
 
-        // OnExit
+        // OnExit (keep exception handling - it prevents transition if OnExit fails)
         if (fromHasExit)
         {
             CallbackGenerationHelper.EmitOnExitCall(
@@ -175,46 +175,57 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 wrapInTryCatch: true,
                 Model.ContinueOnCapturedContext,
                 IsSinglePayloadVariant(),
-                IsMultiPayloadVariant()
+                IsMultiPayloadVariant(),
+                cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+                treatCancellationAsFailure: IsAsyncMachine
             );
 
             WriteLogStatement("Debug",
                 $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef!.OnExitMethod}\", \"{transition.FromState}\");");
         }
 
-        // Action
-        if (!string.IsNullOrEmpty(transition.ActionMethod))
-        {
-            WriteActionCall(transition);
-            WriteLogStatement("Debug",
-                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
-        }
-
-        // State change
+        // State change (before OnEntry)
         if (!transition.IsInternal)
         {
             Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
         }
 
-        // OnEntry with rollback on failure
+        // OnEntry (no exception catching - let it propagate)
         if (toHasEntry)
         {
-            Sb.AppendLine("try");
-            using (Sb.Block(""))
-            {
-                WriteOnEntryCall(toStateDef!, transition.ExpectedPayloadType);
-                WriteLogStatement("Debug",
-                    $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef!.OnEntryMethod}\", \"{transition.ToState}\");");
-            }
-            Sb.AppendLine("catch (Exception)");
-            using (Sb.Block(""))
-            {
-                // Rollback state change
-                Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.FromState)};");
-                Sb.AppendLine($"{SuccessVar} = false;");
-                WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-                Sb.AppendLine($"goto {EndOfTryFireLabel};");
-            }
+            CallbackGenerationHelper.EmitOnEntryCall(
+                Sb,
+                toStateDef!,
+                transition.ExpectedPayloadType,
+                Model.DefaultPayloadType,
+                PayloadVar,
+                IsAsyncMachine,
+                wrapInTryCatch: false,  // No exception catching - let it propagate
+                Model.ContinueOnCapturedContext,
+                IsSinglePayloadVariant(),
+                IsMultiPayloadVariant(),
+                cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+                treatCancellationAsFailure: IsAsyncMachine
+            );
+            WriteLogStatement("Debug",
+                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef!.OnEntryMethod}\", \"{transition.ToState}\");");
+        }
+
+        // Action (after OnEntry, no exception catching - let it propagate)
+        if (!string.IsNullOrEmpty(transition.ActionMethod))
+        {
+            CallbackGenerationHelper.EmitActionCall(
+                Sb,
+                transition,
+                PayloadVar,
+                IsAsyncMachine,
+                wrapInTryCatch: false,  // No exception catching - let it propagate
+                Model.ContinueOnCapturedContext,
+                cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+                treatCancellationAsFailure: IsAsyncMachine
+            );
+            WriteLogStatement("Debug",
+                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
         }
 
         // Log successful transition only after OnEntry succeeds
@@ -289,6 +300,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                         WriteMethodAttribute();
                         using (Sb.Block($"public async ValueTask<bool> TryFireAsync({triggerTypeForUsage} trigger, {payloadType} {PayloadVar}, CancellationToken cancellationToken = default)"))
                         {
+                            Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
                             Sb.AppendLine($"return await TryFireInternalAsync(trigger, {PayloadVar}, cancellationToken){GetConfigureAwait()};");
                         }
                         Sb.AppendLine();
@@ -300,6 +312,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 WriteMethodAttribute();
                 using (Sb.Block($"public async ValueTask<bool> TryFireAsync<TPayload>({triggerTypeForUsage} trigger, TPayload {PayloadVar}, CancellationToken cancellationToken = default)"))
                 {
+                    Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
                     Sb.AppendLine($"return await TryFireInternalAsync(trigger, {PayloadVar}, cancellationToken){GetConfigureAwait()};");
                 }
                 Sb.AppendLine();
@@ -340,6 +353,8 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 Sb.AppendLine("throw new SyncCallOnAsyncMachineException();");
             }
             Sb.AppendLine();
+            
+            // Note: Removed the object? overload as it conflicts with base class method
         }
         else
         {
@@ -438,6 +453,9 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         WriteMethodAttribute();
         using (Sb.Block($"protected override async ValueTask<bool> TryFireInternalAsync({triggerTypeForUsage} trigger, object? {PayloadVar}, CancellationToken cancellationToken)"))
         {
+            Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
+            Sb.AppendLine();
+            
             if (!Model.Transitions.Any())
             {
                 Sb.AppendLine($"return false; {NoTransitionsComment}");
@@ -495,7 +513,9 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             IsAsyncMachine,
             wrapInTryCatch: true,
             Model.ContinueOnCapturedContext,
-            handleResultAfterTry: true
+            handleResultAfterTry: true,
+            cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+            treatCancellationAsFailure: IsAsyncMachine
         );
 
         // Hook: After guard evaluated
@@ -523,7 +543,9 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             PayloadVar,
             IsAsyncMachine,
             wrapInTryCatch: true,
-            Model.ContinueOnCapturedContext
+            Model.ContinueOnCapturedContext,
+            cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+            treatCancellationAsFailure: IsAsyncMachine
         );
     }
 
@@ -539,7 +561,9 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             wrapInTryCatch: true,
             Model.ContinueOnCapturedContext,
             IsSinglePayloadVariant(),
-            IsMultiPayloadVariant()
+            IsMultiPayloadVariant(),
+            cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+            treatCancellationAsFailure: IsAsyncMachine
         );
     }
 
@@ -555,7 +579,9 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             wrapInTryCatch: true,
             Model.ContinueOnCapturedContext,
             IsSinglePayloadVariant(),
-            IsMultiPayloadVariant()
+            IsMultiPayloadVariant(),
+            cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+            treatCancellationAsFailure: IsAsyncMachine
         );
     }
 
@@ -569,6 +595,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 var payloadType = GetTypeNameForUsage(GetSinglePayloadType()!);
                 using (Sb.Block($"public async Task FireAsync({triggerTypeForUsage} trigger, {payloadType} {PayloadVar}, CancellationToken cancellationToken = default)"))
                 {
+                    Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
                     using (Sb.Block($"if (!await TryFireAsync(trigger, {PayloadVar}, cancellationToken){GetConfigureAwait()})"))
                     {
                         Sb.AppendLine($"throw new InvalidOperationException($\"No valid transition from state '{{CurrentState}}' on trigger '{{trigger}}' with payload of type '{payloadType}'\");");
@@ -580,6 +607,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             {
                 using (Sb.Block($"public async Task FireAsync<TPayload>({triggerTypeForUsage} trigger, TPayload {PayloadVar}, CancellationToken cancellationToken = default)"))
                 {
+                    Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
                     using (Sb.Block($"if (!await TryFireAsync(trigger, {PayloadVar}, cancellationToken){GetConfigureAwait()})"))
                     {
                         Sb.AppendLine("throw new InvalidOperationException($\"No valid transition from state '{CurrentState}' on trigger '{trigger}' with payload of type '{typeof(TPayload).Name}'\");");
@@ -606,6 +634,8 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 }
                 Sb.AppendLine();
             }
+            
+            // Note: Removed the object? overloads as they conflict with base class methods
         }
         else
         {
@@ -658,6 +688,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                         WriteMethodAttribute();
                         using (Sb.Block($"public async ValueTask<bool> CanFireAsync({triggerTypeForUsage} trigger, {payloadType} {PayloadVar}, CancellationToken cancellationToken = default)"))
                         {
+                            Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
                             Sb.AppendLine($"return await CanFireWithPayloadAsync(trigger, {PayloadVar}, cancellationToken){GetConfigureAwait()};");
                         }
                         Sb.AppendLine();
@@ -671,6 +702,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 WriteMethodAttribute();
                 using (Sb.Block($"public async ValueTask<bool> CanFireAsync<TPayload>({triggerTypeForUsage} trigger, TPayload {PayloadVar}, CancellationToken cancellationToken = default)"))
                 {
+                    Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
                     using (Sb.Block(
                         $"if ({PayloadMapField}.TryGetValue(trigger, out var expectedType) && " +
                         $"!expectedType.IsInstanceOfType({PayloadVar}))"))
@@ -682,15 +714,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 Sb.AppendLine();
             }
 
-            // Universal async overload with object?
-            Sb.WriteSummary("Asynchronously checks if the specified trigger can be fired " +
-                            "with an optional payload (runtime evaluation incl. guards)");
-            WriteMethodAttribute();
-            using (Sb.Block($"public async ValueTask<bool> CanFireAsync({triggerTypeForUsage} trigger, object? {PayloadVar} = null, CancellationToken cancellationToken = default)"))
-            {
-                Sb.AppendLine($"return await CanFireWithPayloadAsync(trigger, {PayloadVar}, cancellationToken){GetConfigureAwait()};");
-            }
-            Sb.AppendLine();
+            // Note: Removed the object? overload as it conflicts with base class method
 
             // Sync CanFire methods required by interface - NIE używaj override
             if (IsSinglePayloadVariant())
@@ -707,6 +731,8 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                     Sb.AppendLine();
                 }
             }
+            
+            // Note: Removed the object? overload as it conflicts with base class method
         }
         else
         {
@@ -752,15 +778,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 Sb.AppendLine();
             }
 
-            // Universal sync overload with object?
-            Sb.WriteSummary("Checks if the specified trigger can be fired " +
-                            "with an optional payload (runtime evaluation incl. guards)");
-            WriteMethodAttribute();
-            using (Sb.Block($"public bool CanFire({triggerTypeForUsage} trigger, object? {PayloadVar} = null)"))
-            {
-                Sb.AppendLine($"return CanFireWithPayload(trigger, {PayloadVar});");
-            }
-            Sb.AppendLine();
+            // Note: Removed the object? overload as it conflicts with base class method
         }
     }
 
@@ -773,6 +791,9 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
 
         using (Sb.Block($"public override async ValueTask<bool> CanFireAsync({triggerTypeForUsage} trigger, CancellationToken cancellationToken = default)"))
         {
+            Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
+            Sb.AppendLine();
+            
             using (Sb.Block($"switch ({CurrentStateField})"))
             {
                 var allHandledFromStates = Model.Transitions.Select(t => t.FromState).Distinct().OrderBy(s => s);
@@ -828,6 +849,9 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         WriteMethodAttribute();
         using (Sb.Block($"private async ValueTask<bool> CanFireWithPayloadAsync({triggerTypeForUsage} trigger, object? {PayloadVar}, CancellationToken cancellationToken)"))
         {
+            Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
+            Sb.AppendLine();
+            
             // Payload validation for multi-payload variant
             if (IsMultiPayloadVariant())
             {
@@ -889,7 +913,9 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             isAsync: true, // Zawsze async w tej metodzie
             wrapInTryCatch: true,
             Model.ContinueOnCapturedContext,
-            handleResultAfterTry: true
+            handleResultAfterTry: true,
+            cancellationTokenVar: "cancellationToken",
+            treatCancellationAsFailure: true
         );
     }
     private void WriteCanFireWithPayload(string stateTypeForUsage, string triggerTypeForUsage)
@@ -978,6 +1004,9 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
 
         using (Sb.Block($"public override async ValueTask<{ReadOnlyListType}<{triggerTypeForUsage}>> GetPermittedTriggersAsync(CancellationToken cancellationToken = default)"))
         {
+            Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
+            Sb.AppendLine();
+            
             using (Sb.Block($"switch ({CurrentStateField})"))
             {
                 var transitionsByFromState = Model.Transitions
@@ -1025,7 +1054,9 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                                         IsAsyncMachine, // dla async guards będzie true
                                         wrapInTryCatch: true,
                                         Model.ContinueOnCapturedContext,
-                                        handleResultAfterTry: true
+                                        handleResultAfterTry: true,
+                                        cancellationTokenVar: "cancellationToken",
+                                        treatCancellationAsFailure: true
                                     );
                                     using (Sb.Block("if (canFire)"))
                                     {
@@ -1174,6 +1205,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         using (Sb.Block($"public async ValueTask<{ReadOnlyListType}<{triggerTypeForUsage}>> GetPermittedTriggersAsync(Func<{triggerTypeForUsage}, object?> payloadResolver, CancellationToken cancellationToken = default)"))
         {
             Sb.AppendLine("if (payloadResolver == null) throw new ArgumentNullException(nameof(payloadResolver));");
+            Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
             Sb.AppendLine();
 
             using (Sb.Block($"switch ({CurrentStateField})"))
@@ -1252,7 +1284,9 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             isAsync: true, // To jest async metoda
             wrapInTryCatch: true,
             Model.ContinueOnCapturedContext,
-            handleResultAfterTry: true
+            handleResultAfterTry: true,
+            cancellationTokenVar: "cancellationToken",
+            treatCancellationAsFailure: true
         );
     }
 

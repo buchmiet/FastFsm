@@ -141,41 +141,28 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                 $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
         }
 
-        // Action
-        if (!string.IsNullOrEmpty(transition.ActionMethod))
-        {
-            WriteActionCall(transition);
-            WriteLogStatement("Debug",
-                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
-        }
-
-        // State change
+        // State change (before OnEntry)
         if (!transition.IsInternal)
         {
             Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
         }
 
-        // OnEntry with rollback on failure
+        // OnEntry (no exception catching - let it propagate)
         if (!transition.IsInternal && hasOnEntryExit &&
             Model.States.TryGetValue(transition.ToState, out var toStateDef) &&
             !string.IsNullOrEmpty(toStateDef.OnEntryMethod))
         {
-            Sb.AppendLine("try");
-            using (Sb.Block(""))
-            {
-                WriteOnEntryCall(toStateDef, transition.ExpectedPayloadType);
-                WriteLogStatement("Debug",
-                    $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
-            }
-            Sb.AppendLine("catch (Exception)");
-            using (Sb.Block(""))
-            {
-                // Rollback state change
-                Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.FromState)};");
-                Sb.AppendLine($"{SuccessVar} = false;");
-                WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-                Sb.AppendLine($"goto {EndOfTryFireLabel};");
-            }
+            WriteOnEntryCall(toStateDef, transition.ExpectedPayloadType);
+            WriteLogStatement("Debug",
+                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
+        }
+
+        // Action (after OnEntry, no exception catching - let it propagate)
+        if (!string.IsNullOrEmpty(transition.ActionMethod))
+        {
+            WriteActionCall(transition);
+            WriteLogStatement("Debug",
+                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
         }
 
         // Log successful transition only after OnEntry succeeds
@@ -265,7 +252,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                 Sb.AppendLine($"goto {EndOfTryFireLabel};");
             }
         }
-        Sb.AppendLine("catch (Exception ex)");
+        Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
         using (Sb.Block(""))
         {
             // Traktujemy wyjątek w guard jako false (guard nie przeszedł)
