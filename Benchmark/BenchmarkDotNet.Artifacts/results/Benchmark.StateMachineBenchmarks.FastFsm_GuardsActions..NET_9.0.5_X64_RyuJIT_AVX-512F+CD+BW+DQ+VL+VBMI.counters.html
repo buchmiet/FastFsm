@@ -1,0 +1,71 @@
+<!DOCTYPE html><html lang='en'><head><meta charset='utf-8' />
+<title>Combined Output of DisassemblyDiagnoser and HardwareCounters StateMachineBenchmarks.FastFsm_GuardsActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)</title>
+
+<style type="text/css">
+    pre { margin: 0px; }
+    table { border-collapse:collapse; }
+    td.perMethod { border-top: 1px black solid; }
+    tr.evenMap td { background-color: #F5F5F5; }  
+</style>
+</head>
+<body>
+<!-- Generated with BenchmarkDotNet 
+For CacheMisses we have 0 in total, 0 without noise
+For BranchMispredictions we have 4887000 in total, 527000 without noise
+For TotalCycles we have 35259154432 in total, 4236050432 without noise
+-->
+<table><thead><tr>
+<th>miss</th>
+<th>mispred</th>
+<th>cycles</th>
+<th></th></tr></thead>
+<tbody>
+<tr><th colspan="4">Benchmark.StateMachineBenchmarks.FastFsm_GuardsActions()</th></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 527000">0.38%</td><td title="5636096 of 4236050432">0.13%</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 527000">0.57%</td><td title="458752 of 4236050432">0.01%</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,28</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbx,rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       esi,400</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4236050432">0.00%</td><td><pre><code>mov       rcx,[rbx+38]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="335000 of 527000">63.57%</td><td title="2922315776 of 4236050432">68.99%</td><td><pre><code>xor       edx,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="20000 of 527000">3.80%</td><td title="151584768 of 4236050432">3.58%</td><td><pre><code>xor       r8d,r8d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,[rcx]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="20000 of 527000">3.80%</td><td title="125894656 of 4236050432">2.97%</td><td><pre><code>mov       rax,[rax+40]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="48000 of 527000">9.11%</td><td title="162856960 of 4236050432">3.84%</td><td><pre><code>call      qword ptr [rax+28]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="74000 of 527000">14.04%</td><td title="688717824 of 4236050432">16.26%</td><td><pre><code>dec       esi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="17000 of 527000">3.23%</td><td title="124911616 of 4236050432">2.95%</td><td><pre><code>jne       short 00007FFEAE34770E</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rbx+38]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 527000">0.57%</td><td title="31129600 of 4236050432">0.73%</td><td><pre><code>mov       ecx,[rcx+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="5000 of 527000">0.95%</td><td title="21889024 of 4236050432">0.52%</td><td><pre><code>add       rsp,28</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4236050432">0.00%</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 4236050432">0.00%</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       qword ptr [7FFEAE856D78]</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td class="perMethod" title="527000 of 527000">100.00%</td><td class="perMethod" title="4235657216 of 4236050432">99.99%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><th colspan="4">BenchmarkDotNet.Engines.DeadCodeEliminationHelper.KeepAliveWithoutBoxing[[Benchmark.State, Benchmark]](Benchmark.State)</th></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="393216 of 4236050432">0.01%</td><td><pre><code>ret</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td  class="perMethod">-</td><td class="perMethod" title="393216 of 4236050432">0.01%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+</tbody></table></body></html>

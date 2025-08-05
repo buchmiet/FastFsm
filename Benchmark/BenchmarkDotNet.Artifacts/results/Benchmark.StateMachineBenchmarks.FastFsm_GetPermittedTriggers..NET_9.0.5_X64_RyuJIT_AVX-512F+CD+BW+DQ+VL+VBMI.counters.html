@@ -1,0 +1,127 @@
+<!DOCTYPE html><html lang='en'><head><meta charset='utf-8' />
+<title>Combined Output of DisassemblyDiagnoser and HardwareCounters StateMachineBenchmarks.FastFsm_GetPermittedTriggers: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)</title>
+
+<style type="text/css">
+    pre { margin: 0px; }
+    table { border-collapse:collapse; }
+    td.perMethod { border-top: 1px black solid; }
+    tr.evenMap td { background-color: #F5F5F5; }  
+</style>
+</head>
+<body>
+<!-- Generated with BenchmarkDotNet 
+For CacheMisses we have 0 in total, 0 without noise
+For BranchMispredictions we have 29012000 in total, 1388000 without noise
+For TotalCycles we have 62477041664 in total, 10708910080 without noise
+-->
+<table><thead><tr>
+<th>miss</th>
+<th>mispred</th>
+<th>cycles</th>
+<th></th></tr></thead>
+<tbody>
+<tr><th colspan="4">Benchmark.StateMachineBenchmarks.FastFsm_GetPermittedTriggers()</th></tr>
+<tr class="evenMap">
+<td>-</td><td title="9000 of 1388000">0.65%</td><td title="9175040 of 10708910080">0.09%</td><td><pre><code>push      rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 1388000">0.22%</td><td title="786432 of 10708910080">0.01%</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,20</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbx,rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rsi,offset MT_Benchmark.FastFsmBasic</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edi,400</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 1388000">0.07%</td><td title="3080192 of 10708910080">0.03%</td><td><pre><code>mov       rcx,[rbx+30]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="77000 of 1388000">5.55%</td><td title="457441280 of 10708910080">4.27%</td><td><pre><code>cmp       [rcx],rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="23000 of 1388000">1.66%</td><td title="51380224 of 10708910080">0.48%</td><td><pre><code>jne       short 00007FFEAE3470A7</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 1388000">0.07%</td><td title="196608 of 10708910080">0.00%</td><td><pre><code>call      qword ptr [7FFEAE68A270]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 1388000">0.22%</td><td title="12451840 of 10708910080">0.12%</td><td><pre><code>dec       edi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="124000 of 1388000">8.93%</td><td title="1157365760 of 10708910080">10.81%</td><td><pre><code>jne       short 00007FFEAE347079</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[rbx+30]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="7602176 of 10708910080">0.07%</td><td><pre><code>mov       rcx,7FFEAE8C1CE0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,20</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 10708910080">0.00%</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="5898240 of 10708910080">0.06%</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 10708910080">0.00%</td><td><pre><code>pop       rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 10708910080">0.00%</td><td><pre><code>jmp       qword ptr [7FFEAE856D60]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,[rcx]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,[rax+48]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [rax]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE347088</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td class="perMethod" title="241000 of 1388000">17.36%</td><td class="perMethod" title="1705771008 of 10708910080">15.93%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><th colspan="4">Benchmark.FastFsmBasic.GetPermittedTriggers()</th></tr>
+<tr class="evenMap">
+<td>-</td><td title="745000 of 1388000">53.67%</td><td title="5934415872 of 10708910080">55.42%</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="299000 of 1388000">21.54%</td><td title="2364997632 of 10708910080">22.08%</td><td><pre><code>sub       rsp,20</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="786432 of 10708910080">0.01%</td><td><pre><code>mov       ebx,[rcx+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 1388000">0.22%</td><td title="5767168 of 10708910080">0.05%</td><td><pre><code>test      ebx,ebx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="393216 of 10708910080">0.00%</td><td><pre><code>jne       short 00007FFEAE346E17</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 10708910080">0.00%</td><td><pre><code>mov       rcx,offset MT_Benchmark.Trigger[]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 10708910080">0.00%</td><td><pre><code>mov       edx,1</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_NEWARR_1_VC</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 1388000">0.22%</td><td title="25296896 of 10708910080">0.24%</td><td><pre><code>nop</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="20000 of 1388000">1.44%</td><td title="1835008 of 10708910080">0.02%</td><td><pre><code>add       rsp,20</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="69000 of 1388000">4.97%</td><td title="653852672 of 10708910080">6.11%</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="8000 of 1388000">0.58%</td><td title="10944512 of 10708910080">0.10%</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       ebx,2</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jbe       short 00007FFEAE346DFC</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,offset MT_System.Array+EmptyArray<Benchmark.Trigger></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_GET_GCSTATIC_BASE</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,1D563401788</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,[rax]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,20</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td class="perMethod" title="1147000 of 1388000">82.64%</td><td class="perMethod" title="8998682624 of 10708910080">84.03%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><th colspan="4">BenchmarkDotNet.Engines.DeadCodeEliminationHelper.KeepAliveWithoutBoxing[[System.__Canon, System.Private.CoreLib]](System.__Canon)</th></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="4456448 of 10708910080">0.04%</td><td><pre><code>ret</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td  class="perMethod">-</td><td class="perMethod" title="4456448 of 10708910080">0.04%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+</tbody></table></body></html>
