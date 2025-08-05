@@ -1,0 +1,1925 @@
+<!DOCTYPE html><html lang='en'><head><meta charset='utf-8' />
+<title>Combined Output of DisassemblyDiagnoser and HardwareCounters StateMachineBenchmarks.Stateless_AsyncActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)</title>
+
+<style type="text/css">
+    pre { margin: 0px; }
+    table { border-collapse:collapse; }
+    td.perMethod { border-top: 1px black solid; }
+    tr.evenMap td { background-color: #F5F5F5; }  
+</style>
+</head>
+<body>
+<!-- Generated with BenchmarkDotNet 
+For CacheMisses we have 0 in total, 0 without noise
+For BranchMispredictions we have 129681000 in total, 599000 without noise
+For TotalCycles we have 163511074816 in total, 861011968 without noise
+-->
+<table><thead><tr>
+<th>miss</th>
+<th>mispred</th>
+<th>cycles</th>
+<th></th></tr></thead>
+<tbody>
+<tr><th colspan="4">Benchmark.StateMachineBenchmarks.Stateless_AsyncActions()</th></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="327680 of 861011968">0.04%</td><td><pre><code>sub       rsp,48</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="655360 of 861011968">0.08%</td><td><pre><code>xor       eax,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rsp+28],rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 861011968">0.03%</td><td><pre><code>vxorps    xmm4,xmm4,xmm4</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>vmovdqa   xmmword ptr [rsp+30],xmm4</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rsp+40],rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rsp+28],rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       dword ptr [rsp+30],0FFFFFFFF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rcx,[rsp+28]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE836DA8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,[rsp+38]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      rax,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        short 00007FFEAE991E11</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,48</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rcx,[rsp+38]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE915DD0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE991E0C</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td  class="perMethod">-</td><td class="perMethod" title="1245184 of 861011968">0.14%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><th colspan="4">System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[[Benchmark.StateMachineBenchmarks+<Stateless_AsyncActions>d__42, Benchmark]](<Stateless_AsyncActions>d__42 ByRef)</th></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="327680 of 861011968">0.04%</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="393216 of 861011968">0.05%</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,40</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rbp,[rsp+50]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rbp-30],rsp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>mov       rbx,rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       [rbx],bl</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,gs:[58]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,[rax+48]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       dword ptr [rax+208],4</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="327680 of 861011968">0.04%</td><td><pre><code>jle       short 00007FFEAE991EEA</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,[rax+210]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,[rax+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 599000">0.50%</td><td title="1703936 of 861011968">0.20%</td><td><pre><code>test      rax,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        short 00007FFEAE991EEA</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rsi,[rax+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="458752 of 861011968">0.05%</td><td><pre><code>test      rsi,rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       short 00007FFEAE991EAD</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE4CF108]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rsi,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rbp-18],rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>mov       rdx,[rsi+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rbp-20],rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rsi+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rbp-28],rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE836DD8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>nop</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>mov       rcx,[rbp-28]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       rcx,[rsi+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>jne       short 00007FFEAE991EF6</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8,[rsi+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[rbp-20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       rdx,r8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       short 00007FFEAE991F05</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,40</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ecx,4</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_GETDYNAMIC_GCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE991E9B</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rcx,[rsi+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[rbp-28]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE991ED5</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE72D4D0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE991EE2</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbp,[rcx+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rsp+20],rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rbp,[rbp+50]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[rbp-28]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rbp-18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       rdx,[rcx+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        short 00007FFEAE991F3F</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rcx,[rcx+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rbp-18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8,[rcx+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[rbp-20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       rdx,r8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        short 00007FFEAE991F52</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE72D4D0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>nop</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td class="perMethod" title="5000 of 599000">0.83%</td><td class="perMethod" title="3735552 of 861011968">0.43%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><th colspan="4">System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(System.Threading.Tasks.Task, System.Threading.Tasks.ConfigureAwaitOptions)</th></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="327680 of 861011968">0.04%</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 861011968">0.03%</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,28</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbx,rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       esi,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      dword ptr [rbx+34],1600000</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>jne       short 00007FFEAE991FF5</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>xor       r8d,r8d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>mov       edx,0FFFFFFFF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83E070]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td>-</td><td><pre><code>test      dword ptr [rbx+34],10000000</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 599000">0.33%</td><td title="1310720 of 861011968">0.15%</td><td><pre><code>jne       short 00007FFEAE992016</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>mov       ecx,[rbx+34]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="65536 of 861011968">0.01%</td><td><pre><code>and       ecx,1600000</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       ecx,1000000</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       short 00007FFEAE992032</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,28</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 861011968">0.03%</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,[rbx]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,[rax+40]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [rax+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      eax,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        short 00007FFEAE991FFE</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE91C558]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE991FFE</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      sil,2</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       short 00007FFEAE992041</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE91C5A0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE91CAC8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE99200F</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td class="perMethod" title="5000 of 599000">0.83%</td><td class="perMethod" title="2424832 of 861011968">0.28%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><th colspan="4">Benchmark.StateMachineBenchmarks+<Stateless_AsyncActions>d__42.MoveNext()</th></tr>
+<tr class="evenMap">
+<td>-</td><td title="9000 of 599000">1.50%</td><td title="2293760 of 861011968">0.27%</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="13000 of 599000">2.17%</td><td title="22740992 of 861011968">2.64%</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="65536 of 861011968">0.01%</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,60</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="131072 of 861011968">0.02%</td><td><pre><code>lea       rbp,[rsp+70]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="3276800 of 861011968">0.38%</td><td><pre><code>vxorps    xmm4,xmm4,xmm4</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>vmovdqu   ymmword ptr [rbp-40],ymm4</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="4000 of 599000">0.67%</td><td title="9633792 of 861011968">1.12%</td><td><pre><code>vmovdqa   xmmword ptr [rbp-20],xmm4</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>mov       [rbp-50],rsp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="458752 of 861011968">0.05%</td><td><pre><code>mov       [rbp+10],rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,[rcx+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="5000 of 599000">0.83%</td><td title="79626240 of 861011968">9.25%</td><td><pre><code>mov       rbx,[rcx]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="2686976 of 861011968">0.31%</td><td><pre><code>test      edx,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>jne       near ptr 00007FFEAE98EDCD</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>mov       rdx,[rcx+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 599000">0.50%</td><td title="4980736 of 861011968">0.58%</td><td><pre><code>mov       [rbp-18],rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="327680 of 861011968">0.04%</td><td><pre><code>xor       edx,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="458752 of 861011968">0.05%</td><td><pre><code>mov       [rcx+18],rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>mov       dword ptr [rcx+8],0FFFFFFFF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 861011968">0.02%</td><td><pre><code>mov       rax,[rbp-18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="6000 of 599000">1.00%</td><td title="13959168 of 861011968">1.62%</td><td><pre><code>mov       edx,[rax+34]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="4000 of 599000">0.67%</td><td title="6422528 of 861011968">0.75%</td><td><pre><code>and       edx,11000000</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="1245184 of 861011968">0.14%</td><td><pre><code>cmp       edx,1000000</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       near ptr 00007FFEAE98EDED</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>inc       dword ptr [rcx+0C]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 861011968">0.03%</td><td><pre><code>cmp       dword ptr [rcx+0C],400</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="5439488 of 861011968">0.63%</td><td><pre><code>jge       near ptr 00007FFEAE98EDDF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rsi,[rbx+28]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="8000 of 599000">1.34%</td><td title="10682368 of 861011968">1.24%</td><td><pre><code>cmp       [rsi],sil</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="13000 of 599000">2.17%</td><td title="12845056 of 861011968">1.49%</td><td><pre><code>mov       rcx,offset MT_System.Object[]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="720896 of 861011968">0.08%</td><td><pre><code>xor       edx,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1769472 of 861011968">0.21%</td><td><pre><code>call      CORINFO_HELP_NEWARR_1_OBJ</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1245184 of 861011968">0.14%</td><td><pre><code>vxorps    ymm0,ymm0,ymm0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="2097152 of 861011968">0.24%</td><td><pre><code>vmovdqu   ymmword ptr [rbp-40],ymm0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="589824 of 861011968">0.07%</td><td><pre><code>vmovdqu   xmmword ptr [rbp-28],xmm0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>xor       ecx,ecx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="983040 of 861011968">0.11%</td><td><pre><code>mov       [rbp-28],rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="458752 of 861011968">0.05%</td><td><pre><code>mov       [rbp-40],rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1769472 of 861011968">0.21%</td><td><pre><code>mov       [rbp-2C],ecx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="458752 of 861011968">0.05%</td><td><pre><code>mov       [rbp-38],rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       dword ptr [rbp-30],0FFFFFFFF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1376256 of 861011968">0.16%</td><td><pre><code>lea       rcx,[rbp-40]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE836E80]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="4000 of 599000">0.67%</td><td title="3997696 of 861011968">0.46%</td><td><pre><code>mov       rcx,[rbp-28]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="25000 of 599000">4.17%</td><td title="14352384 of 861011968">1.67%</td><td><pre><code>test      rcx,rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>je        near ptr 00007FFEAE98EE01</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 599000">0.33%</td><td title="1048576 of 861011968">0.12%</td><td><pre><code>cmp       [rcx],cl</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="24000 of 599000">4.01%</td><td title="33292288 of 861011968">3.87%</td><td><pre><code>mov       [rbp-18],rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1114112 of 861011968">0.13%</td><td><pre><code>mov       rcx,[rbp-18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="6000 of 599000">1.00%</td><td title="8126464 of 861011968">0.94%</td><td><pre><code>test      dword ptr [rcx+34],1600000</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="7000 of 599000">1.17%</td><td title="4718592 of 861011968">0.55%</td><td><pre><code>mov       rcx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="2490368 of 861011968">0.29%</td><td><pre><code>jne       near ptr 00007FFEAE98ED05</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="2424832 of 861011968">0.28%</td><td><pre><code>xor       edx,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="458752 of 861011968">0.05%</td><td><pre><code>mov       [rcx+8],edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="5000 of 599000">0.83%</td><td title="31588352 of 861011968">3.67%</td><td><pre><code>lea       rcx,[rcx+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 599000">0.33%</td><td title="786432 of 861011968">0.09%</td><td><pre><code>mov       rdx,[rbp-18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="1703936 of 861011968">0.20%</td><td><pre><code>call      CORINFO_HELP_CHECKED_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="2031616 of 861011968">0.24%</td><td><pre><code>mov       rcx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="6000 of 599000">1.00%</td><td title="3407872 of 861011968">0.40%</td><td><pre><code>lea       rdx,[rcx+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="1441792 of 861011968">0.17%</td><td><pre><code>call      qword ptr [7FFEAE83DFB0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="5000 of 599000">0.83%</td><td title="1769472 of 861011968">0.21%</td><td><pre><code>mov       rdx,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="655360 of 861011968">0.08%</td><td><pre><code>lea       rcx,[rbp-18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 599000">0.33%</td><td title="2949120 of 861011968">0.34%</td><td><pre><code>call      qword ptr [7FFEAE83DBC0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 861011968">0.03%</td><td><pre><code>jmp       short 00007FFEAE98EE28</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>xor       edx,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="327680 of 861011968">0.04%</td><td><pre><code>mov       [rcx+0C],edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>cmp       dword ptr [rcx+0C],400</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jl        near ptr 00007FFEAE98ED2E</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ecx,[rbx+0A0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>call      qword ptr [7FFEAE836E08]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>jmp       short 00007FFEAE98EE13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>xor       edx,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83E058]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE98ED1E</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rcx,[rbp-28]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE915DD0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE98ED83</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>mov       dword ptr [rcx+8],0FFFFFFFE</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rcx,10</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE72D5F0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="262144 of 861011968">0.03%</td><td><pre><code>nop</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 599000">0.50%</td><td title="851968 of 861011968">0.10%</td><td><pre><code>add       rsp,60</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="8000 of 599000">1.34%</td><td title="5505024 of 861011968">0.64%</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="1769472 of 861011968">0.21%</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="327680 of 861011968">0.04%</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="983040 of 861011968">0.11%</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbp,[rcx+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rsp+20],rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rbp,[rbp+70]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       dword ptr [rcx+8],0FFFFFFFE</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rcx,10</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE72D608]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rax,[7FFEAE98EE28]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td class="perMethod" title="178000 of 599000">29.72%</td><td class="perMethod" title="318767104 of 861011968">37.02%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><th colspan="4">System.Threading.Tasks.Task.InternalWaitCore(Int32, System.Threading.CancellationToken)</th></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>push      r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r12</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>push      rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,38</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>mov       rbx,rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       esi,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdi,r8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      dword ptr [rbx+34],1600000</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       near ptr 00007FFEAE99222F</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,22B15401670</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbp,[rax]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>movzx     r14d,byte ptr [rbp+9D]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      r14d,r14d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       short 00007FFEAE992105</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      System.Diagnostics.Debugger.get_IsAttached()</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      eax,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       near ptr 00007FFEAE99217C</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       esi,0FFFFFFFF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       short 00007FFEAE9920D7</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      rdi,rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       short 00007FFEAE9920D7</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83E088]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 599000">0.33%</td><td title="262144 of 861011968">0.03%</td><td><pre><code>test      eax,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       near ptr 00007FFEAE992187</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,esi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8,rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83E0A0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r15d,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>test      r14d,r14d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       near ptr 00007FFEAE99219F</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       eax,r15d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,38</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td>-</td><td><pre><code>pop       r12</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ecx,5</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_GETDYNAMIC_GCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r15,[rax+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      r15,r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       short 00007FFEAE992133</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,22B154017F8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rcx]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83C8D0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r13d,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>xor       r12d,r12d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE99214E</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[r15+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       [rcx],ecx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83C8D0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r13d,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83D6F8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r12d,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83D6F8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r9d,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       dword ptr [rsp+20],1</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>xor       edx,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rsp+28],edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,r13d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8d,r12d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE91C5D0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE9920AF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE915E90]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE9920BC</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      dword ptr [rbx+34],1600000</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        near ptr 00007FFEAE9920D7</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r15d,1</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE9920E8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ecx,5</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_GETDYNAMIC_GCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rsi,[rax+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      rsi,rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        short 00007FFEAE9921E7</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rsi+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       [rcx],ecx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83C8D0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edi,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83D6F8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       esi,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83D6F8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r9d,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,edi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8d,esi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE91C5E8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE992216</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,22B154017F8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rcx]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83C8D0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       esi,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83D6F8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r9d,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,esi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>xor       r8d,r8d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE91C5E8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83D6F8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE91C600]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE9920F1</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       eax,1</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,38</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r12</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td class="perMethod" title="3000 of 599000">0.50%</td><td class="perMethod" title="720896 of 861011968">0.08%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><th colspan="4">System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[[Stateless.StateMachine`2+<InternalFireAsync>d__21[[Benchmark.State, Benchmark],[Benchmark.Trigger, Benchmark]], Stateless]](<InternalFireAsync>d__21<Benchmark.State,Benchmark.Trigger> ByRef)</th></tr>
+<tr class="evenMap">
+<td>-</td><td title="6000 of 599000">1.00%</td><td title="11599872 of 861011968">1.35%</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="11000 of 599000">1.84%</td><td title="8585216 of 861011968">1.00%</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,40</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rbp,[rsp+50]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rbp-30],rsp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="2359296 of 861011968">0.27%</td><td><pre><code>mov       rbx,rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 599000">0.33%</td><td title="8192000 of 861011968">0.95%</td><td><pre><code>cmp       [rbx],bl</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="3407872 of 861011968">0.40%</td><td><pre><code>mov       rax,gs:[58]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>mov       rax,[rax+48]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="262144 of 861011968">0.03%</td><td><pre><code>cmp       dword ptr [rax+208],4</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 599000">0.50%</td><td title="4194304 of 861011968">0.49%</td><td><pre><code>jle       short 00007FFEAE98650A</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,[rax+210]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,[rax+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="10354688 of 861011968">1.20%</td><td><pre><code>test      rax,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        short 00007FFEAE98650A</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rsi,[rax+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="6000 of 599000">1.00%</td><td title="14417920 of 861011968">1.67%</td><td><pre><code>test      rsi,rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       short 00007FFEAE9864CD</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE4CF108]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rsi,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rbp-18],rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="5000 of 599000">0.83%</td><td title="2818048 of 861011968">0.33%</td><td><pre><code>mov       rdx,[rsi+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="8000 of 599000">1.34%</td><td title="18350080 of 861011968">2.13%</td><td><pre><code>mov       [rbp-20],rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>mov       rcx,[rsi+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="983040 of 861011968">0.11%</td><td><pre><code>mov       [rbp-28],rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE836EB0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="10000 of 599000">1.67%</td><td title="1769472 of 861011968">0.21%</td><td><pre><code>nop</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="36000 of 599000">6.01%</td><td title="9371648 of 861011968">1.09%</td><td><pre><code>mov       rcx,[rbp-28]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="9000 of 599000">1.50%</td><td title="4915200 of 861011968">0.57%</td><td><pre><code>cmp       rcx,[rsi+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 599000">0.50%</td><td title="1572864 of 861011968">0.18%</td><td><pre><code>jne       short 00007FFEAE986516</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8,[rsi+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="5767168 of 861011968">0.67%</td><td><pre><code>mov       rdx,[rbp-20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="851968 of 861011968">0.10%</td><td><pre><code>cmp       rdx,r8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>jne       short 00007FFEAE986525</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="720896 of 861011968">0.08%</td><td><pre><code>add       rsp,40</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="1245184 of 861011968">0.14%</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="524288 of 861011968">0.06%</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 861011968">0.03%</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="655360 of 861011968">0.08%</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ecx,4</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_GETDYNAMIC_GCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE9864BB</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rcx,[rsi+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[rbp-28]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE9864F5</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE72D4D0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE986502</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbp,[rcx+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rsp+20],rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rbp,[rbp+50]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[rbp-28]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rbp-18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       rdx,[rcx+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        short 00007FFEAE98655F</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rcx,[rcx+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rbp-18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8,[rcx+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[rbp-20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       rdx,r8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        short 00007FFEAE986572</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE72D4D0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>nop</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td class="perMethod" title="104000 of 599000">17.36%</td><td class="perMethod" title="113704960 of 861011968">13.21%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><th colspan="4">System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1[[System.Threading.Tasks.VoidTaskResult, System.Private.CoreLib]].GetStateMachineBox[[Benchmark.StateMachineBenchmarks+<Stateless_AsyncActions>d__42, Benchmark]](<Stateless_AsyncActions>d__42 ByRef, System.Threading.Tasks.Task`1<System.Threading.Tasks.VoidTaskResult> ByRef)</th></tr>
+<tr class="evenMap">
+<td>-</td><td title="12000 of 599000">2.00%</td><td title="21168128 of 861011968">2.46%</td><td><pre><code>push      r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="5000 of 599000">0.83%</td><td title="9830400 of 861011968">1.14%</td><td><pre><code>push      r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>push      r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>push      rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 861011968">0.02%</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 861011968">0.02%</td><td><pre><code>sub       rsp,20</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="8000 of 599000">1.34%</td><td title="22544384 of 861011968">2.62%</td><td><pre><code>mov       rsi,rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>mov       rbx,rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="1376256 of 861011968">0.16%</td><td><pre><code>mov       rax,gs:[58]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="1703936 of 861011968">0.20%</td><td><pre><code>mov       rax,[rax+48]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 599000">0.50%</td><td title="4653056 of 861011968">0.54%</td><td><pre><code>cmp       dword ptr [rax+208],4</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="7405568 of 861011968">0.86%</td><td><pre><code>jle       near ptr 00007FFEAE98E1AA</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,[rax+210]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="327680 of 861011968">0.04%</td><td><pre><code>mov       rax,[rax+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="5000 of 599000">0.83%</td><td title="17891328 of 861011968">2.08%</td><td><pre><code>test      rax,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 599000">0.50%</td><td title="7929856 of 861011968">0.92%</td><td><pre><code>je        near ptr 00007FFEAE98E1AA</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 599000">0.33%</td><td title="1769472 of 861011968">0.21%</td><td><pre><code>mov       rax,[rax+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="5000 of 599000">0.83%</td><td title="14548992 of 861011968">1.69%</td><td><pre><code>test      rax,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 861011968">0.03%</td><td><pre><code>jne       short 00007FFEAE98E091</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE4CF108]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbp,[rax+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="16000 of 599000">2.67%</td><td title="15990784 of 861011968">1.86%</td><td><pre><code>test      rbp,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 861011968">0.02%</td><td><pre><code>jne       near ptr 00007FFEAE98E1B9</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,22B154017A8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>mov       rbp,[rax]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="458752 of 861011968">0.05%</td><td><pre><code>mov       rdx,[rbx]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 599000">0.50%</td><td title="1769472 of 861011968">0.21%</td><td><pre><code>mov       r14,rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="786432 of 861011968">0.09%</td><td><pre><code>test      r14,r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="983040 of 861011968">0.11%</td><td><pre><code>je        short 00007FFEAE98E0C9</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,offset MT_System.Runtime.CompilerServices.AsyncTaskMethodBuilder<System.Threading.Tasks.VoidTaskResult>+AsyncStateMachineBox<Benchmark.StateMachineBenchmarks+<Stateless_AsyncActions>d__42></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="2752512 of 861011968">0.32%</td><td><pre><code>cmp       [r14],rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="7000 of 599000">1.17%</td><td title="2949120 of 861011968">0.34%</td><td><pre><code>jne       near ptr 00007FFEAE98E1C8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      r14,r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 861011968">0.02%</td><td><pre><code>je        short 00007FFEAE98E0EA</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       [r14+10],rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td>-</td><td><pre><code>jne       near ptr 00007FFEAE98E1D5</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="1376256 of 861011968">0.16%</td><td><pre><code>add       rsp,20</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="1245184 of 861011968">0.14%</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="393216 of 861011968">0.05%</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="4000 of 599000">0.67%</td><td title="4063232 of 861011968">0.47%</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 599000">0.33%</td><td title="2490368 of 861011968">0.29%</td><td><pre><code>pop       rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>pop       r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="1245184 of 861011968">0.14%</td><td><pre><code>pop       r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="983040 of 861011968">0.11%</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[rbx]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,offset MT_System.Runtime.CompilerServices.AsyncTaskMethodBuilder<System.Threading.Tasks.VoidTaskResult>+AsyncStateMachineBox<System.Runtime.CompilerServices.IAsyncStateMachine></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      System.Runtime.CompilerServices.CastHelpers.IsInstanceOfClass(Void*, System.Object)</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>mov       r15,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      r15,r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td>-</td><td><pre><code>jne       near ptr 00007FFEAE98E21F</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      System.Diagnostics.Debugger.get_IsAttached()</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>test      eax,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       near ptr 00007FFEAE98E1E6</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,22B15401670</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r15,[rcx]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,3</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8d,100</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>xor       r9d,r9d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE91C9D8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>test      eax,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       near ptr 00007FFEAE98E1F1</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,offset MT_System.Runtime.CompilerServices.AsyncTaskMethodBuilder<System.Threading.Tasks.VoidTaskResult>+AsyncStateMachineBox<Benchmark.StateMachineBenchmarks+<Stateless_AsyncActions>d__42></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r13,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       dword ptr [r13+34],2000400</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>or        dword ptr [r13+34],800</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="131072 of 861011968">0.02%</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_CHECKED_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>lea       rdi,[r13+40]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_BYREF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>movsq</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>call      CORINFO_HELP_ASSIGN_BYREF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_BYREF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="196608 of 861011968">0.02%</td><td><pre><code>lea       rcx,[r13+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 861011968">0.02%</td><td><pre><code>cmp       byte ptr [r15+9D],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       short 00007FFEAE98E1FF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       byte ptr [7FFEAE1AB0AC],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       short 00007FFEAE98E214</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE98E0DB</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ecx,4</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_GETDYNAMIC_GCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE98E082</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>xor       edx,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       byte ptr [rbp+18],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmovne    rbp,rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE98E0AB</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      System.Runtime.CompilerServices.CastHelpers.IsInstanceOfClass(Void*, System.Object)</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r14,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE98E0C9</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rcx,[r14+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE98E0D8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE915E90]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE98E115</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83DFE0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r13,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE98E163</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,22B0060DB90</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83C660]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE98E199</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83C678]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE98E1A2</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       qword ptr [r15+40],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       short 00007FFEAE98E265</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      System.Diagnostics.Debugger.get_IsAttached()</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      eax,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        short 00007FFEAE98E235</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE915E90]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,offset MT_Benchmark.StateMachineBenchmarks+<Stateless_AsyncActions>d__42</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rdi,[rdx+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_BYREF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>movsq</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_BYREF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_BYREF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rcx,[r15+40]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rcx,[r15+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE98E0DB</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td class="perMethod" title="89000 of 599000">14.86%</td><td class="perMethod" title="151584768 of 861011968">17.61%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><th colspan="4">System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1[[System.Threading.Tasks.VoidTaskResult, System.Private.CoreLib]].AwaitUnsafeOnCompleted[[System.Runtime.CompilerServices.TaskAwaiter, System.Private.CoreLib]](System.Runtime.CompilerServices.TaskAwaiter ByRef, System.Runtime.CompilerServices.IAsyncStateMachineBox)</th></tr>
+<tr class="evenMap">
+<td>-</td><td title="56000 of 599000">9.35%</td><td title="72089600 of 861011968">8.37%</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="24000 of 599000">4.01%</td><td title="28704768 of 861011968">3.33%</td><td><pre><code>sub       rsp,20</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 861011968">0.02%</td><td><pre><code>mov       rbx,[rcx]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="1245184 of 861011968">0.14%</td><td><pre><code>mov       rcx,22B15401670</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="655360 of 861011968">0.08%</td><td><pre><code>mov       rcx,[rcx]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 599000">0.33%</td><td title="3932160 of 861011968">0.46%</td><td><pre><code>cmp       byte ptr [rcx+9D],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="16000 of 599000">2.67%</td><td title="20774912 of 861011968">2.41%</td><td><pre><code>jne       short 00007FFEAE32B36F</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>cmp       byte ptr [7FFEAE1AB0AC],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 599000">0.33%</td><td title="458752 of 861011968">0.05%</td><td><pre><code>jne       short 00007FFEAE32B36F</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="7000 of 599000">1.17%</td><td title="13107200 of 861011968">1.52%</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8d,1</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>cmp       [rcx],ecx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="82000 of 599000">13.69%</td><td title="98566144 of 861011968">11.45%</td><td><pre><code>call      qword ptr [7FFEAE83D398]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="1441792 of 861011968">0.17%</td><td><pre><code>nop</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="8000 of 599000">1.34%</td><td title="14548992 of 861011968">1.69%</td><td><pre><code>add       rsp,20</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 599000">0.33%</td><td title="2097152 of 861011968">0.24%</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 599000">0.33%</td><td title="3670016 of 861011968">0.43%</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r11,7FFEAE1B09B8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [r11]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83DAD0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8d,1</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>xor       r9d,r9d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       [rcx],ecx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83DAE8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE32B368</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td class="perMethod" title="203000 of 599000">33.89%</td><td class="perMethod" title="261619712 of 861011968">30.39%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><th colspan="4">BenchmarkDotNet.Engines.DeadCodeEliminationHelper.KeepAliveWithoutBoxing[[System.Int32, System.Private.CoreLib]](Int32)</th></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 861011968">0.03%</td><td><pre><code>ret</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td  class="perMethod">-</td><td class="perMethod" title="262144 of 861011968">0.03%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><th colspan="4">System.Runtime.CompilerServices.AsyncTaskMethodBuilder.SetResult()</th></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 599000">0.33%</td><td title="196608 of 861011968">0.02%</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,28</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbx,[rcx]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      rbx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        near ptr 00007FFEAE346901</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,22B15401670</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,[rax]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="65536 of 861011968">0.01%</td><td><pre><code>cmp       byte ptr [rax+9D],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       near ptr 00007FFEAE34691B</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       eax,[rbx+34]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rsp+24],eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      eax,5600000</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       near ptr 00007FFEAE346978</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rcx,[rbx+34]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>or        edx,4000000</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lock cmpxchg [rcx],edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>cmp       eax,[rsp+24]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       near ptr 00007FFEAE346949</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       byte ptr [rbx+38],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rcx,[rbx+34]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       eax,[rbx+34]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>or        eax,1000000</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>xchg      eax,[rcx]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 599000">0.33%</td><td title="1769472 of 861011968">0.21%</td><td><pre><code>mov       rsi,[rbx+28]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      rsi,rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        short 00007FFEAE3468C9</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE916100]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rsi+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      rcx,rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       near ptr 00007FFEAE346966</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rcx,[rbx+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,22B15400BF8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[rdx]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      rcx,rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        near ptr 00007FFEAE346971</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      System.Threading.Interlocked.ExchangeObject(System.Object ByRef, System.Object)</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      rax,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        short 00007FFEAE3468F9</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83D908]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="65536 of 861011968">0.01%</td><td><pre><code>nop</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="196608 of 861011968">0.02%</td><td><pre><code>add       rsp,28</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 861011968">0.02%</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,22B15400C10</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[rdx]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_CHECKED_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>nop</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,28</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,22B15401670</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rsi,[rcx]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       [rcx],ecx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83D6F8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8d,1</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE9160D0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE34686C</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,4000000</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8d,5600000</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE9160E8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      eax,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        short 00007FFEAE346978</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE346898</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE917E70]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE3468C9</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE915E18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>int       3</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ecx,18</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE916130]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>int       3</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td class="perMethod" title="7000 of 599000">1.17%</td><td class="perMethod" title="2949120 of 861011968">0.34%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><th colspan="4">System.Threading.Tasks.Task.WrappedTryRunInline()</th></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="131072 of 861011968">0.02%</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rbp,[rsp+40]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rbp-20],rsp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       qword ptr [rdx+18],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="327680 of 861011968">0.04%</td><td><pre><code>jne       short 00007FFEAE992294</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>xor       eax,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rdx+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8d,1</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       [rcx],ecx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE91C618]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>nop</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbp,[rcx+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rsp+20],rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rbp,[rbp+40]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbx,rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,offset MT_System.Threading.Tasks.TaskSchedulerException</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rsi,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE91C630]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_THROW</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>int       3</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td class="perMethod" title="1000 of 599000">0.17%</td><td class="perMethod" title="589824 of 861011968">0.07%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><th colspan="4">System.Threading.Tasks.Task.SpinThenBlockingWait(Int32, System.Threading.CancellationToken)</th></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 861011968">0.02%</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="65536 of 861011968">0.01%</td><td><pre><code>push      r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,40</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rbp,[rsp+70]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rbp-50],rsp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rbp+10],rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ebx,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rsi,r8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       ebx,0FFFFFFFF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sete      dil</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>movzx     edi,dil</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      edi,edi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        short 00007FFEAE992390</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>xor       r14d,r14d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,ebx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83E1A8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>mov       r15d,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      r15d,r15d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       near ptr 00007FFEAE99248B</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,offset MT_System.Threading.Tasks.Task+SetOnInvokeMres</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r13,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>xor       ecx,ecx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [r13+18],ecx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>and       dword ptr [r13+18],0C007FFFF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rbp-40],r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE99239A</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      System.Environment.get_TickCount()</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r14d,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE992352</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      dword ptr [rcx+34],1600000</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       near ptr 00007FFEAE99243D</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       qword ptr [rcx+20],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       short 00007FFEAE992426</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rdx,[rcx+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      rdx,rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        short 00007FFEAE99241F</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>xor       r8d,r8d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      System.Threading.Interlocked.CompareExchangeObject(System.Object ByRef, System.Object, System.Object)</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      rax,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 861011968">0.02%</td><td><pre><code>jne       short 00007FFEAE992426</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      edi,edi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        near ptr 00007FFEAE992452</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,22B15401830</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rcx]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="65536 of 861011968">0.01%</td><td><pre><code>call      qword ptr [7FFEAE83E268]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rbp-34],eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>mov       rcx,r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8,rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,0FFFFFFFF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83E298]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="589824 of 861011968">0.07%</td><td><pre><code>mov       r15d,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="1310720 of 861011968">0.15%</td><td><pre><code>cmp       dword ptr [rbp-34],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 861011968">0.01%</td><td><pre><code>je        short 00007FFEAE99247E</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE99244A</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,edi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       ebx,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,ebx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8,rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83E298]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r15d,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE992471</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE915E18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>int       3</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8d,1</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83EB68]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      eax,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       short 00007FFEAE9923CE</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>xor       edx,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83EBB0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE9923CE</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE91C6A8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE99247E</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      System.Environment.get_TickCount()</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edi,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       edi,r14d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       eax,edi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>movsxd    rcx,ebx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       rax,rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jge       short 00007FFEAE99247E</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE83E250]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rbp-38],eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE992408</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       dword ptr [rbp-38],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        short 00007FFEAE99247E</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE91C6A8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>nop</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="458752 of 861011968">0.05%</td><td><pre><code>test      dword ptr [rcx+34],1600000</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 599000">0.17%</td><td title="262144 of 861011968">0.03%</td><td><pre><code>je        short 00007FFEAE99249D</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       eax,r15d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,40</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE91C6C0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE99248B</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbp,[rcx+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rsp+20],rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rbp,[rbp+70]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       dword ptr [rbp-34],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        short 00007FFEAE9924D3</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE91C6A8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>nop</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbp,[rcx+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rsp+20],rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rbp,[rbp+70]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       dword ptr [rbp-38],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        short 00007FFEAE99250A</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE91C6A8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>nop</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbp,[rcx+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rsp+20],rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rbp,[rbp+70]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      dword ptr [rcx+34],1600000</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       short 00007FFEAE99254C</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[rbp-40]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE91C6C0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>nop</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td class="perMethod" title="4000 of 599000">0.67%</td><td class="perMethod" title="3407872 of 861011968">0.40%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><td colspan="4">Method(s) without any hardware counters:</td></tr>
+<tr><td colspan="4">BenchmarkDotNet.Helpers.AwaitHelper.GetResult(System.Threading.Tasks.Task)</td></tr>
+<tr><td colspan="4">System.Threading.Thread.InitializeCurrentThread()</td></tr>
+<tr><td colspan="4">System.Threading.Tasks.TaskScheduler.get_Id()</td></tr>
+</tbody></table></body></html>

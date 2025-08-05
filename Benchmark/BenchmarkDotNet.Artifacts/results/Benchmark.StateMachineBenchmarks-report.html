@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>Benchmark.StateMachineBenchmarks-20250805-221107</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.2, Windows 11 (10.0.26100.4652/24H2/2024Update/HudsonValley)
+Unknown processor
+.NET SDK 9.0.300
+  [Host]     : .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
+  Job-ZNFXLH : .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
+</code></pre>
+<pre><code>Runtime=.NET 9.0  IterationCount=15  LaunchCount=1  
+WarmupCount=3  
+</code></pre>
+
+<table>
+<thead><tr><th>Method                  </th><th>Mean   </th><th>Error</th><th>StdDev</th><th>Ratio</th><th>RatioSD</th><th>Code Size</th><th>Gen0</th><th>Gen1</th><th>Gen2</th><th>Allocated</th><th>Alloc Ratio</th>
+</tr>
+</thead><tbody><tr><td>FastFsm_AsyncActions_HotPath</td><td>453.5714 ns</td><td>9.6017 ns</td><td>8.9814 ns</td><td>1.690</td><td>0.12</td><td>8,050 B</td><td>0.0124</td><td>-</td><td>-</td><td>383 B</td><td>0.29</td>
+</tr><tr><td>Stateless_AsyncActions</td><td>1,055.0909 ns</td><td>70.5795 ns</td><td>66.0202 ns</td><td>3.932</td><td>0.35</td><td>3,436 B</td><td>0.0763</td><td>-</td><td>-</td><td>2295 B</td><td>1.73</td>
+</tr><tr><td>FastFsm_AsyncActions</td><td>436.9857 ns</td><td>7.4541 ns</td><td>6.9726 ns</td><td>1.628</td><td>0.11</td><td>8,050 B</td><td>0.0257</td><td>-</td><td>-</td><td>383 B</td><td>0.29</td>
+</tr><tr><td>LiquidState_AsyncActions</td><td>482.4262 ns</td><td>9.6802 ns</td><td>9.0549 ns</td><td>1.798</td><td>0.12</td><td>3,496 B</td><td>0.0329</td><td>0.0005</td><td>0.0005</td><td>-</td><td>0.00</td>
+</tr><tr><td>Appccelerate_AsyncActions</td><td>1,558.9563 ns</td><td>124.7415 ns</td><td>116.6833 ns</td><td>5.809</td><td>0.57</td><td>3,400 B</td><td>0.1087</td><td>0.0019</td><td>0.0019</td><td>28853 B</td><td>21.73</td>
+</tr><tr><td>Stateless_Basic</td><td>269.4826 ns</td><td>19.9230 ns</td><td>17.6613 ns</td><td>1.004</td><td>0.09</td><td>20,413 B</td><td>0.0441</td><td>-</td><td>-</td><td>1328 B</td><td>1.00</td>
+</tr><tr><td>FastFsm_Basic</td><td>0.7567 ns</td><td>0.0575 ns</td><td>0.0538 ns</td><td>0.003</td><td>0.00</td><td>135 B</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
+</tr><tr><td>LiquidState_Basic</td><td>25.1447 ns</td><td>0.7899 ns</td><td>0.7389 ns</td><td>0.094</td><td>0.01</td><td>64 B</td><td>0.0049</td><td>-</td><td>-</td><td>136 B</td><td>0.10</td>
+</tr><tr><td>Appccelerate_Basic</td><td>244.0788 ns</td><td>14.7975 ns</td><td>13.8416 ns</td><td>0.910</td><td>0.08</td><td>3,704 B</td><td>0.0534</td><td>-</td><td>-</td><td>1608 B</td><td>1.21</td>
+</tr><tr><td>Stateless_GuardsActions</td><td>265.0102 ns</td><td>16.4832 ns</td><td>15.4184 ns</td><td>0.988</td><td>0.09</td><td>21,296 B</td><td>0.0455</td><td>-</td><td>-</td><td>1368 B</td><td>1.03</td>
+</tr><tr><td>FastFsm_GuardsActions</td><td>1.8340 ns</td><td>0.2257 ns</td><td>0.2112 ns</td><td>0.007</td><td>0.00</td><td>57 B</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
+</tr><tr><td>Appccelerate_GuardsActions</td><td>270.2072 ns</td><td>16.6338 ns</td><td>15.5593 ns</td><td>1.007</td><td>0.09</td><td>3,672 B</td><td>0.0548</td><td>-</td><td>-</td><td>1648 B</td><td>1.24</td>
+</tr><tr><td>Stateless_CanFire</td><td>131.6976 ns</td><td>11.0766 ns</td><td>10.3610 ns</td><td>0.491</td><td>0.05</td><td>13,426 B</td><td>0.0201</td><td>-</td><td>-</td><td>608 B</td><td>0.46</td>
+</tr><tr><td>FastFsm_CanFire</td><td>0.2036 ns</td><td>0.0050 ns</td><td>0.0047 ns</td><td>0.001</td><td>0.00</td><td>73 B</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
+</tr><tr><td>Stateless_GetPermittedTriggers</td><td>29.2226 ns</td><td>0.2205 ns</td><td>0.2063 ns</td><td>0.109</td><td>0.01</td><td>3,761 B</td><td>0.0075</td><td>-</td><td>-</td><td>224 B</td><td>0.17</td>
+</tr><tr><td>FastFsm_GetPermittedTriggers</td><td>3.1896 ns</td><td>0.0327 ns</td><td>0.0290 ns</td><td>0.012</td><td>0.00</td><td>161 B</td><td>0.0011</td><td>-</td><td>-</td><td>32 B</td><td>0.02</td>
+</tr><tr><td>Stateless_Payload</td><td>256.5361 ns</td><td>7.4204 ns</td><td>6.9411 ns</td><td>0.956</td><td>0.07</td><td>21,835 B</td><td>0.0472</td><td>-</td><td>-</td><td>1424 B</td><td>1.07</td>
+</tr><tr><td>FastFsm_Payload</td><td>0.6052 ns</td><td>0.0523 ns</td><td>0.0489 ns</td><td>0.002</td><td>0.00</td><td>122 B</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
+</tr><tr><td>LiquidState_Payload</td><td>29.7013 ns</td><td>1.2574 ns</td><td>1.1146 ns</td><td>0.111</td><td>0.01</td><td>92 B</td><td>0.0048</td><td>0.0000</td><td>0.0000</td><td>-</td><td>0.00</td>
+</tr><tr><td>Appccelerate_Payload</td><td>255.4097 ns</td><td>17.5709 ns</td><td>16.4358 ns</td><td>0.952</td><td>0.09</td><td>3,733 B</td><td>0.0548</td><td>-</td><td>-</td><td>1648 B</td><td>1.24</td>
+</tr></tbody></table>
+</body>
+</html>

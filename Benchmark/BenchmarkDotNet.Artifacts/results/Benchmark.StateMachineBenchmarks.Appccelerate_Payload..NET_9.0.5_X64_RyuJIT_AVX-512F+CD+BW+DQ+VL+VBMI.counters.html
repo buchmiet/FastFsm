@@ -1,0 +1,1539 @@
+<!DOCTYPE html><html lang='en'><head><meta charset='utf-8' />
+<title>Combined Output of DisassemblyDiagnoser and HardwareCounters StateMachineBenchmarks.Appccelerate_Payload: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)</title>
+
+<style type="text/css">
+    pre { margin: 0px; }
+    table { border-collapse:collapse; }
+    td.perMethod { border-top: 1px black solid; }
+    tr.evenMap td { background-color: #F5F5F5; }  
+</style>
+</head>
+<body>
+<!-- Generated with BenchmarkDotNet 
+For CacheMisses we have 0 in total, 0 without noise
+For BranchMispredictions we have 36221000 in total, 2126000 without noise
+For TotalCycles we have 65356627968 in total, 4330815488 without noise
+-->
+<table><thead><tr>
+<th>miss</th>
+<th>mispred</th>
+<th>cycles</th>
+<th></th></tr></thead>
+<tbody>
+<tr><th colspan="4">Benchmark.StateMachineBenchmarks.Appccelerate_Payload()</th></tr>
+<tr class="evenMap">
+<td>-</td><td title="9000 of 2126000">0.42%</td><td title="2490368 of 4330815488">0.06%</td><td><pre><code>push      r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="458752 of 4330815488">0.01%</td><td><pre><code>push      r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r12</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,28</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>mov       rbx,rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       esi,400</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 4330815488">0.00%</td><td><pre><code>mov       rdi,[rbx+80]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="17000 of 2126000">0.80%</td><td title="18939904 of 4330815488">0.44%</td><td><pre><code>mov       rbp,[rbx+90]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="19791872 of 4330815488">0.46%</td><td><pre><code>mov       r14,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="4456448 of 4330815488">0.10%</td><td><pre><code>cmp       [rdi],dil</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="13000 of 2126000">0.61%</td><td title="15007744 of 4330815488">0.35%</td><td><pre><code>mov       rcx,offset MT_Appccelerate.StateMachine.PassiveStateMachine<Benchmark.State, Benchmark.Trigger>+<>c__DisplayClass23_0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="4128768 of 4330815488">0.10%</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="1572864 of 4330815488">0.04%</td><td><pre><code>mov       r15,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="327680 of 4330815488">0.01%</td><td><pre><code>xor       ecx,ecx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="983040 of 4330815488">0.02%</td><td><pre><code>mov       [r15+10],ecx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="5242880 of 4330815488">0.12%</td><td><pre><code>lea       rcx,[r15+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="4980736 of 4330815488">0.12%</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="2621440 of 4330815488">0.06%</td><td><pre><code>mov       r14,[rdi+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="3997696 of 4330815488">0.09%</td><td><pre><code>mov       rcx,offset MT_Appccelerate.StateMachine.EventInformation<Benchmark.Trigger></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 4330815488">0.01%</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1114112 of 4330815488">0.03%</td><td><pre><code>mov       r13,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1048576 of 4330815488">0.02%</td><td><pre><code>mov       r14,[r14+28]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="4063232 of 4330815488">0.09%</td><td><pre><code>mov       ecx,[r15+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="17825792 of 4330815488">0.41%</td><td><pre><code>mov       rdx,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [r13+10],ecx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="4521984 of 4330815488">0.10%</td><td><pre><code>lea       rcx,[r13+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="393216 of 4330815488">0.01%</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="1966080 of 4330815488">0.05%</td><td><pre><code>cmp       [r14],r14b</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="15728640 of 4330815488">0.36%</td><td><pre><code>mov       rcx,offset MT_System.Collections.Generic.LinkedListNode<Appccelerate.StateMachine.EventInformation<Benchmark.Trigger>></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="589824 of 4330815488">0.01%</td><td><pre><code>mov       rbp,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="655360 of 4330815488">0.02%</td><td><pre><code>lea       rcx,[rbp+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1179648 of 4330815488">0.03%</td><td><pre><code>mov       rdx,r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="3014656 of 4330815488">0.07%</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="4259840 of 4330815488">0.10%</td><td><pre><code>lea       rcx,[rbp+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="8847360 of 4330815488">0.20%</td><td><pre><code>mov       rdx,r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="3342336 of 4330815488">0.08%</td><td><pre><code>cmp       qword ptr [r14+8],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="7012352 of 4330815488">0.16%</td><td><pre><code>jne       near ptr 00007FFEAE35B7B7</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 4330815488">0.00%</td><td><pre><code>lea       rcx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 4330815488">0.01%</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="2621440 of 4330815488">0.06%</td><td><pre><code>lea       rcx,[rbp+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="22347776 of 4330815488">0.52%</td><td><pre><code>mov       rdx,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="4000 of 2126000">0.19%</td><td title="4259840 of 4330815488">0.10%</td><td><pre><code>lea       rcx,[r14+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="10878976 of 4330815488">0.25%</td><td><pre><code>mov       rdx,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="9000 of 2126000">0.42%</td><td title="35389440 of 4330815488">0.82%</td><td><pre><code>inc       dword ptr [r14+1C]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="5000 of 2126000">0.24%</td><td title="17629184 of 4330815488">0.41%</td><td><pre><code>inc       dword ptr [r14+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="6000 of 2126000">0.28%</td><td title="3407872 of 4330815488">0.08%</td><td><pre><code>mov       rcx,offset MT_System.Action<Appccelerate.StateMachine.Machine.IExtensionInternal<Benchmark.State, Benchmark.Trigger>></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="983040 of 4330815488">0.02%</td><td><pre><code>mov       r13,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="2097152 of 4330815488">0.05%</td><td><pre><code>mov       r14,[rdi+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="3080192 of 4330815488">0.07%</td><td><pre><code>lea       rcx,[r13+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="4587520 of 4330815488">0.11%</td><td><pre><code>mov       rdx,r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1376256 of 4330815488">0.03%</td><td><pre><code>mov       rcx,7FFEAE852D90</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="14352384 of 4330815488">0.33%</td><td><pre><code>mov       [r13+18],rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="3211264 of 4330815488">0.07%</td><td><pre><code>mov       r14,[r14+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="2752512 of 4330815488">0.06%</td><td><pre><code>mov       r12d,[r14+14]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="7798784 of 4330815488">0.18%</td><td><pre><code>xor       r15d,r15d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>cmp       dword ptr [r14+10],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 4330815488">0.00%</td><td><pre><code>jg        short 00007FFEAE35B7CC</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="524288 of 4330815488">0.01%</td><td><pre><code>cmp       r12d,[r14+14]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="19726336 of 4330815488">0.46%</td><td><pre><code>jne       short 00007FFEAE35B7F4</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="524288 of 4330815488">0.01%</td><td><pre><code>mov       rcx,rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="1310720 of 4330815488">0.03%</td><td><pre><code>call      qword ptr [7FFEAE747780]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="327680 of 4330815488">0.01%</td><td><pre><code>dec       esi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="21000 of 2126000">0.99%</td><td title="10420224 of 4330815488">0.24%</td><td><pre><code>jne       near ptr 00007FFEAE35B678</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ecx,[rbx+0B0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 4330815488">0.00%</td><td><pre><code>add       rsp,28</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 4330815488">0.00%</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 4330815488">0.00%</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r12</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>pop       r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       qword ptr [7FFEAE856D60]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[r14+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE85E928]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE35B742</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       r12d,[r14+14]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       short 00007FFEAE35B784</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[r14+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       r15d,[rdx+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jae       short 00007FFEAE35B7FB</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[rdx+r15*8+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[r13+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [r13+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>inc       r15d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       r15d,[r14+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jl        short 00007FFEAE35B7CC</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE35B784</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE4E7A50]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>int       3</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_RNGCHKFAIL</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>int       3</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td class="perMethod" title="113000 of 2126000">5.32%</td><td class="perMethod" title="331939840 of 4330815488">7.66%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><th colspan="4">Appccelerate.StateMachine.PassiveStateMachine`2[[Benchmark.State, Benchmark],[Benchmark.Trigger, Benchmark]].Execute()</th></tr>
+<tr class="evenMap">
+<td>-</td><td title="21000 of 2126000">0.99%</td><td title="106561536 of 4330815488">2.46%</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="15000 of 2126000">0.71%</td><td title="84672512 of 4330815488">1.96%</td><td><pre><code>push      r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 4330815488">0.00%</td><td><pre><code>push      r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="10747904 of 4330815488">0.25%</td><td><pre><code>push      r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="458752 of 4330815488">0.01%</td><td><pre><code>push      r12</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="720896 of 4330815488">0.02%</td><td><pre><code>push      rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 4330815488">0.00%</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="28377088 of 4330815488">0.66%</td><td><pre><code>sub       rsp,38</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="27590656 of 4330815488">0.64%</td><td><pre><code>lea       rbp,[rsp+70]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="5000 of 2126000">0.24%</td><td title="9175040 of 4330815488">0.21%</td><td><pre><code>mov       [rbp-48],rsp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="10000 of 2126000">0.47%</td><td title="29229056 of 4330815488">0.67%</td><td><pre><code>mov       [rbp+10],rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 4330815488">0.01%</td><td><pre><code>cmp       byte ptr [rcx+24],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="17563648 of 4330815488">0.41%</td><td><pre><code>jne       near ptr 00007FFEAE356878</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>cmp       byte ptr [rcx+25],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1048576 of 4330815488">0.02%</td><td><pre><code>je        near ptr 00007FFEAE356878</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="983040 of 4330815488">0.02%</td><td><pre><code>mov       byte ptr [rcx+24],1</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="18874368 of 4330815488">0.44%</td><td><pre><code>mov       rdx,[rcx+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="786432 of 4330815488">0.02%</td><td><pre><code>mov       rax,[rdx+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="20000 of 2126000">0.94%</td><td title="63963136 of 4330815488">1.48%</td><td><pre><code>mov       rdx,offset MT_Appccelerate.StateMachine.Infrastructure.Initializable<Benchmark.State></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="393216 of 4330815488">0.01%</td><td><pre><code>cmp       [rax],rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="27000 of 2126000">1.27%</td><td title="109314048 of 4330815488">2.52%</td><td><pre><code>jne       near ptr 00007FFEAE3567F2</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>movzx     ebx,byte ptr [rax+0C]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="7733248 of 4330815488">0.18%</td><td><pre><code>test      ebx,ebx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="393216 of 4330815488">0.01%</td><td><pre><code>je        near ptr 00007FFEAE35680D</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="1245184 of 4330815488">0.03%</td><td><pre><code>mov       rsi,[rcx+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="6000 of 2126000">0.28%</td><td title="22740992 of 4330815488">0.53%</td><td><pre><code>mov       rdi,[rsi+28]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="12000 of 2126000">0.56%</td><td title="70254592 of 4330815488">1.62%</td><td><pre><code>mov       r14d,[rdi+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="13000 of 2126000">0.61%</td><td title="101777408 of 4330815488">2.35%</td><td><pre><code>test      r14d,r14d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="720896 of 4330815488">0.02%</td><td><pre><code>jle       near ptr 00007FFEAE356874</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1835008 of 4330815488">0.04%</td><td><pre><code>mov       r15,[rdi+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="58000 of 2126000">2.73%</td><td title="397672448 of 4330815488">9.18%</td><td><pre><code>mov       r13,[r15+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="28000 of 2126000">1.32%</td><td title="137166848 of 4330815488">3.17%</td><td><pre><code>mov       r12,r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       [r12+10],r12</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="4000 of 2126000">0.19%</td><td title="23199744 of 4330815488">0.54%</td><td><pre><code>jne       near ptr 00007FFEAE356832</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="1376256 of 4330815488">0.03%</td><td><pre><code>xor       edx,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="393216 of 4330815488">0.01%</td><td><pre><code>mov       [rdi+8],rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="12058624 of 4330815488">0.28%</td><td><pre><code>mov       rcx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="9371648 of 4330815488">0.22%</td><td><pre><code>xor       edx,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 4330815488">0.00%</td><td><pre><code>mov       [r12+8],rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="10158080 of 4330815488">0.23%</td><td><pre><code>mov       [r12+10],rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="4000 of 2126000">0.19%</td><td title="14417920 of 4330815488">0.33%</td><td><pre><code>mov       [r12+18],rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="12648448 of 4330815488">0.29%</td><td><pre><code>dec       r14d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="5000 of 2126000">0.24%</td><td title="9830400 of 4330815488">0.23%</td><td><pre><code>mov       [rdi+18],r14d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="3932160 of 4330815488">0.09%</td><td><pre><code>inc       dword ptr [rdi+1C]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 4330815488">0.01%</td><td><pre><code>mov       rdx,[rcx+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="2031616 of 4330815488">0.05%</td><td><pre><code>mov       [rsp+20],rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="327680 of 4330815488">0.01%</td><td><pre><code>mov       rcx,[rcx+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="7536640 of 4330815488">0.17%</td><td><pre><code>mov       edx,[r13+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="21000 of 2126000">0.99%</td><td title="76808192 of 4330815488">1.77%</td><td><pre><code>mov       r8,[r13+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="29491200 of 4330815488">0.68%</td><td><pre><code>mov       r9,rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="393216 of 4330815488">0.01%</td><td><pre><code>cmp       [rcx],ecx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 4330815488">0.01%</td><td><pre><code>call      qword ptr [7FFEAE856E50]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="7000 of 2126000">0.33%</td><td title="24117248 of 4330815488">0.56%</td><td><pre><code>mov       rcx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="12000 of 2126000">0.56%</td><td title="12779520 of 4330815488">0.30%</td><td><pre><code>jmp       short 00007FFEAE35677C</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r11,7FFEAE1D1118</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [r11]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ebx,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE356774</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rcx+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[rbx+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8,[rbx+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r9d,[rbx+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       [rcx],ecx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE7478B8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE35677C</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[r12+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rcx,[rdx+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[r12+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[r12+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rcx,[rcx+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[r12+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       r15,r12</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       near ptr 00007FFEAE3567AD</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[r12+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rcx,[rdi+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE3567AD</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="5373952 of 4330815488">0.12%</td><td><pre><code>mov       byte ptr [rcx+24],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="1835008 of 4330815488">0.04%</td><td><pre><code>add       rsp,38</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="4653056 of 4330815488">0.11%</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="524288 of 4330815488">0.01%</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="524288 of 4330815488">0.01%</td><td><pre><code>pop       r12</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="17432576 of 4330815488">0.40%</td><td><pre><code>pop       r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="4000 of 2126000">0.19%</td><td title="6291456 of 4330815488">0.15%</td><td><pre><code>pop       r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="851968 of 4330815488">0.02%</td><td><pre><code>pop       r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="5111808 of 4330815488">0.12%</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r12</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,38</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbp,[rcx+28]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rsp+28],rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rbp,[rbp+70]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       byte ptr [rbx+24],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,38</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r12</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td class="perMethod" title="316000 of 2126000">14.86%</td><td class="perMethod" title="1546977280 of 4330815488">35.72%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><th colspan="4">BenchmarkDotNet.Engines.DeadCodeEliminationHelper.KeepAliveWithoutBoxing[[System.Int32, System.Private.CoreLib]](Int32)</th></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="524288 of 4330815488">0.01%</td><td><pre><code>ret</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td  class="perMethod">-</td><td class="perMethod" title="524288 of 4330815488">0.01%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><th colspan="4">Appccelerate.StateMachine.Machine.StateMachine`2[[Benchmark.State, Benchmark],[Benchmark.Trigger, Benchmark]].Fire(Benchmark.Trigger, System.Object, Appccelerate.StateMachine.Machine.StateContainer`2<Benchmark.State,Benchmark.Trigger>, Appccelerate.StateMachine.Machine.IStateDefinitionDictionary`2<Benchmark.State,Benchmark.Trigger>)</th></tr>
+<tr class="evenMap">
+<td>-</td><td title="6000 of 2126000">0.28%</td><td title="58523648 of 4330815488">1.35%</td><td><pre><code>push      r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="10000 of 2126000">0.47%</td><td title="72613888 of 4330815488">1.68%</td><td><pre><code>push      r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      r12</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 4330815488">0.00%</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="11862016 of 4330815488">0.27%</td><td><pre><code>sub       rsp,48</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="6000 of 2126000">0.28%</td><td title="32571392 of 4330815488">0.75%</td><td><pre><code>xor       eax,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rsp+40],rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 4330815488">0.00%</td><td><pre><code>mov       rsi,rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ebp,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdi,r8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbx,r9</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="4000 of 2126000">0.19%</td><td title="16252928 of 4330815488">0.38%</td><td><pre><code>mov       rcx,offset MT_Appccelerate.StateMachine.Machine.StateMachine<Benchmark.State, Benchmark.Trigger>+<>c__DisplayClass18_0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="6000 of 2126000">0.28%</td><td title="31588352 of 4330815488">0.73%</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="7000 of 2126000">0.33%</td><td title="19070976 of 4330815488">0.44%</td><td><pre><code>mov       r14,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1441792 of 4330815488">0.03%</td><td><pre><code>mov       [r14+20],ebp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="2752512 of 4330815488">0.06%</td><td><pre><code>lea       rcx,[r14+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>mov       rdx,rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="17367040 of 4330815488">0.40%</td><td><pre><code>lea       rcx,[r14+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="3735552 of 4330815488">0.09%</td><td><pre><code>mov       rdx,[rsp+0B0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="2162688 of 4330815488">0.05%</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 4330815488">0.01%</td><td><pre><code>mov       rcx,[rbx+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="16384000 of 4330815488">0.38%</td><td><pre><code>mov       rax,offset MT_Appccelerate.StateMachine.Infrastructure.Initializable<Benchmark.State></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       [rcx],rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="4000 of 2126000">0.19%</td><td title="20250624 of 4330815488">0.47%</td><td><pre><code>jne       near ptr 00007FFEAE3570F1</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>movzx     edi,byte ptr [rcx+0C]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="14614528 of 4330815488">0.34%</td><td><pre><code>test      edi,edi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="4718592 of 4330815488">0.11%</td><td><pre><code>je        near ptr 00007FFEAE35737E</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,offset MT_System.Action<Appccelerate.StateMachine.Machine.IExtensionInternal<Benchmark.State, Benchmark.Trigger>></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="6881280 of 4330815488">0.16%</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1703936 of 4330815488">0.04%</td><td><pre><code>mov       rbp,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1572864 of 4330815488">0.04%</td><td><pre><code>lea       rcx,[rbp+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="4128768 of 4330815488">0.10%</td><td><pre><code>mov       rdx,r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="11272192 of 4330815488">0.26%</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="17956864 of 4330815488">0.41%</td><td><pre><code>mov       rcx,7FFEAE852E68</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="9109504 of 4330815488">0.21%</td><td><pre><code>mov       [rbp+18],rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="4587520 of 4330815488">0.11%</td><td><pre><code>mov       r15,[rbx+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="983040 of 4330815488">0.02%</td><td><pre><code>mov       r13d,[r15+14]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="4390912 of 4330815488">0.10%</td><td><pre><code>xor       r12d,r12d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       dword ptr [r15+10],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="327680 of 4330815488">0.01%</td><td><pre><code>jg        near ptr 00007FFEAE357105</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>cmp       r13d,[r15+14]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="6422528 of 4330815488">0.15%</td><td><pre><code>jne       near ptr 00007FFEAE357377</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="196608 of 4330815488">0.00%</td><td><pre><code>mov       rcx,offset MT_System.Func<Benchmark.State, Appccelerate.StateMachine.Machine.States.IStateDefinition<Benchmark.State, Benchmark.Trigger>></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="11796480 of 4330815488">0.27%</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="8519680 of 4330815488">0.20%</td><td><pre><code>mov       rdi,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="7012352 of 4330815488">0.16%</td><td><pre><code>mov       r15,[rbx+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="2293760 of 4330815488">0.05%</td><td><pre><code>lea       rcx,[rdi+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="1179648 of 4330815488">0.03%</td><td><pre><code>mov       rdx,r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 4330815488">0.01%</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="12779520 of 4330815488">0.30%</td><td><pre><code>mov       rcx,offset Appccelerate.StateMachine.Machine.StateMachine`2+<>c__DisplayClass18_0[[Benchmark.State, Benchmark],[Benchmark.Trigger, Benchmark]].<Fire>b__1(Benchmark.State)</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="7405568 of 4330815488">0.17%</td><td><pre><code>mov       [rdi+18],rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="11403264 of 4330815488">0.26%</td><td><pre><code>mov       rcx,r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="2621440 of 4330815488">0.06%</td><td><pre><code>mov       rdx,offset MT_Appccelerate.StateMachine.Infrastructure.IInitializable<Benchmark.State></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="8192000 of 4330815488">0.19%</td><td><pre><code>mov       r8,7FFEAE7C1AF8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="3276800 of 4330815488">0.08%</td><td><pre><code>call      CORINFO_HELP_VIRTUAL_FUNC_PTR</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="4587520 of 4330815488">0.11%</td><td><pre><code>mov       rcx,r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="851968 of 4330815488">0.02%</td><td><pre><code>mov       rdx,rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="4000 of 2126000">0.19%</td><td title="20840448 of 4330815488">0.48%</td><td><pre><code>call      rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="5505024 of 4330815488">0.13%</td><td><pre><code>cmp       byte ptr [rax+10],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="6000 of 2126000">0.28%</td><td title="28377088 of 4330815488">0.66%</td><td><pre><code>je        near ptr 00007FFEAE35733C</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdi,[rax+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="33226752 of 4330815488">0.77%</td><td><pre><code>mov       rcx,offset MT_Appccelerate.StateMachine.Machine.Missable<Benchmark.Trigger></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 4330815488">0.00%</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="720896 of 4330815488">0.02%</td><td><pre><code>mov       r15,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="17170432 of 4330815488">0.40%</td><td><pre><code>mov       rcx,[rsi+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="655360 of 4330815488">0.02%</td><td><pre><code>mov       eax,[r14+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1310720 of 4330815488">0.03%</td><td><pre><code>mov       [r15+8],eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="917504 of 4330815488">0.02%</td><td><pre><code>mov       byte ptr [r15+0C],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1835008 of 4330815488">0.04%</td><td><pre><code>mov       rbp,[r14+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="9830400 of 4330815488">0.23%</td><td><pre><code>mov       rax,offset MT_Appccelerate.StateMachine.Machine.StandardFactory<Benchmark.State, Benchmark.Trigger></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="19202048 of 4330815488">0.44%</td><td><pre><code>cmp       [rcx],rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="4194304 of 4330815488">0.10%</td><td><pre><code>jne       near ptr 00007FFEAE357137</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="327680 of 4330815488">0.01%</td><td><pre><code>mov       rcx,offset MT_Appccelerate.StateMachine.Machine.Contexts.TransitionContext<Benchmark.State, Benchmark.Trigger></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="5000 of 2126000">0.24%</td><td title="15794176 of 4330815488">0.36%</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="10551296 of 4330815488">0.24%</td><td><pre><code>mov       r12,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1114112 of 4330815488">0.03%</td><td><pre><code>mov       rcx,offset MT_System.Collections.Generic.List<Appccelerate.StateMachine.Machine.Contexts.TransitionContext<Benchmark.State, Benchmark.Trigger>+Record></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="7000 of 2126000">0.33%</td><td title="12058624 of 4330815488">0.28%</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="786432 of 4330815488">0.02%</td><td><pre><code>mov       r13,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="2031616 of 4330815488">0.05%</td><td><pre><code>mov       rcx,1F583401398</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="2228224 of 4330815488">0.05%</td><td><pre><code>mov       rdx,[rcx]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="15925248 of 4330815488">0.37%</td><td><pre><code>lea       rcx,[r13+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="786432 of 4330815488">0.02%</td><td><pre><code>lea       rcx,[r12+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="11010048 of 4330815488">0.25%</td><td><pre><code>mov       rdx,r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="21823488 of 4330815488">0.50%</td><td><pre><code>lea       rcx,[r12+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="3670016 of 4330815488">0.08%</td><td><pre><code>mov       rdx,rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="2752512 of 4330815488">0.06%</td><td><pre><code>lea       rcx,[r12+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="7995392 of 4330815488">0.18%</td><td><pre><code>mov       rdx,r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="5570560 of 4330815488">0.13%</td><td><pre><code>lea       rcx,[r12+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="23003136 of 4330815488">0.53%</td><td><pre><code>mov       rdx,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="5898240 of 4330815488">0.14%</td><td><pre><code>lea       rcx,[r12+28]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="10158080 of 4330815488">0.23%</td><td><pre><code>mov       rdx,rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="10485760 of 4330815488">0.24%</td><td><pre><code>mov       rdx,r12</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="5046272 of 4330815488">0.12%</td><td><pre><code>lea       rcx,[r14+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1245184 of 4330815488">0.03%</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="6291456 of 4330815488">0.15%</td><td><pre><code>mov       rcx,[r14+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="11010048 of 4330815488">0.25%</td><td><pre><code>mov       [rsp+20],rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="12255232 of 4330815488">0.28%</td><td><pre><code>mov       rcx,[rsi+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="11534336 of 4330815488">0.27%</td><td><pre><code>mov       r8,[r14+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="9633792 of 4330815488">0.22%</td><td><pre><code>mov       rdx,rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="5046272 of 4330815488">0.12%</td><td><pre><code>mov       r9,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1245184 of 4330815488">0.03%</td><td><pre><code>mov       r11,7FFEAE1D1138</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1179648 of 4330815488">0.03%</td><td><pre><code>call      qword ptr [r11]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="1572864 of 4330815488">0.04%</td><td><pre><code>mov       r13,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="23000 of 2126000">1.08%</td><td title="4259840 of 4330815488">0.10%</td><td><pre><code>mov       r8,offset MT_Appccelerate.StateMachine.Machine.Transitions.TransitionResult<Benchmark.State></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="8000 of 2126000">0.38%</td><td title="1376256 of 4330815488">0.03%</td><td><pre><code>cmp       [r13],r8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="2097152 of 4330815488">0.05%</td><td><pre><code>jne       near ptr 00007FFEAE35715A</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 4330815488">0.00%</td><td><pre><code>movzx     r12d,byte ptr [r13+0C]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="19000 of 2126000">0.89%</td><td title="19922944 of 4330815488">0.46%</td><td><pre><code>test      r12d,r12d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="851968 of 4330815488">0.02%</td><td><pre><code>je        near ptr 00007FFEAE35731D</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="131072 of 4330815488">0.00%</td><td><pre><code>mov       r12,[r14+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="30000 of 2126000">1.41%</td><td title="18481152 of 4330815488">0.43%</td><td><pre><code>mov       r8,offset MT_Appccelerate.StateMachine.Machine.Transitions.TransitionResult<Benchmark.State></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       [r13],r8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="6000 of 2126000">0.28%</td><td title="3342336 of 4330815488">0.08%</td><td><pre><code>jne       near ptr 00007FFEAE357276</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r13d,[r13+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="4000 of 2126000">0.19%</td><td title="1441792 of 4330815488">0.03%</td><td><pre><code>mov       r8,offset MT_Appccelerate.StateMachine.Machine.StateDefinitionDictionary<Benchmark.State, Benchmark.Trigger></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="4000 of 2126000">0.19%</td><td title="1572864 of 4330815488">0.04%</td><td><pre><code>cmp       [r12],r8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="35000 of 2126000">1.65%</td><td title="19726336 of 4330815488">0.46%</td><td><pre><code>jne       near ptr 00007FFEAE357289</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="8000 of 2126000">0.38%</td><td title="1572864 of 4330815488">0.04%</td><td><pre><code>mov       r12,[r12+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="46000 of 2126000">2.16%</td><td title="32374784 of 4330815488">0.75%</td><td><pre><code>mov       r8,offset MT_System.Collections.Generic.Dictionary<Benchmark.State, Appccelerate.StateMachine.Machine.States.IStateDefinition<Benchmark.State, Benchmark.Trigger>></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="458752 of 4330815488">0.01%</td><td><pre><code>cmp       [r12],r8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="154000 of 2126000">7.24%</td><td title="87359488 of 4330815488">2.02%</td><td><pre><code>jne       near ptr 00007FFEAE357226</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>mov       edx,r13d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>mov       r8,[r12+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="16000 of 2126000">0.75%</td><td title="9306112 of 4330815488">0.21%</td><td><pre><code>test      r8,r8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="786432 of 4330815488">0.02%</td><td><pre><code>je        near ptr 00007FFEAE3570EA</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbp,[r12+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="8000 of 2126000">0.38%</td><td title="10158080 of 4330815488">0.23%</td><td><pre><code>test      rbp,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="983040 of 4330815488">0.02%</td><td><pre><code>jne       near ptr 00007FFEAE357185</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="524288 of 4330815488">0.01%</td><td><pre><code>mov       ecx,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="10000 of 2126000">0.47%</td><td title="26083328 of 4330815488">0.60%</td><td><pre><code>imul      rcx,[r12+30]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="5000 of 2126000">0.24%</td><td title="4325376 of 4330815488">0.10%</td><td><pre><code>shr       rcx,20</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="34000 of 2126000">1.60%</td><td title="25296896 of 4330815488">0.58%</td><td><pre><code>inc       rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="655360 of 4330815488">0.02%</td><td><pre><code>mov       eax,[r8+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="45000 of 2126000">2.12%</td><td title="33882112 of 4330815488">0.78%</td><td><pre><code>mov       r10d,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="917504 of 4330815488">0.02%</td><td><pre><code>imul      rcx,r10</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="50000 of 2126000">2.35%</td><td title="46858240 of 4330815488">1.08%</td><td><pre><code>shr       rcx,20</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="42000 of 2126000">1.98%</td><td title="44564480 of 4330815488">1.03%</td><td><pre><code>cmp       ecx,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="2097152 of 4330815488">0.05%</td><td><pre><code>jae       near ptr 00007FFEAE3573B9</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="393216 of 4330815488">0.01%</td><td><pre><code>mov       ecx,ecx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>lea       r8,[r8+rcx*4+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="15335424 of 4330815488">0.35%</td><td><pre><code>mov       ebp,[r8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="158000 of 2126000">7.43%</td><td title="103481344 of 4330815488">2.39%</td><td><pre><code>mov       r12,[r12+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 4330815488">0.01%</td><td><pre><code>xor       eax,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>dec       ebp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="3473408 of 4330815488">0.08%</td><td><pre><code>mov       r10d,[r12+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="1310720 of 4330815488">0.03%</td><td><pre><code>cmp       r10d,ebp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="28000 of 2126000">1.32%</td><td title="23724032 of 4330815488">0.55%</td><td><pre><code>jbe       near ptr 00007FFEAE3570EA</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>mov       r8d,ebp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="3473408 of 4330815488">0.08%</td><td><pre><code>lea       r8,[r8+r8*2]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="851968 of 4330815488">0.02%</td><td><pre><code>lea       rdi,[r12+r8*8+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="34000 of 2126000">1.60%</td><td title="24182784 of 4330815488">0.56%</td><td><pre><code>cmp       [rdi+8],r13d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="250000 of 2126000">11.76%</td><td title="133103616 of 4330815488">3.07%</td><td><pre><code>jne       near ptr 00007FFEAE357172</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="196608 of 4330815488">0.00%</td><td><pre><code>cmp       [rdi+10],edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="9000 of 2126000">0.42%</td><td title="12582912 of 4330815488">0.29%</td><td><pre><code>jne       near ptr 00007FFEAE357172</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="327680 of 4330815488">0.01%</td><td><pre><code>test      rdi,rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        near ptr 00007FFEAE35721C</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8,[rdi]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="21000 of 2126000">0.99%</td><td title="13500416 of 4330815488">0.31%</td><td><pre><code>mov       [rsp+40],r8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="720896 of 4330815488">0.02%</td><td><pre><code>mov       rcx,[rsp+40]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="589824 of 4330815488">0.01%</td><td><pre><code>xor       r8d,r8d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>mov       [rsp+40],r8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="589824 of 4330815488">0.01%</td><td><pre><code>mov       r8,[r14+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="31000 of 2126000">1.46%</td><td title="13631488 of 4330815488">0.31%</td><td><pre><code>mov       rdx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="8000 of 2126000">0.38%</td><td title="4456448 of 4330815488">0.10%</td><td><pre><code>call      qword ptr [7FFEAE747A08]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="1507328 of 4330815488">0.03%</td><td><pre><code>mov       rcx,offset MT_System.Action<Appccelerate.StateMachine.Machine.IExtensionInternal<Benchmark.State, Benchmark.Trigger>></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="7000 of 2126000">0.33%</td><td title="3604480 of 4330815488">0.08%</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="458752 of 4330815488">0.01%</td><td><pre><code>mov       rdi,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="3997696 of 4330815488">0.09%</td><td><pre><code>lea       rcx,[rdi+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1310720 of 4330815488">0.03%</td><td><pre><code>mov       rdx,r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="8519680 of 4330815488">0.20%</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="7536640 of 4330815488">0.17%</td><td><pre><code>mov       rcx,7FFEAE852E98</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="327680 of 4330815488">0.01%</td><td><pre><code>mov       [rdi+18],rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1966080 of 4330815488">0.05%</td><td><pre><code>mov       r13,[rbx+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="1441792 of 4330815488">0.03%</td><td><pre><code>mov       r12d,[r13+14]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="2818048 of 4330815488">0.07%</td><td><pre><code>xor       ebp,ebp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>cmp       ebp,[r13+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="2883584 of 4330815488">0.07%</td><td><pre><code>jl        near ptr 00007FFEAE3572A4</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       r12d,[r13+14]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="4000 of 2126000">0.19%</td><td title="17563648 of 4330815488">0.41%</td><td><pre><code>jne       near ptr 00007FFEAE357377</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 4330815488">0.00%</td><td><pre><code>mov       rdi,[r14+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="7471104 of 4330815488">0.17%</td><td><pre><code>mov       rcx,[rbx+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="917504 of 4330815488">0.02%</td><td><pre><code>mov       rax,offset MT_Appccelerate.StateMachine.Infrastructure.Initializable<Benchmark.State></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>cmp       [rcx],rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="3080192 of 4330815488">0.07%</td><td><pre><code>jne       near ptr 00007FFEAE357309</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       byte ptr [rcx+0C],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="2424832 of 4330815488">0.06%</td><td><pre><code>je        near ptr 00007FFEAE3572CE</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ebp,[rcx+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="458752 of 4330815488">0.01%</td><td><pre><code>mov       rcx,offset MT_Appccelerate.StateMachine.Machine.Events.TransitionCompletedEventArgs<Benchmark.State, Benchmark.Trigger></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="5177344 of 4330815488">0.12%</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1638400 of 4330815488">0.04%</td><td><pre><code>mov       r15,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="3801088 of 4330815488">0.09%</td><td><pre><code>mov       rbx,[rsi+30]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="3866624 of 4330815488">0.09%</td><td><pre><code>lea       rcx,[r15+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="393216 of 4330815488">0.01%</td><td><pre><code>mov       rdx,rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="851968 of 4330815488">0.02%</td><td><pre><code>mov       [r15+10],ebp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="5373952 of 4330815488">0.12%</td><td><pre><code>mov       [rsp+20],rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="2424832 of 4330815488">0.06%</td><td><pre><code>mov       dword ptr [rsp+28],1</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="2490368 of 4330815488">0.06%</td><td><pre><code>mov       rcx,rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="720896 of 4330815488">0.02%</td><td><pre><code>mov       r8,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="2686976 of 4330815488">0.06%</td><td><pre><code>mov       r9,r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 4330815488">0.01%</td><td><pre><code>mov       rdx,7FFEAE8CE040</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="19202048 of 4330815488">0.44%</td><td><pre><code>call      qword ptr [7FFEAE857570]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="6000 of 2126000">0.28%</td><td title="31129600 of 4330815488">0.72%</td><td><pre><code>nop</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,48</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="5000 of 2126000">0.24%</td><td title="17301504 of 4330815488">0.40%</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 4330815488">0.01%</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="327680 of 4330815488">0.01%</td><td><pre><code>pop       rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>pop       r12</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="9961472 of 4330815488">0.23%</td><td><pre><code>pop       r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 4330815488">0.01%</td><td><pre><code>pop       r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>pop       r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="1638400 of 4330815488">0.04%</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       eax,[r12+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       eax,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jbe       short 00007FFEAE3570EA</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rdx,[rdx+rdx*2]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rdx,[r12+rdx*8+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r10,rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       [r10+8],r15d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        near ptr 00007FFEAE3571D9</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,[r10+0C]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>inc       edi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       eax,edi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jae       short 00007FFEAE3570BA</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE357215</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>xor       edi,edi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE356FBF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r11,7FFEAE1D1160</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [r11]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edi,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE356D31</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       r13d,[r15+14]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       near ptr 00007FFEAE356D7B</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[r15+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       r12d,[rdx+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jae       near ptr 00007FFEAE3573B9</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[rdx+r12*8+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rbp+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [rbp+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>inc       r12d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       r12d,[r15+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jl        short 00007FFEAE357105</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE356D7B</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rsp+20],rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8,r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r9,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r11,7FFEAE1D1130</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [r11]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE356E9F</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r11,7FFEAE1D1140</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [r11]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r12d,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE356EE8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ebp,[rdi+0C]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>inc       eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       r10d,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jae       near ptr 00007FFEAE356F97</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE357215</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r11,7FFEAE1D1170</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [r11]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r15d,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[r12+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ecx,r15d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>imul      rcx,[r12+30]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>shr       rcx,20</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>inc       rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8d,[rdx+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>imul      rcx,r8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>shr       rcx,20</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       ecx,[rdx+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jae       near ptr 00007FFEAE3573B9</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ecx,ecx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rdx,[rdx+rcx*4+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,[rdx]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r12,[r12+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>xor       edi,edi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>dec       edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE3570BA</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rsp+3C],eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rsp+30],r10</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,[r10+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8d,r13d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r11,7FFEAE1D1178</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [r11]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      eax,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       eax,[rsp+3C]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       short 00007FFEAE35720B</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r10,[rsp+30]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE3570DB</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdi,[rsp+30]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE356FBF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE4E7348]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>int       3</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>xor       r8d,r8d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rsp+40],r8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE357246</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       r8,[rsp+40]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,r12</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,r13d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r11,7FFEAE1D1168</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [r11]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      eax,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       near ptr 00007FFEAE356FD0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,offset MT_System.InvalidOperationException</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbx,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ecx,r13d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE747A68]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE625080]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_THROW</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>int       3</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r11,7FFEAE1D1148</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [r11]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r13d,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,r12</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       edx,r13d</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r11,7FFEAE1D1150</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [r11]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE356FDD</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       r12d,[r13+14]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jne       near ptr 00007FFEAE35702A</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[r13+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       ebp,[rdx+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jae       near ptr 00007FFEAE3573B9</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[rdx+rbp*8+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rdi+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [rdi+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>inc       ebp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE357020</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,offset MT_System.InvalidOperationException</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r14,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ecx,1452</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,7FFEAE688AC0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_STRCNS</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE625080]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_THROW</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>int       3</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r11,7FFEAE1D1158</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [r11]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ebp,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       near ptr 00007FFEAE35705C</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[r14+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE856F10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>nop</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,48</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r12</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r13</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r14</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       r15</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,offset MT_System.InvalidOperationException</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbx,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ecx,1452</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,7FFEAE688AC0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_STRCNS</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE625080]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_THROW</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>int       3</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE4E7A50]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>int       3</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,offset MT_System.InvalidOperationException</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbx,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ecx,62D</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,7FFEAE688AC0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_STRCNS</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [7FFEAE625080]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_THROW</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>int       3</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_RNGCHKFAIL</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>int       3</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td class="perMethod" title="1279000 of 2126000">60.16%</td><td class="perMethod" title="1789263872 of 4330815488">41.31%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><th colspan="4">Appccelerate.StateMachine.Machine.StateMachine`2[[Benchmark.State, Benchmark],[Benchmark.Trigger, Benchmark]].SwitchStateTo(Appccelerate.StateMachine.Machine.States.IStateDefinition`2<Benchmark.State,Benchmark.Trigger>, Appccelerate.StateMachine.Machine.StateContainer`2<Benchmark.State,Benchmark.Trigger>, Appccelerate.StateMachine.Machine.IStateDefinitionDictionary`2<Benchmark.State,Benchmark.Trigger>)</th></tr>
+<tr class="evenMap">
+<td>-</td><td title="61000 of 2126000">2.87%</td><td title="44826624 of 4330815488">1.04%</td><td><pre><code>push      rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="63000 of 2126000">2.96%</td><td title="40894464 of 4330815488">0.94%</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,28</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rsi,rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbx,rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdi,r8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="108000 of 2126000">5.08%</td><td title="43057152 of 4330815488">0.99%</td><td><pre><code>mov       rcx,offset MT_Appccelerate.StateMachine.Machine.StateMachine<Benchmark.State, Benchmark.Trigger>+<>c__DisplayClass15_0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="786432 of 4330815488">0.02%</td><td><pre><code>mov       rbp,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>lea       rcx,[rbp+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>mov       rdx,rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="851968 of 4330815488">0.02%</td><td><pre><code>lea       rcx,[rbp+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="327680 of 4330815488">0.01%</td><td><pre><code>mov       rdx,rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1507328 of 4330815488">0.03%</td><td><pre><code>mov       rcx,offset MT_System.Func<Benchmark.State, Appccelerate.StateMachine.Machine.States.IStateDefinition<Benchmark.State, Benchmark.Trigger>></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="41000 of 2126000">1.93%</td><td title="29360128 of 4330815488">0.68%</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="30000 of 2126000">1.41%</td><td title="16187392 of 4330815488">0.37%</td><td><pre><code>mov       rsi,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="2949120 of 4330815488">0.07%</td><td><pre><code>mov       rdi,[rbx+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="4000 of 2126000">0.19%</td><td title="1966080 of 4330815488">0.05%</td><td><pre><code>lea       rcx,[rsi+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="524288 of 4330815488">0.01%</td><td><pre><code>mov       rdx,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="11075584 of 4330815488">0.26%</td><td><pre><code>mov       rcx,offset Appccelerate.StateMachine.Machine.StateMachine`2+<>c__DisplayClass15_0[[Benchmark.State, Benchmark],[Benchmark.Trigger, Benchmark]].<SwitchStateTo>b__0(Benchmark.State)</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="6000 of 2126000">0.28%</td><td title="4456448 of 4330815488">0.10%</td><td><pre><code>mov       [rsi+18],rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="3735552 of 4330815488">0.09%</td><td><pre><code>mov       rcx,rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="7000 of 2126000">0.33%</td><td title="4128768 of 4330815488">0.10%</td><td><pre><code>mov       rdx,offset MT_Appccelerate.StateMachine.Infrastructure.IInitializable<Benchmark.State></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="17000 of 2126000">0.80%</td><td title="12648448 of 4330815488">0.29%</td><td><pre><code>mov       r8,7FFEAE7C1AF8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 4330815488">0.00%</td><td><pre><code>call      CORINFO_HELP_VIRTUAL_FUNC_PTR</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="4000 of 2126000">0.19%</td><td title="3997696 of 4330815488">0.09%</td><td><pre><code>mov       rcx,rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1048576 of 4330815488">0.02%</td><td><pre><code>mov       rdx,rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="12713984 of 4330815488">0.29%</td><td><pre><code>call      rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="1703936 of 4330815488">0.04%</td><td><pre><code>cmp       byte ptr [rax+10],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="25559040 of 4330815488">0.59%</td><td><pre><code>je        short 00007FFEAE35627D</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 4330815488">0.00%</td><td><pre><code>mov       rdx,[rax+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="6000 of 2126000">0.28%</td><td title="30212096 of 4330815488">0.70%</td><td><pre><code>lea       rcx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="2490368 of 4330815488">0.06%</td><td><pre><code>mov       rcx,[rbp+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1441792 of 4330815488">0.03%</td><td><pre><code>mov       rax,offset MT_Appccelerate.StateMachine.Machine.States.StateDefinition<Benchmark.State, Benchmark.Trigger></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       [rcx],rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1441792 of 4330815488">0.03%</td><td><pre><code>jne       short 00007FFEAE356281</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ecx,[rcx+3C]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="983040 of 4330815488">0.02%</td><td><pre><code>call      qword ptr [7FFEAE747F18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="983040 of 4330815488">0.02%</td><td><pre><code>lea       rcx,[rbx+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="3000 of 2126000">0.14%</td><td title="3342336 of 4330815488">0.08%</td><td><pre><code>mov       rdx,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="6000 of 2126000">0.28%</td><td title="34734080 of 4330815488">0.80%</td><td><pre><code>mov       rcx,offset MT_System.Action<Appccelerate.StateMachine.Machine.IExtensionInternal<Benchmark.State, Benchmark.Trigger>></pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="262144 of 4330815488">0.01%</td><td><pre><code>call      CORINFO_HELP_NEWSFAST</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="1114112 of 4330815488">0.03%</td><td><pre><code>mov       rsi,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1048576 of 4330815488">0.02%</td><td><pre><code>lea       rcx,[rsi+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="524288 of 4330815488">0.01%</td><td><pre><code>mov       rdx,rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="589824 of 4330815488">0.01%</td><td><pre><code>call      CORINFO_HELP_ASSIGN_REF</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="655360 of 4330815488">0.02%</td><td><pre><code>mov       rcx,7FFEAE743ED0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1114112 of 4330815488">0.03%</td><td><pre><code>mov       [rsi+18],rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="2000 of 2126000">0.09%</td><td title="4521984 of 4330815488">0.10%</td><td><pre><code>mov       rcx,[rbx+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1769472 of 4330815488">0.04%</td><td><pre><code>mov       rdx,rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="22413312 of 4330815488">0.52%</td><td><pre><code>cmp       [rcx],ecx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="2031616 of 4330815488">0.05%</td><td><pre><code>add       rsp,28</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="9895936 of 4330815488">0.23%</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="2555904 of 4330815488">0.06%</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="6946816 of 4330815488">0.16%</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 4330815488">0.00%</td><td><pre><code>pop       rdi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1114112 of 4330815488">0.03%</td><td><pre><code>jmp       qword ptr [7FFEAE7477E0]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>xor       edx,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE356209</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r11,7FFEAE1D1108</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [r11]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       ecx,eax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       short 00007FFEAE356228</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td class="perMethod" title="374000 of 2126000">17.59%</td><td class="perMethod" title="397279232 of 4330815488">9.17%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><th colspan="4">Appccelerate.StateMachine.Machine.StateMachine`2[[Benchmark.State, Benchmark],[Benchmark.Trigger, Benchmark]].RaiseEvent[[System.__Canon, System.Private.CoreLib]](System.EventHandler`1<System.__Canon>, System.__Canon, Appccelerate.StateMachine.Machine.ITransitionContext`2<Benchmark.State,Benchmark.Trigger>, Boolean)</th></tr>
+<tr class="evenMap">
+<td>-</td><td title="26000 of 2126000">1.22%</td><td title="124256256 of 4330815488">2.87%</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="9000 of 2126000">0.42%</td><td title="71172096 of 4330815488">1.64%</td><td><pre><code>sub       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="65536 of 4330815488">0.00%</td><td><pre><code>lea       rbp,[rsp+30]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rbp-10],rsp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="8978432 of 4330815488">0.21%</td><td><pre><code>mov       [rbp+10],rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rax,r8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>test      rax,rax</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="7000 of 2126000">0.33%</td><td title="54788096 of 4330815488">1.27%</td><td><pre><code>je        short 00007FFEAE3557F8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8,r9</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rax+8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [rax+18]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>nop</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 2126000">0.05%</td><td title="2555904 of 4330815488">0.06%</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="3014656 of 4330815488">0.07%</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>push      rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbp,[rcx+20]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       [rsp+20],rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rbp,[rbp+30]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r8,rdx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>cmp       byte ptr [rbp+38],0</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>je        short 00007FFEAE35583B</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rbp+10]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[rbp+30]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       r11,7FFEAE1D1080</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [r11]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>lea       rax,[7FFEAE3557F8]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,30</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbp</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>ret</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      CORINFO_HELP_RETHROW</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>int       3</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td class="perMethod" title="44000 of 2126000">2.07%</td><td class="perMethod" title="264830976 of 4330815488">6.12%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><td colspan="4">Method(s) without any hardware counters:</td></tr>
+<tr><td colspan="4">Appccelerate.StateMachine.Machine.StateMachine`2[[Benchmark.State, Benchmark],[Benchmark.Trigger, Benchmark]].EnterInitialState(Appccelerate.StateMachine.Machine.StateContainer`2<Benchmark.State,Benchmark.Trigger>, Appccelerate.StateMachine.Machine.IStateDefinitionDictionary`2<Benchmark.State,Benchmark.Trigger>, Benchmark.State)</td></tr>
+<tr><td colspan="4">Appccelerate.StateMachine.Machine.StateMachine`2+<>c__DisplayClass18_0[[Benchmark.State, Benchmark],[Benchmark.Trigger, Benchmark]].<Fire>b__1(Benchmark.State)</td></tr>
+<tr><td colspan="4">Appccelerate.StateMachine.Machine.StateMachine`2+<>c__DisplayClass16_0[[Benchmark.State, Benchmark],[Benchmark.Trigger, Benchmark]]..ctor()</td></tr>
+<tr><td colspan="4">System.MulticastDelegate.CtorClosed(System.Object, IntPtr)</td></tr>
+<tr><td colspan="4">Appccelerate.StateMachine.Machine.StateContainer`2[[Benchmark.State, Benchmark],[Benchmark.Trigger, Benchmark]].ForEach(System.Action`1<Appccelerate.StateMachine.Machine.IExtensionInternal`2<Benchmark.State,Benchmark.Trigger>>)</td></tr>
+<tr><td colspan="4">Appccelerate.StateMachine.Machine.Missable`1[[Benchmark.Trigger, Benchmark]]..ctor()</td></tr>
+<tr><td colspan="4">Appccelerate.StateMachine.Machine.StateMachine`2[[Benchmark.State, Benchmark],[Benchmark.Trigger, Benchmark]].EnterInitialState(Appccelerate.StateMachine.Machine.ITransitionContext`2<Benchmark.State,Benchmark.Trigger>, Appccelerate.StateMachine.Machine.StateContainer`2<Benchmark.State,Benchmark.Trigger>, Appccelerate.StateMachine.Machine.IStateDefinitionDictionary`2<Benchmark.State,Benchmark.Trigger>, Benchmark.State)</td></tr>
+</tbody></table></body></html>

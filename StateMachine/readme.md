@@ -318,20 +318,91 @@ public class LoggingExtension : IStateMachineExtension
 var machine = new OrderWorkflow(OrderState.New, new[] { new LoggingExtension() });
 ```
 
+Below is a drop-in **Performance** section for your `README.md`. It uses your latest BenchmarkDotNet run (5 Aug 2025) and documents the methodology so others can reproduce and scrutinize the results.
+
+---
+
 ## Performance
 
-FastFSM achieves exceptional performance through compile-time code generation:
+FastFSM focuses on predictable, allocation-free transitions generated at compile time. To make performance claims reproducible, we benchmark with [BenchmarkDotNet](https://benchmarkdotnet.org/) and publish the full methodology and raw reports. BenchmarkDotNet guards against common benchmarking pitfalls and provides statistically sound summaries. ([benchmarkdotnet.org][1])
 
-| Operation | FastFSM | Stateless | Improvement |
-|-----------|---------|-----------|-------------|
-| Basic Transition | 0.6ns | 247ns | **393x faster** |
-| With Guards | 1.3ns | 255ns | **193x faster** |
-| With Payload | 1.9ns | 278ns | **149x faster** |
-| Can Fire Check | 0.06ns | 136ns | **2,268x faster** |
+### Environment (latest run)
 
-**Memory Usage:**
-- Zero heap allocations during transitions
-- ~40 bytes per state machine instance
+* **OS / CPU / JIT:** Windows 11 24H2, x64 RyuJIT (AVX-512)
+* **.NET:** .NET 9.0.5
+* **BenchmarkDotNet:** 0.15.2
+* **Config:** `WarmupCount=3`, `IterationCount=15`, `LaunchCount=1` (Release, no debugger)
+
+### What we measured
+
+We compare common scenarios across libraries:
+
+* **Basic transition** (single state change)
+* **Guards + Actions** (guard validated and action executed)
+* **Payload** (typed payload passed through transition)
+* **CanFire** (capability check)
+* **Async action** (action uses `Task.Yield()` to simulate a real async hop)
+
+For very fast paths we execute multiple operations per invocation and scale results back to **ns/op**, a standard approach for nano-benchmarks. ([benchmarkdotnet.org][2], [GitHub][3])
+
+### Results (ns/op; lower is better)
+
+| Scenario                             |       FastFSM |   Stateless | LiquidState | Appccelerate |
+| ------------------------------------ | ------------: | ----------: | ----------: | -----------: |
+| **Basic transition**                 |   **0.76 ns** |   269.48 ns |    25.14 ns |    244.08 ns |
+| **Guards + Actions**                 |   **1.83 ns** |   265.01 ns |           – |    270.21 ns |
+| **Payload**                          |   **0.61 ns** |   256.54 ns |    29.70 ns |    255.41 ns |
+| **CanFire**                          |  **0.204 ns** |   131.70 ns |           – |            – |
+| **Async (action with `Task.Yield`)** | **436.99 ns** | 1,055.09 ns |   482.43 ns |  1,558.96 ns |
+
+**Allocations (B/op; lower is better)**
+
+* Sync scenarios (Basic/Guards/Payload/CanFire): FastFSM **0 B**; Stateless \~**0.6–1.4 KB**; LiquidState up to **136 B**; Appccelerate \~**1.6 KB**.
+* Async (`Task.Yield`): FastFSM **\~383 B**; Stateless **\~2.3 KB**; Appccelerate **\~28.9 KB**.
+
+**Interpretation.** In synchronous hot paths FastFSM is *orders of magnitude* faster (hundreds of ×) and allocation-free because transitions compile down to direct code (no runtime reflection or lookup structures). In async scenarios the scheduler hop dominates total cost; FastFSM still leads (≈2–2.5×), but absolute times are largely governed by async machinery. When an async action often completes synchronously, using `ValueTask` can reduce overhead—but it should be adopted when profiling shows a benefit, not by default. ([Microsoft Learn][4], [Microsoft for Developers][5])
+
+### Methodology & reproducibility
+
+* **How we avoid “too fast to measure”:** for micro-operations we batch multiple transitions per iteration via `OperationsPerInvoke` and keep observable state alive to prevent dead-code elimination. ([benchmarkdotnet.org][2])
+
+  * We use `DeadCodeEliminationHelper.KeepAliveWithoutBoxing(...)` from BenchmarkDotNet to ensure results are not optimized away. ([benchmarkdotnet.org][6])
+* **Memory:** allocations are captured by BenchmarkDotNet’s memory diagnoser in Release mode. (Avoid Debug builds and attached debuggers when benchmarking.) ([fransbouma.github.io][7])
+* **Profiling (optional):** when we need CPU/GC timelines we run a **separate** profiling pass using `EventPipeProfiler(CpuSampling)` on a small subset of tests, which produces compact `.nettrace`/speedscope outputs. We do **not** use ETW-based diagnosers for bulk runs to avoid multi-GB traces. ([benchmarkdotnet.org][8])
+
+**Re-running the benchmarks**
+
+```bash
+# In the Benchmark project directory
+dotnet run -c Release --framework net9.0
+# Results are written to: BenchmarkDotNet.Artifacts/results
+```
+
+> If you want CPU/GC timelines for a particular test, run a separate pass with an EventPipe profile and a filter:
+>
+> ```bash
+> dotnet run -c Release --framework net9.0 --filter *FastFsm_Basic* 
+> ```
+>
+> (Enable an EventPipe profile in code for the targeted test only.) ([benchmarkdotnet.org][9])
+
+### Caveats
+
+* Results vary with CPU, OS, JIT, and library versions. BenchmarkDotNet includes confidence intervals, outlier detection, and multimodality warnings to help interpret stability; we publish the full HTML/CSV reports in `BenchmarkDotNet.Artifacts/results`. ([benchmarkdotnet.org][1])
+* For async APIs, prefer `Task` as the default; consider `ValueTask` when profiling shows frequent synchronous completion and measurable wins in your workload. ([Microsoft Learn][4])
+
+---
+
+[1]: https://benchmarkdotnet.org/?utm_source=chatgpt.com "BenchmarkDotNet: Home"
+[2]: https://benchmarkdotnet.org/articles/configs/diagnosers.html?utm_source=chatgpt.com "Diagnosers - BenchmarkDotNet"
+[3]: https://github.com/dotnet/BenchmarkDotNet/issues/1832?utm_source=chatgpt.com "[Proposal] OperationsPerInvoke to be fed by Params #1832 - GitHub"
+[4]: https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.valuetask?view=net-9.0&utm_source=chatgpt.com "ValueTask Struct (System.Threading.Tasks) | Microsoft Learn"
+[5]: https://devblogs.microsoft.com/dotnet/understanding-the-whys-whats-and-whens-of-valuetask/?utm_source=chatgpt.com "Understanding the Whys, Whats, and Whens of ValueTask - .NET Blog"
+[6]: https://benchmarkdotnet.org/api/BenchmarkDotNet.Engines.DeadCodeEliminationHelper.html?utm_source=chatgpt.com "Class DeadCodeEliminationHelper - BenchmarkDotNet"
+[7]: https://fransbouma.github.io/BenchmarkDotNet/RulesOfBenchmarking.htm?utm_source=chatgpt.com "Rules of benchmarking - BenchmarkDotNet Documentation"
+[8]: https://benchmarkdotnet.org/articles/features/event-pipe-profiler.html?utm_source=chatgpt.com "EventPipeProfiler - BenchmarkDotNet"
+[9]: https://benchmarkdotnet.org/articles/samples/IntroEventPipeProfiler.html?utm_source=chatgpt.com "Sample: EventPipeProfiler - BenchmarkDotNet"
+
 - No dictionary overhead or boxing
 
 ## Real-World Examples

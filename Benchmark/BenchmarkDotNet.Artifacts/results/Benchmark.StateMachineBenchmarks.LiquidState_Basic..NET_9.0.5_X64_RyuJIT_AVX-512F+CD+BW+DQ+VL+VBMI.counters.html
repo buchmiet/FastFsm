@@ -1,0 +1,63 @@
+<!DOCTYPE html><html lang='en'><head><meta charset='utf-8' />
+<title>Combined Output of DisassemblyDiagnoser and HardwareCounters StateMachineBenchmarks.LiquidState_Basic: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)</title>
+
+<style type="text/css">
+    pre { margin: 0px; }
+    table { border-collapse:collapse; }
+    td.perMethod { border-top: 1px black solid; }
+    tr.evenMap td { background-color: #F5F5F5; }  
+</style>
+</head>
+<body>
+<!-- Generated with BenchmarkDotNet 
+For CacheMisses we have 0 in total, 0 without noise
+For BranchMispredictions we have 18523000 in total, 9000 without noise
+For TotalCycles we have 48421404672 in total, 6946816 without noise
+-->
+<table><thead><tr>
+<th>miss</th>
+<th>mispred</th>
+<th>cycles</th>
+<th></th></tr></thead>
+<tbody>
+<tr><th colspan="4">Benchmark.StateMachineBenchmarks.LiquidState_Basic()</th></tr>
+<tr class="evenMap">
+<td>-</td><td title="7000 of 9000">77.78%</td><td title="1900544 of 6946816">27.36%</td><td><pre><code>push      rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 9000">11.11%</td><td title="393216 of 6946816">5.66%</td><td><pre><code>push      rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>sub       rsp,28</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rbx,rcx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       esi,400</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,[rbx+50]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td title="1000 of 9000">11.11%</td><td title="2752512 of 6946816">39.62%</td><td><pre><code>mov       r11,7FFEAE1E0A28</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="196608 of 6946816">2.83%</td><td><pre><code>xor       edx,edx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>call      qword ptr [r11]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="1572864 of 6946816">22.64%</td><td><pre><code>dec       esi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td title="131072 of 6946816">1.89%</td><td><pre><code>jne       short 00007FFEAE359BEE</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rdx,[rbx+50]</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>mov       rcx,7FFEAE8D19E8</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>add       rsp,28</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rbx</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>pop       rsi</pre></code></td></tr>
+<tr class="evenMap">
+<td>-</td><td>-</td><td>-</td><td><pre><code>jmp       qword ptr [7FFEAE866D78]</pre></code></td></tr>
+<tr>
+<td  class="perMethod">-</td><td class="perMethod" title="9000 of 9000">100.00%</td><td class="perMethod" title="6946816 of 6946816">100.00%</td><td></td></tr>
+<tr><td colspan="4"></td></tr>
+<tr><td colspan="4">Method(s) without any hardware counters:</td></tr>
+<tr><td colspan="4">BenchmarkDotNet.Engines.DeadCodeEliminationHelper.KeepAliveWithoutBoxing[[System.__Canon, System.Private.CoreLib]](System.__Canon)</td></tr>
+</tbody></table></body></html>
