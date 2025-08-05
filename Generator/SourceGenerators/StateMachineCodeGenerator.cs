@@ -149,20 +149,38 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                 $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
         }
 
-        // OnEntry  
-        if (!transition.IsInternal && hasOnEntryExit &&
-            Model.States.TryGetValue(transition.ToState, out var toStateDef) &&
-            !string.IsNullOrEmpty(toStateDef.OnEntryMethod))
-        {
-            WriteOnEntryCall(toStateDef, transition.ExpectedPayloadType);
-            WriteLogStatement("Debug",
-                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
-        }
-
         // State change
         if (!transition.IsInternal)
         {
             Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+        }
+
+        // OnEntry with rollback on failure
+        if (!transition.IsInternal && hasOnEntryExit &&
+            Model.States.TryGetValue(transition.ToState, out var toStateDef) &&
+            !string.IsNullOrEmpty(toStateDef.OnEntryMethod))
+        {
+            Sb.AppendLine("try");
+            using (Sb.Block(""))
+            {
+                WriteOnEntryCall(toStateDef, transition.ExpectedPayloadType);
+                WriteLogStatement("Debug",
+                    $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
+            }
+            Sb.AppendLine("catch (Exception)");
+            using (Sb.Block(""))
+            {
+                // Rollback state change
+                Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.FromState)};");
+                Sb.AppendLine($"{SuccessVar} = false;");
+                WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                Sb.AppendLine($"goto {EndOfTryFireLabel};");
+            }
+        }
+
+        // Log successful transition only after OnEntry succeeds
+        if (!transition.IsInternal)
+        {
             WriteLogStatement("Information",
                 $"TransitionSucceeded(_logger, _instanceId, \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
         }

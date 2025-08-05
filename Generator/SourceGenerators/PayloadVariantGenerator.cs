@@ -182,14 +182,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef!.OnExitMethod}\", \"{transition.FromState}\");");
         }
 
-        // *** KOLEJNOŚĆ: OnEntry -> Action ***
-        if (toHasEntry)
-        {
-            WriteOnEntryCall(toStateDef!, transition.ExpectedPayloadType);
-            WriteLogStatement("Debug",
-                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef!.OnEntryMethod}\", \"{transition.ToState}\");");
-        }
-
+        // Action
         if (!string.IsNullOrEmpty(transition.ActionMethod))
         {
             WriteActionCall(transition);
@@ -197,10 +190,36 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
         }
 
-        // Zmiana stanu
+        // State change
         if (!transition.IsInternal)
         {
             Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+        }
+
+        // OnEntry with rollback on failure
+        if (toHasEntry)
+        {
+            Sb.AppendLine("try");
+            using (Sb.Block(""))
+            {
+                WriteOnEntryCall(toStateDef!, transition.ExpectedPayloadType);
+                WriteLogStatement("Debug",
+                    $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef!.OnEntryMethod}\", \"{transition.ToState}\");");
+            }
+            Sb.AppendLine("catch (Exception)");
+            using (Sb.Block(""))
+            {
+                // Rollback state change
+                Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.FromState)};");
+                Sb.AppendLine($"{SuccessVar} = false;");
+                WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                Sb.AppendLine($"goto {EndOfTryFireLabel};");
+            }
+        }
+
+        // Log successful transition only after OnEntry succeeds
+        if (!transition.IsInternal)
+        {
             WriteLogStatement("Information",
                 $"TransitionSucceeded(_logger, _instanceId, \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
         }
