@@ -25,7 +25,8 @@ public sealed class TransitionModel
     /// <summary>
     /// Czy przejście jest wewnętrzne (nie zmienia stanu)
     /// </summary>
-    public bool IsInternal => FromState == ToState;
+    // Set explicitly only for [InternalTransition]. Self-transitions [Transition(A, T, A)] are NOT internal.
+    public bool IsInternal { get; set; }
 
     #endregion
 

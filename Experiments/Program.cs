@@ -10,7 +10,7 @@ public class Program
     {
         Console.WriteLine("Testing StateMachine Generator...");
         var withGuardMachine = new WithGuardBenchmarkMachine(BenchmarkState.A);
-        var otherMach = new FullOrderMachine();
+        var otherMach = new FullOrderMachine(OrderState.New);
         otherMach.TryFire(OrderTrigger.Process, new OrderPayload { OrderId = 1, Amount = 100 });
         withGuardMachine.TryFire(BenchmarkTrigger.Next);
     }

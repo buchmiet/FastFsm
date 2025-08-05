@@ -326,7 +326,9 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                         if (!ValidateCallbackMethodSignature(classSymbolContainingMethods, guardMethodName, GuardCallbackType,
                             attrData, ref criticalErrorOccurred, ref isMachineAsyncMode,
                             out bool guardIsAsync, out var guardExpectsPayload,
-                            model.GenerationConfig.HasPayload, transition.ExpectedPayloadType))
+                            model.GenerationConfig.HasPayload,
+                            out var guardMethodSymbol,
+                            transition.ExpectedPayloadType))
                         {
                             guardValid = false;
                         }
@@ -342,13 +344,15 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                                 .FirstOrDefault(m => m.Parameters.IsEmpty);
                             transition.GuardHasParameterlessOverload = parameterlessGuard != null;
 
-                            // Analyze full signature
-                            AnalyzeAndSetCallbackSignature(
-                                classSymbolContainingMethods,
-                                guardMethodName,
-                                "Guard",
-                                sig => transition.GuardSignature = sig
-                            );
+                            // Analyze full signature using selected method symbol
+                            if (guardMethodSymbol != null)
+                            {
+                                AnalyzeAndSetCallbackSignature(
+                                    guardMethodSymbol,
+                                    "Guard",
+                                    sig => transition.GuardSignature = sig
+                                );
+                            }
                         }
                     }
                     if (namedArg is { Key: ActionCallbackType, Value.Value: string actionMethodName })
@@ -356,7 +360,9 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                         if (!ValidateCallbackMethodSignature(classSymbolContainingMethods, actionMethodName, ActionCallbackType,
                             attrData, ref criticalErrorOccurred, ref isMachineAsyncMode,
                             out bool actionIsAsync, out var actionExpectsPayload,
-                            model.GenerationConfig.HasPayload, transition.ExpectedPayloadType))
+                            model.GenerationConfig.HasPayload,
+                            out var actionMethodSymbol,
+                            transition.ExpectedPayloadType))
                         {
                             actionValid = false;
                         }
@@ -371,13 +377,15 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                                 .FirstOrDefault(m => m.Parameters.IsEmpty);
                             transition.ActionHasParameterlessOverload = parameterlessAction != null;
 
-                            // Analyze full signature
-                            AnalyzeAndSetCallbackSignature(
-                                classSymbolContainingMethods,
-                                actionMethodName,
-                                "Action",
-                                sig => transition.ActionSignature = sig
-                            );
+                            // Analyze full signature using selected method symbol
+                            if (actionMethodSymbol != null)
+                            {
+                                AnalyzeAndSetCallbackSignature(
+                                    actionMethodSymbol,
+                                    "Action",
+                                    sig => transition.ActionSignature = sig
+                                );
+                            }
                         }
                     }
                 }
@@ -426,7 +434,13 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
 
                 bool isDuplicate = validationResults.Any(r => !r.IsValid && r.RuleId == RuleIdentifiers.DuplicateTransition);
 
-                var transition = new TransitionModel { FromState = state, Trigger = trigger, ToState = state };
+                var transition = new TransitionModel
+                {
+                    FromState = state,
+                    Trigger = trigger,
+                    ToState = state,
+                    IsInternal = true
+                };
 
                 if (model.TriggerPayloadTypes.TryGetValue(trigger, out var triggerPayloadType))
                 {
@@ -440,7 +454,9 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                 bool actionValid = ValidateCallbackMethodSignature(classSymbolContainingMethods, actionMethodNameFromCtor,
                     ActionCtorCallbackType, attrData, ref criticalErrorOccurred, ref isMachineAsyncMode,
                     out bool actionIsAsync, out var actionExpectsPayload,
-                    model.GenerationConfig.HasPayload, transition.ExpectedPayloadType);
+                    model.GenerationConfig.HasPayload,
+                    out var actionMethodSymbol,
+                    transition.ExpectedPayloadType);
 
                 if (actionValid)
                 {
@@ -453,13 +469,15 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                         .FirstOrDefault(m => m.Parameters.IsEmpty);
                     transition.ActionHasParameterlessOverload = parameterlessAction != null;
 
-                    // Analyze full signature
-                    AnalyzeAndSetCallbackSignature(
-                        classSymbolContainingMethods,
-                        actionMethodNameFromCtor,
-                        "Action",
-                        sig => transition.ActionSignature = sig
-                    );
+                    // Analyze full signature using selected method symbol
+                    if (actionMethodSymbol != null)
+                    {
+                        AnalyzeAndSetCallbackSignature(
+                            actionMethodSymbol,
+                            "Action",
+                            sig => transition.ActionSignature = sig
+                        );
+                    }
                 }
 
                 bool guardValid = true;
@@ -470,7 +488,9 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                         if (!ValidateCallbackMethodSignature(classSymbolContainingMethods, guardMethodName, GuardCallbackType,
                             attrData, ref criticalErrorOccurred, ref isMachineAsyncMode,
                             out bool guardIsAsync, out var guardExpectsPayload,
-                            model.GenerationConfig.HasPayload, transition.ExpectedPayloadType))
+                            model.GenerationConfig.HasPayload,
+                            out var guardMethodSymbol,
+                            transition.ExpectedPayloadType))
                         {
                             guardValid = false;
                         }
@@ -485,13 +505,15 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                                 .FirstOrDefault(m => m.Parameters.IsEmpty);
                             transition.GuardHasParameterlessOverload = parameterlessGuard != null;
 
-                            // Analyze full signature
-                            AnalyzeAndSetCallbackSignature(
-                                classSymbolContainingMethods,
-                                guardMethodName,
-                                "Guard",
-                                sig => transition.GuardSignature = sig
-                            );
+                            // Analyze full signature using selected method symbol
+                            if (guardMethodSymbol != null)
+                            {
+                                AnalyzeAndSetCallbackSignature(
+                                    guardMethodSymbol,
+                                    "Guard",
+                                    sig => transition.GuardSignature = sig
+                                );
+                            }
                         }
                     }
                 }
@@ -561,6 +583,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                                                             out bool onEntryIsAsync,
                                                             out var onEntryExpectsPayload,
                                                             model.GenerationConfig.HasPayload,
+                                                            out var onEntryMethodSymbol,
                                                             expectedPayloadType))
                         {
                             stateModel.OnEntryMethod = onEntryMethodName;
@@ -574,13 +597,15 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
 
                             stateModel.OnEntryHasParameterlessOverload = parameterlessOverload != null;
 
-                            // Analyze full signature
-                            AnalyzeAndSetCallbackSignature(
-                                classSymbolContainingMethods,
-                                onEntryMethodName,
-                                "OnEntry",
-                                sig => stateModel.OnEntrySignature = sig
-                            );
+                            // Analyze full signature using selected method symbol
+                            if (onEntryMethodSymbol != null)
+                            {
+                                AnalyzeAndSetCallbackSignature(
+                                    onEntryMethodSymbol,
+                                    "OnEntry",
+                                    sig => stateModel.OnEntrySignature = sig
+                                );
+                            }
                         }
                     }
 
@@ -598,6 +623,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                                                             out bool onExitIsAsync,
                                                             out var onExitExpectsPayload,
                                                             model.GenerationConfig.HasPayload,
+                                                            out var onExitMethodSymbol,
                                                             expectedPayloadType))
                         {
                             stateModel.OnExitMethod = onExitMethodName;
@@ -611,13 +637,15 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
 
                             stateModel.OnExitHasParameterlessOverload = parameterlessOverload != null;
 
-                            // Analyze full signature
-                            AnalyzeAndSetCallbackSignature(
-                                classSymbolContainingMethods,
-                                onExitMethodName,
-                                "OnExit",
-                                sig => stateModel.OnExitSignature = sig
-                            );
+                            // Analyze full signature using selected method symbol
+                            if (onExitMethodSymbol != null)
+                            {
+                                AnalyzeAndSetCallbackSignature(
+                                    onExitMethodSymbol,
+                                    "OnExit",
+                                    sig => stateModel.OnExitSignature = sig
+                                );
+                            }
                         }
                     }
                 }
@@ -651,6 +679,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         out bool isAsync,
         out bool expectsPayload,
         bool machineHasPayload,
+        out IMethodSymbol? selectedMethod,
         string? expectedPayloadType = null)
     {
         isAsync = false;
@@ -677,6 +706,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                 MethodFound = false
             };
             ProcessRuleResults(_invalidMethodSignatureRule.Validate(notFoundCtx), loc, ref criticalErrorOccurred);
+            selectedMethod = null;
             return false;
         }
 
@@ -710,8 +740,11 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
 
         if (matching is null)
         {
+            selectedMethod = null;
             return false; // safeguard
         }
+
+        selectedMethod = matching;
 
         if (matching.Parameters.Length == 1)
         {
@@ -1014,8 +1047,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
     }
 
     private void AnalyzeAndSetCallbackSignature(
-        INamedTypeSymbol classSymbol,
-        string callbackName,
+        IMethodSymbol methodSymbol,
         string callbackType,
         Action<CallbackSignatureInfo> setSigAction)
     {
@@ -1027,9 +1059,9 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             _callbackAnalyzer = new CallbackSignatureAnalyzer(typeHelper, asyncAnalyzer);
         }
 
-        var signature = _callbackAnalyzer.AnalyzeCallback(
-            classSymbol,
-            callbackName,
+        // Analyze exactly the selected overload:
+        var signature = _callbackAnalyzer.AnalyzeSpecificMethod(
+            methodSymbol,
             callbackType,
             compilation);
 

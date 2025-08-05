@@ -160,15 +160,30 @@ namespace Generator.Helpers
                 case OverloadType.PayloadOnly:
                     {
                         var payloadType = TypeHelper.FormatTypeForUsage(sig.PayloadTypeFullName);
-                        callExpression = $"{payloadVar} is {payloadType} typedGuardPayload && {awaitPrefix}{guardMethod}(typedGuardPayload){configureAwait}";
-
                         if (declareVariable)
                         {
-                            sb.AppendLine($"bool {resultVar} = {callExpression};");
+                            sb.AppendLine($"bool {resultVar};");
                         }
-                        else
+                        using (sb.Block($"if ({payloadVar} is {payloadType} typedGuardPayload)"))
                         {
-                            sb.AppendLine($"{resultVar} = {callExpression};");
+                            sb.AppendLine($"{resultVar} = {awaitPrefix}{guardMethod}(typedGuardPayload){configureAwait};");
+                        }
+                        sb.AppendLine("else");
+                        using (sb.Indent())
+                        {
+                            // Fallback logic based on available overloads
+                            if (sig.HasParameterless)
+                            {
+                                sb.AppendLine($"{resultVar} = {awaitPrefix}{guardMethod}(){configureAwait};");
+                            }
+                            else if (sig.HasTokenOnly && cancellationTokenVar != null)
+                            {
+                                sb.AppendLine($"{resultVar} = {awaitPrefix}{guardMethod}({cancellationTokenVar}){configureAwait};");
+                            }
+                            else
+                            {
+                                sb.AppendLine($"{resultVar} = false; // No fallback available");
+                            }
                         }
                         break;
                     }

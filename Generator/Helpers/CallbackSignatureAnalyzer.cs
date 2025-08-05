@@ -105,9 +105,7 @@ public sealed class CallbackSignatureAnalyzer
                 info.PayloadTypeFullName = payloadType;
             }
 
-            // Validate based on callback type
-            ValidateSignature(info, callbackType, callbackName);
-
+            // (no validation here – analyzer is descriptive only)
             return info;
         });
     }
@@ -115,6 +113,7 @@ public sealed class CallbackSignatureAnalyzer
     /// <summary>
     /// Analyzes a specific method overload for a transition or state callback.
     /// Used when we already know which specific overload to analyze.
+    /// Also scans other overloads of the same method name to provide complete overload information.
     /// </summary>
     public CallbackSignatureInfo AnalyzeSpecificMethod(
         IMethodSymbol method,
@@ -130,7 +129,7 @@ public sealed class CallbackSignatureAnalyzer
             IsBoolEquivalent = asyncInfo.IsBoolEquivalent
         };
 
-        // Analyze parameters
+        // Analyze parameters of the specific method
         var parameters = method.Parameters;
 
         if (parameters.Length == 0)
@@ -164,25 +163,69 @@ public sealed class CallbackSignatureAnalyzer
             }
         }
 
+        // Scan all other overloads of the same method name to get complete overload information
+        var allOverloads = method.ContainingType
+            .GetMembers(method.Name)
+            .OfType<IMethodSymbol>()
+            .Where(m => !m.IsStatic && m.DeclaredAccessibility != Accessibility.Public) // Same filter as AnalyzeCallback
+            .ToList();
+
+        string? payloadType = info.PayloadTypeFullName;
+
+        foreach (var overload in allOverloads)
+        {
+            if (overload.Equals(method, SymbolEqualityComparer.Default))
+                continue; // Skip the method we already analyzed
+
+            var overloadParams = overload.Parameters;
+
+            if (overloadParams.Length == 0)
+            {
+                info.HasParameterless = true;
+            }
+            else if (overloadParams.Length == 1)
+            {
+                var paramTypeName = _typeHelper.BuildFullTypeName(overloadParams[0].Type);
+
+                if (paramTypeName == CancellationTokenFullName)
+                {
+                    info.HasTokenOnly = true;
+                }
+                else
+                {
+                    info.HasPayloadOnly = true;
+                    payloadType = payloadType ?? paramTypeName;
+                }
+            }
+            else if (overloadParams.Length == 2)
+            {
+                var firstParamType = _typeHelper.BuildFullTypeName(overloadParams[0].Type);
+                var secondParamType = _typeHelper.BuildFullTypeName(overloadParams[1].Type);
+
+                if (secondParamType == CancellationTokenFullName)
+                {
+                    info.HasPayloadAndToken = true;
+                    payloadType = payloadType ?? firstParamType;
+                }
+            }
+        }
+
+        // Update payload type if we found any payload overloads
+        if (payloadType != null)
+        {
+            info.PayloadTypeFullName = payloadType;
+        }
+
         return info;
     }
 
+    /// <summary>
+    /// Validation is now handled by the parser/validator layer.
+    /// This analyzer is descriptive only and should not throw exceptions.
+    /// </summary>
     private void ValidateSignature(CallbackSignatureInfo info, string callbackType, string methodName)
     {
-        // Guards must return bool or ValueTask<bool>
-        if (callbackType == "Guard" && !info.IsBoolEquivalent)
-        {
-            throw new InvalidOperationException(
-                $"Guard method '{methodName}' must return bool or ValueTask<bool>");
-        }
-
-        // Actions, OnEntry, OnExit must return void-equivalent
-        if ((callbackType == "Action" || callbackType == "OnEntry" || callbackType == "OnExit")
-            && !info.IsVoidEquivalent)
-        {
-            throw new InvalidOperationException(
-                $"{callbackType} method '{methodName}' must return void, Task, or ValueTask");
-        }
+        // Validation moved to parser - this method is no longer used
     }
 
     /// <summary>
