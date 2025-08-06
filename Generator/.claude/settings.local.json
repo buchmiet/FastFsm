@@ -12,7 +12,15 @@
       "Bash(ls:*)",
       "Bash(dotnet nuget locals:*)",
       "Bash(dotnet msbuild:*)",
-      "Bash(unzip:*)"
+      "Bash(unzip:*)",
+      "Bash(mkdir:*)",
+      "Bash(dotnet run:*)",
+      "Bash(dotnet --list-sdks)",
+      "Bash(git rev-parse:*)",
+      "Bash(tree:*)",
+      "Bash(dotnet sln:*)",
+      "Bash(DEVVER=\"1.0.0-dev.$(date +%Y%m%d%H%M%S)\")",
+      "Bash(echo:*)"
     ],
     "deny": []
   }
