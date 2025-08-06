@@ -461,22 +461,18 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
             Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
         }
 
-        // OnEntry (no exception catching - let it propagate)
+        // OnEntry (with optional exception policy)
         if (!transition.IsInternal && hasOnEntryExit &&
             Model.States.TryGetValue(transition.ToState, out var toStateDef) &&
             !string.IsNullOrEmpty(toStateDef.OnEntryMethod))
         {
-            WriteCallbackInvocation(toStateDef.OnEntryMethod, toStateDef.OnEntryIsAsync);
-            WriteLogStatement("Debug",
-                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
+            EmitOnEntryWithExceptionPolicy(toStateDef, null, transition.FromState, transition.ToState, transition.Trigger);
         }
 
-        // Action (after OnEntry, no exception catching - let it propagate)
+        // Action (with optional exception policy)
         if (!string.IsNullOrEmpty(transition.ActionMethod))
         {
-            WriteCallbackInvocation(transition.ActionMethod, transition.ActionIsAsync);
-            WriteLogStatement("Debug",
-                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+            EmitActionWithExceptionPolicy(transition, transition.FromState, transition.ToState);
         }
 
         // Log successful transition only after OnEntry succeeds

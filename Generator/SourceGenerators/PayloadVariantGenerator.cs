@@ -190,42 +190,25 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
         }
 
-        // OnEntry (no exception catching - let it propagate)
+        // OnEntry (with optional exception policy)
         if (toHasEntry)
         {
-            CallbackGenerationHelper.EmitOnEntryCall(
-                Sb,
+            EmitOnEntryWithExceptionPolicyPayload(
                 toStateDef!,
                 transition.ExpectedPayloadType,
-                Model.DefaultPayloadType,
-                PayloadVar,
-                IsAsyncMachine,
-                wrapInTryCatch: false,  // No exception catching - let it propagate
-                Model.ContinueOnCapturedContext,
+                Model.DefaultPayloadType!,
+                transition.FromState,
+                transition.ToState,
+                transition.Trigger,
                 IsSinglePayloadVariant(),
-                IsMultiPayloadVariant(),
-                cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
-                treatCancellationAsFailure: IsAsyncMachine
+                IsMultiPayloadVariant()
             );
-            WriteLogStatement("Debug",
-                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef!.OnEntryMethod}\", \"{transition.ToState}\");");
         }
 
-        // Action (after OnEntry, no exception catching - let it propagate)
+        // Action (with optional exception policy)
         if (!string.IsNullOrEmpty(transition.ActionMethod))
         {
-            CallbackGenerationHelper.EmitActionCall(
-                Sb,
-                transition,
-                PayloadVar,
-                IsAsyncMachine,
-                wrapInTryCatch: false,  // No exception catching - let it propagate
-                Model.ContinueOnCapturedContext,
-                cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
-                treatCancellationAsFailure: IsAsyncMachine
-            );
-            WriteLogStatement("Debug",
-                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+            EmitActionWithExceptionPolicyPayload(transition, transition.FromState, transition.ToState);
         }
 
         // Log successful transition only after OnEntry succeeds

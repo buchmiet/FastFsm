@@ -93,4 +93,14 @@ internal static class Strings
     public const string GlobalNamespace = "global::";
     public const string DefaultObjectTypeName = "object";
 
+    // ──────────────────────────────────────────────────────────────
+    //  Exception handling
+    // ──────────────────────────────────────────────────────────────
+    public const string OnExceptionAttributeFullName = $"{AbstractionsNamespace}.OnExceptionAttribute";
+    public const string ExceptionDirectiveFullName = "StateMachine.Exceptions.ExceptionDirective";
+    public const string ExceptionContextFullNameOpen = "StateMachine.Exceptions.ExceptionContext`2";
+    public const string CancellationTokenFullName = "System.Threading.CancellationToken";
+    public const string ValueTaskOpenFullName = "System.Threading.Tasks.ValueTask`1";
+    public const string NamespaceStateMachineExceptions = "StateMachine.Exceptions";
+
 }

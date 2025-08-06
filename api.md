@@ -10,8 +10,9 @@ FastFsm is a high-performance, AOT-friendly state machine generator for .NET tha
 5. [Public API](#public-api)
 6. [CancellationToken Propagation](#cancellationtoken-propagation)
 7. [Exception Policy](#exception-policy)
-8. [Validation Rules](#validation-rules)
-9. [Examples](#examples)
+8. [OnException & ExceptionDirective](#onexception--exceptiondirective)
+9. [Validation Rules](#validation-rules)
+10. [Examples](#examples)
 
 ## Core Concepts
 
@@ -320,6 +321,139 @@ catch (InvalidOperationException ex)
     // Note: machine.CurrentState is now Processing (not Initial)
 }
 ```
+
+**Uwaga:** zachowanie wyjątków w `OnEntry` i `Action` może zostać zmodyfikowane przez `OnException` (patrz rozdział *OnException & ExceptionDirective*); `OperationCanceledException` zawsze propaguje.
+
+## OnException & ExceptionDirective
+
+`OnException` to opcjonalny hook wywoływany przez wygenerowany kod **tylko** w dwóch miejscach:
+
+* podczas **OnEntry** (po zmianie stanu),
+* podczas **Action** (po zmianie stanu).
+
+Hook pozwala zdecydować, czy wyjątek ma zostać **zpropagowany** do wywołującego, czy też **połknięty i zignorowany**, co umożliwia kontynuację pracy maszyny (np. w scenariuszach IoT z błędami przejściowymi).
+
+> **Ważne:** `OperationCanceledException` **zawsze propaguje** (nie jest przechwytywany ani maskowany).
+
+### Kiedy hook **nie działa**
+
+* **Guard**: wyjątki są traktowane jak wynik `false`; hook nie jest wywoływany i nie może zmienić rezultatu guarda.
+* **OnExit**: wyjątek przerywa przejście; hook nie jest wywoływany.
+* **Początkowy OnEntry wywoływany w konstruktorze** (inicjalizacja stanu startowego): nie jest otoczony polityką `OnException`.
+
+### Atrybut
+
+```csharp
+using Abstractions.Attributes;
+
+[OnException(nameof(HandleException))]
+public partial class MyMachine { /* ... */ }
+```
+
+### Kontekst i dyrektywa
+
+Hook przyjmuje silnie typowany kontekst i zwraca dyrektywę:
+
+```csharp
+using StateMachine.Exceptions;
+
+public enum ExceptionDirective
+{
+    Propagate, // przekaż wyjątek do wywołującego
+    Continue   // połknij wyjątek i kontynuuj
+}
+
+public readonly struct ExceptionContext<TState, TTrigger>
+{
+    public TState From { get; }
+    public TState To { get; }
+    public TTrigger Trigger { get; }
+    public Exception Exception { get; }
+    public TransitionStage Stage { get; }       // OnEntry | Action
+    public bool StateAlreadyChanged { get; }    // OnEntry/Action = true
+}
+```
+
+### Dozwolone sygnatury hooka
+
+Generator akceptuje **jedną** z poniższych sygnatur (priorytet wyboru w tej kolejności):
+
+1. `ValueTask<ExceptionDirective> Handle(ExceptionContext<TState, TTrigger> ctx, CancellationToken ct)`
+2. `ValueTask<ExceptionDirective> Handle(ExceptionContext<TState, TTrigger> ctx)`
+3. `ExceptionDirective Handle(ExceptionContext<TState, TTrigger> ctx)`
+
+> Maszyna **async** może mieć hook **sync** lub **async**.
+> Maszyna **sync** nie może mieć hooka **async** (diagnostyka FSM011).
+
+### Semantyka
+
+* **OnEntry/Action**
+
+  * `Continue` → wyjątek jest **połykany**, maszyna **pozostaje** w nowym stanie i kontynuuje wykonanie.
+  * `Propagate` → wyjątek jest **propagowany** do wywołującego (stan już zmieniony).
+* **Guard / OnExit** – hook nie jest stosowany.
+* **OperationCanceledException** – zawsze propaguje (dyrektywa ignorowana).
+
+#### Macierz zachowania z `OnException` (tylko miejsca, gdzie działa)
+
+| Stage   | Dyrektywa | Efekt                           | Wpływ na stan |
+| ------- | --------- | ------------------------------- | ------------- |
+| OnEntry | Continue  | Połknięcie wyjątku, kontynuacja | Już zmieniony |
+| OnEntry | Propagate | Wyjątek do wywołującego         | Już zmieniony |
+| Action  | Continue  | Połknięcie wyjątku, kontynuacja | Już zmieniony |
+| Action  | Propagate | Wyjątek do wywołującego         | Już zmieniony |
+
+### Przykłady
+
+#### Sync: kontynuacja dla błędów przejściowych (IoT)
+
+```csharp
+[StateMachine(typeof(State), typeof(Trigger))]
+[OnException(nameof(HandleException))]
+public partial class DeviceMachine
+{
+    [Transition(State.Idle, Trigger.Start, State.Running, Action = nameof(DoWork))]
+    [State(State.Running, OnEntry = nameof(OnEnterRunning))]
+    private void Configure() { }
+
+    private void OnEnterRunning() { /* może rzucić IOException */ }
+    private void DoWork() { /* może rzucić TransientDeviceException */ }
+
+    private ExceptionDirective HandleException(ExceptionContext<State, Trigger> ctx)
+        => ctx.Exception switch
+        {
+            TransientDeviceException => ExceptionDirective.Continue, // połknij i jedź dalej
+            IOException io when IsRecoverable(io) => ExceptionDirective.Continue,
+            _ => ExceptionDirective.Propagate
+        };
+
+    private static bool IsRecoverable(IOException _) => true;
+}
+```
+
+#### Async: hook z `CancellationToken`
+
+```csharp
+[OnException(nameof(HandleExceptionAsync))]
+public partial class MyAsyncMachine
+{
+    private async ValueTask<ExceptionDirective> HandleExceptionAsync(
+        ExceptionContext<State, Trigger> ctx, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        await Telemetry.WriteAsync(ctx, ct);
+        return ctx.Exception is TimeoutException
+            ? ExceptionDirective.Continue
+            : ExceptionDirective.Propagate;
+    }
+}
+```
+
+### Dobre praktyki
+
+* Używaj `Continue` **tylko** dla dobrze rozpoznanych, przejściowych wyjątków (np. I/O, sieć, sprzęt).
+* Zawsze loguj kontekst błędu (From/To/Trigger/Stage), aby nie maskować degradacji.
+* Nie zmieniaj logiki gardów przez `OnException` — inwarianty maszyny powinny pozostać nienaruszone.
 
 ## Validation Rules
 

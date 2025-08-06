@@ -17,5 +17,10 @@ public class StateMachineModel
     public bool GenerateDependencyInjection { get; set; }
     public bool EmitStructuralHelpers { get; set; }
     public bool ContinueOnCapturedContext { get; set; } = false;
+    
+    /// <summary>
+    /// Optional exception handler configuration.
+    /// </summary>
+    public ExceptionHandlerModel? ExceptionHandler { get; set; }
 
 }

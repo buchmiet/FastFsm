@@ -150,6 +150,12 @@ public class StateMachineGenerator : IIncrementalGenerator
     {
         try
         {
+            // ──────────────────────────────────────────────────────────────
+            // Rozbij krotkę wejściową na składniki
+            // ──────────────────────────────────────────────────────────────
+            var (compAndOpts, classes) = data;
+            var (compilation, optionsProvider) = compAndOpts;
+            
             context.ReportDiagnostic(Diagnostic.Create(
                 new DiagnosticDescriptor(
                     "FSMDEBUG",
@@ -160,12 +166,18 @@ public class StateMachineGenerator : IIncrementalGenerator
                     true),
                 Location.None,
                 DateTime.Now.ToString("T")));
-
-            // ──────────────────────────────────────────────────────────────
-            // Rozbij krotkę wejściową na składniki
-            // ──────────────────────────────────────────────────────────────
-            var (compAndOpts, classes) = data;
-            var (compilation, optionsProvider) = compAndOpts;
+                
+            // Debug: Report number of classes found
+            context.ReportDiagnostic(Diagnostic.Create(
+                new DiagnosticDescriptor(
+                    "FSMDEBUG2",
+                    "Classes Found",
+                    "Found {0} classes to process",
+                    "FastFSM",
+                    DiagnosticSeverity.Warning,
+                    true),
+                Location.None,
+                classes.Length));
 
             // ──────────────────────────────────────────────────────────────
             // Nic do roboty, jeśli nie ma klas

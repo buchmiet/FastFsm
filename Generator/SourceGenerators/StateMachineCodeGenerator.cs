@@ -275,24 +275,59 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     {
         if (string.IsNullOrEmpty(transition.ActionMethod)) return;
 
-        // For base implementation, just call the method without parameters
-        WriteCallbackInvocation(transition.ActionMethod, transition.ActionIsAsync);
+        // For base implementation, use CallbackGenerationHelper which handles CancellationToken properly
+        CallbackGenerationHelper.EmitActionCall(
+            Sb,
+            transition,
+            payloadVar: "null",
+            IsAsyncMachine,
+            wrapInTryCatch: false,
+            Model.ContinueOnCapturedContext,
+            cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+            treatCancellationAsFailure: false
+        );
     }
 
     protected virtual void WriteOnEntryCall(StateModel state, string? expectedPayloadType)
     {
         if (string.IsNullOrEmpty(state.OnEntryMethod)) return;
 
-        // For base implementation, just call the parameterless version
-        WriteCallbackInvocation(state.OnEntryMethod, state.OnEntryIsAsync);
+        // For base implementation, use CallbackGenerationHelper which handles CancellationToken properly
+        CallbackGenerationHelper.EmitOnEntryCall(
+            Sb,
+            state,
+            expectedPayloadType: null,
+            defaultPayloadType: null,
+            payloadVar: "null",
+            IsAsyncMachine,
+            wrapInTryCatch: false,
+            Model.ContinueOnCapturedContext,
+            isSinglePayload: false,
+            isMultiPayload: false,
+            cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+            treatCancellationAsFailure: false
+        );
     }
 
     protected virtual void WriteOnExitCall(StateModel fromState, string? expectedPayloadType)
     {
         if (string.IsNullOrEmpty(fromState.OnExitMethod)) return;
 
-        // For base implementation, just call the parameterless version
-        WriteCallbackInvocation(fromState.OnExitMethod, fromState.OnExitIsAsync);
+        // For base implementation, use CallbackGenerationHelper which handles CancellationToken properly
+        CallbackGenerationHelper.EmitOnExitCall(
+            Sb,
+            fromState,
+            expectedPayloadType: null,
+            defaultPayloadType: null,
+            payloadVar: "null",
+            IsAsyncMachine,
+            wrapInTryCatch: false,
+            Model.ContinueOnCapturedContext,
+            isSinglePayload: false,
+            isMultiPayload: false,
+            cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+            treatCancellationAsFailure: false
+        );
     }
 
     #endregion
@@ -379,6 +414,11 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             AddUsing("System.Threading");
             AddUsing("System.Threading.Tasks");
             AddUsing("StateMachine.Exceptions");
+        }
+        
+        if (Model.ExceptionHandler != null)
+        {
+            AddUsing(NamespaceStateMachineExceptions);
         }
         // Type-specific namespaces
         var allNamespaces = new HashSet<string>();
@@ -787,6 +827,240 @@ if (!string.IsNullOrEmpty(transition.GuardMethod))
     {
         return IsAsyncMachine ? "protected override" : "public override";
     }
+    #endregion
+
+    #region Exception Handling Helpers
+
+    /// <summary>
+    /// Emits OnEntry call with optional exception policy wrapping.
+    /// </summary>
+    protected void EmitOnEntryWithExceptionPolicy(
+        StateModel toStateDef,
+        string? expectedPayloadType,
+        string fromState,
+        string toState,
+        string trigger)
+    {
+        if (Model.ExceptionHandler == null)
+        {
+            // No exception handler - use existing logic
+            WriteOnEntryCall(toStateDef, expectedPayloadType);
+            WriteLogStatement("Debug",
+                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{toState}\");");
+            return;
+        }
+
+        // Wrap in try/catch with exception policy
+        Sb.AppendLine("try");
+        using (Sb.Block(""))
+        {
+            WriteOnEntryCall(toStateDef, expectedPayloadType);
+            WriteLogStatement("Debug",
+                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{toState}\");");
+        }
+        Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
+        using (Sb.Block(""))
+        {
+            EmitExceptionHandlerCall(fromState, toState, trigger, "TransitionStage.OnEntry", true);
+        }
+    }
+
+    /// <summary>
+    /// Emits Action call with optional exception policy wrapping.
+    /// </summary>
+    protected void EmitActionWithExceptionPolicy(
+        TransitionModel transition,
+        string fromState,
+        string toState)
+    {
+        if (Model.ExceptionHandler == null)
+        {
+            // No exception handler - use existing logic
+            WriteActionCall(transition);
+            WriteLogStatement("Debug",
+                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+            return;
+        }
+
+        // Wrap in try/catch with exception policy
+        Sb.AppendLine("try");
+        using (Sb.Block(""))
+        {
+            WriteActionCall(transition);
+            WriteLogStatement("Debug",
+                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+        }
+        Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
+        using (Sb.Block(""))
+        {
+            EmitExceptionHandlerCall(fromState, toState, transition.Trigger, "TransitionStage.Action", true);
+        }
+    }
+
+    /// <summary>
+    /// Emits OnEntry call with optional exception policy wrapping (for payload variant).
+    /// </summary>
+    protected void EmitOnEntryWithExceptionPolicyPayload(
+        StateModel toStateDef,
+        string? expectedPayloadType,
+        string defaultPayloadType,
+        string fromState,
+        string toState,
+        string trigger,
+        bool isSinglePayload,
+        bool isMultiPayload)
+    {
+        if (Model.ExceptionHandler == null)
+        {
+            // No exception handler - use existing logic
+            CallbackGenerationHelper.EmitOnEntryCall(
+                Sb,
+                toStateDef,
+                expectedPayloadType,
+                defaultPayloadType,
+                PayloadVar,
+                IsAsyncMachine,
+                wrapInTryCatch: false,
+                Model.ContinueOnCapturedContext,
+                isSinglePayload,
+                isMultiPayload,
+                cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+                treatCancellationAsFailure: IsAsyncMachine
+            );
+            WriteLogStatement("Debug",
+                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{toState}\");");
+            return;
+        }
+
+        // Wrap in try/catch with exception policy
+        Sb.AppendLine("try");
+        using (Sb.Block(""))
+        {
+            CallbackGenerationHelper.EmitOnEntryCall(
+                Sb,
+                toStateDef,
+                expectedPayloadType,
+                defaultPayloadType,
+                PayloadVar,
+                IsAsyncMachine,
+                wrapInTryCatch: false,
+                Model.ContinueOnCapturedContext,
+                isSinglePayload,
+                isMultiPayload,
+                cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+                treatCancellationAsFailure: IsAsyncMachine
+            );
+            WriteLogStatement("Debug",
+                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{toState}\");");
+        }
+        Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
+        using (Sb.Block(""))
+        {
+            EmitExceptionHandlerCall(fromState, toState, trigger, "TransitionStage.OnEntry", true);
+        }
+    }
+
+    /// <summary>
+    /// Emits Action call with optional exception policy wrapping (for payload variant).
+    /// </summary>
+    protected void EmitActionWithExceptionPolicyPayload(
+        TransitionModel transition,
+        string fromState,
+        string toState)
+    {
+        if (Model.ExceptionHandler == null)
+        {
+            // No exception handler - use existing logic
+            CallbackGenerationHelper.EmitActionCall(
+                Sb,
+                transition,
+                PayloadVar,
+                IsAsyncMachine,
+                wrapInTryCatch: false,
+                Model.ContinueOnCapturedContext,
+                cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+                treatCancellationAsFailure: IsAsyncMachine
+            );
+            WriteLogStatement("Debug",
+                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+            return;
+        }
+
+        // Wrap in try/catch with exception policy
+        Sb.AppendLine("try");
+        using (Sb.Block(""))
+        {
+            CallbackGenerationHelper.EmitActionCall(
+                Sb,
+                transition,
+                PayloadVar,
+                IsAsyncMachine,
+                wrapInTryCatch: false,
+                Model.ContinueOnCapturedContext,
+                cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+                treatCancellationAsFailure: IsAsyncMachine
+            );
+            WriteLogStatement("Debug",
+                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+        }
+        Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
+        using (Sb.Block(""))
+        {
+            EmitExceptionHandlerCall(fromState, toState, transition.Trigger, "TransitionStage.Action", true);
+        }
+    }
+
+    /// <summary>
+    /// Emits the call to the exception handler and handles the directive.
+    /// </summary>
+    private void EmitExceptionHandlerCall(
+        string fromState,
+        string toState,
+        string trigger,
+        string stage,
+        bool stateAlreadyChanged)
+    {
+        var handler = Model.ExceptionHandler!;
+        var stateType = GetTypeNameForUsage(Model.StateType);
+        var triggerType = GetTypeNameForUsage(Model.TriggerType);
+
+        // Create exception context
+        Sb.AppendLine($"var exceptionContext = new {handler.ExceptionContextClosedType}(");
+        using (Sb.Indent())
+        {
+            Sb.AppendLine($"{stateType}.{TypeHelper.EscapeIdentifier(fromState)},");
+            Sb.AppendLine($"{stateType}.{TypeHelper.EscapeIdentifier(toState)},");
+            Sb.AppendLine($"{triggerType}.{TypeHelper.EscapeIdentifier(trigger)},");
+            Sb.AppendLine("ex,");
+            Sb.AppendLine($"{stage},");
+            Sb.AppendLine($"{stateAlreadyChanged.ToString().ToLowerInvariant()});");
+        }
+
+        // Call handler
+        string directiveVar = "directive";
+        if (handler.IsAsync)
+        {
+            var args = handler.AcceptsCancellationToken
+                ? "exceptionContext, cancellationToken"
+                : "exceptionContext";
+            Sb.AppendLine($"var {directiveVar} = await {handler.MethodName}({args}).ConfigureAwait({Model.ContinueOnCapturedContext.ToString().ToLowerInvariant()});");
+        }
+        else
+        {
+            var args = handler.AcceptsCancellationToken
+                ? "exceptionContext, cancellationToken"
+                : "exceptionContext";
+            Sb.AppendLine($"var {directiveVar} = {handler.MethodName}({args});");
+        }
+
+        // Apply directive
+        using (Sb.Block($"if ({directiveVar} != ExceptionDirective.Continue)"))
+        {
+            Sb.AppendLine("throw;");
+        }
+        Sb.AppendLine("// Exception swallowed by Continue directive");
+    }
+
     #endregion
 
     #region Abstractions to be implemented by concrete generators
