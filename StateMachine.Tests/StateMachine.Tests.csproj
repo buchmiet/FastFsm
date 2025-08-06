@@ -23,13 +23,6 @@
 	<ItemGroup>
 		<PackageReference Include="FastFsm.Net" Version="*-dev.*" />
 	</ItemGroup>
-	<ItemGroup>
-		
-		<!--<ProjectReference Include="..\Generator\Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />-->
-		<ProjectReference Include="..\Generator.Rules\Generator.Rules.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-	
-		
-	</ItemGroup>
 	<Target Name="CleanGeneratedFiles" BeforeTargets="Clean">
 		<RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)" />
 	</Target>

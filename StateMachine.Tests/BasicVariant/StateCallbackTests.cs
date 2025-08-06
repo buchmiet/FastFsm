@@ -19,7 +19,7 @@ public class StateCallbackTests(ITestOutputHelper output)
         machine.Fire(CallbackTrigger.Next);
 
         // Assert
-        var expected = new[] { "Exit-A", "Action-A-to-B", "Entry-B" };
+        var expected = new[] { "Exit-A", "Entry-B", "Action-A-to-B" };
         Assert.Equal(expected, typedMachine.ExecutionLog);
 
         // Act - Transition B -> C
@@ -27,9 +27,10 @@ public class StateCallbackTests(ITestOutputHelper output)
         machine.Fire(CallbackTrigger.Next);
 
         // Assert
-        expected = ["Exit-B", "Action-B-to-C", "Entry-C"];
+        expected = new[] { "Exit-B", "Entry-C", "Action-B-to-C" };
         Assert.Equal(expected, typedMachine.ExecutionLog);
     }
+
 
     [Fact]
     public void InitialState_OnEntry_IsCalledInConstructor()
@@ -117,11 +118,13 @@ public class StateCallbackTests(ITestOutputHelper output)
         // Act - Self transition (not internal)
         machine.Fire(SelfTrigger.Refresh);
 
-        // Assert - OnExit and OnEntry both called
+        // Assert - OnExit i OnEntry są wywołane, a następnie Action
         Assert.Equal(3, typedMachine.EventLog.Count);
         Assert.Equal("OnExit-Active", typedMachine.EventLog[0]);
-        Assert.Equal("RefreshAction", typedMachine.EventLog[1]);
-        Assert.Equal("OnEntry-Active", typedMachine.EventLog[2]);
+        Assert.Equal("OnEntry-Active", typedMachine.EventLog[1]);
+        Assert.Equal("RefreshAction", typedMachine.EventLog[2]);
+
+        // Stan pozostaje Active (self-transition)
         Assert.Equal(SelfState.Active, machine.CurrentState);
     }
 
@@ -132,17 +135,18 @@ public class StateCallbackTests(ITestOutputHelper output)
         var machine = new Machines.ExceptionCallbackMachine(ExceptionState.A);
         var typedMachine = machine;
 
-        // Act & Assert - OnExit throws
+        // Act & Assert - OnExit throws -> wyjątek i stan BEZ zmiany
         typedMachine.ThrowInOnExit = true;
         Assert.Throws<InvalidOperationException>(() => machine.Fire(ExceptionTrigger.Go));
-        Assert.Equal(ExceptionState.A, machine.CurrentState); // State unchanged
+        Assert.Equal(ExceptionState.A, machine.CurrentState); // state unchanged
 
-        // Act & Assert - OnEntry throws
+        // Act & Assert - OnEntry throws -> wyjątek, ALE stan JUŻ zmieniony
         typedMachine.ThrowInOnExit = false;
         typedMachine.ThrowInOnEntry = true;
         Assert.Throws<InvalidOperationException>(() => machine.Fire(ExceptionTrigger.Go));
-        Assert.Equal(ExceptionState.A, machine.CurrentState); // State unchanged
+        Assert.Equal(ExceptionState.B, machine.CurrentState); // state already changed
     }
+
 
     [Fact]
     public void ComplexStateCallbacks_WithMultipleStates_WorkCorrectly()
