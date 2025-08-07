@@ -50,12 +50,37 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
                     Sb.AppendLine();
                 }
 
+                // Hierarchical state machine arrays
+                WriteHierarchyArrays(stateTypeForUsage);
+                
+                // Instance field for history tracking
+                if (Model.HierarchyEnabled)
+                {
+                    Sb.AppendLine("// Last active child tracking for history");
+                    var stateCount = Model.States.Count;
+                    Sb.AppendLine($"private readonly int[] _lastActiveChild = new int[{stateCount}];");
+                    Sb.AppendLine();
+                }
+
                 WriteLoggerField(className);
                 WriteConstructor(stateTypeForUsage, className);
+                
+                // Generate OnInitialEntry/OnInitialEntryAsync override
+                if (ShouldGenerateInitialOnEntry())
+                {
+                    if (IsAsyncMachine)
+                        WriteOnInitialEntryAsyncMethod(stateTypeForUsage);
+                    else
+                        WriteOnInitialEntryMethod(stateTypeForUsage);
+                }
+                
                 WriteTryFireMethod(stateTypeForUsage, triggerTypeForUsage);
                 WriteCanFireMethod(stateTypeForUsage, triggerTypeForUsage);
                 WriteGetPermittedTriggersMethod(stateTypeForUsage, triggerTypeForUsage);
                 WriteStructuralApiMethods(stateTypeForUsage, triggerTypeForUsage);
+                
+                // Hierarchical state machine methods
+                WriteHierarchyMethods(stateTypeForUsage, triggerTypeForUsage);
             }
         }
     }
@@ -80,7 +105,7 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
         Sb.AppendLine("/// <param name=\"cancellationToken\">A token to observe for cancellation requests</param>");
         Sb.AppendLine("/// <returns>List of triggers that can be fired in the current state</returns>");
 
-        using (Sb.Block($"public override async ValueTask<{ReadOnlyListType}<{triggerTypeForUsage}>> GetPermittedTriggersAsync(CancellationToken cancellationToken = default)"))
+        using (Sb.Block($"protected override async ValueTask<{ReadOnlyListType}<{triggerTypeForUsage}>> GetPermittedTriggersInternalAsync(CancellationToken cancellationToken = default)"))
         {
             Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
             Sb.AppendLine();
@@ -212,7 +237,7 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
         Sb.AppendLine("/// <param name=\"cancellationToken\">A token to observe for cancellation requests</param>");
         Sb.AppendLine("/// <returns>True if the trigger can be fired, false otherwise</returns>");
 
-        using (Sb.Block($"public override async ValueTask<bool> CanFireAsync({triggerTypeForUsage} trigger, CancellationToken cancellationToken = default)"))
+        using (Sb.Block($"protected override async ValueTask<bool> CanFireInternalAsync({triggerTypeForUsage} trigger, CancellationToken cancellationToken = default)"))
         {
             Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
             Sb.AppendLine();
@@ -290,63 +315,88 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
         using (Sb.Block($"public {className}({string.Join(", ", paramList)}) : {baseCall}"))
         {
             WriteLoggerAssignment();
-
-            if (ShouldGenerateInitialOnEntry())
+            
+            // Initialize history tracking array for HSM
+            if (Model.HierarchyEnabled)
             {
                 Sb.AppendLine();
-                if (IsAsyncMachine)
-                    WriteAsyncInitialOnEntryDispatch(stateTypeForUsage);
-                else
-                    WriteInitialOnEntryDispatch(stateTypeForUsage);
+                Sb.AppendLine("// Initialize last active child tracking");
+                Sb.AppendLine("for (int i = 0; i < _lastActiveChild.Length; i++)");
+                using (Sb.Indent())
+                {
+                    Sb.AppendLine("_lastActiveChild[i] = -1;");
+                }
             }
+
+            // Initial OnEntry dispatch moved to OnInitialEntry/OnInitialEntryAsync method
         }
         Sb.AppendLine();
     }
 
-    private void WriteAsyncInitialOnEntryDispatch(string stateTypeForUsage)
+    private void WriteOnInitialEntryAsyncMethod(string stateTypeForUsage)
     {
-        Sb.AppendLine(InitialOnEntryComment);
-        Sb.AppendLine("// Note: Constructor cannot be async, so initial OnEntry is fire-and-forget");
-
-        AsyncGenerationHelper.EmitFireAndForgetAsyncCall(Sb, sb =>
+        using (Sb.Block("protected override async ValueTask OnInitialEntryAsync(System.Threading.CancellationToken cancellationToken = default)"))
         {
-            using (sb.Block("switch (initialState)"))
+            using (Sb.Block($"switch ({CurrentStateField})"))
             {
                 foreach (var stateEntry in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
                 {
-                    sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
-                    using (sb.Indent())
+                    Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                    using (Sb.Indent())
                     {
                         // Check if OnEntry has token overload
                         var sig = stateEntry.OnEntrySignature;
 
-                        // If it has token-only or payload+token overload, pass CancellationToken.None
+                        // If it has token-only or payload+token overload, pass the cancellationToken
                         if (sig.HasTokenOnly || (sig.HasPayloadAndToken && !sig.HasParameterless))
                         {
                             AsyncGenerationHelper.EmitMethodInvocation(
-                                sb,
+                                Sb,
                                 stateEntry.OnEntryMethod,
                                 stateEntry.OnEntryIsAsync,
                                 callerIsAsync: true,
                                 Model.ContinueOnCapturedContext,
-                                "System.Threading.CancellationToken.None"
+                                "cancellationToken"
                             );
                         }
                         else
                         {
                             AsyncGenerationHelper.EmitMethodInvocation(
-                                sb,
+                                Sb,
                                 stateEntry.OnEntryMethod,
                                 stateEntry.OnEntryIsAsync,
                                 callerIsAsync: true,
                                 Model.ContinueOnCapturedContext
                             );
                         }
-                        sb.AppendLine("break;");
+                        Sb.AppendLine("break;");
                     }
                 }
             }
-        });
+        }
+        Sb.AppendLine();
+    }
+    
+    private void WriteOnInitialEntryMethod(string stateTypeForUsage)
+    {
+        using (Sb.Block("protected override void OnInitialEntry()"))
+        {
+            using (Sb.Block($"switch ({CurrentStateField})"))
+            {
+                foreach (var stateEntry in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
+                {
+                    Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                    using (Sb.Indent())
+                    {
+                        Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                        WriteLogStatement("Debug",
+                            $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
+                        Sb.AppendLine("break;");
+                    }
+                }
+            }
+        }
+        Sb.AppendLine();
     }
 
     private void WriteTryFireMethod(string stateTypeForUsage, string triggerTypeForUsage)

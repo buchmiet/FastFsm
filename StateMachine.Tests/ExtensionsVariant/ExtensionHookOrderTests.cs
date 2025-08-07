@@ -49,6 +49,7 @@ namespace StateMachine.Tests.ExtensionsVariant
             var log = new List<string>();
             var ext = new RecordingExtension(log);
             var machine = new HookOrderMachine(State.A, [ext]);
+            machine.Start();
 
             // act
             machine.TryFire(Trigger.Next);

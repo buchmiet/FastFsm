@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -15,6 +15,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new OrderStateMachine(OrderState.New);
+        machine.Start();
         var order = new OrderData { OrderId = 123, Amount = 100, Customer = "Test" };
 
         // Act
@@ -32,6 +33,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new PaymentMachine(PaymentState.Pending);
+        machine.Start();
         var smallPayment = new PaymentData { Amount = 50 };
         var largePayment = new PaymentData { Amount = 150 };
 
@@ -42,6 +44,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
 
         // Reset
         machine = new PaymentMachine(PaymentState.Pending);
+        machine.Start();
 
         // Act & Assert - Large payment needs approval
         result = machine.TryFire(PaymentTrigger.Process, largePayment);
@@ -54,6 +57,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new NotificationMachine(NotificationState.Ready);
+        machine.Start();
         var notification = new NotificationData
         {
             Message = "Test Message",
@@ -74,6 +78,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new ProcessingMachine(ProcessingState.Idle);
+        machine.Start();
         var config = new ProcessConfig { ThreadCount = 4, TimeoutSeconds = 30 };
 
         // Act
@@ -91,6 +96,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new MultiPayloadMachine(MultiState.Initial);
+        machine.Start();
         var config = new ConfigPayload { Setting = "Debug" };
         var data = new DataPayload { Value = 42 };
         var error = new ErrorPayload { Code = "ERR001", Message = "Test error" };
@@ -116,6 +122,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new MultiPayloadMachine(MultiState.Configured);
+        machine.Start();
         var wrongPayload = new ConfigPayload { Setting = "Wrong" };
 
         // Act - Try to use ConfigPayload where DataPayload is expected
@@ -131,6 +138,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new OverloadedMachine(OverloadState.A);
+        machine.Start();
         var payload = new OverloadPayload { Data = "test" };
 
         // Act - Fire without payload
@@ -145,6 +153,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
 
         // Act - Fire with payload
         machine = new OverloadedMachine(OverloadState.A);
+        machine.Start();
         machine.CallLog.Clear();
         machine.Fire(OverloadTrigger.Go, payload);
 
@@ -160,6 +169,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new InternalPayloadMachine(InternalPayloadState.Active);
+        machine.Start();
         var update = new UpdatePayload { Increment = 5 };
 
         // Act
@@ -180,6 +190,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new MixedPayloadMachine(MixedState.Start);
+        machine.Start();
         var defaultData = new DefaultPayload { Id = 1 };
         var specialData = new SpecialPayload { SpecialValue = "Special" };
 
@@ -199,6 +210,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     {
         // Arrange & Act
         var machine = new InitialPayloadMachine(InitialPayloadState.Start);
+        machine.Start();
 
         // Assert - Initial OnEntry should use parameterless version
         Assert.True(machine.InitialEntryCalledParameterless);
@@ -210,6 +222,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new ExitCallbackMachine(ExitState.A);
+        machine.Start();
         var payload = new ExitPayload { Data = "test" };
 
         // Act
@@ -226,6 +239,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new WorkflowMachine(WorkflowState.Created);
+        machine.Start();
         var initData = new WorkflowPayload { WorkflowId = "WF001", Priority = 1 };
         var approvalData = new WorkflowPayload { WorkflowId = "WF001", ApprovedBy = "Manager" };
         var completeData = new WorkflowPayload { WorkflowId = "WF001", Result = "Success" };
@@ -252,6 +266,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new ConditionalPayloadMachine(ConditionalState.Ready);
+        machine.Start();
         var validPayload = new ConditionalPayload { IsValid = true };
         var invalidPayload = new ConditionalPayload { IsValid = false };
 
@@ -272,6 +287,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new PermittedTriggersMachine(PermittedState.A);
+        machine.Start();
 
         // Act
         var triggers = machine.GetPermittedTriggers();
@@ -287,6 +303,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new StrictMultiPayloadMachine(StrictState.Ready);
+        machine.Start();
         var wrongPayload = new WrongPayload();
 
         // Act & Assert
@@ -301,6 +318,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
         {
             // Arrange
             var machine = new OrderStateMachine(OrderState.New);
+            machine.Start();
 
             // Act
             var result = machine.TryFire(OrderTrigger.Submit);
@@ -318,6 +336,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
         {
             // Arrange
             var machine = new MultiPayloadMachine(MultiState.Initial);
+            machine.Start();
 
             // Act
             var result1 = machine.TryFire(MultiTrigger.Configure);
@@ -334,6 +353,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
         {
             // Arrange
             var machine = new MultiPayloadMachine(MultiState.Initial);
+            machine.Start();
 
             // Act & Assert
             Assert.Throws<InvalidOperationException>(() =>

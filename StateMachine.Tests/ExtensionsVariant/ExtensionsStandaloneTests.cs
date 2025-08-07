@@ -1,4 +1,4 @@
-﻿using Shouldly;
+using Shouldly;
 using StateMachine.Contracts;
 using System;
 using System.Collections.Generic;
@@ -44,6 +44,7 @@ namespace StateMachine.Tests.ExtensionsVariant
             var ext1 = new TestExtension();
             var ext2 = new TestExtension();
             var machine = new ExtensionsMachine(ExtState.Idle, [ext1]);
+            machine.Start();
 
             // Act & Assert - Initial extension works
             machine.TryFire(ExtTrigger.Start);
@@ -71,6 +72,7 @@ namespace StateMachine.Tests.ExtensionsVariant
             // Arrange
             var extension = new TestExtension();
             var machine = new ExtensionsMachine(ExtState.Idle, [extension]);
+            machine.Start();
 
             // Act
             machine.TryFire(ExtTrigger.Start); // Has guard
@@ -86,6 +88,7 @@ namespace StateMachine.Tests.ExtensionsVariant
             // Arrange
             var extension = new TestExtension();
             var machine = new ExtensionsMachine(ExtState.Complete, [extension]);
+            machine.Start();
 
             // Act
             var result = machine.TryFire(ExtTrigger.Start); // Invalid from Complete
@@ -101,6 +104,7 @@ namespace StateMachine.Tests.ExtensionsVariant
         {
             // Arrange
             var machine = new ExtensionsMachine(ExtState.Idle, null);
+            machine.Start();
 
             // Act
             var result = machine.TryFire(ExtTrigger.Start);
@@ -117,6 +121,7 @@ namespace StateMachine.Tests.ExtensionsVariant
             var faultyExtension = new FaultyExtension();
             var goodExtension = new TestExtension();
             var machine = new ExtensionsMachine(ExtState.Idle, new IStateMachineExtension[] { faultyExtension, goodExtension });
+            machine.Start();
 
             // Act
             var result = machine.TryFire(ExtTrigger.Start);

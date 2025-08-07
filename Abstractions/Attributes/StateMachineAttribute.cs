@@ -39,5 +39,11 @@ public sealed class StateMachineAttribute : Attribute
     /// Only applicable for async state machines. Defaults to false for better performance.
     /// </summary>
     public bool ContinueOnCapturedContext { get; set; } = false;
+    
+    /// <summary>
+    /// Enables hierarchical state machine features (composite states, history, etc.)
+    /// Automatically enabled if any HSM attributes are used
+    /// </summary>
+    public bool EnableHierarchy { get; set; } = false;
 }
 

@@ -197,6 +197,7 @@ public class ExceptionDirectiveTests
     {
         // Arrange
         var machine = new OnEntryContinueMachine(ExceptionTestStates.Idle);
+        await machine.StartAsync();
         
         // Act
         await machine.FireAsync(ExceptionTestTriggers.Start);
@@ -212,6 +213,7 @@ public class ExceptionDirectiveTests
     {
         // Arrange
         var machine = new ActionPropagateMachine(ExceptionTestStates.Idle);
+        await machine.StartAsync();
         
         // Act & Assert
         var ex = await Should.ThrowAsync<InvalidOperationException>(
@@ -227,6 +229,7 @@ public class ExceptionDirectiveTests
     {
         // Arrange
         var machine = new GuardExceptionMachine(ExceptionTestStates.Idle);
+        await machine.StartAsync();
         
         // Act
         var result = await machine.TryFireAsync(ExceptionTestTriggers.Start);
@@ -243,6 +246,7 @@ public class ExceptionDirectiveTests
     {
         // Arrange
         var machine = new CancellationPropagationMachine(ExceptionTestStates.Idle);
+        await machine.StartAsync();
         using var cts = new CancellationTokenSource();
         
         // Act & Assert
@@ -258,6 +262,7 @@ public class ExceptionDirectiveTests
     {
         // Arrange
         var machine = new AsyncHandlerMachine(ExceptionTestStates.Idle);
+        await machine.StartAsync();
         using var cts = new CancellationTokenSource();
         
         // Act
@@ -276,6 +281,7 @@ public class ExceptionDirectiveTests
         var machine = new ExceptionContextCaptureMachine(
             ExceptionTestStates.Idle,
             ctx => { capturedContext = ctx; return ExceptionDirective.Continue; });
+        await machine.StartAsync();
         
         // Act
         await machine.FireAsync(ExceptionTestTriggers.Start);

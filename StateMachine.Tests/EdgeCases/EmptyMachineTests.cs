@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -13,6 +13,7 @@ namespace StateMachine.Tests.EdgeCases
         {
             // Arrange & Act
             var machine = new NoTransitionsMachine(EmptyState.Only);
+            machine.Start();
 
             // Assert
             Assert.Equal(EmptyState.Only, machine.CurrentState);
@@ -29,6 +30,7 @@ namespace StateMachine.Tests.EdgeCases
         {
             // Arrange
             var machine = new Machines.SingleStateMachine(SingleState.Only);
+            machine.Start();
 
             // Act & Assert
             Assert.True(machine.CanFire(SingleTrigger.Loop));
@@ -44,6 +46,7 @@ namespace StateMachine.Tests.EdgeCases
         {
             // Arrange
             var machine = new Machines.UnreachableMachine(UnreachableState.Start);
+            machine.Start();
 
             // Act & Assert
             Assert.Equal(UnreachableState.Start, machine.CurrentState);
@@ -66,6 +69,7 @@ namespace StateMachine.Tests.EdgeCases
         {
             // Arrange
             var machine = new Machines.InternalOnlyMachine(InternalOnlyState.Static);
+            machine.Start();
             var typedMachine = machine as Machines.InternalOnlyMachine;
 
             // Act

@@ -17,6 +17,7 @@ public class ActionExceptionTests
         // ── arrange ───────────────────────────────────────────────────────────
         var ext = new ResultCapturingExtension();
         var machine = new ThrowingActionMachine(TestState.A, [ext]);
+        machine.Start();
 
         // sanity – przed przejściem
         Assert.Equal(TestState.A, machine.CurrentState);

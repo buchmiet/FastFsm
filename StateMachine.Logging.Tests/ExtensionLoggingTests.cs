@@ -23,7 +23,7 @@ namespace StateMachine.Logging.Tests
                 TestState.Initial,
                 [extension],
                 GetLogger<ExtensionsStateMachine>());
-
+            machine.Start();
             // Act
             machine.TryFire(TestTrigger.Start);
 
@@ -48,7 +48,7 @@ namespace StateMachine.Logging.Tests
                 TestState.Initial,
                 [extension],
                 GetLogger<ExtensionsStateMachine>());
-
+            machine.Start();
             // Act
             machine.TryFire(TestTrigger.Start);
 
@@ -70,9 +70,9 @@ namespace StateMachine.Logging.Tests
             var extension = new TestExtension { ThrowOnGuardEvaluation = true };
             var machine = new ExtensionsStateMachine(
                 TestState.Initial,
-                new[] { extension },
+                [extension],
                 GetLogger<ExtensionsStateMachine>());
-
+            machine.Start();
             // Act
             machine.TryFire(TestTrigger.Start);
 
@@ -93,9 +93,10 @@ namespace StateMachine.Logging.Tests
             var extension = new TestExtension { ThrowOnGuardEvaluated = true };
             var machine = new ExtensionsStateMachine(
                 TestState.Initial,
-                new[] { extension },
+                [extension],
                 GetLogger<ExtensionsStateMachine>());
 
+            machine.Start();
             // Act
             machine.TryFire(TestTrigger.Start);
 
@@ -123,9 +124,9 @@ namespace StateMachine.Logging.Tests
 
             var machine = new ExtensionsStateMachine(
                 TestState.Initial,
-                new[] { throwingExtension, workingExtension },
+                [throwingExtension, workingExtension],
                 GetLogger<ExtensionsStateMachine>());
-
+            machine.Start();
             // Act
             machine.TryFire(TestTrigger.Start);
 
@@ -146,10 +147,10 @@ namespace StateMachine.Logging.Tests
             var extension = new TestExtension { ThrowOnBeforeTransition = true };
             var machine = new FullStateMachine(
                 TestState.Initial,
-                new[] { extension },
+                [extension],
                 GetLogger<FullStateMachine>());
             var payload = new TestPayload { Id = 42, Data = "Test" };
-
+            machine.Start();
             // Act
             machine.TryFire(TestTrigger.Start, payload);
 
@@ -177,10 +178,10 @@ namespace StateMachine.Logging.Tests
 
             var machine = new ExtensionsStateMachine(
                 TestState.Initial,
-                new[] { extension },
+                [extension],
                 GetLogger<ExtensionsStateMachine>());
             machine.GuardResult = false; // Guard will fail
-
+            machine.Start();
             // Act
             var result = machine.TryFire(TestTrigger.Start);
 

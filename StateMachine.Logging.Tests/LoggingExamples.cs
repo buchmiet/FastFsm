@@ -32,7 +32,7 @@ namespace StateMachine.Logging.Tests
             // Arrange
             var logger = _loggerFactory.CreateLogger<ExampleStateMachine>();
             var machine = new ExampleStateMachine(OrderState.New, logger);
-
+            machine.Start();
             // Act
             _output.WriteLine("=== Starting state machine test ===");
             _output.WriteLine($"Initial state: {machine.CurrentState}");
@@ -51,6 +51,7 @@ namespace StateMachine.Logging.Tests
             // Arrange
             var logger = _loggerFactory.CreateLogger<GuardedStateMachine>();
             var machine = new GuardedStateMachine(ProcessState.Idle, logger);
+            machine.Start();
             machine.CanProcess = false; // Guard will fail
 
             // Act
@@ -69,7 +70,7 @@ namespace StateMachine.Logging.Tests
             var logger = _loggerFactory.CreateLogger<ExtensibleMachine>();
             var extension = new LoggingExtension(_output);
             var machine = new ExtensibleMachine(WorkflowState.Draft, new[] { extension }, logger);
-
+            machine.Start();
             // Act
             _output.WriteLine("=== Testing with extension ===");
             machine.TryFire(WorkflowTrigger.Submit);

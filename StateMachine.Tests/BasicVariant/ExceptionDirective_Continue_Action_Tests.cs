@@ -11,6 +11,7 @@ public class ExceptionDirective_Continue_Action_Tests
     public void ActionThrow_Continue_Swallows_StateChanged()
     {
         var m = new ContinueOnActionMachine(ASState.A);
+        m.Start();
 
         Assert.Equal(ASState.A, m.CurrentState);
 

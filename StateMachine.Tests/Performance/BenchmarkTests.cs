@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -15,6 +15,7 @@ namespace StateMachine.Tests.Performance
         {
             // Arrange
             var machine = new PureBenchmarkMachine(BenchmarkState.A);
+            machine.Start();
             const int iterations = 1_000_000;
 
             // Warmup
@@ -50,6 +51,7 @@ namespace StateMachine.Tests.Performance
         {
             // Arrange
             var machine = new BasicBenchmarkMachine(BenchmarkState.A);
+            machine.Start();
             const int iterations = 1_000_000;
 
             // Warmup
@@ -87,6 +89,7 @@ namespace StateMachine.Tests.Performance
 
             // Pure variant
             var pureMachine = new PureBenchmarkMachine(BenchmarkState.A);
+            pureMachine.Start();
             var sw1 = Stopwatch.StartNew();
             for (int i = 0; i < iterations; i++)
             {
@@ -97,6 +100,7 @@ namespace StateMachine.Tests.Performance
 
             // Basic variant
             var basicMachine = new BasicBenchmarkMachine(BenchmarkState.A);
+            basicMachine.Start();
             var sw2 = Stopwatch.StartNew();
             for (int i = 0; i < iterations; i++)
             {
@@ -125,7 +129,9 @@ namespace StateMachine.Tests.Performance
 
             // Warmup dla obu maszyn
             var noGuardMachine = new NoGuardBenchmarkMachine(BenchmarkState.A);
+            noGuardMachine.Start();
             var withGuardMachine = new WithGuardBenchmarkMachine(BenchmarkState.A);
+            withGuardMachine.Start();
 
             for (int i = 0; i < warmupIterations; i++)
             {
@@ -135,7 +141,9 @@ namespace StateMachine.Tests.Performance
 
             // Reset maszyn
             noGuardMachine = new NoGuardBenchmarkMachine(BenchmarkState.A);
+            noGuardMachine.Start();
             withGuardMachine = new WithGuardBenchmarkMachine(BenchmarkState.A);
+            withGuardMachine.Start();
 
             // Pomiar bez guards - wielokrotne próby
             var noGuardTimes = new List<double>();
@@ -193,6 +201,7 @@ namespace StateMachine.Tests.Performance
         {
             // Test symulujący bardziej realistyczne użycie
             var machine = new WithGuardBenchmarkMachine(BenchmarkState.A);
+            machine.Start();
             const int operations = 1_000_000;
 
             var sw = Stopwatch.StartNew();

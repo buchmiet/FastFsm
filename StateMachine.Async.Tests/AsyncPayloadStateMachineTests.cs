@@ -1,4 +1,4 @@
-﻿using Abstractions.Attributes;
+using Abstractions.Attributes;
 using Shouldly;
 using StateMachine.Contracts;
 using StateMachine.Exceptions;
@@ -363,6 +363,7 @@ public class AsyncPayloadStateMachineTests
     {
         // Arrange
         var machine = new BasicAsyncPayloadMachine(AsyncPayloadStates.Initial);
+        await machine.StartAsync();
         var payload = new ProcessPayload { Id = 123, Data = "TestData", IsValid = true };
 
         // Act
@@ -391,6 +392,7 @@ public class AsyncPayloadStateMachineTests
     {
         // Arrange
         var machine = new BasicAsyncPayloadMachine(AsyncPayloadStates.Initial);
+        await machine.StartAsync();
         var payload = new ProcessPayload { Id = 456, Data = "EntryTest", IsValid = true };
 
         // Act
@@ -407,6 +409,7 @@ public class AsyncPayloadStateMachineTests
     {
         // Arrange
         var machine = new OverloadedAsyncMachine(AsyncPayloadStates.Initial);
+        await machine.StartAsync();
 
         // Act 1: Fire without payload - should use parameterless versions
         await machine.FireAsync(AsyncPayloadTriggers.Start);
@@ -417,6 +420,7 @@ public class AsyncPayloadStateMachineTests
         // Reset for next test
         machine.CallLog.Clear();
         machine = new OverloadedAsyncMachine(AsyncPayloadStates.Initial);
+        await machine.StartAsync();
 
         // Act 2: Fire with payload - should use payload versions
         var payload = new ProcessPayload { Id = 789, IsValid = true };
@@ -436,6 +440,7 @@ public class AsyncPayloadStateMachineTests
     {
         // Arrange
         var machine = new MultiPayloadAsyncMachine(MultiPayloadStates.Ready);
+        await machine.StartAsync();
 
         // Act 1: Configure with ConfigPayload
         var configPayload = new ConfigPayload { Setting = "TestSetting", Timeout = 30 };
@@ -467,6 +472,7 @@ public class AsyncPayloadStateMachineTests
     {
         // Arrange
         var machine = new MultiPayloadAsyncMachine(MultiPayloadStates.Ready);
+        await machine.StartAsync();
 
         // Act - Try to fire Configure trigger with wrong payload type
         var wrongPayload = new DataPayload { Value = 123 };
@@ -483,6 +489,7 @@ public class AsyncPayloadStateMachineTests
     {
         // Arrange
         var machine = new ExceptionAsyncPayloadMachine(AsyncPayloadStates.Initial);
+        await machine.StartAsync();
         var payload = new ProcessPayload { Id = 999 };
 
         // Act
@@ -499,6 +506,7 @@ public class AsyncPayloadStateMachineTests
     {
         // Arrange
         var machine = new ExceptionAsyncPayloadMachine(AsyncPayloadStates.Initial);
+        await machine.StartAsync();
         var payload = new ProcessPayload { Id = 888 };
 
         // Act + Assert: teraz oczekujemy wyjątku z akcji
@@ -520,6 +528,7 @@ public class AsyncPayloadStateMachineTests
     {
         // Arrange
         var machine = new ExceptionAsyncPayloadMachine(AsyncPayloadStates.Initial);
+        await machine.StartAsync();
         var payload = new ProcessPayload { Id = 777 };
 
         // Act + Assert: oczekujemy propagacji wyjątku z OnEntry
@@ -539,6 +548,7 @@ public class AsyncPayloadStateMachineTests
     {
         // Arrange
         var machine = new CanFireAsyncPayloadMachine(AsyncPayloadStates.Initial, threshold: 100);
+        await machine.StartAsync();
 
         // Act & Assert - payload below threshold
         var lowPayload = new ProcessPayload { Id = 50 };
@@ -556,6 +566,7 @@ public class AsyncPayloadStateMachineTests
     {
         // Arrange
         var machine = new CanFireAsyncPayloadMachine(AsyncPayloadStates.Initial, threshold: 100);
+        await machine.StartAsync();
 
         // Act
         var triggers = await machine.GetPermittedTriggersAsync(trigger =>
@@ -574,6 +585,7 @@ public class AsyncPayloadStateMachineTests
     {
         // Arrange
         var machine = new ConcurrentAsyncPayloadMachine(AsyncPayloadStates.Processing);
+        await machine.StartAsync();
         var payloads = Enumerable.Range(1, 10).Select(i => new ProcessPayload { Id = i }).ToList();
 
         // Act
@@ -591,6 +603,7 @@ public class AsyncPayloadStateMachineTests
     {
         // Arrange
         var machine = new ConcurrentAsyncPayloadMachine(AsyncPayloadStates.Processing);
+        await machine.StartAsync();
         const int concurrentFires = 20;
 
         // Act
@@ -613,6 +626,7 @@ public class AsyncPayloadStateMachineTests
     {
         // Arrange & Act
         var machine = new InitialOnEntryAsyncPayloadMachine(AsyncPayloadStates.Initial);
+        await machine.StartAsync();
 
         // Wait for fire-and-forget task to complete
         await Task.Delay(50);
@@ -628,6 +642,7 @@ public class AsyncPayloadStateMachineTests
     {
         // Arrange
         var machine = new BasicAsyncPayloadMachine(AsyncPayloadStates.Initial);
+        await machine.StartAsync();
         var payload = new ProcessPayload { Id = 111 };
         using var cts = new CancellationTokenSource();
 
@@ -654,6 +669,7 @@ public class AsyncPayloadStateMachineTests
     {
         // Arrange
         var machine = new BasicAsyncPayloadMachine(AsyncPayloadStates.Initial);
+        await machine.StartAsync();
 
         // Act - Try to fire with null payload
         var result = await machine.TryFireAsync(AsyncPayloadTriggers.Start, null as ProcessPayload);
@@ -677,6 +693,7 @@ public class AsyncPayloadStateMachineTests
     {
         // Arrange
         var machine = new ConcurrentAsyncPayloadMachine(AsyncPayloadStates.Processing);
+        await machine.StartAsync();
         const int iterations = 100;
 
         // Act
@@ -720,6 +737,7 @@ public class AsyncPayloadStateMachineTests
     {
         // Arrange
         var machine = new BasicAsyncPayloadMachine(AsyncPayloadStates.Completed);
+        await machine.StartAsync();
 
         // Act
         var triggers = await machine.GetPermittedTriggersAsync();
@@ -733,6 +751,7 @@ public class AsyncPayloadStateMachineTests
     {
         // Arrange
         var machine = new BasicAsyncPayloadMachine(AsyncPayloadStates.Completed);
+        await machine.StartAsync();
         var payload = new ProcessPayload { Id = 444 };
 
         // Act & Assert

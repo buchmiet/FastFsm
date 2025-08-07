@@ -23,4 +23,42 @@ public class StateMachineModel
     /// </summary>
     public ExceptionHandlerModel? ExceptionHandler { get; set; }
 
+    #region HSM Properties
+
+    /// <summary>
+    /// Maps each state to its parent state (null for root states)
+    /// </summary>
+    public Dictionary<string, string?> ParentOf { get; set; } = new();
+
+    /// <summary>
+    /// Maps each composite state to its child states
+    /// </summary>
+    public Dictionary<string, List<string>> ChildrenOf { get; set; } = new();
+
+    /// <summary>
+    /// Maps each state to its depth in the hierarchy (0 for root states)
+    /// </summary>
+    public Dictionary<string, int> Depth { get; set; } = new();
+
+    /// <summary>
+    /// Maps each composite state to its initial child state
+    /// </summary>
+    public Dictionary<string, string?> InitialChildOf { get; set; } = new();
+
+    /// <summary>
+    /// Maps each composite state to its history mode
+    /// </summary>
+    public Dictionary<string, HistoryMode> HistoryOf { get; set; } = new();
+
+    /// <summary>
+    /// Whether hierarchy is enabled (from attribute or auto-detected)
+    /// </summary>
+    public bool HierarchyEnabled { get; set; } = false;
+
+    /// <summary>
+    /// Whether any HSM features are actually used
+    /// </summary>
+    public bool HasHierarchy => ParentOf.Any(p => p.Value != null) || ChildrenOf.Any(c => c.Value.Count > 0);
+
+    #endregion
 }

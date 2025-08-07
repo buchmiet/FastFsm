@@ -131,6 +131,15 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                 currentModel.ContinueOnCapturedContext = continueOnContext;
                 report?.Invoke($"ContinueOnCapturedContext set: {continueOnContext}");
             }
+
+            // Odczyt EnableHierarchy (HSM)
+            var enableHierarchyArg = fsmAttribute.NamedArguments
+                .FirstOrDefault(na => na.Key == "EnableHierarchy");
+            if (enableHierarchyArg.Key is not null && enableHierarchyArg.Value.Value is bool enableHierarchy)
+            {
+                currentModel.HierarchyEnabled = enableHierarchy;
+                report?.Invoke($"EnableHierarchy set: {enableHierarchy}");
+            }
         }
 
         // === SEKCJA 5: Podstawowa walidacja atrybutu i klasy ===
@@ -212,6 +221,11 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         report?.Invoke($"ParseMemberAttributes completed. Critical error: {criticalErrorOccurred}, IsAsync: {isMachineAsyncMode}");
         if (isAsyncOce)
             report?.Invoke($"[DEBUG AOE] After ParseMemberAttributes - criticalError: {criticalErrorOccurred}, isAsync: {isMachineAsyncMode}");
+
+        // === SEKCJA 8.5: Build HSM hierarchy if needed ===
+        report?.Invoke("Section 8.5: Building HSM hierarchy");
+        BuildHierarchy(currentModel, ref criticalErrorOccurred, report);
+        report?.Invoke($"Hierarchy built. HierarchyEnabled: {currentModel.HierarchyEnabled}");
 
         // === SEKCJA 9: Określenie wariantu generacji ===
         report?.Invoke("Section 9: Determining generation variant");
@@ -668,6 +682,36 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                             }
                         }
                     }
+
+                    // ---------- Parent (HSM) ----------
+                    if (namedArg is { Key: "Parent", Value.Value: { } parentValue })
+                    {
+                        var parentStateName = GetEnumMemberName(
+                            namedArg.Value,
+                            stateTypeSymbol,
+                            attrData,
+                            ref criticalErrorOccurred);
+                        
+                        if (parentStateName != null)
+                        {
+                            stateModel.ParentState = parentStateName;
+                        }
+                    }
+
+                    // ---------- History (HSM) ----------
+                    if (namedArg is { Key: "History", Value.Value: { } historyValue })
+                    {
+                        if (historyValue is int historyInt)
+                        {
+                            stateModel.History = (Generator.Model.HistoryMode)historyInt;
+                        }
+                    }
+
+                    // ---------- IsInitial (HSM) ----------
+                    if (namedArg is { Key: "IsInitial", Value.Value: bool isInitial })
+                    {
+                        stateModel.IsInitial = isInitial;
+                    }
                 }
             }
         }
@@ -766,10 +810,18 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
 
         selectedMethod = matching;
 
-        if (matching.Parameters.Length == 1)
-        {
-            expectsPayload = true;
-        }
+        // -----------------------------------------------------------------
+        // Rozróżniamy CancellationToken od payloadu ------------------------
+        // -----------------------------------------------------------------
+        var cancellationTokenType =
+            compilation.GetTypeByMetadataName("System.Threading.CancellationToken");
+
+
+        matching.Parameters.Any(p =>_typeHelper.IsCancellationToken(p.Type,compilation));
+
+        // Jeśli jakikolwiek parametr ≠ CancellationToken → to payload
+        expectsPayload =
+            matching.Parameters.Any(p => !_typeHelper.IsCancellationToken(p.Type,compilation));
 
         // ---------------------------------------------------------------------
         // 3. Analiza sygnatury wybranego przeciążenia
@@ -840,8 +892,16 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         bool isReturnTypeCorrect = (callbackType == GuardCallbackType && signatureInfo.IsBoolEquivalent) ||
                                    (callbackType != GuardCallbackType && signatureInfo.IsVoidEquivalent);
 
-        // Prosta walidacja parametrów – >1 param = błąd
-        bool hasTooManyParams = matching.Parameters.Length > 1;
+        // Dozwolone kombinacje parametrów:
+        // () | (CancellationToken) | (payload) | (payload, CancellationToken)
+        int nonCtParamCount = matching.Parameters.Count(p => !_typeHelper.IsCancellationToken(p.Type,compilation));
+        int ctParamCount = matching.Parameters.Count(p =>_typeHelper.IsCancellationToken(p.Type,compilation));
+
+
+        bool hasTooManyParams =
+            nonCtParamCount > 1           // >1 payload
+            || ctParamCount   > 1         // >1 CancellationToken
+            || (nonCtParamCount + ctParamCount) > 2; // razem >2
 
         if (!isReturnTypeCorrect || hasTooManyParams)
         {
@@ -1318,6 +1378,190 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             AcceptsCancellationToken = selectedMethod.Parameters.Length == 2,
             ExceptionContextClosedType = _typeHelper.BuildFullTypeName(exceptionContextClosed)
         };
+    }
+
+    private void BuildHierarchy(StateMachineModel model, ref bool criticalErrorOccurred, Action<string>? report)
+    {
+        report?.Invoke("Building HSM hierarchy from state attributes");
+
+        // Check if any HSM features are used
+        bool hasHsmFeatures = false;
+        foreach (var state in model.States.Values)
+        {
+            if (state.ParentState != null || state.History != Generator.Model.HistoryMode.None || state.IsInitial)
+            {
+                hasHsmFeatures = true;
+                break;
+            }
+        }
+
+        // Auto-enable hierarchy if HSM features are detected
+        if (hasHsmFeatures && !model.HierarchyEnabled)
+        {
+            model.HierarchyEnabled = true;
+            report?.Invoke("HierarchyEnabled auto-set to true due to HSM attribute usage");
+        }
+
+        // If hierarchy is not enabled, skip building
+        if (!model.HierarchyEnabled)
+        {
+            report?.Invoke("Hierarchy not enabled, skipping hierarchy building");
+            return;
+        }
+
+        // Build parent-child relationships
+        foreach (var state in model.States.Values)
+        {
+            model.ParentOf[state.Name] = state.ParentState;
+            
+            if (!model.ChildrenOf.ContainsKey(state.Name))
+            {
+                model.ChildrenOf[state.Name] = new List<string>();
+            }
+
+            if (state.ParentState != null)
+            {
+                // Validate parent exists
+                if (!model.States.ContainsKey(state.ParentState))
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        DiagnosticFactory.Get(RuleIdentifiers.OrphanSubstate),
+                        Location.None,
+                        state.Name,
+                        state.ParentState));
+                    criticalErrorOccurred = true;
+                    continue;
+                }
+
+                // Add to parent's children list
+                if (!model.ChildrenOf.ContainsKey(state.ParentState))
+                {
+                    model.ChildrenOf[state.ParentState] = new List<string>();
+                }
+                model.ChildrenOf[state.ParentState].Add(state.Name);
+            }
+        }
+
+        // Check for circular dependencies
+        var visited = new HashSet<string>();
+        var recursionStack = new HashSet<string>();
+        foreach (var state in model.States.Keys)
+        {
+            if (HasCircularDependency(state, model.ParentOf, visited, recursionStack))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    DiagnosticFactory.Get(RuleIdentifiers.CircularHierarchy),
+                    Location.None,
+                    state));
+                criticalErrorOccurred = true;
+            }
+        }
+
+        // Calculate depth for each state
+        foreach (var state in model.States.Keys)
+        {
+            model.Depth[state] = CalculateDepth(state, model.ParentOf);
+        }
+
+        // Process initial substates and history
+        foreach (var state in model.States.Values)
+        {
+            // Process history mode
+            if (state.History != Generator.Model.HistoryMode.None)
+            {
+                if (!state.IsComposite)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        DiagnosticFactory.Get(RuleIdentifiers.InvalidHistoryConfiguration),
+                        Location.None,
+                        state.Name));
+                    criticalErrorOccurred = true;
+                }
+                else
+                {
+                    model.HistoryOf[state.Name] = state.History;
+                }
+            }
+
+            // Process initial substates
+            if (state.IsInitial && state.ParentState != null)
+            {
+                if (model.InitialChildOf.ContainsKey(state.ParentState))
+                {
+                    // Multiple initial substates for the same parent
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        DiagnosticFactory.Get(RuleIdentifiers.MultipleInitialSubstates),
+                        Location.None,
+                        state.ParentState,
+                        model.InitialChildOf[state.ParentState],
+                        state.Name));
+                    criticalErrorOccurred = true;
+                }
+                else
+                {
+                    model.InitialChildOf[state.ParentState] = state.Name;
+                }
+            }
+        }
+
+        // Validate composite states have initial substates (if no history)
+        foreach (var state in model.States.Values)
+        {
+            if (state.IsComposite && 
+                !model.InitialChildOf.ContainsKey(state.Name) && 
+                state.History == Generator.Model.HistoryMode.None)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    DiagnosticFactory.Get(RuleIdentifiers.InvalidHierarchyConfiguration),
+                    Location.None,
+                    state.Name));
+                // Not critical - can use first child as default
+            }
+        }
+
+        report?.Invoke($"Hierarchy built: {model.ParentOf.Count} parent relationships, {model.ChildrenOf.Count} composite states");
+    }
+
+    private bool HasCircularDependency(string state, Dictionary<string, string?> parentOf, 
+        HashSet<string> visited, HashSet<string> recursionStack)
+    {
+        if (recursionStack.Contains(state))
+            return true;
+            
+        if (visited.Contains(state))
+            return false;
+
+        visited.Add(state);
+        recursionStack.Add(state);
+
+        if (parentOf.TryGetValue(state, out var parent) && parent != null)
+        {
+            if (HasCircularDependency(parent, parentOf, visited, recursionStack))
+                return true;
+        }
+
+        recursionStack.Remove(state);
+        return false;
+    }
+
+    private int CalculateDepth(string state, Dictionary<string, string?> parentOf)
+    {
+        int depth = 0;
+        var current = state;
+        
+        while (parentOf.TryGetValue(current, out var parent) && parent != null)
+        {
+            depth++;
+            current = parent;
+            
+            // Safety check against infinite loops (should be caught by circular dependency check)
+            if (depth > 100)
+            {
+                return -1;
+            }
+        }
+        
+        return depth;
     }
 
 }

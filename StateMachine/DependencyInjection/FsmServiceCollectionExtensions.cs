@@ -14,7 +14,7 @@ public static class FsmServiceCollectionExtensions
     public static IServiceCollection AddStateMachine<TInterface, TImplementation, TState, TTrigger>(
         this IServiceCollection services,
         ServiceLifetime lifetime = ServiceLifetime.Singleton)
-        where TInterface : class, IStateMachine<TState, TTrigger>
+        where TInterface : class
         where TImplementation : class, TInterface
         where TState : unmanaged, Enum
         where TTrigger : unmanaged, Enum

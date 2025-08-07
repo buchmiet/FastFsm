@@ -156,13 +156,17 @@ namespace Benchmark
         private void IncrementCounter() => _statelessCounter++;
 
         [GlobalSetup]
-        public void Setup()
+        public async Task Setup()
         {
             // ===== FastFSM =====
             _fastFsmBasic = new FastFsmBasic(State.A);
+            _fastFsmBasic.Start();
             _fastFsmGuardsActions = new FastFsmWithGuardsActions(State.A);
+            _fastFsmGuardsActions.Start();
             _fastFsmPayload = new FastFsmWithPayload(State.A);
+            _fastFsmPayload.Start();
             _fastFsmAsyncActions = new FastFsmAsyncActions(State.A);
+            await _fastFsmAsyncActions.StartAsync();
 
             // ===== Stateless =====
             _statelessBasic = new Stateless.StateMachine<State, Trigger>(State.A);

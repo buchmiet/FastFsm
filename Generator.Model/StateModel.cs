@@ -126,6 +126,35 @@ public sealed class StateModel
 
     #endregion
 
+    #region HSM Properties
+
+    /// <summary>
+    /// Parent state name for hierarchical state machines
+    /// </summary>
+    public string? ParentState { get; set; }
+
+    /// <summary>
+    /// List of child state names for composite states
+    /// </summary>
+    public List<string> ChildStates { get; set; } = new List<string>();
+
+    /// <summary>
+    /// Whether this state is a composite state (has children)
+    /// </summary>
+    public bool IsComposite => ChildStates.Count > 0;
+
+    /// <summary>
+    /// History mode for this composite state
+    /// </summary>
+    public HistoryMode History { get; set; } = HistoryMode.None;
+
+    /// <summary>
+    /// Whether this state is marked as the initial substate of its parent
+    /// </summary>
+    public bool IsInitial { get; set; } = false;
+
+    #endregion
+
     #region Factory Methods
 
     /// <summary>

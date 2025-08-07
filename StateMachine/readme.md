@@ -1,50 +1,59 @@
 ﻿# FastFSM - High-Performance State Machines for .NET
 
-[![NuGet](https://img.shields.io/nuget/v/FastFSM.Net.svg)](https://www.nuget.org/packages/FastFSM.Net/)
-[![License](https://img.shields.io/github/license/yourusername/FastFSM)](LICENSE)
-[![.NET](https://img.shields.io/badge/.NET-6.0%20%7C%207.0%20%7C%208.0%20%7C%209.0-blue)](https://dotnet.microsoft.com/download)
+[](https://www.nuget.org/packages/FastFSM.Net/)
+[](https://www.google.com/search?q=LICENSE)
+[](https://dotnet.microsoft.com/download)
 
-FastFSM is a powerful, zero-overhead finite state machine framework for .NET that leverages C# source generators to create highly optimized state machines at compile time. It combines the ease of declarative configuration with performance that rivals hand-written code.
+FastFSM is a powerful, zero-overhead finite state machine framework for .NET that leverages C\# source generators to create highly optimized state machines at compile time. It combines the ease of declarative configuration with performance that rivals hand-written code.
 
 ## Table of Contents
 
-- [Why FastFSM?](#why-fastfsm)
-- [Key Features](#key-features)
-- [Getting Started](#getting-started)
-- [Core Concepts](#core-concepts)
-- [Basic Usage](#basic-usage)
-- [API Reference](#api-reference)
-- [Advanced Features](#advanced-features)
-- [Performance](#performance)
-- [Real-World Examples](#real-world-examples)
-- [Architecture Overview](#architecture-overview)
-- [Contributing](#contributing)
-- [License](#license)
+  - [Why FastFSM?](https://www.google.com/search?q=%23why-fastfsm)
+  - [Key Features](https://www.google.com/search?q=%23key-features)
+  - [Getting Started](https://www.google.com/search?q=%23getting-started)
+  - [Core Concepts](https://www.google.com/search?q=%23core-concepts)
+  - [The State Machine Lifecycle (New in 0.6)](https://www.google.com/search?q=%23the-state-machine-lifecycle-new-in-06)
+  - [Basic Usage](https://www.google.com/search?q=%23basic-usage)
+  - [API Reference](https://www.google.com/search?q=%23api-reference)
+  - [Advanced Features](https://www.google.com/search?q=%23advanced-features)
+  - [Performance](https://www.google.com/search?q=%23performance)
+  - [Real-World Examples](https://www.google.com/search?q=%23real-world-examples)
+  - [Architecture Overview](https://www.google.com/search?q=%23architecture-overview)
+  - [Migration Guide](https://www.google.com/search?q=%23migration-guide)
+  - [Contributing](https://www.google.com/search?q=%23contributing)
+  - [License](https://www.google.com/search?q=%23license)
 
 ## Why FastFSM?
 
 Traditional .NET state machine libraries often rely on reflection, dictionaries, or expression trees at runtime, leading to:
-- Performance overhead from indirect calls and allocations
-- Runtime errors that could be caught at compile time
-- Poor compatibility with AOT compilation and trimming
-- Complex APIs that obscure the actual state logic
+
+  - Performance overhead from indirect calls and allocations
+  - Runtime errors that could be caught at compile time
+  - Poor compatibility with AOT compilation and trimming
+  - Complex APIs that obscure the actual state logic
 
 FastFSM solves these problems by generating optimized code at compile time, giving you:
-- **Zero runtime reflection** - all transitions compile to simple switch statements
-- **Zero heap allocations** - no garbage collection pressure in your state logic
-- **Compile-time validation** - invalid states and transitions are caught during build
-- **Native AOT ready** - fully compatible with trimming and ahead-of-time compilation
-- **Intuitive API** - define states with simple attributes, no complex fluent builders
+
+  - **Zero runtime reflection** - all transitions compile to simple switch statements
+  - **Zero heap allocations** - no garbage collection pressure in your state logic
+  - **Compile-time validation** - invalid states and transitions are caught during build
+  - **Predictable Lifecycle** - explicit start-up logic eliminates race conditions
+  - **Native AOT ready** - fully compatible with trimming and ahead-of-time compilation
+  - **Intuitive API** - define states with simple attributes, no complex fluent builders
+
+-----
 
 ## Key Features
 
-- 🚀 **Blazing Fast** - transitions execute in ~0.6 nanoseconds
-- 🗑️ **Zero Allocations** - no heap allocations during state transitions
-- 🛡️ **Type Safe** - full IntelliSense support and compile-time checking
-- 📦 **Modular Design** - pay only for features you use
-- 🔌 **Extensible** - optional logging, dependency injection, and custom extensions
-- ⚡ **Async Support** - first-class async/await support with ValueTask
-- 🎯 **AOT Compatible** - works with Native AOT and aggressive trimming
+  - 🚀 **Blazing Fast** - transitions execute in \~0.6 nanoseconds
+  - 🗑️ **Zero Allocations** - no heap allocations during state transitions
+  - 🛡️ **Type Safe** - full IntelliSense support and compile-time checking
+  - 📦 **Modular Design** - pay only for features you use
+  - 🔌 **Extensible** - optional logging, dependency injection, and custom extensions
+  - ⚡ **Async Support** - first-class async/await support with separate sync/async APIs
+  - 🎯 **AOT Compatible** - works with Native AOT and aggressive trimming
+
+-----
 
 ## Getting Started
 
@@ -82,11 +91,14 @@ public partial class DoorController
 
 // 4. Use your state machine
 var door = new DoorController(DoorState.Closed);
+door.Start(); // Start the machine to trigger initial OnEntry callbacks
 
 door.CanFire(DoorTrigger.Open);  // true
-door.Fire(DoorTrigger.Open);      // door is now Open
-door.CurrentState;                // DoorState.Open
+door.Fire(DoorTrigger.Open);       // door is now Open
+door.CurrentState;                 // DoorState.Open
 ```
+
+-----
 
 ## Core Concepts
 
@@ -97,14 +109,44 @@ States represent the possible conditions of your system, while triggers are the 
 ### Transitions
 
 Transitions define how your state machine moves from one state to another in response to triggers. They can include:
-- **Guards** - conditions that must be true for the transition to occur
-- **Actions** - code that executes during the transition
+
+  - **Guards** - conditions that must be true for the transition to occur
+  - **Actions** - code that executes during the transition
 
 ### State Callbacks
 
 States can have entry and exit callbacks that execute when entering or leaving a state:
-- **OnEntry** - executes when entering a state
-- **OnExit** - executes when leaving a state
+
+  - **OnEntry** - executes when entering a state
+  - **OnExit** - executes when leaving a state
+
+-----
+
+## The State Machine Lifecycle (New in 0.6)
+
+As of version 0.6, creating a state machine and running it are two distinct steps. The constructor **only** sets the initial state. You must explicitly start the machine to make it operational and trigger the first `OnEntry` callback. This change prevents race conditions and makes the machine's behavior deterministic.
+
+1.  **Constructor**: Sets the initial `CurrentState` but does **not** run any `OnEntry` logic. The machine is not yet active.
+2.  **`Start()` / `StartAsync()`**: Activates the machine. This method runs the `OnEntry` callback for the initial state. Subsequent calls to `Start()` do nothing.
+3.  **Operations**: Calling any method like `Fire`, `TryFire`, or `CanFire` before `Start()` will throw an `InvalidOperationException`.
+
+<!-- end list -->
+
+```mermaid
+sequenceDiagram
+    participant U as User Code
+    participant M as Machine
+    U->>M: new DoorController(DoorState.Closed)
+    Note right of M: _currentState = Closed<br/>_started = false
+    U-->>M: Start()
+    M->>M: _started = true
+    M->>M: Executes OnEntry for 'Closed' state
+    Note right of M: Machine is now active
+    U-->>M: Fire(DoorTrigger.Open)
+    Note right of M: Transition proceeds
+```
+
+-----
 
 ## Basic Usage
 
@@ -119,6 +161,11 @@ public partial class OrderWorkflow
     [Transition(OrderState.Submitted, OrderTrigger.Reject, OrderState.Rejected)]
     private void Configure() { }
 }
+
+// Usage
+var workflow = new OrderWorkflow(OrderState.New);
+workflow.Start();
+workflow.Fire(OrderTrigger.Submit);
 ```
 
 ### Adding Guards and Actions
@@ -137,6 +184,11 @@ public partial class BankAccount
     private bool HasSufficientFunds() => _balance >= 100;
     private void DebitAccount() => _balance -= 100;
 }
+
+// Usage
+var account = new BankAccount(AccountState.Active);
+account.Start();
+account.Fire(AccountTrigger.Withdraw);
 ```
 
 ### State Entry/Exit Callbacks
@@ -157,7 +209,14 @@ public partial class NetworkConnection
     private void StartHeartbeat() => Console.WriteLine("Heartbeat started");
     private void StopHeartbeat() => Console.WriteLine("Heartbeat stopped");
 }
+
+// Usage
+var connection = new NetworkConnection(ConnectionState.Disconnected);
+connection.Start(); // Machine is not active until started
+connection.Fire(ConnectionTrigger.Connect); // "Heartbeat started" is printed
 ```
+
+-----
 
 ## API Reference
 
@@ -170,12 +229,14 @@ Marks a partial class as a state machine.
 ```
 
 **Parameters:**
-- `TState` - Enum type defining possible states
-- `TTrigger` - Enum type defining possible triggers
+
+  - `TState` - Enum type defining possible states
+  - `TTrigger` - Enum type defining possible triggers
 
 **Optional Properties:**
-- `DefaultPayloadType` - Default payload type for all transitions
-- `GenerateExtensibleVersion` - Enable extension support
+
+  - `DefaultPayloadType` - Default payload type for all transitions
+  - `GenerateExtensibleVersion` - Enable extension support
 
 ### Transition Attribute
 
@@ -186,11 +247,12 @@ Defines a state transition.
 ```
 
 **Parameters:**
-- `fromState` - Source state
-- `trigger` - Trigger that causes transition
-- `toState` - Destination state
-- `Guard` (optional) - Method name that returns bool
-- `Action` (optional) - Method name to execute during transition
+
+  - `fromState` - Source state
+  - `trigger` - Trigger that causes transition
+  - `toState` - Destination state
+  - `Guard` (optional) - Method name that returns bool
+  - `Action` (optional) - Method name to execute during transition
 
 ### State Attribute
 
@@ -201,23 +263,30 @@ Configures state-specific behavior.
 ```
 
 **Parameters:**
-- `state` - The state to configure
-- `OnEntry` (optional) - Method to execute when entering state
-- `OnExit` (optional) - Method to execute when leaving state
+
+  - `state` - The state to configure
+  - `OnEntry` (optional) - Method to execute when entering state
+  - `OnExit` (optional) - Method to execute when leaving state
 
 ### Generated Methods
 
-Every state machine automatically gets these methods:
+Every state machine automatically gets these methods. **Note:** All methods (except the constructor) will throw an `InvalidOperationException` if called before `Start()` / `StartAsync()`.
 
 ```csharp
 // Current state of the machine
 TState CurrentState { get; }
 
+// Starts the machine, making it operational and running the initial OnEntry callback.
+void Start()
+ValueTask StartAsync(CancellationToken ct = default)
+
 // Try to fire a trigger (returns true if successful)
 bool TryFire(TTrigger trigger, object? payload = null)
+ValueTask<bool> TryFireAsync(TTrigger trigger, object? payload = null, CancellationToken ct = default)
 
 // Fire a trigger (throws if invalid)
 void Fire(TTrigger trigger, object? payload = null)
+ValueTask FireAsync(TTrigger trigger, object? payload = null, CancellationToken ct = default)
 
 // Check if a trigger can be fired
 bool CanFire(TTrigger trigger)
@@ -226,11 +295,11 @@ bool CanFire(TTrigger trigger)
 IReadOnlyList<TTrigger> GetPermittedTriggers()
 ```
 
+-----
+
 ## Advanced Features
 
 ### Typed Payloads
-
-Pass strongly-typed data with transitions:
 
 ```csharp
 [StateMachine(typeof(ProcessState), typeof(ProcessTrigger))]
@@ -248,28 +317,14 @@ public partial class DataProcessor
 
 // Usage
 var processor = new DataProcessor(ProcessState.Ready);
+processor.Start(); // Must be started before use
 var data = new ProcessData { Id = "123", IsValid = true };
 processor.Fire(ProcessTrigger.Start, data);
 ```
 
-### Multiple Payload Types
-
-Different triggers can accept different payload types:
-
-```csharp
-[StateMachine(typeof(SystemState), typeof(SystemTrigger))]
-[PayloadType(SystemTrigger.Configure, typeof(ConfigData))]
-[PayloadType(SystemTrigger.Process, typeof(ProcessData))]
-[PayloadType(SystemTrigger.Error, typeof(ErrorData))]
-public partial class System
-{
-    // Each trigger expects its specific payload type
-}
-```
-
 ### Async Support
 
-FastFSM fully supports async operations:
+FastFSM provides separate sync and async APIs for clarity and type safety. Async methods return `ValueTask` for high performance.
 
 ```csharp
 [StateMachine(typeof(DownloadState), typeof(DownloadTrigger))]
@@ -281,46 +336,44 @@ public partial class FileDownloader
     
     private async ValueTask StartDownloadAsync()
     {
-        await DownloadFileAsync();
+        await Task.Delay(100); // Simulate async work
     }
 }
 
 // Usage
-await downloader.TryFireAsync(DownloadTrigger.Start);
+var downloader = new FileDownloader(DownloadState.Ready);
+await downloader.StartAsync(); // Use StartAsync for async machines
+await downloader.FireAsync(DownloadTrigger.Start);
 ```
 
-### Internal Transitions
+### Dependency Injection
 
-Execute actions without changing state:
-
-```csharp
-[InternalTransition(State.Active, Trigger.Refresh, nameof(RefreshData))]
-private void ConfigureInternal() { }
-
-private void RefreshData() => Console.WriteLine("Data refreshed");
-```
-
-### Extensions
-
-Add cross-cutting concerns like logging or metrics:
+When using `FastFSM.Net.DependencyInjection`, the `IStateMachineFactory` provides helpers to manage the new lifecycle:
 
 ```csharp
-public class LoggingExtension : IStateMachineExtension
+// In your service configuration (e.g., Program.cs)
+services.AddStateMachineFactory();
+services.AddTransient<OrderWorkflow>(); // Register your state machine
+
+// In your consumer class
+public class OrderService(IStateMachineFactory factory)
 {
-    public void OnBeforeTransition<T>(T context) where T : IStateMachineContext
-        => Console.WriteLine($"Transitioning from {context.FromState}");
+    public void ProcessNewOrder()
+    {
+        // Option 1: Create and start manually
+        var sm1 = factory.Create<OrderWorkflow>(OrderState.New);
+        sm1.Start();
         
-    public void OnAfterTransition<T>(T context, bool success) where T : IStateMachineContext
-        => Console.WriteLine($"Transitioned to {context.ToState}: {success}");
+        // Option 2: Create and start in one step
+        var sm2 = factory.CreateStarted<OrderWorkflow>(OrderState.New);
+        
+        // Option 3: For async machines
+        var downloader = await factory.CreateStartedAsync<FileDownloader>(DownloadState.Ready);
+    }
 }
-
-// Usage with extensions
-var machine = new OrderWorkflow(OrderState.New, new[] { new LoggingExtension() });
 ```
 
-Below is a drop-in **Performance** section for your `README.md`. It uses your latest BenchmarkDotNet run (5 Aug 2025) and documents the methodology so others can reproduce and scrutinize the results.
-
----
+-----
 
 ## Performance
 
@@ -328,47 +381,48 @@ FastFSM focuses on predictable, allocation-free transitions generated at compile
 
 ### Environment (latest run)
 
-* **OS / CPU / JIT:** Windows 11 24H2, x64 RyuJIT (AVX-512)
-* **.NET:** .NET 9.0.5
-* **BenchmarkDotNet:** 0.15.2
-* **Config:** `WarmupCount=3`, `IterationCount=15`, `LaunchCount=1` (Release, no debugger)
+  * **OS / CPU / JIT:** Windows 11 24H2, x64 RyuJIT (AVX-512)
+  * **.NET:** .NET 9.0.5
+  * **BenchmarkDotNet:** 0.15.2
+  * **Config:** `WarmupCount=3`, `IterationCount=15`, `LaunchCount=1` (Release, no debugger)
 
 ### What we measured
 
 We compare common scenarios across libraries:
 
-* **Basic transition** (single state change)
-* **Guards + Actions** (guard validated and action executed)
-* **Payload** (typed payload passed through transition)
-* **CanFire** (capability check)
-* **Async action** (action uses `Task.Yield()` to simulate a real async hop)
+  * **Basic transition** (single state change)
+  * **Guards + Actions** (guard validated and action executed)
+  * **Payload** (typed payload passed through transition)
+  * **CanFire** (capability check)
+  * **Async action** (action uses `Task.Yield()` to simulate a real async hop)
 
 For very fast paths we execute multiple operations per invocation and scale results back to **ns/op**, a standard approach for nano-benchmarks. ([benchmarkdotnet.org][2], [GitHub][3])
 
 ### Results (ns/op; lower is better)
 
-| Scenario                             |       FastFSM |   Stateless | LiquidState | Appccelerate |
+| Scenario                             |       FastFSM |   Stateless | LiquidState | Appccelerate |
 | ------------------------------------ | ------------: | ----------: | ----------: | -----------: |
-| **Basic transition**                 |   **0.76 ns** |   269.48 ns |    25.14 ns |    244.08 ns |
-| **Guards + Actions**                 |   **1.83 ns** |   265.01 ns |           – |    270.21 ns |
-| **Payload**                          |   **0.61 ns** |   256.54 ns |    29.70 ns |    255.41 ns |
-| **CanFire**                          |  **0.204 ns** |   131.70 ns |           – |            – |
-| **Async (action with `Task.Yield`)** | **436.99 ns** | 1,055.09 ns |   482.43 ns |  1,558.96 ns |
+| **Basic transition**                 |   **0.76 ns** |   269.48 ns |    25.14 ns |    244.08 ns |
+| **Guards + Actions**                 |   **1.83 ns** |   265.01 ns |           – |    270.21 ns |
+| **Payload**                          |   **0.61 ns** |   256.54 ns |    29.70 ns |    255.41 ns |
+| **CanFire**                          |  **0.204 ns** |   131.70 ns |           – |            – |
+| **Async (action with `Task.Yield`)** | **436.99 ns** | 1,055.09 ns |   482.43 ns |  1,558.96 ns |
 
 **Allocations (B/op; lower is better)**
 
-* Sync scenarios (Basic/Guards/Payload/CanFire): FastFSM **0 B**; Stateless \~**0.6–1.4 KB**; LiquidState up to **136 B**; Appccelerate \~**1.6 KB**.
-* Async (`Task.Yield`): FastFSM **\~383 B**; Stateless **\~2.3 KB**; Appccelerate **\~28.9 KB**.
+  * Sync scenarios (Basic/Guards/Payload/CanFire): FastFSM **0 B**; Stateless \~**0.6–1.4 KB**; LiquidState up to **136 B**; Appccelerate \~**1.6 KB**.
+  * Async (`Task.Yield`): FastFSM **\~383 B**; Stateless **\~2.3 KB**; Appccelerate **\~28.9 KB**.
 
 **Interpretation.** In synchronous hot paths FastFSM is *orders of magnitude* faster (hundreds of ×) and allocation-free because transitions compile down to direct code (no runtime reflection or lookup structures). In async scenarios the scheduler hop dominates total cost; FastFSM still leads (≈2–2.5×), but absolute times are largely governed by async machinery. When an async action often completes synchronously, using `ValueTask` can reduce overhead—but it should be adopted when profiling shows a benefit, not by default. ([Microsoft Learn][4], [Microsoft for Developers][5])
 
 ### Methodology & reproducibility
 
-* **How we avoid “too fast to measure”:** for micro-operations we batch multiple transitions per iteration via `OperationsPerInvoke` and keep observable state alive to prevent dead-code elimination. ([benchmarkdotnet.org][2])
+  * **How we avoid “too fast to measure”:** for micro-operations we batch multiple transitions per iteration via `OperationsPerInvoke` and keep observable state alive to prevent dead-code elimination. ([benchmarkdotnet.org][2])
 
-  * We use `DeadCodeEliminationHelper.KeepAliveWithoutBoxing(...)` from BenchmarkDotNet to ensure results are not optimized away. ([benchmarkdotnet.org][6])
-* **Memory:** allocations are captured by BenchmarkDotNet’s memory diagnoser in Release mode. (Avoid Debug builds and attached debuggers when benchmarking.) ([fransbouma.github.io][7])
-* **Profiling (optional):** when we need CPU/GC timelines we run a **separate** profiling pass using `EventPipeProfiler(CpuSampling)` on a small subset of tests, which produces compact `.nettrace`/speedscope outputs. We do **not** use ETW-based diagnosers for bulk runs to avoid multi-GB traces. ([benchmarkdotnet.org][8])
+  \* We use `DeadCodeEliminationHelper.KeepAliveWithoutBoxing(...)` from BenchmarkDotNet to ensure results are not optimized away. ([benchmarkdotnet.org][6])
+
+  * **Memory:** allocations are captured by BenchmarkDotNet’s memory diagnoser in Release mode. (Avoid Debug builds and attached debuggers when benchmarking.) ([fransbouma.github.io][7])
+  * **Profiling (optional):** when we need CPU/GC timelines we run a **separate** profiling pass using `EventPipeProfiler(CpuSampling)` on a small subset of tests, which produces compact `.nettrace`/speedscope outputs. We do **not** use ETW-based diagnosers for bulk runs to avoid multi-GB traces. ([benchmarkdotnet.org][8])
 
 **Re-running the benchmarks**
 
@@ -381,31 +435,25 @@ dotnet run -c Release --framework net9.0
 > If you want CPU/GC timelines for a particular test, run a separate pass with an EventPipe profile and a filter:
 >
 > ```bash
-> dotnet run -c Release --framework net9.0 --filter *FastFsm_Basic* 
+> dotnet run -c Release --framework net9.0 --filter *FastFsm_Basic* 
 > ```
 >
 > (Enable an EventPipe profile in code for the targeted test only.) ([benchmarkdotnet.org][9])
 
 ### Caveats
 
-* Results vary with CPU, OS, JIT, and library versions. BenchmarkDotNet includes confidence intervals, outlier detection, and multimodality warnings to help interpret stability; we publish the full HTML/CSV reports in `BenchmarkDotNet.Artifacts/results`. ([benchmarkdotnet.org][1])
-* For async APIs, prefer `Task` as the default; consider `ValueTask` when profiling shows frequent synchronous completion and measurable wins in your workload. ([Microsoft Learn][4])
+  * Results vary with CPU, OS, JIT, and library versions. BenchmarkDotNet includes confidence intervals, outlier detection, and multimodality warnings to help interpret stability; we publish the full HTML/CSV reports in `BenchmarkDotNet.Artifacts/results`. ([benchmarkdotnet.org][1])
+  * For async APIs, prefer `Task` as the default; consider `ValueTask` when profiling shows frequent synchronous completion and measurable wins in your workload. ([Microsoft Learn][4])
 
----
+-----
 
-[1]: https://benchmarkdotnet.org/?utm_source=chatgpt.com "BenchmarkDotNet: Home"
-[2]: https://benchmarkdotnet.org/articles/configs/diagnosers.html?utm_source=chatgpt.com "Diagnosers - BenchmarkDotNet"
-[3]: https://github.com/dotnet/BenchmarkDotNet/issues/1832?utm_source=chatgpt.com "[Proposal] OperationsPerInvoke to be fed by Params #1832 - GitHub"
-[4]: https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.valuetask?view=net-9.0&utm_source=chatgpt.com "ValueTask Struct (System.Threading.Tasks) | Microsoft Learn"
-[5]: https://devblogs.microsoft.com/dotnet/understanding-the-whys-whats-and-whens-of-valuetask/?utm_source=chatgpt.com "Understanding the Whys, Whats, and Whens of ValueTask - .NET Blog"
-[6]: https://benchmarkdotnet.org/api/BenchmarkDotNet.Engines.DeadCodeEliminationHelper.html?utm_source=chatgpt.com "Class DeadCodeEliminationHelper - BenchmarkDotNet"
-[7]: https://fransbouma.github.io/BenchmarkDotNet/RulesOfBenchmarking.htm?utm_source=chatgpt.com "Rules of benchmarking - BenchmarkDotNet Documentation"
-[8]: https://benchmarkdotnet.org/articles/features/event-pipe-profiler.html?utm_source=chatgpt.com "EventPipeProfiler - BenchmarkDotNet"
-[9]: https://benchmarkdotnet.org/articles/samples/IntroEventPipeProfiler.html?utm_source=chatgpt.com "Sample: EventPipeProfiler - BenchmarkDotNet"
+  - No dictionary overhead or boxing
 
-- No dictionary overhead or boxing
+-----
 
 ## Real-World Examples
+
+All examples assume the machine is started with `Start()` or `StartAsync()` after instantiation.
 
 ### Order Processing System
 
@@ -444,55 +492,50 @@ public partial class OrderProcessor
 }
 ```
 
-### TCP Connection State Machine
-
-```csharp
-[StateMachine(typeof(TcpState), typeof(TcpTrigger))]
-public partial class TcpConnection
-{
-    private Socket? _socket;
-    private Timer? _keepAliveTimer;
-    
-    [State(TcpState.Established,
-        OnEntry = nameof(StartKeepAlive),
-        OnExit = nameof(StopKeepAlive))]
-    private void ConfigureStates() { }
-    
-    [Transition(TcpState.Closed, TcpTrigger.Open, TcpState.SynSent,
-        Action = nameof(SendSyn))]
-    [Transition(TcpState.SynSent, TcpTrigger.SynAck, TcpState.Established,
-        Action = nameof(SendAck))]
-    [Transition(TcpState.Established, TcpTrigger.Data, TcpState.Established,
-        Action = nameof(ProcessData))]
-    [Transition(TcpState.Established, TcpTrigger.Close, TcpState.FinWait1,
-        Action = nameof(SendFin))]
-    private void ConfigureTransitions() { }
-    
-    // Implementation details...
-}
-```
+-----
 
 ## Architecture Overview
 
 FastFSM uses a multi-stage compilation approach:
 
-1. **Declaration** - You define states and transitions using attributes
-2. **Analysis** - Source generator analyzes your declarations at compile time
-3. **Generation** - Optimized implementation is generated as part of your class
-4. **Compilation** - Everything compiles to efficient IL code
+1.  **Declaration** - You define states and transitions using attributes
+2.  **Analysis** - Source generator analyzes your declarations at compile time
+3.  **Generation** - Optimized implementation is generated as part of your class
+4.  **Compilation** - Everything compiles to efficient IL code
 
 The generator creates different variants based on features used:
-- **Pure** - Just transitions (fastest)
-- **Basic** - Adds OnEntry/OnExit
-- **WithPayload** - Typed data support
-- **WithExtensions** - Plugin support
-- **Full** - All features
+
+  - **Pure** - Just transitions (fastest)
+  - **Basic** - Adds OnEntry/OnExit
+  - **WithPayload** - Typed data support
+  - **WithExtensions** - Plugin support
+  - **Full** - All features
 
 You automatically get the most efficient variant for your needs.
 
+-----
+
 ## Migration Guide
 
-### From Stateless
+### Upgrading from v0.5 to v0.6
+
+Version 0.6 introduces breaking changes to improve safety and provide a more explicit API. The key is the new machine lifecycle.
+
+**Checklist for migration:**
+
+1.  **Call `Start()` or `StartAsync()`**: After creating any state machine instance, you **must** call `.Start()` (or `await .StartAsync()`) before any other operations.
+2.  **Update Interfaces**: The old `IStateMachine<,>` interfaces are gone.
+      - For sync machines, use `IStateMachineSync<TState, TTrigger>`.
+      - For async machines, use `IStateMachineAsync<TState, TTrigger>`.
+      - For extensible machines, use `IExtensibleStateMachineSync<,>` or `IExtensibleStateMachineAsync<,>`.
+3.  **Update DI Factory Usage**: If using `IStateMachineFactory`, decide if you want to create a started or unstarted machine:
+      - `factory.Create<T>()` returns an unstarted machine.
+      - `factory.CreateStarted<T>()` returns an already-started machine.
+      - `factory.CreateStartedAsync<T>()` creates and asynchronously starts the machine.
+4.  **Remove Race Condition Workarounds**: Any code that was 'waiting' for `OnEntry` to complete after construction can be removed. The `Start()`/`StartAsync()` call now guarantees `OnEntry` has finished before continuing.
+5.  **Update Test Setups**: Add `.Start()` / `.StartAsync()` in your test arrange phases or `[GlobalSetup]` methods in benchmarks.
+
+### From Stateless to FastFSM
 
 ```csharp
 // Stateless
@@ -500,19 +543,36 @@ var machine = new StateMachine<State, Trigger>(State.Initial);
 machine.Configure(State.Initial)
     .Permit(Trigger.Start, State.Running);
 
-// FastFSM
+// FastFSM (v0.6+)
 [StateMachine(typeof(State), typeof(Trigger))]
 public partial class MyMachine
 {
     [Transition(State.Initial, Trigger.Start, State.Running)]
     private void Configure() { }
 }
+
+// Usage
+var machine = new MyMachine(State.Initial);
+machine.Start(); // Don't forget to start the machine!
+machine.Fire(Trigger.Start);
 ```
+
+-----
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+We welcome contributions\! Please see our [Contributing Guide](https://www.google.com/search?q=CONTRIBUTING.md) for details.
 
 ## License
 
-FastFSM is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+FastFSM is licensed under the MIT License. See [LICENSE](https://www.google.com/search?q=LICENSE) for details.
+
+[1]: https://www.google.com/search?q=%5Bhttps://benchmarkdotnet.org/%3Futm_source%3Dchatgpt.com%5D\(https://benchmarkdotnet.org/%3Futm_source%3Dchatgpt.com\) "BenchmarkDotNet: Home"
+[2]: https://www.google.com/search?q=%5Bhttps://benchmarkdotnet.org/articles/configs/diagnosers.html%3Futm_source%3Dchatgpt.com%5D\(https://benchmarkdotnet.org/articles/configs/diagnosers.html%3Futm_source%3Dchatgpt.com\) "Diagnosers - BenchmarkDotNet"
+[3]: https://www.google.com/search?q=%5Bhttps://github.com/dotnet/BenchmarkDotNet/issues/1832%3Futm_source%3Dchatgpt.com%5D\(https://github.com/dotnet/BenchmarkDotNet/issues/1832%3Futm_source%3Dchatgpt.com\) "[Proposal] OperationsPerInvoke to be fed by Params #1832 - GitHub"
+[4]: https://www.google.com/search?q=%5Bhttps://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.valuetask%3Fview%3Dnet-9.0%26utm_source%3Dchatgpt.com%5D\(https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.valuetask%3Fview%3Dnet-9.0%26utm_source%3Dchatgpt.com\) "ValueTask Struct (System.Threading.Tasks) | Microsoft Learn"
+[5]: https://www.google.com/search?q=%5Bhttps://devblogs.microsoft.com/dotnet/understanding-the-whys-whats-and-whens-of-valuetask/%3Futm_source%3Dchatgpt.com%5D\(https://devblogs.microsoft.com/dotnet/understanding-the-whys-whats-and-whens-of-valuetask/%3Futm_source%3Dchatgpt.com\) "Understanding the Whys, Whats, and Whens of ValueTask - .NET Blog"
+[6]: https://www.google.com/search?q=%5Bhttps://benchmarkdotnet.org/api/BenchmarkDotNet.Engines.DeadCodeEliminationHelper.html%3Futm_source%3Dchatgpt.com%5D\(https://benchmarkdotnet.org/api/BenchmarkDotNet.Engines.DeadCodeEliminationHelper.html%3Futm_source%3Dchatgpt.com\) "Class DeadCodeEliminationHelper - BenchmarkDotNet"
+[7]: https://www.google.com/search?q=%5Bhttps://fransbouma.github.io/BenchmarkDotNet/RulesOfBenchmarking.htm%3Futm_source%3Dchatgpt.com%5D\(https://fransbouma.github.io/BenchmarkDotNet/RulesOfBenchmarking.htm%3Futm_source%3Dchatgpt.com\) "Rules of benchmarking - BenchmarkDotNet Documentation"
+[8]: https://www.google.com/search?q=%5Bhttps://benchmarkdotnet.org/articles/features/event-pipe-profiler.html%3Futm_source%3Dchatgpt.com%5D\(https://benchmarkdotnet.org/articles/features/event-pipe-profiler.html%3Futm_source%3Dchatgpt.com\) "EventPipeProfiler - BenchmarkDotNet"
+[9]: https://www.google.com/search?q=%5Bhttps://benchmarkdotnet.org/articles/samples/IntroEventPipeProfiler.html%3Futm_source%3Dchatgpt.com%5D\(https://benchmarkdotnet.org/articles/samples/IntroEventPipeProfiler.html%3Futm_source%3Dchatgpt.com\) "Sample: EventPipeProfiler - BenchmarkDotNet"

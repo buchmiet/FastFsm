@@ -16,5 +16,5 @@ public interface IStateMachineBuilder<TState, TTrigger>
     /// <summary>
     /// Build and validate the state machine configuration
     /// </summary>
-    IStateMachine<TState, TTrigger> Build(TState initialState);
+    object Build(TState initialState);
 }

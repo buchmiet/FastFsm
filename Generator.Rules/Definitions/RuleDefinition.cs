@@ -136,6 +136,56 @@ public static class DefinedRules
         category: "FSM.Generator.Async",
         defaultSeverity: RuleSeverity.Error,
         description: "A state machine must be consistently synchronous or asynchronous. Mixing callback types can lead to unexpected behavior and deadlocks.");
+
+    // HSM-specific rules (FSM100-FSM105)
+    public static readonly RuleDefinition CircularHierarchy = new(
+        id: RuleIdentifiers.CircularHierarchy,  // FSM100
+        title: "Circular hierarchy detected",
+        messageFormat: "State '{0}' is part of a circular hierarchy chain: {1}. Fix: Review the Parent relationships and remove the circular dependency.",
+        category: "FSM.Generator.HSM",
+        defaultSeverity: RuleSeverity.Error,
+        description: "State hierarchies cannot contain circular dependencies. A state cannot be its own ancestor or descendant.");
+
+    public static readonly RuleDefinition OrphanSubstate = new(
+        id: RuleIdentifiers.OrphanSubstate,  // FSM101
+        title: "Multiple or divergent parent",
+        messageFormat: "State '{0}' references parent '{1}' which does not exist. Fix: Either define the parent state with [State({1})], or correct the Parent parameter to reference an existing state.",
+        category: "FSM.Generator.HSM",
+        defaultSeverity: RuleSeverity.Error,
+        description: "All parent states referenced by substates must be defined in the state machine. Check for typos in the parent state name.");
+
+    public static readonly RuleDefinition InvalidHierarchyConfiguration = new(
+        id: RuleIdentifiers.InvalidHierarchyConfiguration,  // FSM102
+        title: "Composite without initial state",
+        messageFormat: "Composite state '{0}' has no initial substate defined. Fix: Add [InitialSubstate({0}, YourInitialChild)] attribute, or set History = HistoryMode.Shallow/Deep on the composite state.",
+        category: "FSM.Generator.HSM",
+        defaultSeverity: RuleSeverity.Error,
+        description: "Composite states must have an initial substate to determine which child state to enter. Either define an initial substate or use history mode to remember the last active child.");
+
+    public static readonly RuleDefinition MultipleInitialSubstates = new(
+        id: RuleIdentifiers.MultipleInitialSubstates,  // FSM103
+        title: "Multiple initial children",
+        messageFormat: "Composite state '{0}' has multiple initial substates: '{1}' and '{2}'. Fix: Keep only one [InitialSubstate({0}, ...)] attribute.",
+        category: "FSM.Generator.HSM",
+        defaultSeverity: RuleSeverity.Error,
+        description: "A composite state can only have one initial substate. Remove duplicate InitialSubstate attributes.");
+
+    public static readonly RuleDefinition InvalidHistoryConfiguration = new(
+        id: RuleIdentifiers.InvalidHistoryConfiguration,  // FSM104
+        title: "History on non-composite",
+        messageFormat: "State '{0}' has History = {1} but is not a composite state (has no children). Fix: Either remove the History parameter, or add child states with Parent = {0}.",
+        category: "FSM.Generator.HSM",
+        defaultSeverity: RuleSeverity.Error,
+        description: "Only composite states (states with children) can have history mode. History remembers which child was last active.");
+
+    public static readonly RuleDefinition ConflictingTransitionTargets = new(
+        id: RuleIdentifiers.ConflictingTransitionTargets,  // FSM105
+        title: "Transition to composite without explicit child",
+        messageFormat: "Transition to composite state '{0}' without explicit target substate. The state machine will enter '{1}' (reason: {2}). To be explicit, transition directly to the desired substate.",
+        category: "FSM.Generator.HSM",
+        defaultSeverity: RuleSeverity.Info,
+        description: "When transitioning to a composite state without specifying a target substate, the entry point is determined by: 1) History mode (if set and previously visited), 2) Initial substate (if defined), or 3) First defined child.");
+
     public static readonly IReadOnlyList<RuleDefinition> All = new List<RuleDefinition>
     {
         DuplicateTransition,
@@ -152,5 +202,12 @@ public static class DefinedRules
         InvalidGuardTaskReturnType,
         InvalidAsyncVoid,
         AsyncCallbackInSyncMachine,
+        // HSM rules (FSM100-FSM105)
+        CircularHierarchy,              // FSM100
+        OrphanSubstate,                 // FSM101
+        InvalidHierarchyConfiguration,  // FSM102
+        MultipleInitialSubstates,       // FSM103
+        InvalidHistoryConfiguration,    // FSM104
+        ConflictingTransitionTargets,   // FSM105
     }.AsReadOnly();
 }

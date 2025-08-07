@@ -24,6 +24,7 @@ namespace StateMachine.Tests.Exceptions
             var counting = new CountingExtension();
             // Tworzymy maszynę, przekazując rozszerzenia bezpośrednio do konstruktora
             var machine = new TestMachine(State.Initial, [throwing, counting]);
+            machine.Start();
 
             // Act
             var result = machine.TryFire(Trigger.Next);
