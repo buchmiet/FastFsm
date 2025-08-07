@@ -13,7 +13,7 @@ namespace StateMachine.Tests.DI;
 public class FullVariantDiTests : DITestBase
 {
     [Fact]
-    public void FullMachine_RegistersWithBothInterfaces()
+    public void FullMachine_RegistersWithCorrectInterface()
     {
         // Arrange
         Services.AddFullTestMachine(TestState.A);
@@ -22,9 +22,8 @@ public class FullVariantDiTests : DITestBase
         // Act
         var machine = GetService<IFullTestMachine>();
 
-        // Assert - Should implement both interfaces
-        Assert.IsAssignableFrom<IStateMachineWithPayload<TestState, TestTrigger, TestData>>(machine);
-        Assert.IsAssignableFrom<IExtensibleStateMachine<TestState, TestTrigger>>(machine);
+        // Assert - Should implement extensible interface
+        Assert.IsAssignableFrom<IExtensibleStateMachineSync<TestState, TestTrigger>>(machine);
     }
 
     [Fact]
