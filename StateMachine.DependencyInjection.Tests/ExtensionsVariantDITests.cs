@@ -26,6 +26,7 @@ public class ExtensionsVariantDITests : DITestBase
 
         // Act
         var machine = GetService<IExtensionsTestMachine>();
+        machine.Start();
         machine.TryFire(TestTrigger.Next);
 
         // Assert
@@ -53,6 +54,7 @@ public class ExtensionsVariantDITests : DITestBase
 
         // Act
         var machine = GetService<IExtensionsTestMachine>();
+        machine.Start();
         machine.TryFire(TestTrigger.Next);
 
         // Assert - Check order
@@ -73,6 +75,7 @@ public class ExtensionsVariantDITests : DITestBase
 
         // Act
         var machine = GetService<IExtensionsTestMachine>();
+        machine.Start();
         var extensions = GetService<IEnumerable<IStateMachineExtension>>();
 
         // Assert
@@ -89,6 +92,7 @@ public class ExtensionsVariantDITests : DITestBase
         // Act
         var machine = GetService<IExtensionsTestMachine>() as ExtensionsTestMachine;
         Assert.NotNull(machine); // Zmień na NotNull!
+        machine.Start();
 
         var result = machine.TryFire(TestTrigger.Next);
 
@@ -145,6 +149,7 @@ public class ExtensionsVariantDITests : DITestBase
 
         // Act
         var machine = GetService<IExtensionsTestMachine>();
+        machine.Start();
         machine.TryFire(TestTrigger.Next);
 
         // Assert
@@ -167,6 +172,7 @@ public class ExtensionsVariantDITests : DITestBase
 
         // Act
         var machine = GetService<IGuardedTestMachine>();
+        machine.Start();
         machine.TryFire(TestTrigger.Next);
 
         // Assert
