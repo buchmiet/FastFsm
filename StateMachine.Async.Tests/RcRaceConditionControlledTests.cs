@@ -14,6 +14,7 @@ namespace StateMachine.Async.Tests
             // Arrange
             RcMachine.ResetConcurrencyProbe();
             var m = new RcMachine(RcStates.Initial);
+            await m.StartAsync();
 
             // Dwa równoległe przejścia z tego samego stanu źródłowego
             var t1 = m.TryFireAsync(RcTriggers.ToA);

@@ -88,6 +88,7 @@ public class BasicAsyncStateMachineTests
     {
         // Arrange
         var machine = new SimpleAsyncMachine(AsyncStates.Initial);
+        await machine.StartAsync();
 
         // Act
         var result = await machine.TryFireAsync(AsyncTriggers.Start);
@@ -111,7 +112,7 @@ public class BasicAsyncStateMachineTests
     {
         // Arrange
         var machine = new SimpleAsyncMachine(AsyncStates.Processing);
-
+        await machine.StartAsync();
         // Act
         await machine.FireAsync(AsyncTriggers.Process);
 
@@ -128,7 +129,7 @@ public class BasicAsyncStateMachineTests
     {
         // Arrange
         var machine = new SimpleAsyncMachine(AsyncStates.Processing);
-
+        await machine.StartAsync();
         // Act
         await machine.FireAsync(AsyncTriggers.Complete);
 
@@ -141,10 +142,11 @@ public class BasicAsyncStateMachineTests
     }
 
     [Fact]
-    public void Should_Throw_When_Calling_Sync_Methods_On_Async_Machine()
+    public async Task Should_Throw_When_Calling_Sync_Methods_On_Async_Machine()
     {
         // Arrange
         var machine = new SimpleAsyncMachine(AsyncStates.Initial);
+        await machine.StartAsync();
 
         // Act & Assert - wszystkie sync metody powinny rzucać wyjątek
         Should.Throw<SyncCallOnAsyncMachineException>(() => machine.TryFire(AsyncTriggers.Start));
@@ -158,6 +160,7 @@ public class BasicAsyncStateMachineTests
     {
         // Arrange
         var machine = new SimpleAsyncMachine(AsyncStates.Initial);
+        await machine.StartAsync();
         using var cts = new CancellationTokenSource();
 
         // Act - anuluj przed operacją
@@ -173,9 +176,7 @@ public class BasicAsyncStateMachineTests
     {
         // Arrange – stan startowy ma OnEntry async
         var machine = new SimpleAsyncMachine(AsyncStates.Processing);
-
-        // Act – konstruktor wystartował fire-and-forget Task
-        await Task.Delay(50); // dajemy czas na zakończenie OnEntry
+        await machine.StartAsync();
 
         // Assert
         machine.ExecutionLog.ShouldContain("OnProcessingEntry:Begin");
@@ -189,6 +190,7 @@ public class BasicAsyncStateMachineTests
     {
         // Arrange
         var machine = new SimpleAsyncMachine(AsyncStates.Initial);
+        await machine.StartAsync();
 
         // Act
         var triggers = await machine.GetPermittedTriggersAsync();
@@ -203,7 +205,7 @@ public class BasicAsyncStateMachineTests
     {
         // Arrange
         var machine = new SimpleAsyncMachine(AsyncStates.Completed);
-
+        await machine.StartAsync();
         // Act
         var triggers = await machine.GetPermittedTriggersAsync();
 
@@ -216,7 +218,7 @@ public class BasicAsyncStateMachineTests
     {
         // Arrange
         var machine = new SimpleAsyncMachine(AsyncStates.Processing);
-
+        await machine.StartAsync();
         // Act
         var canReset = await machine.CanFireAsync(AsyncTriggers.Reset);
 
@@ -229,7 +231,7 @@ public class BasicAsyncStateMachineTests
     {
         // Arrange
         var machine = new SimpleAsyncMachine(AsyncStates.Processing);
-
+        await machine.StartAsync();
         // Act
         var tasks = new List<Task>();
         const int fires = 5;

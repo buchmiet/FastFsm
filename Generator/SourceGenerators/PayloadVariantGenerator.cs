@@ -20,15 +20,8 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         void WriteClassContent()
         {
             // Generowanie interfejsu
-            if (IsSinglePayloadVariant())
-            {
-                var payloadType = GetTypeNameForUsage(GetSinglePayloadType()!);
-                Sb.AppendLine($"public interface I{className} : IStateMachineWithPayload<{stateTypeForUsage}, {triggerTypeForUsage}, {payloadType}> {{ }}");
-            }
-            else
-            {
-                Sb.AppendLine($"public interface I{className} : IStateMachineWithMultiPayload<{stateTypeForUsage}, {triggerTypeForUsage}> {{ }}");
-            }
+            var interfaceName = GetInterfaceName(stateTypeForUsage, triggerTypeForUsage);
+            Sb.AppendLine($"public interface I{className} : {interfaceName} {{ }}");
 
             Sb.AppendLine();
 
@@ -52,6 +45,16 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 }
 
                 WriteConstructor(stateTypeForUsage, className);
+                
+                // Generate OnInitialEntry/OnInitialEntryAsync override
+                if (ShouldGenerateInitialOnEntry())
+                {
+                    if (IsAsyncMachine)
+                        WriteOnInitialEntryAsyncMethod(stateTypeForUsage);
+                    else
+                        WriteOnInitialEntryMethod(stateTypeForUsage);
+                }
+                
                 WriteTryFireMethods(stateTypeForUsage, triggerTypeForUsage);
                 WriteFireMethods(stateTypeForUsage, triggerTypeForUsage);
                 WriteCanFireMethods(stateTypeForUsage, triggerTypeForUsage);
@@ -87,50 +90,41 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         {
             WriteLoggerAssignment();
 
-            if (ShouldGenerateInitialOnEntry())
-            {
-                Sb.AppendLine();
-                if (IsAsyncMachine)
-                    WriteAsyncInitialOnEntryDispatch(stateTypeForUsage);
-                else
-                    WriteInitialOnEntryDispatch(stateTypeForUsage);
-            }
+            // Initial OnEntry dispatch moved to OnInitialEntry/OnInitialEntryAsync method
         }
         Sb.AppendLine();
     }
 
-    private void WriteAsyncInitialOnEntryDispatch(string stateTypeForUsage)
+    protected void WriteOnInitialEntryAsyncMethod(string stateTypeForUsage)
     {
-        Sb.AppendLine(InitialOnEntryComment);
-        Sb.AppendLine("// Note: Constructor cannot be async, so initial OnEntry is fire-and-forget");
-
         var statesWithParameterlessOnEntry = Model.States.Values
             .Where(s => !string.IsNullOrEmpty(s.OnEntryMethod) && s.OnEntryHasParameterlessOverload)
             .ToList();
 
         if (statesWithParameterlessOnEntry.Any())
         {
-            AsyncGenerationHelper.EmitFireAndForgetAsyncCall(Sb, sb =>
+            using (Sb.Block("protected override async ValueTask OnInitialEntryAsync(System.Threading.CancellationToken cancellationToken = default)"))
             {
-                using (sb.Block("switch (initialState)"))
+                using (Sb.Block($"switch ({CurrentStateField})"))
                 {
                     foreach (var stateEntry in statesWithParameterlessOnEntry)
                     {
-                        sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
-                        using (sb.Indent())
+                        Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                        using (Sb.Indent())
                         {
                             AsyncGenerationHelper.EmitMethodInvocation(
-                                sb,
+                                Sb,
                                 stateEntry.OnEntryMethod,
                                 stateEntry.OnEntryIsAsync,
                                 callerIsAsync: true,
                                 Model.ContinueOnCapturedContext
                             );
-                            sb.AppendLine("break;");
+                            Sb.AppendLine("break;");
                         }
                     }
                 }
-            });
+            }
+            Sb.AppendLine();
         }
     }
 
@@ -223,28 +217,31 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         Sb.AppendLine($"goto {EndOfTryFireLabel};");
     }
 
-    protected override void WriteInitialOnEntryDispatch(string stateTypeForUsage)
+    protected override void WriteOnInitialEntryMethod(string stateTypeForUsage)
     {
-        Sb.AppendLine(InitialOnEntryComment);
         var statesWithParameterlessOnEntry = Model.States.Values
             .Where(s => !string.IsNullOrEmpty(s.OnEntryMethod) && s.OnEntryHasParameterlessOverload)
             .ToList();
         if (statesWithParameterlessOnEntry.Any())
         {
-            using (Sb.Block("switch (initialState)"))
+            using (Sb.Block("protected override void OnInitialEntry()"))
             {
-                foreach (var stateEntry in statesWithParameterlessOnEntry)
+                using (Sb.Block($"switch ({CurrentStateField})"))
                 {
-                    Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
-                    using (Sb.Indent())
+                    foreach (var stateEntry in statesWithParameterlessOnEntry)
                     {
-                        Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
-                        WriteLogStatement("Debug",
-                            $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
-                        Sb.AppendLine("break;");
+                        Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                        using (Sb.Indent())
+                        {
+                            Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                            WriteLogStatement("Debug",
+                                $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
+                            Sb.AppendLine("break;");
+                        }
                     }
                 }
             }
+            Sb.AppendLine();
         }
     }
     protected void WritePayloadMap(string triggerTypeForUsage)
@@ -385,7 +382,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
     private void WriteTryFireInternal(string stateTypeForUsage, string triggerTypeForUsage)
     {
         WriteMethodAttribute();
-        using (Sb.Block($"private bool TryFireInternal({triggerTypeForUsage} trigger, object? {PayloadVar})"))
+        using (Sb.Block($"protected override bool TryFireInternal({triggerTypeForUsage} trigger, object? {PayloadVar})"))
         {
             if (!Model.Transitions.Any())
             {
@@ -772,7 +769,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         Sb.AppendLine("/// <param name=\"cancellationToken\">A token to observe for cancellation requests</param>");
         Sb.AppendLine("/// <returns>True if the trigger can be fired, false otherwise</returns>");
 
-        using (Sb.Block($"public override async ValueTask<bool> CanFireAsync({triggerTypeForUsage} trigger, CancellationToken cancellationToken = default)"))
+        using (Sb.Block($"protected override async ValueTask<bool> CanFireInternalAsync({triggerTypeForUsage} trigger, CancellationToken cancellationToken = default)"))
         {
             Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
             Sb.AppendLine();
@@ -985,7 +982,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         Sb.AppendLine("/// <param name=\"cancellationToken\">A token to observe for cancellation requests</param>");
         Sb.AppendLine("/// <returns>List of triggers that can be fired in the current state</returns>");
 
-        using (Sb.Block($"public override async ValueTask<{ReadOnlyListType}<{triggerTypeForUsage}>> GetPermittedTriggersAsync(CancellationToken cancellationToken = default)"))
+        using (Sb.Block($"protected override async ValueTask<{ReadOnlyListType}<{triggerTypeForUsage}>> GetPermittedTriggersInternalAsync(CancellationToken cancellationToken = default)"))
         {
             Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
             Sb.AppendLine();

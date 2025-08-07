@@ -12,6 +12,7 @@ namespace StateMachine.Async.Tests
         public async Task TryFireAsync_When_Guard_Throws_Should_Return_False_And_State_Unchanged()
         {
             var m = new ExceptionAsyncMachine(ExStates.Init);
+            await m.StartAsync();
 
             var ok = await m.TryFireAsync(ExTriggers.GuardBoom);
 
@@ -27,6 +28,7 @@ namespace StateMachine.Async.Tests
         public async Task TryFireAsync_When_Action_Throws_Should_Throw_And_State_Changed()
         {
             var m = new ExceptionAsyncMachine(ExStates.Init);
+            await m.StartAsync();
 
             // Teraz oczekujemy propagacji wyjątku z akcji:
             await Should.ThrowAsync<InvalidOperationException>(
@@ -51,6 +53,7 @@ namespace StateMachine.Async.Tests
         public async Task TryFireAsync_When_OnEntry_Throws_Should_Throw_And_State_Changed()
         {
             var m = new ExceptionAsyncMachine(ExStates.Init);
+            await m.StartAsync();
 
             await Should.ThrowAsync<InvalidOperationException>(
                 async () => await m.TryFireAsync(ExTriggers.EntryBoom));
@@ -70,7 +73,7 @@ namespace StateMachine.Async.Tests
         {
             // startujemy w stanie Middle, który ma rzucające OnExit
             var m = new ExceptionAsyncMachine(ExStates.Middle);
-
+            await m.StartAsync();
             var ok = await m.TryFireAsync(ExTriggers.ExitBoom);
 
             ok.ShouldBeFalse();
@@ -83,6 +86,7 @@ namespace StateMachine.Async.Tests
         public async Task GetPermittedTriggersAsync_Should_Ignore_Guard_Exception()
         {
             var m = new ExceptionAsyncMachine(ExStates.Init);
+            await m.StartAsync();
 
             var list = await m.GetPermittedTriggersAsync();
 

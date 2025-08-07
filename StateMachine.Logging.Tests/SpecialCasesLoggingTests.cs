@@ -1,12 +1,13 @@
-﻿using System;
-using System.Linq;
+﻿using Abstractions.Attributes;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Shouldly;
-using Xunit;
-using Abstractions.Attributes;
 using StateMachine.Runtime;
 using StateMachine.Runtime.Extensions;
+using System;
+using System.Linq;
+using System.Reflection.PortableExecutable;
+using Xunit;
 
 namespace StateMachine.Logging.Tests
 {
@@ -22,7 +23,7 @@ namespace StateMachine.Logging.Tests
             var machine = new InternalTransitionMachine(
                 InternalState.Active,
                 LoggerMock.Object as ILogger<InternalTransitionMachine>);
-
+            machine.Start();
             // Act
             machine.TryFire(InternalTrigger.Refresh);
 
@@ -47,6 +48,7 @@ namespace StateMachine.Logging.Tests
         {
             // Arrange & Act
             var machine = new BasicStateMachine(TestState.Initial, logger: null);
+            machine.Start();
             var result = machine.TryFire(TestTrigger.Start);
 
             // Assert
@@ -94,7 +96,7 @@ namespace StateMachine.Logging.Tests
                 new[] { extension1, extension2 },
                 GetLogger<ExtensionsStateMachine>());   // ✔ poprawny typ
 
-
+            machine.Start();
             // Act
             machine.TryFire(TestTrigger.Start);
 
@@ -119,7 +121,7 @@ namespace StateMachine.Logging.Tests
             var machine = new StructStateMachine(
                 StructState.One,
                 GetLogger<StructStateMachine>());
-
+            machine.Start();
             // Act
             machine.TryFire(StructTrigger.Next);
 
@@ -183,11 +185,13 @@ namespace StateMachine.Logging.Tests
 
             // 1) Udany scenariusz
             var okMachine = new BasicStateMachine(TestState.Initial, logger);
+            okMachine.Start();
             okMachine.TryFire(TestTrigger.Start);           // TransitionSucceeded (1), OnExit/Entry/Action (4-6)
 
             // 2) Scenariusz z nie-spełnionym guardem
             var failMachine = new BasicStateMachine(TestState.Initial, logger);
             failMachine.GuardResult = false;                // wymusza GuardFailed
+            failMachine.Start();
             failMachine.TryFire(TestTrigger.Start);         // GuardFailed (2) + TransitionFailed (3)
 
             // --- asercje bez zmian ---

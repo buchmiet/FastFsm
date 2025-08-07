@@ -18,5 +18,13 @@ public static class RuleIdentifiers
     public const string InvalidGuardTaskReturnType = "FSM012";
     public const string AsyncCallbackInSyncMachine = "FSM013"; // Ta reguła jest logocznie tożsama z FSM011, ale może mieć inny komunikat
     public const string InvalidAsyncVoid = "FSM014";
+    
+    // HSM-specific diagnostics
+    public const string CircularHierarchy = "FSM100";                     // Cyclical hierarchy
+    public const string OrphanSubstate = "FSM101";                       // Multiple or divergent parent  
+    public const string InvalidHierarchyConfiguration = "FSM102";        // Composite without initial state
+    public const string MultipleInitialSubstates = "FSM103";             // Multiple initial children
+    public const string InvalidHistoryConfiguration = "FSM104";          // History on non-composite
+    public const string ConflictingTransitionTargets = "FSM105";         // Transition to composite without explicit child
 
 }

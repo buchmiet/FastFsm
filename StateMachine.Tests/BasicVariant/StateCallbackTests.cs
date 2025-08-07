@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -13,6 +13,7 @@ public class StateCallbackTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new Machines.CallbackOrderMachine(CallbackState.A);
+        machine.Start();
         var typedMachine = machine;
 
         // Act - Transition A -> B
@@ -37,6 +38,7 @@ public class StateCallbackTests(ITestOutputHelper output)
     {
         // Arrange & Act
         var machine = new Machines.InitialStateMachine(InitialState.Start);
+        machine.Start();
         var typedMachine = machine;
 
         // Assert - OnEntry was called during construction
@@ -53,6 +55,7 @@ public class StateCallbackTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new Machines.InternalTransitionMachine(InternalState.Active);
+        machine.Start();
         var typedMachine = machine;
 
         // Clear initial OnEntry
@@ -80,6 +83,7 @@ public class StateCallbackTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new Machines.GuardedCallbackMachine(GuardedState.A);
+        machine.Start();
         var typedMachine = machine;
 
         // Clear initial OnEntry
@@ -110,6 +114,7 @@ public class StateCallbackTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new Machines.SelfTransitionMachine(SelfState.Active);
+        machine.Start();
         var typedMachine = machine;
 
         // Clear initial OnEntry
@@ -133,6 +138,7 @@ public class StateCallbackTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new Machines.ExceptionCallbackMachine(ExceptionState.A);
+        machine.Start();
         var typedMachine = machine;
 
         // Act & Assert - OnExit throws -> wyjątek i stan BEZ zmiany
@@ -153,6 +159,7 @@ public class StateCallbackTests(ITestOutputHelper output)
     {
         // Arrange
         var machine = new Machines.ComplexCallbackMachine(ComplexCallbackState.Idle);
+        machine.Start();
         var typedMachine = machine;
 
         // Act - Full workflow
@@ -187,6 +194,7 @@ public class StateCallbackTests(ITestOutputHelper output)
         // by either using the last one or combining them
 
         var machine = new Machines.MultipleCallbacksMachine(MultiState.A);
+        machine.Start();
         var typedMachine = machine;
 
         // The behavior depends on generator implementation

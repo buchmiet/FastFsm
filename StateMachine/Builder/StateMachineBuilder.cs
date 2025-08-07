@@ -24,14 +24,16 @@ public class StateMachineBuilder<TState, TTrigger> : IStateMachineBuilder<TState
             throw new ArgumentException($"Type {machineType} is not marked with StateMachineAttribute");
     }
     
-    public IStateMachine<TState, TTrigger> Build(TState initialState)
+    public object Build(TState initialState)
     {
         // Create instance using reflection (for runtime scenarios)
         var instance = Activator.CreateInstance(_machineType, initialState);
         
-        if (instance is not IStateMachine<TState, TTrigger> machine)
-            throw new InvalidOperationException($"Type {_machineType} does not implement IStateMachine");
+        // Instance could be either IStateMachineSync or IStateMachineAsync
+        if (instance is not IStateMachineSync<TState, TTrigger> && 
+            instance is not IStateMachineAsync<TState, TTrigger>)
+            throw new InvalidOperationException($"Type {_machineType} does not implement IStateMachineSync or IStateMachineAsync");
             
-        return machine;
+        return instance;
     }
 }

@@ -20,15 +20,26 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
 
         void WriteClassContent()
         {
-            Sb.AppendLine($"public interface I{className} : IExtensibleStateMachine<{stateTypeForUsage}, {triggerTypeForUsage}> {{ }}");
+            var extensibleInterface = IsAsyncMachine 
+                ? $"IExtensibleStateMachineAsync<{stateTypeForUsage}, {triggerTypeForUsage}>"
+                : $"IExtensibleStateMachineSync<{stateTypeForUsage}, {triggerTypeForUsage}>";
+            Sb.AppendLine($"public interface I{className} : {extensibleInterface} {{ }}");
             Sb.AppendLine();
 
-            using (Sb.Block($"public partial class {className} : StateMachineBase<{stateTypeForUsage}, {triggerTypeForUsage}>, I{className}"))
+            var baseClass = GetBaseClassName(stateTypeForUsage, triggerTypeForUsage);
+            using (Sb.Block($"public partial class {className} : {baseClass}, I{className}"))
             {
                 _ext.WriteFields(Sb);
                 WriteLoggerField(className);
 
                 WriteConstructor(stateTypeForUsage, className);
+                
+                // Generate OnInitialEntry override if needed
+                if (ShouldGenerateInitialOnEntry())
+                {
+                    WriteOnInitialEntryMethod(stateTypeForUsage);
+                }
+                
                 WriteTryFireMethod(stateTypeForUsage, triggerTypeForUsage);
                 WriteCanFireMethod(stateTypeForUsage, triggerTypeForUsage);
                 WriteGetPermittedTriggersMethod(stateTypeForUsage, triggerTypeForUsage);
@@ -64,11 +75,7 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
             WriteLoggerAssignment();
             _ext.WriteConstructorBody(Sb, ShouldGenerateLogging);
 
-            if (ShouldGenerateInitialOnEntry())
-            {
-                Sb.AppendLine();
-                WriteInitialOnEntryDispatch(stateTypeForUsage);
-            }
+            // Initial OnEntry dispatch moved to OnInitialEntry method
         }
         Sb.AppendLine();
     }
@@ -76,7 +83,7 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
     private void WriteTryFireMethod(string stateTypeForUsage, string triggerTypeForUsage)
     {
         WriteMethodAttribute();
-        using (Sb.Block($"public override bool TryFire({triggerTypeForUsage} trigger, object? {PayloadVar} = null)"))
+        using (Sb.Block($"protected override bool TryFireInternal({triggerTypeForUsage} trigger, object? {PayloadVar} = null)"))
         {
             Sb.AddProperty($"var {OriginalStateVar}", CurrentStateField);
             Sb.AddProperty($"bool {SuccessVar}", "false");

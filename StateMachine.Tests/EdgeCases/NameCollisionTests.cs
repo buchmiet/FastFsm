@@ -1,4 +1,4 @@
-﻿using Xunit;
+using Xunit;
 using Xunit.Abstractions;
 
 namespace StateMachine.Tests.EdgeCases
@@ -17,6 +17,7 @@ namespace StateMachine.Tests.EdgeCases
         {
             // Arrange & Act
             var machine = new Machines.KeywordStateMachine(KeywordState.@class);
+            machine.Start();
 
             // Assert - Machine works correctly with keyword names
             Assert.Equal(KeywordState.@class, machine.CurrentState);
@@ -41,6 +42,7 @@ namespace StateMachine.Tests.EdgeCases
         {
             // Test that user methods with names like TryFire don't conflict
             var machine = new Machines.ConflictingNamesMachine(ConflictState.A);
+            machine.Start();
             var typedMachine = machine as Machines.ConflictingNamesMachine;
 
             // User's TryFire method (different signature)
@@ -58,6 +60,7 @@ namespace StateMachine.Tests.EdgeCases
         {
             // C# allows Unicode in identifiers
             var machine = new Machines.UnicodeMachine(UnicodeState.αlpha);
+            machine.Start();
 
             Assert.True(machine.TryFire(UnicodeTrigger.βeta));
             Assert.Equal(UnicodeState.Ωmega, machine.CurrentState);
@@ -69,6 +72,7 @@ namespace StateMachine.Tests.EdgeCases
             // Test with extremely long enum names
             var machine = new Machines.LongNameMachine(
                 LongNameState.ThisIsAnExtremelyLongStateNameThatShouldStillWorkCorrectlyInTheGeneratedCode_Part1_Part2_Part3_Part4_Part5);
+            machine.Start();
 
             Assert.True(machine.CanFire(
                 LongNameTrigger.ThisIsAnEquallyLongTriggerNameThatTestsTheLimitsOfNaming_Section1_Section2_Section3));
@@ -86,6 +90,7 @@ namespace StateMachine.Tests.EdgeCases
         {
             // C# doesn't allow pure numeric names, but prefixed is OK
             var machine = new Machines.NumericMachine(NumericState._1Start);
+            machine.Start();
 
             machine.Fire(NumericTrigger._2Next);
             Assert.Equal(NumericState._3Middle, machine.CurrentState);
@@ -99,6 +104,7 @@ namespace StateMachine.Tests.EdgeCases
         {
             // Test case-sensitive enum members
             var machine = new Machines.CaseSensitiveMachine(CaseSensitiveState.state);
+            machine.Start();
 
             // Different cases are different states
             machine.Fire(CaseSensitiveTrigger.GO);

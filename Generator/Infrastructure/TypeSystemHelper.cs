@@ -26,6 +26,31 @@ public class TypeSystemHelper
 
         
     }
+
+    /// <summary>
+    /// Zwraca <c>true</c>, jeżeli symbol reprezentuje <see cref="System.Threading.CancellationToken"/>.
+    /// Robi to w sposób odporny na:
+    /// • brak referencji do System.Private.CoreLib (GetTypeByMetadataName zwraca <c>null</c>)  
+    /// • „retargeting assemblies” (ten sam typ z dwóch różnych kompilacji)  
+    /// </summary>
+    public bool IsCancellationToken(ITypeSymbol typeSymbol, Compilation compilation)
+    {
+        if (typeSymbol is null)
+            return false;
+
+        // 1) Spróbuj porównać z canonical-symbolem z tej kompilacji
+        var ctCanonical = compilation.GetTypeByMetadataName("System.Threading.CancellationToken");
+        if (ctCanonical is not null &&
+            SymbolEqualityComparer.Default.Equals(typeSymbol, ctCanonical))
+            return true;
+
+        // 2) Fallback: porównanie po nazwie + namespace
+        //    (potrzebne gdy ctCanonical == null lub gdy mamy retargetowany symbol)
+        string ns = typeSymbol.ContainingNamespace?.ToDisplayString() ?? "";
+        return typeSymbol.Name == "CancellationToken" && ns == "System.Threading";
+    }
+
+
     /// <summary>
     /// Sprawdza czy zwracany typ jest:
     ///   * Task

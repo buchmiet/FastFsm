@@ -11,7 +11,7 @@ namespace StateMachine.DependencyInjection;
 /// </summary>
 public class StateMachineFactory<TInterface, TImplementation, TState, TTrigger>(IServiceProvider serviceProvider)
     : IStateMachineFactory<TInterface, TState, TTrigger>
-    where TInterface : class, IStateMachine<TState, TTrigger>
+    where TInterface : class
     where TImplementation : class, TInterface
     where TState : unmanaged, Enum
     where TTrigger : unmanaged, Enum
@@ -21,6 +21,18 @@ public class StateMachineFactory<TInterface, TImplementation, TState, TTrigger>(
         // Używamy ActivatorUtilities zamiast Activator.CreateInstance
         // To działa z konstruktorami z parametrami i jest AOT-friendly
         return ActivatorUtilities.CreateInstance<TImplementation>(serviceProvider, initialState);
+    }
+    
+    public TInterface CreateStarted(TState initialState)
+    {
+        var machine = Create(initialState);
+        // Try to call Start() if it's a sync machine
+        if (machine is IStateMachineSync<TState, TTrigger> syncMachine)
+        {
+            syncMachine.Start();
+        }
+        // For async machines, StartAsync() must be called separately
+        return machine;
     }
 }
 #endif

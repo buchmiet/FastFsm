@@ -62,7 +62,7 @@
 	<!-- Timestamp version -->
 	<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
 		<PropertyGroup>
-			<Version>0.5.0-dev.$([System.DateTime]::UtcNow.ToString("yyyyMMddHHmmss"))</Version>
+			<Version>0.6.0-dev.$([System.DateTime]::UtcNow.ToString("yyyyMMddHHmmss"))</Version>
 			<PackageVersion>$(Version)</PackageVersion>
 		</PropertyGroup>
 	</Target>

@@ -35,31 +35,21 @@ internal sealed class FullVariantGenerator(StateMachineModel model) : PayloadVar
         void WriteClassContent()
         {
             // Interface generation
-            if (IsSinglePayloadVariant())
+            var extensibleInterface = IsAsyncMachine 
+                ? $"IExtensibleStateMachineAsync<{stateTypeForUsage}, {triggerTypeForUsage}>"
+                : $"IExtensibleStateMachineSync<{stateTypeForUsage}, {triggerTypeForUsage}>";
+            Sb.AppendLine($"public interface I{className} : ");
+            using (Sb.Indent())
             {
-                var payloadType = GetTypeNameForUsage(GetSinglePayloadType()!);
-                Sb.AppendLine($"public interface I{className} : ");
-                using (Sb.Indent())
-                {
-                    Sb.AppendLine($"IStateMachineWithPayload<{stateTypeForUsage}, {triggerTypeForUsage}, {payloadType}>,");
-                    Sb.AppendLine($"IExtensibleStateMachine<{stateTypeForUsage}, {triggerTypeForUsage}>");
-                }
-            }
-            else
-            {
-                Sb.AppendLine($"public interface I{className} : ");
-                using (Sb.Indent())
-                {
-                    Sb.AppendLine($"IStateMachineWithMultiPayload<{stateTypeForUsage}, {triggerTypeForUsage}>,");
-                    Sb.AppendLine($"IExtensibleStateMachine<{stateTypeForUsage}, {triggerTypeForUsage}>");
-                }
+                Sb.AppendLine(extensibleInterface);
             }
 
             Sb.AppendLine("{ }");
             Sb.AppendLine();
 
             // Class generation
-            using (Sb.Block($"public partial class {className} : StateMachineBase<{stateTypeForUsage}, {triggerTypeForUsage}>, I{className}"))
+            var baseClass = GetBaseClassName(stateTypeForUsage, triggerTypeForUsage);
+            using (Sb.Block($"public partial class {className} : {baseClass}, I{className}"))
             {
                 _ext.WriteFields(Sb);
                 WriteLoggerField(className);
@@ -70,6 +60,16 @@ internal sealed class FullVariantGenerator(StateMachineModel model) : PayloadVar
                 }
 
                 WriteConstructor(stateTypeForUsage, className);
+                
+                // Generate OnInitialEntry/OnInitialEntryAsync override
+                if (ShouldGenerateInitialOnEntry())
+                {
+                    if (IsAsyncMachine)
+                        WriteOnInitialEntryAsyncMethod(stateTypeForUsage);
+                    else
+                        WriteOnInitialEntryMethod(stateTypeForUsage);
+                }
+                
                 WriteTryFireMethods(stateTypeForUsage, triggerTypeForUsage);
                 WriteFireMethods(stateTypeForUsage, triggerTypeForUsage);
                 WriteCanFireMethods(stateTypeForUsage, triggerTypeForUsage);
@@ -94,11 +94,7 @@ internal sealed class FullVariantGenerator(StateMachineModel model) : PayloadVar
             WriteLoggerAssignment();
             _ext.WriteConstructorBody(Sb, ShouldGenerateLogging);
 
-            if (ShouldGenerateInitialOnEntry())
-            {
-                Sb.AppendLine();
-                WriteInitialOnEntryDispatch(stateTypeForUsage);
-            }
+            // Initial OnEntry dispatch moved to OnInitialEntry/OnInitialEntryAsync method
         }
         Sb.AppendLine();
     }

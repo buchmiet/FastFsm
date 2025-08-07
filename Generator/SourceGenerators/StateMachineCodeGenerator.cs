@@ -45,29 +45,202 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
 
     #region Common implementation snippets
 
-    #region Common Implementation Methods
-
-    protected virtual void WriteInitialOnEntryDispatch(string stateTypeForUsage)
+    #region Hierarchical State Machine Support
+    
+    /// <summary>
+    /// Writes static hierarchy arrays if HSM is enabled
+    /// </summary>
+    protected virtual void WriteHierarchyArrays(string stateTypeForUsage)
     {
-        Sb.AppendLine(InitialOnEntryComment);
-        using (Sb.Block("switch (initialState)"))
+        if (!Model.HierarchyEnabled) return;
+        
+        Sb.AppendLine("// Hierarchical state machine support arrays");
+        
+        // Get all states in enum order
+        var allStates = Model.States.Keys.OrderBy(s => s).ToList();
+        var stateCount = allStates.Count;
+        
+        // Parent array (-1 for root states)
+        Sb.Append("private static readonly int[] s_parent = new int[] { ");
+        var parentValues = allStates.Select(state =>
         {
-            foreach (var stateEntry in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
+            if (Model.ParentOf.TryGetValue(state, out var parent) && parent != null)
             {
-                Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                var parentIndex = allStates.IndexOf(parent);
+                return parentIndex.ToString();
+            }
+            return "-1";
+        });
+        Sb.Append(string.Join(", ", parentValues));
+        Sb.AppendLine(" };");
+        
+        // Depth array
+        Sb.Append("private static readonly int[] s_depth = new int[] { ");
+        var depthValues = allStates.Select(state =>
+        {
+            if (Model.Depth.TryGetValue(state, out var depth))
+            {
+                return depth.ToString();
+            }
+            return "0";
+        });
+        Sb.Append(string.Join(", ", depthValues));
+        Sb.AppendLine(" };");
+        
+        // Initial child array (-1 for non-composites)
+        Sb.Append("private static readonly int[] s_initialChild = new int[] { ");
+        var initialValues = allStates.Select(state =>
+        {
+            if (Model.InitialChildOf.TryGetValue(state, out var initial) && initial != null)
+            {
+                var initialIndex = allStates.IndexOf(initial);
+                return initialIndex.ToString();
+            }
+            return "-1";
+        });
+        Sb.Append(string.Join(", ", initialValues));
+        Sb.AppendLine(" };");
+        
+        // History mode array
+        AddUsing("Abstractions.Attributes");
+        Sb.Append("private static readonly HistoryMode[] s_history = new HistoryMode[] { ");
+        var historyValues = allStates.Select(state =>
+        {
+            if (Model.HistoryOf.TryGetValue(state, out var history))
+            {
+                return $"HistoryMode.{history}";
+            }
+            return "HistoryMode.None";
+        });
+        Sb.Append(string.Join(", ", historyValues));
+        Sb.AppendLine(" };");
+        
+        Sb.AppendLine();
+    }
+    
+    /// <summary>
+    /// Writes HSM-specific methods (IsIn, GetActivePath)
+    /// </summary>
+    protected virtual void WriteHierarchyMethods(string stateTypeForUsage, string triggerTypeForUsage)
+    {
+        if (!Model.HierarchyEnabled) return;
+        
+        // Override IsIn method
+        Sb.WriteSummary("Checks if the given state is in the active path (HSM support)");
+        Sb.AppendLine("/// <param name=\"state\">The state to check</param>");
+        Sb.AppendLine("/// <returns>True if the state is in the active path, false otherwise</returns>");
+        using (Sb.Block($"public override bool IsIn({stateTypeForUsage} state)"))
+        {
+            Sb.AppendLine("// For hierarchical machines, walk up the parent chain");
+            Sb.AppendLine($"var currentIndex = (int){CurrentStateField};");
+            Sb.AppendLine("var targetIndex = (int)state;");
+            Sb.AppendLine();
+            Sb.AppendLine("// If checking current state");
+            Sb.AppendLine("if (currentIndex == targetIndex)");
+            using (Sb.Indent())
+            {
+                Sb.AppendLine("return true;");
+            }
+            Sb.AppendLine();
+            Sb.AppendLine("// Walk up the parent chain from current state");
+            Sb.AppendLine("var parentIndex = s_parent[currentIndex];");
+            using (Sb.Block("while (parentIndex >= 0)"))
+            {
+                Sb.AppendLine("if (parentIndex == targetIndex)");
                 using (Sb.Indent())
                 {
-                    // Direct call without WriteCallbackInvocation to avoid try-catch in constructor
-                    Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
-                    WriteLogStatement("Debug",
-                        $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
-                    Sb.AppendLine("break;");
+                    Sb.AppendLine("return true;");
+                }
+                Sb.AppendLine("parentIndex = s_parent[parentIndex];");
+            }
+            Sb.AppendLine();
+            Sb.AppendLine("return false;");
+        }
+        Sb.AppendLine();
+        
+        // Override GetActivePath method
+        Sb.WriteSummary("Gets the active state path from root to current leaf state (HSM support)");
+        Sb.AppendLine("/// <returns>The path from root to current state</returns>");
+        using (Sb.Block($"public override IReadOnlyList<{stateTypeForUsage}> GetActivePath()"))
+        {
+            Sb.AppendLine("// Build the path from leaf to root, then reverse");
+            Sb.AppendLine($"var path = new List<{stateTypeForUsage}>();");
+            Sb.AppendLine($"var currentIndex = (int){CurrentStateField};");
+            Sb.AppendLine();
+            Sb.AppendLine("// Add current state and walk up to root");
+            using (Sb.Block("while (currentIndex >= 0)"))
+            {
+                Sb.AppendLine($"path.Add(({stateTypeForUsage})currentIndex);");
+                Sb.AppendLine("currentIndex = s_parent[currentIndex];");
+            }
+            Sb.AppendLine();
+            Sb.AppendLine("// Reverse to get root-to-leaf order");
+            Sb.AppendLine("path.Reverse();");
+            Sb.AppendLine("return path;");
+        }
+        Sb.AppendLine();
+        
+        // For async machines, add async version
+        if (IsAsyncMachine)
+        {
+            Sb.WriteSummary("Asynchronously gets the active state path from root to current leaf state (HSM support)");
+            Sb.AppendLine("/// <param name=\"cancellationToken\">A token to observe for cancellation requests</param>");
+            Sb.AppendLine("/// <returns>The path from root to current state</returns>");
+            using (Sb.Block($"public override ValueTask<IReadOnlyList<{stateTypeForUsage}>> GetActivePathAsync(CancellationToken cancellationToken = default)"))
+            {
+                Sb.AppendLine("// For now, just return the synchronous result wrapped in a ValueTask");
+                Sb.AppendLine($"return new ValueTask<IReadOnlyList<{stateTypeForUsage}>>(GetActivePath());");
+            }
+            Sb.AppendLine();
+        }
+    }
+    
+    #endregion
+
+    #region Common Implementation Methods
+
+    protected virtual void WriteOnInitialEntryMethod(string stateTypeForUsage)
+    {
+        if (!ShouldGenerateInitialOnEntry())
+            return;
+            
+        using (Sb.Block("protected override void OnInitialEntry()"))
+        {
+            using (Sb.Block($"switch ({CurrentStateField})"))
+            {
+                foreach (var stateEntry in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
+                {
+                    Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                    using (Sb.Indent())
+                    {
+                        // Direct call without WriteCallbackInvocation to avoid try-catch in constructor
+                        Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                        WriteLogStatement("Debug",
+                            $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
+                        Sb.AppendLine("break;");
+                    }
                 }
             }
         }
+        Sb.AppendLine();
     }
 
     protected void WriteTryFireStructure(
+        string stateTypeForUsage,
+        string triggerTypeForUsage,
+        Action<TransitionModel, string, string> writeTransitionLogic)
+    {
+        if (Model.HierarchyEnabled)
+        {
+            WriteTryFireStructureHierarchical(stateTypeForUsage, triggerTypeForUsage, writeTransitionLogic);
+        }
+        else
+        {
+            WriteTryFireStructureFlat(stateTypeForUsage, triggerTypeForUsage, writeTransitionLogic);
+        }
+    }
+    
+    private void WriteTryFireStructureFlat(
         string stateTypeForUsage,
         string triggerTypeForUsage,
         Action<TransitionModel, string, string> writeTransitionLogic)
@@ -113,11 +286,139 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         // Hook – przejście nie znalezione
         WriteTransitionFailureHook(stateTypeForUsage, triggerTypeForUsage);
     }
+    
+    private void WriteTryFireStructureHierarchical(
+        string stateTypeForUsage,
+        string triggerTypeForUsage,
+        Action<TransitionModel, string, string> writeTransitionLogic)
+    {
+        // For hierarchical machines, we need to check transitions from the current state
+        // and all its ancestors, choosing the closest match
+        
+        Sb.AppendLine("// Hierarchical trigger resolution");
+        Sb.AppendLine($"var currentStateIndex = (int){CurrentStateField};");
+        Sb.AppendLine("var stateToCheck = currentStateIndex;");
+        Sb.AppendLine();
+        
+        // Loop through the state and its ancestors
+        using (Sb.Block("while (stateToCheck >= 0)"))
+        {
+            Sb.AppendLine($"var stateToCheckEnum = ({stateTypeForUsage})stateToCheck;");
+            
+            // Group transitions by source state
+            var grouped = Model.Transitions.GroupBy(t => t.FromState);
+            
+            using (Sb.Block("switch (stateToCheckEnum)"))
+            {
+                foreach (var state in grouped)
+                {
+                    using (Sb.Block($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(state.Key)}:"))
+                    {
+                        using (Sb.Block("switch (trigger)"))
+                        {
+                            foreach (var tr in state)
+                            {
+                                using (Sb.Block($"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(tr.Trigger)}:"))
+                                {
+                                    // For internal transitions defined on ancestors, 
+                                    // we need special handling to avoid state change
+                                    if (tr.IsInternal)
+                                    {
+                                        Sb.AppendLine("// Internal transition on ancestor");
+                                        Sb.AppendLine($"if (stateToCheck != currentStateIndex)");
+                                        using (Sb.Block(""))
+                                        {
+                                            Sb.AppendLine("// Execute internal transition without changing state");
+                                            WriteInternalTransitionOnAncestor(tr, stateTypeForUsage, triggerTypeForUsage);
+                                        }
+                                        Sb.AppendLine("else");
+                                        using (Sb.Block(""))
+                                        {
+                                            writeTransitionLogic(tr, stateTypeForUsage, triggerTypeForUsage);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        writeTransitionLogic(tr, stateTypeForUsage, triggerTypeForUsage);
+                                    }
+                                    Sb.AppendLine("return;  // Transition handled");
+                                }
+                            }
+                            Sb.AppendLine("default: break;");
+                        }
+                        Sb.AppendLine("break;");
+                    }
+                }
+                Sb.AppendLine("default: break;");
+            }
+            
+            // Move to parent state
+            Sb.AppendLine();
+            Sb.AppendLine("// Check parent state");
+            Sb.AppendLine("stateToCheck = s_parent[stateToCheck];");
+        }
+        
+        Sb.AppendLine();
+        
+        // Hook – przejście nie znalezione
+        WriteTransitionFailureHook(stateTypeForUsage, triggerTypeForUsage);
+    }
+    
+    private void WriteInternalTransitionOnAncestor(
+        TransitionModel transition,
+        string stateTypeForUsage,
+        string triggerTypeForUsage)
+    {
+        // Internal transition on ancestor - execute guard and action but no state change
+        
+        // Hook: Before transition
+        WriteBeforeTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage);
+        
+        // Guard check
+        if (!string.IsNullOrEmpty(transition.GuardMethod))
+        {
+            WriteGuardEvaluationHook(transition, stateTypeForUsage, triggerTypeForUsage);
+            WriteGuardCheck(transition, stateTypeForUsage, triggerTypeForUsage);
+        }
+        
+        // No OnExit, no state change, no OnEntry for internal transitions on ancestors
+        
+        // Action (no exception catching - let it propagate)
+        if (!string.IsNullOrEmpty(transition.ActionMethod))
+        {
+            WriteActionCall(transition);
+            WriteLogStatement("Debug",
+                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+        }
+        
+        Sb.AppendLine($"{SuccessVar} = true;");
+        
+        // Hook: After successful transition
+        WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
+        
+        WriteLogStatement("Information",
+            $"InternalTransitionOnAncestor(_logger, _instanceId, \"{transition.FromState}\", CurrentState.ToString(), \"{transition.Trigger}\");");
+    }
 
     protected virtual void WriteTransitionLogic(
      TransitionModel transition,
      string stateTypeForUsage,
      string triggerTypeForUsage)
+    {
+        if (Model.HierarchyEnabled && !transition.IsInternal)
+        {
+            WriteTransitionLogicHierarchical(transition, stateTypeForUsage, triggerTypeForUsage);
+        }
+        else
+        {
+            WriteTransitionLogicFlat(transition, stateTypeForUsage, triggerTypeForUsage);
+        }
+    }
+    
+    private void WriteTransitionLogicFlat(
+        TransitionModel transition,
+        string stateTypeForUsage,
+        string triggerTypeForUsage)
     {
         var hasOnEntryExit = ShouldGenerateOnEntryExit();
 
@@ -164,7 +465,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             WriteLogStatement("Debug",
                 $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
         }
-
+        
         // Log successful transition only after OnEntry succeeds
         if (!transition.IsInternal)
         {
@@ -179,6 +480,280 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
 
         Sb.AppendLine($"goto {EndOfTryFireLabel};");
+    }
+    
+    private void WriteTransitionLogicHierarchical(
+        TransitionModel transition,
+        string stateTypeForUsage,
+        string triggerTypeForUsage)
+    {
+        var hasOnEntryExit = ShouldGenerateOnEntryExit();
+        
+        // Hook: Before transition
+        WriteBeforeTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage);
+        
+        // Guard check
+        if (!string.IsNullOrEmpty(transition.GuardMethod))
+        {
+            WriteGuardEvaluationHook(transition, stateTypeForUsage, triggerTypeForUsage);
+            WriteGuardCheck(transition, stateTypeForUsage, triggerTypeForUsage);
+        }
+        
+        // For hierarchical transitions, we need to:
+        // 1. Find the LCA (Lowest Common Ancestor) of source and target
+        // 2. Exit from current leaf up to (but not including) LCA
+        // 3. Enter from (but not including) LCA down to target leaf
+        
+        Sb.AppendLine("// Hierarchical transition sequence");
+        
+        // Get state indices
+        var allStates = Model.States.Keys.OrderBy(s => s).ToList();
+        var fromIndex = allStates.IndexOf(transition.FromState);
+        var toIndex = allStates.IndexOf(transition.ToState);
+        
+        // Compute LCA at generation time if possible
+        var lcaIndex = ComputeLCA(fromIndex, toIndex, allStates);
+        var lcaState = lcaIndex >= 0 ? allStates[lcaIndex] : "None";
+        
+        // Calculate exit and entry counts for logging
+        var exitCount = 0;
+        var entryCount = 0;
+        
+        // Count exit states
+        var tempIndex = fromIndex;
+        while (tempIndex >= 0 && tempIndex != lcaIndex)
+        {
+            exitCount++;
+            var state = allStates[tempIndex];
+            if (Model.ParentOf.TryGetValue(state, out var parent) && parent != null)
+            {
+                tempIndex = allStates.IndexOf(parent);
+            }
+            else
+            {
+                break;
+            }
+        }
+        
+        // Count entry states
+        tempIndex = toIndex;
+        while (tempIndex >= 0 && tempIndex != lcaIndex)
+        {
+            entryCount++;
+            var state = allStates[tempIndex];
+            if (Model.ParentOf.TryGetValue(state, out var parent) && parent != null)
+            {
+                tempIndex = allStates.IndexOf(parent);
+            }
+            else
+            {
+                break;
+            }
+        }
+        
+        // Log hierarchical transition details
+        WriteLogStatement("Debug",
+            $"HierarchicalTransition(_logger, _instanceId, \"{transition.FromState}\", \"{transition.ToState}\", \"{lcaState}\", {exitCount}, {entryCount});");
+        
+        if (hasOnEntryExit)
+        {
+            // Exit sequence - from current state up to (but not including) LCA
+            WriteExitSequence(transition.FromState, lcaIndex, allStates, stateTypeForUsage, transition.ExpectedPayloadType);
+        }
+        
+        // Update history tracking before state change
+        if (Model.HierarchyEnabled)
+        {
+            Sb.AppendLine("// Update history tracking");
+            Sb.AppendLine($"UpdateLastActiveChild((int){CurrentStateField});");
+        }
+        
+        // State change
+        // For composite states, we need to find the actual leaf target
+        WriteStateChangeWithCompositeHandling(transition.ToState, stateTypeForUsage);
+        
+        if (hasOnEntryExit)
+        {
+            // Entry sequence - from (but not including) LCA down to target
+            WriteEntrySequence(lcaIndex, transition.ToState, allStates, stateTypeForUsage, transition.ExpectedPayloadType);
+        }
+        
+        // Action (after OnEntry sequence)
+        if (!string.IsNullOrEmpty(transition.ActionMethod))
+        {
+            WriteActionCall(transition);
+            WriteLogStatement("Debug",
+                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+        }
+        
+        // Log successful transition only after OnEntry succeeds
+        if (!transition.IsInternal)
+        {
+            WriteLogStatement("Information",
+                $"TransitionSucceeded(_logger, _instanceId, \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+        }
+
+        // Success
+        Sb.AppendLine($"{SuccessVar} = true;");
+
+        // Hook: After successful transition
+        WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
+
+        Sb.AppendLine($"goto {EndOfTryFireLabel};");
+    }
+    
+    private int ComputeLCA(int fromIndex, int toIndex, List<string> allStates)
+    {
+        // Build ancestor chains for both states
+        var fromAncestors = new List<int>();
+        var current = fromIndex;
+        while (current >= 0)
+        {
+            fromAncestors.Add(current);
+            var state = allStates[current];
+            if (Model.ParentOf.TryGetValue(state, out var parent) && parent != null)
+            {
+                current = allStates.IndexOf(parent);
+            }
+            else
+            {
+                current = -1;
+            }
+        }
+        
+        var toAncestors = new List<int>();
+        current = toIndex;
+        while (current >= 0)
+        {
+            toAncestors.Add(current);
+            var state = allStates[current];
+            if (Model.ParentOf.TryGetValue(state, out var parent) && parent != null)
+            {
+                current = allStates.IndexOf(parent);
+            }
+            else
+            {
+                current = -1;
+            }
+        }
+        
+        // Find LCA - the first common ancestor
+        foreach (var ancestor in fromAncestors)
+        {
+            if (toAncestors.Contains(ancestor))
+            {
+                return ancestor;
+            }
+        }
+        
+        return -1; // No common ancestor (shouldn't happen in valid hierarchy)
+    }
+    
+    private void WriteExitSequence(string fromState, int lcaIndex, List<string> allStates, string stateTypeForUsage, string? expectedPayloadType)
+    {
+        // Build exit path from current state up to (but not including) LCA
+        var exitPath = new List<string>();
+        var current = fromState;
+        var currentIndex = allStates.IndexOf(current);
+        
+        while (currentIndex >= 0 && currentIndex != lcaIndex)
+        {
+            exitPath.Add(current);
+            if (Model.ParentOf.TryGetValue(current, out var parent) && parent != null)
+            {
+                current = parent;
+                currentIndex = allStates.IndexOf(current);
+            }
+            else
+            {
+                break;
+            }
+        }
+        
+        // Execute OnExit callbacks in order (from leaf to ancestor)
+        foreach (var state in exitPath)
+        {
+            if (Model.States.TryGetValue(state, out var stateDef) && !string.IsNullOrEmpty(stateDef.OnExitMethod))
+            {
+                Sb.AppendLine($"// Exit {state}");
+                WriteOnExitCall(stateDef, expectedPayloadType);
+                WriteLogStatement("Debug",
+                    $"OnExitExecuted(_logger, _instanceId, \"{stateDef.OnExitMethod}\", \"{state}\");");
+            }
+        }
+    }
+    
+    private void WriteEntrySequence(int lcaIndex, string toState, List<string> allStates, string stateTypeForUsage, string? expectedPayloadType)
+    {
+        // Build entry path from (but not including) LCA down to target
+        var entryPath = new List<string>();
+        var current = toState;
+        var currentIndex = allStates.IndexOf(current);
+        
+        // Build path from target up to LCA
+        while (currentIndex >= 0 && currentIndex != lcaIndex)
+        {
+            entryPath.Add(current);
+            if (Model.ParentOf.TryGetValue(current, out var parent) && parent != null)
+            {
+                current = parent;
+                currentIndex = allStates.IndexOf(current);
+            }
+            else
+            {
+                break;
+            }
+        }
+        
+        // Reverse to get top-down order (ancestor to leaf)
+        entryPath.Reverse();
+        
+        // Execute OnEntry callbacks in order (from ancestor to leaf)
+        foreach (var state in entryPath)
+        {
+            if (Model.States.TryGetValue(state, out var stateDef) && !string.IsNullOrEmpty(stateDef.OnEntryMethod))
+            {
+                Sb.AppendLine($"// Enter {state}");
+                WriteOnEntryCall(stateDef, expectedPayloadType);
+                WriteLogStatement("Debug",
+                    $"OnEntryExecuted(_logger, _instanceId, \"{stateDef.OnEntryMethod}\", \"{state}\");");
+            }
+        }
+    }
+    
+    private void WriteStateChangeWithCompositeHandling(string targetState, string stateTypeForUsage)
+    {
+        // Check if target is a composite state
+        var allStates = Model.States.Keys.OrderBy(s => s).ToList();
+        var targetIndex = allStates.IndexOf(targetState);
+        
+        // Check if target has children (is composite)
+        if (Model.ChildrenOf.TryGetValue(targetState, out var children) && children.Count > 0)
+        {
+            Sb.AppendLine($"// Target is composite, resolve to leaf using initial/history");
+            Sb.AppendLine($"var targetIndex = {targetIndex};");
+            Sb.AppendLine($"var resolvedTarget = GetCompositeEntryTarget(targetIndex);");
+            Sb.AppendLine($"{CurrentStateField} = ({stateTypeForUsage})resolvedTarget;");
+            
+            // Log composite state resolution
+            if (ShouldGenerateLogging)
+            {
+                // Determine resolution method based on history mode
+                var resolutionMethod = "Initial";
+                if (Model.HistoryOf.TryGetValue(targetState, out var historyMode) && historyMode != Generator.Model.HistoryMode.None)
+                {
+                    resolutionMethod = historyMode.ToString() + "History";
+                }
+                
+                WriteLogStatement("Debug",
+                    $"CompositeStateEntry(_logger, _instanceId, \"{targetState}\", (({stateTypeForUsage})resolvedTarget).ToString(), \"{resolutionMethod}\");");
+            }
+        }
+        else
+        {
+            // Simple state change
+            Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(targetState)};");
+        }
     }
 
     #endregion
@@ -473,7 +1048,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine("/// <param name=\"trigger\">The trigger to check</param>");
         Sb.AppendLine("/// <returns>True if the trigger can be fired, false otherwise</returns>");
         WriteMethodAttribute();
-        using (Sb.Block($"public override bool CanFire({triggerTypeForUsage} trigger)"))
+        using (Sb.Block($"protected override bool CanFireInternal({triggerTypeForUsage} trigger)"))
         {
             using (Sb.Block($"switch ({CurrentStateField})"))
             {
@@ -529,7 +1104,7 @@ if (!string.IsNullOrEmpty(transition.GuardMethod))
     {
         Sb.WriteSummary("Gets the list of triggers that can be fired in the current state (runtime evaluation including guards)");
         Sb.AppendLine("/// <returns>List of triggers that can be fired in the current state</returns>");
-        using (Sb.Block($"public override {ReadOnlyListType}<{triggerTypeForUsage}> GetPermittedTriggers()"))
+        using (Sb.Block($"protected override {ReadOnlyListType}<{triggerTypeForUsage}> GetPermittedTriggersInternal()"))
         {
             using (Sb.Block($"switch ({CurrentStateField})"))
             {
@@ -789,7 +1364,7 @@ if (!string.IsNullOrEmpty(transition.GuardMethod))
 
     protected string GetTryFireMethodName() =>
         AsyncGenerationHelper.GetMethodName("TryFire", IsAsyncMachine, addAsyncSuffix: false) +
-        (IsAsyncMachine ? "InternalAsync" : "");
+        (IsAsyncMachine ? "InternalAsync" : "Internal");
 
     // Helper do parametrów metody
     protected string GetTryFireParameters(string triggerType)
@@ -825,7 +1400,7 @@ if (!string.IsNullOrEmpty(transition.GuardMethod))
     /// </summary>
     protected string GetTryFireVisibility()
     {
-        return IsAsyncMachine ? "protected override" : "public override";
+        return "protected override";
     }
     #endregion
 

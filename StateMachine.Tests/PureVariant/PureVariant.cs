@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Shouldly;
 using StateMachine.Tests.Machines;
 using StateMachine.Tests.Performance;
@@ -13,7 +13,7 @@ namespace StateMachine.Tests.PureVariant
         {
             // Arrange
             var machine = new PureBenchmarkMachine(BenchmarkTests.BenchmarkState.A);
-
+            machine.Start();
             // Act & Assert
             machine.CurrentState.ShouldBe(BenchmarkTests.BenchmarkState.A);
 
@@ -31,6 +31,7 @@ namespace StateMachine.Tests.PureVariant
         {
             // Arrange
             var machine = new PureBenchmarkMachine(BenchmarkTests.BenchmarkState.A);
+            machine.Start();
 
             // Act - Try invalid trigger
             var result = machine.TryFire(BenchmarkTests.BenchmarkTrigger.Previous);
@@ -45,6 +46,7 @@ namespace StateMachine.Tests.PureVariant
         {
             // Arrange
             var machine = new PureBenchmarkMachine(BenchmarkTests.BenchmarkState.A);
+            machine.Start();
 
             // Act & Assert
             Should.Throw<InvalidOperationException>(() =>
@@ -56,6 +58,7 @@ namespace StateMachine.Tests.PureVariant
         {
             // Arrange
             var machine = new PureBenchmarkMachine(BenchmarkTests.BenchmarkState.B);
+            machine.Start();
 
             // Act
             var permittedTriggers = machine.GetPermittedTriggers();
@@ -70,6 +73,7 @@ namespace StateMachine.Tests.PureVariant
         {
             // Arrange
             var machine = new PureBenchmarkMachine(BenchmarkTests.BenchmarkState.C);
+            machine.Start();
 
             // Act & Assert
             machine.CanFire(BenchmarkTests.BenchmarkTrigger.Next).ShouldBeTrue();
@@ -87,6 +91,7 @@ namespace StateMachine.Tests.PureVariant
             for (int i = 0; i < machines.Length; i++)
             {
                 machines[i] = new PureBenchmarkMachine(BenchmarkTests.BenchmarkState.A);
+                machines[i].Start();
             }
 
             var finalMemory = GC.GetTotalMemory(true);

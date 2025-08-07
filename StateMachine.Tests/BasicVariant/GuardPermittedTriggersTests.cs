@@ -13,6 +13,7 @@ namespace StateMachine.Tests.BasicVariant
                 // guard początkowo false
                 Allow = false
             };
+            machine.Start();
 
             Assert.DoesNotContain(Trigger.Run, machine.GetPermittedTriggers());
 

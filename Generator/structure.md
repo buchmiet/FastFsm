@@ -284,50 +284,94 @@ Generated machines support:
 
 ## 10. HSM Integration Surface
 
+### Current Status (Milestone 7 Complete)
+✅ **Diagnostics Implemented**: FSM100-FSM105 with user-friendly messages  
+✅ **Documentation**: Comprehensive HSM guide in `HSM_Documentation.md`  
+✅ **Test Coverage**: Full test suite in `/StateMachine.Tests/HierarchicalStateMachine/`  
+✅ **Benchmarks**: Performance comparisons in `/Benchmark/HierarchicalStateMachineBenchmarks.cs`
+
 ### Attribute Layer Insertion Points
 **Location**: `/Abstractions/Attributes/`
-- Create: `SubstateOfAttribute.cs`, `InitialSubstateAttribute.cs`, `HistoryAttribute.cs`
-- Extend: `StateAttribute.cs` (add ParentState property)
-- Extend: `StateMachineAttribute.cs` (add EnableHierarchy flag)
+- Extend: `StateAttribute.cs` (add `Parent`, `History` properties)
+- Extend: `StateMachineAttribute.cs` (add `EnableHierarchy` flag)
+- Create: `InitialSubstateAttribute.cs` for marking initial children
+- Add: `HistoryMode` enum (None, Shallow, Deep)
 
 ### Model Layer Extensions
 **Location**: `/Generator.Model/`
-- **StateModel.cs:25**: Add `ParentState`, `ChildStates[]`, `IsInitialSubstate`, `HistoryType`
-- **StateMachineModel.cs:24**: Add `StateHierarchy`, `InitialSubstates`, `HistoryStates`
-- Create: `HierarchyModel.cs` for LCA computation
+- **StateModel.cs**: Add `ParentState`, `ChildStates[]`, `IsComposite`, `History`
+- **StateMachineModel.cs**: Add hierarchy maps:
+  - `Dictionary<string, string?> ParentOf`
+  - `Dictionary<string, List<string>> ChildrenOf`
+  - `Dictionary<string, int> Depth`
+  - `Dictionary<string, string?> InitialChildOf`
+  - `Dictionary<string, HistoryMode> HistoryOf`
+  - `bool HierarchyEnabled`
 
-### Validation Rules
-**Location**: `/Generator.Rules/`
-- **RuleIdentifiers.cs:20**: Add FSM100-FSM105 for hierarchy validation
-- Create rules: Circular hierarchy, orphan substates, multiple initial states
+### Validation Rules (Implemented)
+**Location**: `/Generator.Rules/Definitions/`
+- **FSM100**: Circular hierarchy detection
+- **FSM101**: Multiple/divergent parent validation
+- **FSM102**: Composite without initial state
+- **FSM103**: Multiple initial children detection
+- **FSM104**: History on non-composite validation
+- **FSM105**: Implicit composite entry warning
+
+Each rule includes:
+- Clear error title
+- Actionable fix suggestions
+- Detailed descriptions
 
 ### Resolution Pipeline
 **Location**: `/Generator/SourceGenerators/StateMachineCodeGenerator.cs`
-- **Line 78**: Replace switch with hierarchical resolution
-- **Line 144**: Add exit sequence computation
-- **Line 147**: Inject entry sequence generation
+- Hierarchical trigger resolution (nearest ancestor wins)
+- LCA computation for state transitions
+- Exit sequence generation (leaf → LCA-1)
+- Entry sequence generation (LCA+1 → target)
 
 ### Entry/Exit Sequencing
 **Location**: `/Generator/Helpers/CallbackGenerationHelper.cs`
-- **Line 300**: Add `EmitHierarchicalExitSequence` method
-- **Line 320**: Add `EmitHierarchicalEntrySequence` method
-- Compute LCA and generate cascaded callbacks
+- `EmitHierarchicalExitSequence`: Bottom-up from leaf
+- `EmitHierarchicalEntrySequence`: Top-down to target
+- LCA optimization to minimize callbacks
+- Exception handling per level
 
 ### Code Emission
 **All variant generators**:
-- Override `WriteTryFireMethod` to detect hierarchy mode
-- Generate precomputed parent lookup tables
-- Emit history state tracking logic
+- Precomputed parent/depth lookup tables
+- History state tracking arrays
+- Internal transition optimization
+- Inherited trigger resolution
 
 ### Public API Additions
 **Location**: `/StateMachine/Contracts/IStateMachine.cs`
-- **Line 38**: Add `bool IsIn(TState state)`
-- **Line 40**: Add `IReadOnlyList<TState> GetActivePath()`
+```csharp
+bool IsIn(TState state);                    // Check active path
+IReadOnlyList<TState> GetActivePath();      // Full hierarchy
+ValueTask<IReadOnlyList<TState>> GetActivePathAsync(CancellationToken ct = default);
+```
 
 ### Runtime Base Classes
 **Location**: `/StateMachine/Runtime/StateMachineBase.cs`
-- **Line 35**: Add hierarchy fields and methods
-- Implement abstract IsIn/GetActivePath
+- Hierarchy state tracking fields
+- LastActiveChild[] for history
+- Path traversal methods
+- Initial/History entry logic
+
+### Test Infrastructure
+**Location**: `/StateMachine.Tests/HierarchicalStateMachine/`
+- `HsmTestMachines.cs`: Test state machines
+- `HsmBasicTests.cs`: Core functionality
+- `HsmExceptionTests.cs`: Exception handling
+- `HsmAsyncTests.cs`: Async operations
+- Full coverage of all HSM features
+
+### Performance Benchmarks
+**Location**: `/Benchmark/HierarchicalStateMachineBenchmarks.cs`
+- Flat vs HSM comparison
+- History mode overhead
+- Structural API performance
+- Transition resolution cost
 
 ---
 

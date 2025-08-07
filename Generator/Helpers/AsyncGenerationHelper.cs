@@ -143,8 +143,8 @@ namespace Generator.Helpers
         public static string GetInterfaceName(string stateType, string triggerType, bool isAsync)
         {
             return isAsync
-                ? $"IAsyncStateMachine<{stateType}, {triggerType}>"
-                : $"IStateMachine<{stateType}, {triggerType}>";
+                ? $"IStateMachineAsync<{stateType}, {triggerType}>"
+                : $"IStateMachineSync<{stateType}, {triggerType}>";
         }
 
         /// <summary>

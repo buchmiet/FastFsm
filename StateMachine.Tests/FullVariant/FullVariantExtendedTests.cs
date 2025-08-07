@@ -1,4 +1,4 @@
-﻿using Shouldly;
+using Shouldly;
 using StateMachine.Contracts;
 using StateMachine.Tests.Machines;
 using System;
@@ -81,6 +81,7 @@ namespace StateMachine.Tests.FullVariant
             // Arrange
             var audit = new AuditExtension();
             var machine = new FullOrderMachine(OrderState.New, new[] { audit });
+            machine.Start();
 
             var orderPayload = new OrderPayload { OrderId = 123, Amount = 99.99m };
             var paymentPayload = new PaymentPayload
@@ -113,6 +114,7 @@ namespace StateMachine.Tests.FullVariant
             // Arrange
             var processingExtension = new ConditionalProcessingExtension();
             var machine = new FullOrderMachine(OrderState.New, new[] { processingExtension });
+            machine.Start();
 
             // Act - Process high value order
             var highValueOrder = new OrderPayload { OrderId = 1, Amount = 10000m };
@@ -120,6 +122,7 @@ namespace StateMachine.Tests.FullVariant
 
             // Reset to process another order
             machine = new FullOrderMachine(OrderState.New, new[] { processingExtension });
+            machine.Start();
 
             // Process low value order
             var lowValueOrder = new OrderPayload { OrderId = 2, Amount = 10m };
@@ -136,6 +139,7 @@ namespace StateMachine.Tests.FullVariant
             // Arrange
             var behaviorExtension = new BehaviorModifyingExtension();
             var machine = new FullOrderMachine(OrderState.Paid, new[] { behaviorExtension });
+            machine.Start();
 
             // Configure extension to block shipping for certain orders
             behaviorExtension.BlockedOrderIds.Add(999);
@@ -147,6 +151,7 @@ namespace StateMachine.Tests.FullVariant
 
             // Reset state
             machine = new FullOrderMachine(OrderState.Paid, new[] { behaviorExtension });
+            machine.Start();
 
             // Blocked order should fail (but extension still records the attempt)
             var blockedOrder = new OrderPayload { OrderId = 999, TrackingNumber = "TRACK999" };
@@ -189,6 +194,7 @@ namespace StateMachine.Tests.FullVariant
         {
             // 1. Utwórz instancję (konstruktor NIE wywołuje TryFire)
             var machine = new FullMultiPayloadMachine(OrderState.New, extensions: null);
+            machine.Start();
 
             // 2. Wyciągnij prywatne, statyczne pole _payloadMap
             var field = typeof(FullMultiPayloadMachine)
@@ -223,9 +229,10 @@ namespace StateMachine.Tests.FullVariant
             var typeTracker = new PayloadTypeTracker();
             // Upewnij się, że maszyna ma konstruktor przyjmujący rozszerzenia
             var machine = new FullMultiPayloadMachine(OrderState.New, new[] { typeTracker });
+            machine.Start();
 
             //// === Krok 1: Tylko pierwsze przejście ===
-            output.WriteLine("--- Krok 1: Przejście Process -> Processing ---");
+            output.WriteLine("---" + " Krok 1: Przejście Process -> Processing ---");
 
             var processResult = machine.TryFire(OrderTrigger.Process, new OrderPayload { OrderId = 1 });
             Assert.True(processResult, "Przejście Process -> Processing nie powiodło się.");
@@ -259,6 +266,7 @@ namespace StateMachine.Tests.FullVariant
             // Arrange
             var observerExtension = new PayloadObserverExtension();
             var machine = new FullOrderMachine(OrderState.New, new[] { observerExtension });
+            machine.Start();
 
             var order = new OrderPayload
             {
