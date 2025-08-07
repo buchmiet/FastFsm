@@ -1,5 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, Criterion, Throughput};
 use fsm_benchmark::*;
+use std::hint::black_box;
 
 fn bench_basic(c: &mut Criterion) {
     let mut group = c.benchmark_group("basic");
@@ -12,8 +13,9 @@ fn bench_basic(c: &mut Criterion) {
             let start = std::time::Instant::now();
             for _ in 0..iters {
                 for _ in 0..OPS {
-                    sm.try_fire(BasicEvent::Next);
-                    black_box(&sm);
+                    let ok = sm.try_fire(BasicEvent::Next);
+                    black_box(ok);
+                    black_box(sm.state());
                 }
             }
             start.elapsed()
@@ -34,8 +36,9 @@ fn bench_guards_actions(c: &mut Criterion) {
             let start = std::time::Instant::now();
             for _ in 0..iters {
                 for _ in 0..OPS {
-                    sm.try_fire(GuardEvent::Next);
-                    black_box(&sm);
+                    let ok = sm.try_fire(GuardEvent::Next);
+                    black_box(ok);
+                    black_box(sm.state());
                 }
             }
             start.elapsed()
@@ -59,8 +62,9 @@ fn bench_payload(c: &mut Criterion) {
             let start = std::time::Instant::now();
             for _ in 0..iters {
                 for _ in 0..OPS {
-                    sm.try_fire(PayloadEvent::Next(p));
-                    black_box(&sm);
+                    let ok = sm.try_fire(PayloadEvent::Next(p));
+                    black_box(ok);
+                    black_box(sm.state());
                 }
             }
             start.elapsed()

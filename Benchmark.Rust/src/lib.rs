@@ -19,6 +19,7 @@ impl BasicStateMachine {
         Self { state: BasicState::A } 
     }
 
+    #[inline(always)]
     pub fn try_fire(&mut self, _event: BasicEvent) -> bool {
         let next = match self.state {
             BasicState::A => BasicState::B,
@@ -27,6 +28,11 @@ impl BasicStateMachine {
         };
         self.state = next;
         true
+    }
+    
+    #[inline(always)]
+    pub fn state(&self) -> BasicState {
+        self.state
     }
 }
 
@@ -42,7 +48,7 @@ pub enum BasicEvent {
 const MAX_COUNT: usize = 10;
 
 #[derive(Copy, Clone, Debug)]
-enum GuardState { Idle, Counting, Finished }
+pub enum GuardState { Idle, Counting, Finished }
 
 pub struct GuardStateMachine {
     state: GuardState,
@@ -54,6 +60,7 @@ impl GuardStateMachine {
         Self { state: GuardState::Idle, counter: 0 }
     }
 
+    #[inline(always)]
     pub fn try_fire(&mut self, _event: GuardEvent) -> bool {
         use GuardState::*;
 
@@ -75,6 +82,11 @@ impl GuardStateMachine {
         self.state = next;
         true
     }
+    
+    #[inline(always)]
+    pub fn state(&self) -> GuardState {
+        self.state
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -90,7 +102,7 @@ pub enum GuardEvent {
 pub struct Payload { pub value: i32 }
 
 #[derive(Copy, Clone, Debug)]
-enum PayloadState { Start, Accumulate, Done }
+pub enum PayloadState { Start, Accumulate, Done }
 
 pub struct PayloadStateMachine {
     state: PayloadState,
@@ -102,6 +114,7 @@ impl PayloadStateMachine {
         Self { state: PayloadState::Start, sum: 0 }
     }
 
+    #[inline(always)]
     pub fn try_fire(&mut self, event: PayloadEvent) -> bool {
         use PayloadState::*;
         
@@ -125,6 +138,11 @@ impl PayloadStateMachine {
         self.state = next;
         true
     }
+    
+    #[inline(always)]
+    pub fn state(&self) -> PayloadState {
+        self.state
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -137,7 +155,7 @@ pub enum PayloadEvent {
 /* ------------------------------------------------------------------------- */
 
 #[derive(Copy, Clone, Debug)]
-enum AsyncState { A, B }
+pub enum AsyncState { A, B }
 
 pub struct AsyncStateMachine {
     state: AsyncState,
@@ -148,6 +166,7 @@ impl AsyncStateMachine {
         Self { state: AsyncState::A }
     }
 
+    #[inline(always)]
     pub async fn try_fire(&mut self, _event: AsyncEvent) -> bool {
         tokio::task::yield_now().await;
         
@@ -158,9 +177,44 @@ impl AsyncStateMachine {
         self.state = next;
         true
     }
+    
+    #[inline(always)]
+    pub fn state(&self) -> AsyncState {
+        self.state
+    }
 }
 
 #[derive(Debug, Clone)]
 pub enum AsyncEvent {
     Next,
+}
+
+/* ------------------------------------------------------------------------- */
+/*  5. ASYNC HOT PATH – State machine without yield_now                    */
+/* ------------------------------------------------------------------------- */
+
+pub struct AsyncHotStateMachine {
+    state: AsyncState,
+}
+
+impl AsyncHotStateMachine {
+    pub fn new() -> Self {
+        Self { state: AsyncState::A }
+    }
+
+    #[inline(always)]
+    pub async fn try_fire(&mut self, _event: AsyncEvent) -> bool {
+        // No yield_now - hot path
+        let next = match self.state {
+            AsyncState::A => AsyncState::B,
+            AsyncState::B => AsyncState::A,
+        };
+        self.state = next;
+        true
+    }
+    
+    #[inline(always)]
+    pub fn state(&self) -> AsyncState {
+        self.state
+    }
 }

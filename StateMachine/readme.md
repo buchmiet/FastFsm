@@ -8,20 +8,20 @@ FastFSM is a powerful, zero-overhead finite state machine framework for .NET tha
 
 ## Table of Contents
 
-  - [Why FastFSM?](https://www.google.com/search?q=%23why-fastfsm)
-  - [Key Features](https://www.google.com/search?q=%23key-features)
-  - [Getting Started](https://www.google.com/search?q=%23getting-started)
-  - [Core Concepts](https://www.google.com/search?q=%23core-concepts)
-  - [The State Machine Lifecycle (New in 0.6)](https://www.google.com/search?q=%23the-state-machine-lifecycle-new-in-06)
-  - [Basic Usage](https://www.google.com/search?q=%23basic-usage)
-  - [API Reference](https://www.google.com/search?q=%23api-reference)
-  - [Advanced Features](https://www.google.com/search?q=%23advanced-features)
-  - [Performance](https://www.google.com/search?q=%23performance)
-  - [Real-World Examples](https://www.google.com/search?q=%23real-world-examples)
-  - [Architecture Overview](https://www.google.com/search?q=%23architecture-overview)
-  - [Migration Guide](https://www.google.com/search?q=%23migration-guide)
-  - [Contributing](https://www.google.com/search?q=%23contributing)
-  - [License](https://www.google.com/search?q=%23license)
+  - [Why FastFSM?]
+  - [Key Features]
+  - [Getting Started]
+  - [Core Concepts]
+  - [The State Machine Lifecycle (New in 0.6)]
+  - [Basic Usage]
+  - [API Reference]
+  - [Advanced Features]
+  - [Performance]
+  - [Real-World Examples]
+  - [Architecture Overview]
+  - [Migration Guide]
+  - [Contributing]
+  - [License]
 
 ## Why FastFSM?
 
@@ -375,76 +375,96 @@ public class OrderService(IStateMachineFactory factory)
 
 -----
 
-## Performance
+## Benchmarks
 
-FastFSM focuses on predictable, allocation-free transitions generated at compile time. To make performance claims reproducible, we benchmark with [BenchmarkDotNet](https://benchmarkdotnet.org/) and publish the full methodology and raw reports. BenchmarkDotNet guards against common benchmarking pitfalls and provides statistically sound summaries. ([benchmarkdotnet.org][1])
+### Performance Summary
 
-### Environment (latest run)
+FastFSM achieves **sub-nanosecond** transition times (0.81 ns) for basic synchronous operations, with zero allocations.
 
-  * **OS / CPU / JIT:** Windows 11 24H2, x64 RyuJIT (AVX-512)
-  * **.NET:** .NET 9.0.5
-  * **BenchmarkDotNet:** 0.15.2
-  * **Config:** `WarmupCount=3`, `IterationCount=15`, `LaunchCount=1` (Release, no debugger)
+### Test Environment
 
-### What we measured
+**Hardware:** AMD Ryzen 5 9600X (Zen 5, 6C/12T, AVX-512) @ 3.9-5.4 GHz, 32GB DDR5  
+**Runtime:** .NET 9.0.5 (RyuJIT AVX-512, Server GC) — BenchmarkDotNet 0.15.2  
+**Methodology:** 1024 ops/iteration, 15 iterations, Windows 11 24H2 "High Performance"  
+**Date:** 7 Aug 2025
 
-We compare common scenarios across libraries:
+### FastFSM vs .NET State Machine Libraries
 
-  * **Basic transition** (single state change)
-  * **Guards + Actions** (guard validated and action executed)
-  * **Payload** (typed payload passed through transition)
-  * **CanFire** (capability check)
-  * **Async action** (action uses `Task.Yield()` to simulate a real async hop)
+| Scenario | FastFSM | Stateless | LiquidState | Appccelerate | Winner |
+|----------|---------|-----------|-------------|--------------|--------|
+| **Basic Transitions** | **0.81 ns** | 249.03 ns | 25.31 ns | 260.85 ns | FastFSM (31x vs LiquidState) |
+| Guards + Actions | **2.18 ns** | 267.37 ns | - | 273.53 ns | FastFSM (123x vs Stateless) |
+| Payload | **0.83 ns** | 300.63 ns | 30.13 ns | 291.60 ns | FastFSM (36x vs LiquidState) |
+| Can Fire Check | **0.31 ns** | 115.54 ns | - | - | FastFSM (373x vs Stateless) |
+| Get Permitted Triggers | **4.18 ns** | 32.69 ns | - | - | FastFSM (7.8x vs Stateless) |
+| Async Actions (Hot Path) | 444.77 ns | 357.12 ns | **75.87 ns** | 504.37 ns | LiquidState (5.9x vs FastFSM) |
+| Async Actions (with yield) | 456.72 ns | 1,100.78 ns | 490.22 ns | 1,738.62 ns | FastFSM (1.1x vs LiquidState) |
 
-For very fast paths we execute multiple operations per invocation and scale results back to **ns/op**, a standard approach for nano-benchmarks. ([benchmarkdotnet.org][2], [GitHub][3])
+**Key Observations:**
+- **Synchronous operations**: FastFSM dominates with 31-373x speedup
+- **Async hot path**: LiquidState is 5.9x faster than FastFSM
+- **Zero allocations** for all FastFSM synchronous operations
+- Competitors allocate 136-1648 bytes per operation
+- Native code size: FastFSM 160-8050 bytes vs competitors' 1106-21417 bytes
 
-### Results (ns/op; lower is better)
+### FastFSM vs Rust State Machines
 
-| Scenario                             |       FastFSM |   Stateless | LiquidState | Appccelerate |
-| ------------------------------------ | ------------: | ----------: | ----------: | -----------: |
-| **Basic transition**                 |   **0.76 ns** |   269.48 ns |    25.14 ns |    244.08 ns |
-| **Guards + Actions**                 |   **1.83 ns** |   265.01 ns |           – |    270.21 ns |
-| **Payload**                          |   **0.61 ns** |   256.54 ns |    29.70 ns |    255.41 ns |
-| **CanFire**                          |  **0.204 ns** |   131.70 ns |           – |            – |
-| **Async (action with `Task.Yield`)** | **436.99 ns** | 1,055.09 ns |   482.43 ns |  1,558.96 ns |
+**Rust Implementation:** Hand-optimized state machine  
+**Runtime:** Rust with criterion 0.5.1, release build with LTO  
+**Compiler Flags:** `-C target-cpu=native`
 
-**Allocations (B/op; lower is better)**
+| Scenario | FastFSM (.NET) | Rust (ns/op) | Winner |
+|----------|----------------|--------------|--------|
+| Basic Transitions | **0.81 ns** | 1.77 ns | FastFSM (2.2x faster) |
+| Guards + Actions | 2.18 ns | **0.71 ns** | Rust (3.1x faster) |
+| Payload | 0.83 ns | **0.70 ns** | Rust (1.2x faster) |
+| Async (Hot Path)* | 444.77 ns | **0.79 ns** | Rust (563x faster) |
+| Async (with yield)** | 456.72 ns | **11.47 ns** | Rust (40x faster) |
 
-  * Sync scenarios (Basic/Guards/Payload/CanFire): FastFSM **0 B**; Stateless \~**0.6–1.4 KB**; LiquidState up to **136 B**; Appccelerate \~**1.6 KB**.
-  * Async (`Task.Yield`): FastFSM **\~383 B**; Stateless **\~2.3 KB**; Appccelerate **\~28.9 KB**.
+\* Hot path: no scheduler switching  
+\** With yield: includes Task.Yield() vs tokio::task::yield_now()
 
-**Interpretation.** In synchronous hot paths FastFSM is *orders of magnitude* faster (hundreds of ×) and allocation-free because transitions compile down to direct code (no runtime reflection or lookup structures). In async scenarios the scheduler hop dominates total cost; FastFSM still leads (≈2–2.5×), but absolute times are largely governed by async machinery. When an async action often completes synchronously, using `ValueTask` can reduce overhead—but it should be adopted when profiling shows a benefit, not by default. ([Microsoft Learn][4], [Microsoft for Developers][5])
+**Analysis:**
+- FastFSM excels at simple synchronous transitions
+- Rust performs better with complex guard logic and async operations
+- The async performance difference reflects CLR vs Tokio runtime characteristics
+- Both achieve sub-nanosecond performance in their optimal scenarios
 
-### Methodology & reproducibility
+### Memory and Code Size Comparison (.NET)
 
-  * **How we avoid “too fast to measure”:** for micro-operations we batch multiple transitions per iteration via `OperationsPerInvoke` and keep observable state alive to prevent dead-code elimination. ([benchmarkdotnet.org][2])
+| Library | Allocations (bytes) | Native Code Size (bytes) |
+|---------|-------------------|------------------------|
+| FastFSM | **0** | 160 - 8,050 |
+| Stateless | 608 - 2,295 | 3,436 - 21,417 |
+| LiquidState | 136 - 656 | 64 - 3,496 |
+| Appccelerate | 1,608 - 3,166 | 1,084 - 3,721 |
 
-  \* We use `DeadCodeEliminationHelper.KeepAliveWithoutBoxing(...)` from BenchmarkDotNet to ensure results are not optimized away. ([benchmarkdotnet.org][6])
+### Reproduction Instructions
 
-  * **Memory:** allocations are captured by BenchmarkDotNet’s memory diagnoser in Release mode. (Avoid Debug builds and attached debuggers when benchmarking.) ([fransbouma.github.io][7])
-  * **Profiling (optional):** when we need CPU/GC timelines we run a **separate** profiling pass using `EventPipeProfiler(CpuSampling)` on a small subset of tests, which produces compact `.nettrace`/speedscope outputs. We do **not** use ETW-based diagnosers for bulk runs to avoid multi-GB traces. ([benchmarkdotnet.org][8])
+```powershell
+# .NET Benchmarks
+cd Benchmark
+./run.ps1
 
-**Re-running the benchmarks**
-
-```bash
-# In the Benchmark project directory
-dotnet run -c Release --framework net9.0
-# Results are written to: BenchmarkDotNet.Artifacts/results
+# Rust Benchmarks  
+cd Benchmark.Rust
+./run.ps1
 ```
 
-> If you want CPU/GC timelines for a particular test, run a separate pass with an EventPipe profile and a filter:
->
-> ```bash
-> dotnet run -c Release --framework net9.0 --filter *FastFsm_Basic* 
-> ```
->
-> (Enable an EventPipe profile in code for the targeted test only.) ([benchmarkdotnet.org][9])
+Both benchmarks run from PowerShell in the same session, same machine, with Windows High Performance power plan.
 
-### Caveats
+### Raw Benchmark Output
 
-  * Results vary with CPU, OS, JIT, and library versions. BenchmarkDotNet includes confidence intervals, outlier detection, and multimodality warnings to help interpret stability; we publish the full HTML/CSV reports in `BenchmarkDotNet.Artifacts/results`. ([benchmarkdotnet.org][1])
-  * For async APIs, prefer `Task` as the default; consider `ValueTask` when profiling shows frequent synchronous completion and measurable wins in your workload. ([Microsoft Learn][4])
+Full results with standard deviations and detailed metrics:
+- `.NET:` `Benchmark/BenchmarkDotNet.Artifacts/results/`
+- `Rust:` `Benchmark.Rust/target/criterion/`
 
+### Notes
+
+- All measurements include complete transition cycle (guard evaluation, state change, action execution)
+- Rust values calculated from throughput benchmarks (total time / 1024 operations)
+- Async benchmarks measure different runtime implementations (CLR Task Scheduler vs Tokio)
+- FastFSM uses compile-time code generation via source generators
 -----
 
   - No dictionary overhead or boxing

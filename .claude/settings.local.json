@@ -11,7 +11,16 @@
       "Bash(rm:*)",
       "Bash(dotnet test:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(cargo +stable clean)",
+      "Bash(cargo +stable bench --no-run)",
+      "Bash(export PATH=\"$HOME/.cargo/bin:$PATH\")",
+      "Bash(cargo +stable bench --bench fsm_bench)",
+      "Bash(cargo +stable bench --bench fsm_async_bench)",
+      "Bash(export RUSTFLAGS=\"-C target-cpu=native\")",
+      "Bash(cargo clean:*)",
+      "Bash(cargo check:*)",
+      "Bash(cargo bench:*)"
     ],
     "deny": []
   }
