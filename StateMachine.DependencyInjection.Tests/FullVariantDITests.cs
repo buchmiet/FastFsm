@@ -21,6 +21,7 @@ public class FullVariantDiTests : DITestBase
 
         // Act
         var machine = GetService<IFullTestMachine>();
+        machine.Start();
 
         // Assert - Should implement extensible interface
         Assert.IsAssignableFrom<IExtensibleStateMachineSync<TestState, TestTrigger>>(machine);
@@ -39,6 +40,7 @@ public class FullVariantDiTests : DITestBase
 
         // Act
         var machine = GetService<IFullTestMachine>();
+        machine.Start();
         machine.TryFire(TestTrigger.Next, testData);
 
         // Assert
@@ -62,6 +64,7 @@ public class FullVariantDiTests : DITestBase
 
         var machine = GetService<IFullTestMachine>() as FullTestMachine; // Użyj var lub FullTestMachine
         Assert.NotNull(machine);
+        machine.Start();
         var result = machine.TryFire(TestTrigger.Next, testData);
 
         Assert.True(result);
@@ -95,6 +98,7 @@ public class FullVariantDiTests : DITestBase
 
         // Act
         var machine = GetService<IFullTestMachine>();
+        machine.Start();
         machine.Fire(TestTrigger.Next, testData);
 
         // Assert - All extensions received the payload
@@ -115,6 +119,7 @@ public class FullVariantDiTests : DITestBase
         // Act
         var machine = GetService<IFullTestMachine>() as FullTestMachine; // Użyj var lub FullTestMachine
         Assert.NotNull(machine);
+        machine.Start();
         var result = machine.TryFire(TestTrigger.Next, testData);
 
         // Assert
@@ -137,6 +142,7 @@ public class FullVariantDiTests : DITestBase
 
         // Act
         var machine = GetService<IFullTestMachine>();
+        machine.Start();
         var result = machine.TryFire(TestTrigger.Next, invalidData);
 
         // Assert - Transition failed

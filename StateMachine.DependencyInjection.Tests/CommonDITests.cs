@@ -43,7 +43,9 @@ public class CommonDITests : DITestBase
 
         // Act
         var instance1 = GetService<IPureTestMachine>();
+        instance1.Start();
         var instance2 = GetService<IPureTestMachine>();
+        instance2.Start();
 
         // Assert
         Assert.Same(instance1, instance2);
@@ -58,7 +60,9 @@ public class CommonDITests : DITestBase
 
         // Act
         var instance1 = GetService<IPureTestMachine>();
+        instance1.Start();
         var instance2 = GetService<IPureTestMachine>();
+        instance2.Start();
 
         // Assert
         Assert.NotSame(instance1, instance2);
@@ -75,7 +79,9 @@ public class CommonDITests : DITestBase
         using (var scope1 = CreateScope())
         {
             var instance1 = scope1.ServiceProvider.GetRequiredService<IPureTestMachine>();
+            instance1.Start();
             var instance2 = scope1.ServiceProvider.GetRequiredService<IPureTestMachine>();
+            instance2.Start();
             Assert.Same(instance1, instance2);
         }
 
@@ -86,11 +92,13 @@ public class CommonDITests : DITestBase
         using (var scope1 = CreateScope())
         {
             scopedInstance1 = scope1.ServiceProvider.GetRequiredService<IPureTestMachine>();
+            scopedInstance1.Start();
         }
 
         using (var scope2 = CreateScope())
         {
             scopedInstance2 = scope2.ServiceProvider.GetRequiredService<IPureTestMachine>();
+            scopedInstance2.Start();
         }
 
         Assert.NotSame(scopedInstance1, scopedInstance2);
@@ -106,6 +114,7 @@ public class CommonDITests : DITestBase
 
         // Act
         var machine = GetService<IPureTestMachine>();
+        machine.Start();
 
         // Assert
         Assert.Equal(expectedState, machine.CurrentState);
@@ -121,6 +130,7 @@ public class CommonDITests : DITestBase
 
         // Act
         var machine = GetService<IPureTestMachine>();
+        machine.Start();
 
         // Assert
         Assert.Equal(expectedState, machine.CurrentState);
@@ -137,6 +147,7 @@ public class CommonDITests : DITestBase
 
         // Act
         var machine = GetService<IPureTestMachine>();
+        machine.Start();
 
         // Assert
         Assert.Equal(expectedState, machine.CurrentState);
@@ -166,7 +177,9 @@ public class CommonDITests : DITestBase
 
         // Act
         var pureMachine = GetService<IPureTestMachine>();
+        pureMachine.Start();
         var basicMachine = GetService<IBasicTestMachine>();
+        basicMachine.Start();
 
         // Assert
         Assert.NotNull(pureMachine);
@@ -188,6 +201,7 @@ public class CommonDITests : DITestBase
 
         // Factory should create instances
         var machine = factory.Create(TestState.C);
+        machine.Start();
         Assert.Equal(TestState.C, machine.CurrentState);
     }
 
@@ -200,6 +214,7 @@ public class CommonDITests : DITestBase
 
         // Act
         var machine = GetService<IPureTestMachine>();
+        machine.Start();
         var result = machine.TryFire(TestTrigger.Next);
 
         // Assert
