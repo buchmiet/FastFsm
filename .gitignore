@@ -157,3 +157,11 @@ _pkginfo.txt
 
 *.sln.user
 nupkgs/
+
+# Ignorowanie folderów budowania i zależności dla projektu C++
+Benchmark.cpp/build/
+Benchmark.cpp/build-*/
+Benchmark.cpp/vcpkg_installed/
+
+# Ignorowanie artefaktów z BenchmarkDotNet
+Benchmark.Artifacts/

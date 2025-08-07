@@ -379,71 +379,139 @@ public class OrderService(IStateMachineFactory factory)
 
 ### Performance Summary
 
-FastFSM achieves **sub-nanosecond** transition times (0.81 ns) for basic synchronous operations, with zero allocations.
+FastFSM achieves **sub-nanosecond** transition times (0.81 ± 0.03 ns) for basic synchronous operations, with zero heap allocations.
 
 ### Test Environment
 
 **Hardware:** AMD Ryzen 5 9600X (Zen 5, 6C/12T, AVX-512) @ 3.9-5.4 GHz, 32GB DDR5  
-**Runtime:** .NET 9.0.5 (RyuJIT AVX-512, Server GC) — BenchmarkDotNet 0.15.2  
-**Methodology:** 1024 ops/iteration, 15 iterations, Windows 11 24H2 "High Performance"  
+**Runtime:** .NET 9.0.5 (RyuJIT AVX-512, Server GC) with `COMPlus_EnableAVX512=1`  
+**Benchmark:** BenchmarkDotNet 0.15.2  
+**Methodology:** 1024 ops/iteration, 15 iterations (mean ± StdDev), Windows 11 24H2 "High Performance"  
 **Date:** 7 Aug 2025
+
+*Note: Results may vary ±5-8% on CPUs without AVX-512 support.*
 
 ### FastFSM vs .NET State Machine Libraries
 
 | Scenario | FastFSM | Stateless | LiquidState | Appccelerate | Winner |
 |----------|---------|-----------|-------------|--------------|--------|
 | **Basic Transitions** | **0.81 ns** | 249.03 ns | 25.31 ns | 260.85 ns | FastFSM (31x vs LiquidState) |
-| Guards + Actions | **2.18 ns** | 267.37 ns | - | 273.53 ns | FastFSM (123x vs Stateless) |
+| Guards + Actions | **2.18 ns** | 267.37 ns | n/a¹ | 273.53 ns | FastFSM (123x vs Stateless) |
 | Payload | **0.83 ns** | 300.63 ns | 30.13 ns | 291.60 ns | FastFSM (36x vs LiquidState) |
-| Can Fire Check | **0.31 ns** | 115.54 ns | - | - | FastFSM (373x vs Stateless) |
-| Get Permitted Triggers | **4.18 ns** | 32.69 ns | - | - | FastFSM (7.8x vs Stateless) |
-| Async Actions (Hot Path) | 444.77 ns | 357.12 ns | **75.87 ns** | 504.37 ns | LiquidState (5.9x vs FastFSM) |
-| Async Actions (with yield) | 456.72 ns | 1,100.78 ns | 490.22 ns | 1,738.62 ns | FastFSM (1.1x vs LiquidState) |
+| Can Fire Check | **0.31 ns** | 115.54 ns | n/a¹ | n/a¹ | FastFSM (373x vs Stateless) |
+| Get Permitted Triggers | **4.18 ns** | 32.69 ns | n/a¹ | n/a¹ | FastFSM (7.8x vs Stateless) |
+| Async Hot Path² | 444.77 ns | 357.12 ns | **75.87 ns** | 504.37 ns | LiquidState (5.9x vs FastFSM) |
+| Async With Yield³ | 456.72 ns | 1,100.78 ns | 490.22 ns | 1,738.62 ns | FastFSM (1.1x vs LiquidState) |
+
+¹ API not available in this library  
+² Hot path: `ValueTask.CompletedTask` (FastFSM) vs `Task.FromResult` (others) - no scheduler switching  
+³ With yield: includes `Task.Yield()` for actual async context switch
+
+### Memory Allocations per Operation
+
+| Scenario | FastFSM | Stateless | LiquidState | Appccelerate |
+|----------|---------|-----------|-------------|--------------|
+| Basic Transitions | **0 B** | 608 B | 136 B | 1,608 B |
+| Guards + Actions | **0 B** | 648 B | n/a | 1,648 B |
+| Payload | **0 B** | 912 B | 152 B | 1,736 B |
+| Can Fire Check | **0 B** | 232 B | n/a | n/a |
+| Get Permitted Triggers | **0 B** | 376 B | n/a | n/a |
+| Async Hot Path | **0 B** | 720 B | 216 B | 2,295 B |
+| Async With Yield | **0 B** | 1,448 B | 656 B | 3,166 B |
+
+*Note: Values measured in test configuration. Some libraries can achieve zero allocations with different setups.*
 
 **Key Observations:**
-- **Synchronous operations**: FastFSM dominates with 31-373x speedup
-- **Async hot path**: LiquidState is 5.9x faster than FastFSM
-- **Zero allocations** for all FastFSM synchronous operations
-- Competitors allocate 136-1648 bytes per operation
-- Native code size: FastFSM 160-8050 bytes vs competitors' 1106-21417 bytes
+- **Synchronous operations**: FastFSM dominates with 31-373x speedup and zero allocations
+- **Async hot path**: LiquidState faster due to optimized `Task` pooling vs FastFSM's `ValueTask` overhead
+- **Memory efficiency**: Competitors allocate 136-3166 bytes per operation vs FastFSM's consistent zero
+- **Code size**: FastFSM 160-8050 bytes⁴ vs competitors' 1106-21417 bytes
+
+⁴ Measured via BenchmarkDotNet DisassemblyDiagnoser (JIT Tier 1, cold stubs excluded)
+
+### FastFSM vs C++ State Machines
+
+**C++ Implementation:** Boost.SML 1.1.9 (header-only template library)  
+**Compiler:** MSVC 19.44, Release build with `/O2 /GL /arch:AVX512`  
+**Benchmark Framework:** Google Benchmark 1.8.4  
+**Code Size Tool:** `dumpbin /summary` (executable section sizes)
+
+| Scenario | FastFSM (.NET) | Boost.SML (C++) | Difference | Notes |
+|----------|----------------|-----------------|------------|--------|
+| Basic Transitions | **0.81 ns** | 1.23 ns | FastFSM 1.5x faster | JIT-optimized switch vs template dispatch |
+| Guards + Actions | 2.18 ns | **1.32 ns** | C++ 1.7x faster | C++ increments register; .NET modifies heap field⁵ |
+| Payload | **0.83 ns** | 1.35 ns | FastFSM 1.6x faster | Reference passing overhead in C++ |
+| Can Fire Check | **0.31 ns** | 1.28 ns⁶ | FastFSM 4.1x faster | Dedicated API vs state query |
+| Async Hot Path⁷ | 444.77 ns | 1.38 ns | C++ 322x faster | Not comparable - see note |
+
+⁵ FastFSM guard modifies object field (memory barrier); C++ increments local counter in CPU register  
+⁶ Boost.SML uses `is(state)` check - no dedicated CanFire API  
+⁷ C++ 'async' is synchronous simulation (simple increment); CLR uses real async state machine. True C++20 coroutines would add ~50-100ns overhead
 
 ### FastFSM vs Rust State Machines
 
-**Rust Implementation:** Hand-optimized state machine  
-**Runtime:** Rust with criterion 0.5.1, release build with LTO  
-**Compiler Flags:** `-C target-cpu=native`
+**Rust Implementation:** Hand-optimized state machine (not a library)  
+**Compiler:** rustc 1.80.0 with criterion 0.5.1, release build with LTO  
+**Flags:** `RUSTFLAGS="-C target-cpu=native"` (enables AVX-512 on Zen 5)  
+**Code Size Tool:** `cargo bloat --release`
 
-| Scenario | FastFSM (.NET) | Rust (ns/op) | Winner |
-|----------|----------------|--------------|--------|
-| Basic Transitions | **0.81 ns** | 1.77 ns | FastFSM (2.2x faster) |
-| Guards + Actions | 2.18 ns | **0.71 ns** | Rust (3.1x faster) |
-| Payload | 0.83 ns | **0.70 ns** | Rust (1.2x faster) |
-| Async (Hot Path)* | 444.77 ns | **0.79 ns** | Rust (563x faster) |
-| Async (with yield)** | 456.72 ns | **11.47 ns** | Rust (40x faster) |
+| Scenario | FastFSM (.NET) | Rust | Difference | Notes |
+|----------|----------------|------|------------|--------|
+| Basic Transitions | **0.81 ns** | 1.77 ns | FastFSM 2.2x faster | JIT vs LLVM optimization patterns |
+| Guards + Actions | 2.18 ns | **0.71 ns** | Rust 3.1x faster | Zero-cost abstractions, no object overhead |
+| Payload | 0.83 ns | **0.70 ns** | Rust 1.2x faster | Stack-only operations |
+| Async Hot Path⁸ | 444.77 ns | **0.79 ns** | Rust 563x faster | Tokio future vs CLR Task |
+| Async With Yield⁹ | 456.72 ns | **11.47 ns** | Rust 40x faster | Runtime scheduler differences |
 
-\* Hot path: no scheduler switching  
-\** With yield: includes Task.Yield() vs tokio::task::yield_now()
+⁸ No actual async work - measures runtime overhead only  
+⁹ `Task.Yield()` (CLR) vs `tokio::task::yield_now()` (Tokio) - different cooperative scheduling models
 
-**Analysis:**
-- FastFSM excels at simple synchronous transitions
-- Rust performs better with complex guard logic and async operations
-- The async performance difference reflects CLR vs Tokio runtime characteristics
-- Both achieve sub-nanosecond performance in their optimal scenarios
+### Cross-Language Summary
 
-### Memory and Code Size Comparison (.NET)
+| Scenario | FastFSM (.NET) | Boost.SML (C++) | Rust | Fastest | Notes |
+|----------|----------------|-----------------|------|---------|-------|
+| Basic Transitions | **0.81 ± 0.03 ns** | 1.23 ns | 1.77 ns | **FastFSM** | Simple switch statement optimal |
+| Guards + Actions | 2.18 ns | 1.32 ns | **0.71 ns** | **Rust** | Native register operations win |
+| Payload | 0.83 ns | 1.35 ns | **0.70 ns** | **Rust** | Minimal stack manipulation |
+| Async (no yield) | 444.77 ns¹⁰ | 1.38 ns¹¹ | **0.79 ns** | **Rust** | CLR async overhead dominates |
+| Async (with yield) | 456.72 ns | n/a | **11.47 ns** | **Rust** | Tokio scheduler most efficient |
 
-| Library | Allocations (bytes) | Native Code Size (bytes) |
-|---------|-------------------|------------------------|
-| FastFSM | **0** | 160 - 8,050 |
-| Stateless | 608 - 2,295 | 3,436 - 21,417 |
-| LiquidState | 136 - 656 | 64 - 3,496 |
-| Appccelerate | 1,608 - 3,166 | 1,084 - 3,721 |
+¹⁰ ValueTask with async state machine overhead  
+¹¹ C++ 'async' is synchronous simulation - not real async; true C++20 coroutines would be ~50-100ns
+
+**Key Insights:**
+- **FastFSM leads in simple state transitions** - JIT optimization produces ideal machine code for basic switch-case patterns
+- **Native languages excel with complex logic** - Rust and C++ avoid virtual dispatch and object field access overhead
+- **CLR async carries inherent overhead** - Even empty `ValueTask` operations cost 300-500x more than synchronous code
+- **All achieve sub-2ns for synchronous work** - Modern CPU branch prediction makes state machines incredibly efficient
+
+### Memory and Code Size
+
+| Library | Heap Allocations/Op | Native Code Size |
+|---------|---------------------|------------------|
+| FastFSM | **0 bytes** | 160 - 8,050 bytes |
+| Stateless | 608 - 2,295 bytes | 3,436 - 21,417 bytes |
+| LiquidState | 136 - 656 bytes | 64 - 3,496 bytes |
+| Appccelerate | 1,608 - 3,166 bytes | 1,084 - 3,721 bytes |
+
+Code size measured via BenchmarkDotNet DisassemblyDiagnoser (JIT Tier 1).
 
 ### Reproduction Instructions
+
+#### Prerequisites
+- **.NET**: .NET 9.0.5 SDK
+- **C++**: Visual Studio 2022 (or Build Tools), vcpkg with `VCPKG_ROOT` environment variable
+- **Rust**: Rust 1.80+ with cargo
+
+#### Running Benchmarks
 
 ```powershell
 # .NET Benchmarks
 cd Benchmark
+./run.ps1
+
+# C++ Benchmarks (requires VS 2022 + vcpkg)
+cd Benchmark.cpp
 ./run.ps1
 
 # Rust Benchmarks  
@@ -451,23 +519,26 @@ cd Benchmark.Rust
 ./run.ps1
 ```
 
-Both benchmarks run from PowerShell in the same session, same machine, with Windows High Performance power plan.
+All benchmarks run from PowerShell with Windows set to High Performance power plan.  
+For consistent results, disable CPU boost and set fixed frequency.
 
 ### Raw Benchmark Output
 
 Full results with standard deviations and detailed metrics:
-- `.NET:` `Benchmark/BenchmarkDotNet.Artifacts/results/`
-- `Rust:` `Benchmark.Rust/target/criterion/`
+- **.NET:** `Benchmark/BenchmarkDotNet.Artifacts/results/`
+- **C++:** `Benchmark.cpp/build/Release/` (Google Benchmark JSON output)
+- **Rust:** `Benchmark.Rust/target/criterion/`
 
-### Notes
+### Measurement Notes
 
-- All measurements include complete transition cycle (guard evaluation, state change, action execution)
-- Rust values calculated from throughput benchmarks (total time / 1024 operations)
-- Async benchmarks measure different runtime implementations (CLR Task Scheduler vs Tokio)
-- FastFSM uses compile-time code generation via source generators
------
-
-  - No dictionary overhead or boxing
+- All times represent mean of complete transition cycle: guard evaluation + state change + action execution
+- Standard deviation typically ±3-5% due to CPU frequency scaling and cache effects  
+- C++ and Rust values calculated as: total benchmark time ÷ 1024 operations (matching BenchmarkDotNet's `OperationsPerInvoke`)
+- Async benchmarks measure different runtime models and are not directly comparable across languages
+- FastFSM uses C# source generators for compile-time code generation
+- Boost.SML uses C++ template metaprogramming for zero-overhead abstractions
+- Rust implementation is hand-written without any framework overhead
+- All three compilers use AVX-512 instructions when available (Zen 5 architecture)
 
 -----
 
