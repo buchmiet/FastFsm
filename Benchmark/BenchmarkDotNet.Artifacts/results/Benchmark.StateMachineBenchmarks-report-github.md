@@ -10,25 +10,28 @@ Runtime=.NET 9.0  IterationCount=15  LaunchCount=1
 WarmupCount=3  
 
 ```
-| Method                         | Mean          | Error       | StdDev      | Median        | Ratio | RatioSD | Code Size | Gen0   | Gen1   | Gen2   | Allocated | Alloc Ratio |
-|------------------------------- |--------------:|------------:|------------:|--------------:|------:|--------:|----------:|-------:|-------:|-------:|----------:|------------:|
-| FastFsm_AsyncActions_HotPath   |   447.8713 ns |  32.5042 ns |  30.4045 ns |   431.7477 ns | 1.931 |    0.13 |   8,050 B | 0.0124 |      - |      - |     383 B |        0.29 |
-| Stateless_AsyncActions         | 1,083.6309 ns |  45.9527 ns |  42.9841 ns | 1,060.6306 ns | 4.673 |    0.21 |   3,436 B | 0.0763 |      - |      - |    2295 B |        1.73 |
-| FastFsm_AsyncActions           |   419.4104 ns |   4.8770 ns |   4.5619 ns |   419.9227 ns | 1.809 |    0.04 |   8,050 B | 0.0143 | 0.0010 | 0.0010 |         - |        0.00 |
-| LiquidState_AsyncActions       |   472.2797 ns |  13.7446 ns |  11.4773 ns |   468.3027 ns | 2.037 |    0.07 |   3,496 B | 0.0372 |      - |      - |     656 B |        0.49 |
-| Appccelerate_AsyncActions      | 1,544.6467 ns |  79.2316 ns |  74.1133 ns | 1,590.6770 ns | 6.661 |    0.34 |   3,400 B | 0.1068 |      - |      - |    3167 B |        2.38 |
-| Stateless_Basic                |   232.0030 ns |   5.6063 ns |   5.2441 ns |   233.5582 ns | 1.000 |    0.03 |  20,432 B | 0.0441 |      - |      - |    1328 B |        1.00 |
-| FastFsm_Basic                  |     0.7149 ns |   0.0200 ns |   0.0187 ns |     0.7188 ns | 0.003 |    0.00 |     958 B |      - |      - |      - |         - |        0.00 |
-| LiquidState_Basic              |    24.5987 ns |   0.5881 ns |   0.5501 ns |    24.4516 ns | 0.106 |    0.00 |      64 B | 0.0045 |      - |      - |     136 B |        0.10 |
-| Appccelerate_Basic             |   248.5580 ns |  20.6467 ns |  19.3129 ns |   243.0314 ns | 1.072 |    0.08 |   3,705 B | 0.0534 |      - |      - |    1608 B |        1.21 |
-| Stateless_GuardsActions        |   275.4256 ns |  27.0754 ns |  24.0016 ns |   263.8973 ns | 1.188 |    0.10 |  20,910 B | 0.0453 |      - |      - |    1368 B |        1.03 |
-| FastFsm_GuardsActions          |     1.7949 ns |   0.0343 ns |   0.0304 ns |     1.8035 ns | 0.008 |    0.00 |   1,307 B |      - |      - |      - |         - |        0.00 |
-| Appccelerate_GuardsActions     |   257.4634 ns |   7.3985 ns |   6.9205 ns |   261.0994 ns | 1.110 |    0.04 |   3,696 B | 0.0548 |      - |      - |    1648 B |        1.24 |
-| Stateless_CanFire              |   119.3289 ns |   1.9913 ns |   1.7653 ns |   119.1593 ns | 0.515 |    0.01 |  13,157 B | 0.0201 |      - |      - |     608 B |        0.46 |
-| FastFsm_CanFire                |     0.3023 ns |   0.0075 ns |   0.0071 ns |     0.3048 ns | 0.001 |    0.00 |     890 B |      - |      - |      - |         - |        0.00 |
-| Stateless_GetPermittedTriggers |    30.3571 ns |   0.6775 ns |   0.6006 ns |    30.2614 ns | 0.131 |    0.00 |   3,761 B | 0.0075 |      - |      - |     224 B |        0.17 |
-| FastFsm_GetPermittedTriggers   |     3.9520 ns |   0.4690 ns |   0.4157 ns |     3.8380 ns | 0.017 |    0.00 |     979 B | 0.0011 |      - |      - |      32 B |        0.02 |
-| Stateless_Payload              |   939.7701 ns | 652.6321 ns | 578.5414 ns |   712.7052 ns | 4.053 |    2.41 |  21,823 B | 0.0458 |      - |      - |    1424 B |        1.07 |
-| FastFsm_Payload                |     0.6691 ns |   0.0289 ns |   0.0241 ns |     0.6643 ns | 0.003 |    0.00 |     160 B |      - |      - |      - |         - |        0.00 |
-| LiquidState_Payload            |    28.4487 ns |   3.0233 ns |   2.5246 ns |    27.9716 ns | 0.123 |    0.01 |      92 B | 0.0045 |      - |      - |     136 B |        0.10 |
-| Appccelerate_Payload           |   243.5755 ns |   8.9472 ns |   7.9315 ns |   240.5739 ns | 1.050 |    0.04 |   3,715 B | 0.0548 |      - |      - |    1648 B |        1.24 |
+| Method                            | Mean          | Error       | StdDev      | Ratio | RatioSD | Gen0   | Code Size | Gen1   | Gen2   | Allocated | Alloc Ratio |
+|---------------------------------- |--------------:|------------:|------------:|------:|--------:|-------:|----------:|-------:|-------:|----------:|------------:|
+| FastFsm_AsyncActions_HotPath      |   444.7676 ns |  10.4623 ns |   8.7365 ns | 1.800 |    0.16 | 0.0134 |   8,050 B | 0.0005 | 0.0005 |    2198 B |          NA |
+| Stateless_AsyncActions_HotPath    |   357.1208 ns |  34.4258 ns |  30.5175 ns | 1.446 |    0.17 | 0.0486 |   1,106 B |      - |      - |    1472 B |          NA |
+| LiquidState_AsyncActions_HotPath  |    75.8736 ns |   5.5882 ns |   4.9538 ns | 0.307 |    0.03 | 0.0080 |   1,133 B |      - |      - |     240 B |          NA |
+| Appccelerate_AsyncActions_HotPath |   504.3677 ns |  46.5029 ns |  43.4989 ns | 2.042 |    0.25 | 0.0610 |   1,084 B |      - |      - |    1840 B |          NA |
+| Stateless_AsyncActions            | 1,100.7773 ns |  65.2411 ns |  61.0266 ns | 4.456 |    0.46 | 0.0763 |   3,436 B |      - |      - |    2295 B |          NA |
+| FastFsm_AsyncActions              |   456.7177 ns |   9.5045 ns |   8.4255 ns | 1.849 |    0.16 | 0.0129 |   8,050 B |      - |      - |     384 B |          NA |
+| LiquidState_AsyncActions          |   490.2154 ns |  15.9519 ns |  14.9214 ns | 1.984 |    0.18 | 0.0219 |   3,496 B |      - |      - |     656 B |          NA |
+| Appccelerate_AsyncActions         | 1,738.6204 ns | 130.1788 ns | 108.7052 ns | 7.038 |    0.75 | 0.1049 |   3,400 B |      - |      - |    3166 B |          NA |
+| Stateless_Basic                   |   249.0328 ns |  25.3867 ns |  23.7468 ns | 1.008 |    0.13 | 0.0582 |  19,724 B | 0.0005 | 0.0005 |         - |          NA |
+| FastFsm_Basic                     |     0.8072 ns |   0.0769 ns |   0.0719 ns | 0.003 |    0.00 |      - |     958 B |      - |      - |         - |          NA |
+| LiquidState_Basic                 |    25.3087 ns |   0.6449 ns |   0.6032 ns | 0.102 |    0.01 | 0.0045 |      64 B |      - |      - |     136 B |          NA |
+| Appccelerate_Basic                |   260.8463 ns |  11.1830 ns |  10.4605 ns | 1.056 |    0.10 | 0.0534 |   3,710 B |      - |      - |    1608 B |          NA |
+| Stateless_GuardsActions           |   267.3683 ns |  22.2094 ns |  20.7747 ns | 1.082 |    0.12 | 0.0453 |  21,417 B |      - |      - |    1368 B |          NA |
+| FastFsm_GuardsActions             |     2.1843 ns |   0.2507 ns |   0.2345 ns | 0.009 |    0.00 |      - |   1,307 B |      - |      - |         - |          NA |
+| Appccelerate_GuardsActions        |   273.5329 ns |  23.1344 ns |  21.6399 ns | 1.107 |    0.13 | 0.0548 |   3,700 B |      - |      - |    1648 B |          NA |
+| Stateless_CanFire                 |   115.5406 ns |   1.0646 ns |   0.8311 ns | 0.468 |    0.04 | 0.0200 |  12,909 B |      - |      - |     608 B |          NA |
+| FastFsm_CanFire                   |     0.3115 ns |   0.0183 ns |   0.0171 ns | 0.001 |    0.00 |      - |     890 B |      - |      - |         - |          NA |
+| Stateless_GetPermittedTriggers    |    32.6867 ns |   2.9310 ns |   2.5983 ns | 0.132 |    0.02 | 0.0075 |   3,761 B |      - |      - |     224 B |          NA |
+| FastFsm_GetPermittedTriggers      |     4.1810 ns |   0.2397 ns |   0.2125 ns | 0.017 |    0.00 | 0.0011 |     979 B |      - |      - |      32 B |          NA |
+| Stateless_Payload                 |   300.6333 ns |  29.2027 ns |  27.3162 ns | 1.217 |    0.15 | 0.0472 |  21,397 B |      - |      - |    1424 B |          NA |
+| FastFsm_Payload                   |     0.8267 ns |   0.0746 ns |   0.0697 ns | 0.003 |    0.00 |      - |     160 B |      - |      - |         - |          NA |
+| LiquidState_Payload               |    30.1339 ns |   2.3156 ns |   2.0527 ns | 0.122 |    0.01 | 0.0049 |      92 B |      - |      - |     136 B |          NA |
+| Appccelerate_Payload              |   291.6003 ns |  23.9050 ns |  22.3608 ns | 1.180 |    0.14 | 0.0548 |   3,721 B |      - |      - |    1648 B |          NA |

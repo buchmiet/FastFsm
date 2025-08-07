@@ -1,5 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, Criterion, Throughput};
 use fsm_benchmark::*;
+use std::hint::black_box;
 
 fn bench_async(c: &mut Criterion) {
     let mut group = c.benchmark_group("statig_async_yield");
@@ -21,7 +22,24 @@ fn bench_async(c: &mut Criterion) {
                 for _ in 0..iters {
                     for _ in 0..OPS {
                         sm.try_fire(AsyncEvent::Next).await;
-                        black_box(&sm);
+                        black_box(sm.state());
+                    }
+                }
+                start.elapsed()
+            })
+        })
+    });
+
+    group.bench_function("statig_async_hot", |b| {
+        b.iter_custom(|iters| {
+            rt.block_on(async {
+                let mut sm = black_box(AsyncHotStateMachine::new());
+
+                let start = std::time::Instant::now();
+                for _ in 0..iters {
+                    for _ in 0..OPS {
+                        sm.try_fire(AsyncEvent::Next).await;
+                        black_box(sm.state());
                     }
                 }
                 start.elapsed()
