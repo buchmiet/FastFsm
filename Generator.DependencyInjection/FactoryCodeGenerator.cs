@@ -21,7 +21,6 @@ namespace Generator.DependencyInjection
             private const string ServiceCollectionExtensionsSuffix = "ServiceCollectionExtensions";
             private const string StateMachineContractsNamespace = "StateMachine.Contracts";
             private const string StateMachineFactoryInterface = "IStateMachineFactory";
-            private const string StateMachineWithPayloadFactoryInterface = "IStateMachineWithPayloadFactory";
             private const string StateMachineDINamespace = "StateMachine.DependencyInjection";
             private const string InitialStateProviderInterface = "IInitialStateProvider";
             private const string DINamespace = "Microsoft.Extensions.DependencyInjection";
@@ -83,23 +82,15 @@ namespace Generator.DependencyInjection
             {
                 _sb.WriteSummary($"Factory for creating {className} instances");
 
-                string factoryInterface;
-                if (_model.IsSinglePayloadVariant)
-                {
-                    var payloadType = _model.PayloadType!.UsageName;
-                    factoryInterface = $": {StateMachineContractsNamespace}.{StateMachineWithPayloadFactoryInterface}<I{className}, {stateTypeSimple}, {triggerTypeSimple}, {payloadType}>";
-                }
-                else
-                {
-                    factoryInterface = $": {StateMachineContractsNamespace}.{StateMachineFactoryInterface}<I{className}, {stateTypeSimple}, {triggerTypeSimple}>";
-                }
+                // All variants now use the same factory interface
+                string factoryInterface = $": {StateMachineContractsNamespace}.{StateMachineFactoryInterface}<I{className}, {stateTypeSimple}, {triggerTypeSimple}>";
 
                 using (_sb.Block($"internal sealed class {className}{FactorySuffix} {factoryInterface}"))
                 {
                     WriteFactoryFields();
                     WriteFactoryConstructor(className);
                     WriteCreateMethod(className, stateTypeSimple);
-                    WritePayloadCreateMethodIfNeeded(className, stateTypeSimple);
+                    WriteCreateStartedMethod(className, stateTypeSimple);
                 }
             }
 
@@ -158,17 +149,15 @@ namespace Generator.DependencyInjection
                 _sb.AppendLine();
             }
 
-            private void WritePayloadCreateMethodIfNeeded(string className, string stateTypeSimple)
+            private void WriteCreateStartedMethod(string className, string stateTypeSimple)
             {
-                if (_model.IsSinglePayloadVariant)
+                using (_sb.Block($"public I{className} CreateStarted({stateTypeSimple} initialState)"))
                 {
-                    var payloadType = _model.PayloadType!.UsageName;
-                    using (_sb.Block($"public I{className} Create({stateTypeSimple} initialState, {payloadType} defaultPayload)"))
-                    {
-                        _sb.AppendLine("// Create instance normally - payload can be passed to transitions");
-                        _sb.AppendLine("return Create(initialState);");
-                    }
+                    _sb.AppendLine($"var instance = Create(initialState);");
+                    _sb.AppendLine($"instance.Start();");
+                    _sb.AppendLine($"return instance;");
                 }
+                _sb.AppendLine();
             }
 
             private void WriteExtensionMethods(string className, string? userNamespace)
@@ -216,16 +205,8 @@ namespace Generator.DependencyInjection
             private void WriteFactoryRegistration(string fullFactoryName, string fullInterfaceName, string fullStateType, string fullTriggerType)
             {
                 _sb.AppendLine("// Register factory");
-                string factoryInterfaceType;
-                if (_model.IsSinglePayloadVariant)
-                {
-                    var payloadType = _model.PayloadType!.TypeOfName;
-                    factoryInterfaceType = $"typeof({StateMachineContractsNamespace}.{StateMachineWithPayloadFactoryInterface}<{fullInterfaceName}, {fullStateType}, {fullTriggerType}, {payloadType}>)";
-                }
-                else
-                {
-                    factoryInterfaceType = $"typeof({StateMachineContractsNamespace}.{StateMachineFactoryInterface}<{fullInterfaceName}, {fullStateType}, {fullTriggerType}>)";
-                }
+                // All variants now use the same factory interface
+                string factoryInterfaceType = $"typeof({StateMachineContractsNamespace}.{StateMachineFactoryInterface}<{fullInterfaceName}, {fullStateType}, {fullTriggerType}>)";
 
                 _sb.AppendLine("services.Add(new ServiceDescriptor(");
                 using (_sb.Indent())
@@ -260,16 +241,8 @@ namespace Generator.DependencyInjection
 
             private void WriteFactoryResolution(string fullInterfaceName, string fullStateType)
             {
-                string factoryInterface;
-                if (_model.IsSinglePayloadVariant)
-                {
-                    var payloadType = _model.PayloadType!.TypeOfName;
-                    factoryInterface = $"{StateMachineContractsNamespace}.{StateMachineWithPayloadFactoryInterface}<{fullInterfaceName}, {fullStateType}, {_model.TriggerType.UsageName}, {payloadType}>";
-                }
-                else
-                {
-                    factoryInterface = $"{StateMachineContractsNamespace}.{StateMachineFactoryInterface}<{fullInterfaceName}, {fullStateType}, {_model.TriggerType.UsageName}>";
-                }
+                // All variants now use the same factory interface
+                string factoryInterface = $"{StateMachineContractsNamespace}.{StateMachineFactoryInterface}<{fullInterfaceName}, {fullStateType}, {_model.TriggerType.UsageName}>";
                 _sb.AppendLine($"var factory = provider.GetRequiredService<{factoryInterface}>();");
                 _sb.AppendLine();
             }
