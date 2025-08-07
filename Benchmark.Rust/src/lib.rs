@@ -1,72 +1,38 @@
-//! Minimal finite state machine implementations for benchmarking
+//! Optimized finite state machine implementations for benchmarking
 
-// ─── lightweight stub so benchmarks compile without external crate ─────────────
-pub mod fsmentry {
-    #[derive(Clone)]
-    pub struct StateMachine<S: Copy> { 
-        state: S 
-    }
-    
-    impl<S: Copy> StateMachine<S> {
-        pub fn new(initial: S) -> Self { Self { state: initial } }
-        pub fn state(&self) -> S { self.state }
-        pub fn set_state(&mut self, s: S) { self.state = s; }
-        pub fn replace(&mut self, s: S) { self.state = s; }
-    }
-}
-
-/// Number of iterations an individual benchmark should perform.
+/// Number of iterations for benchmarks
 pub const OPS: usize = 1_024;
 
 /* ------------------------------------------------------------------------- */
 /*  1. BASIC – A → B → C → A                                               */
 /* ------------------------------------------------------------------------- */
 
-// --- Simple manual implementation for statig-style benchmark --------------
-
 #[derive(Copy, Clone, Debug)]
-enum BasicState { A, B, C }
+pub enum BasicState { A, B, C }
 
-pub struct BasicStatig {
+pub struct BasicStateMachine {
     state: BasicState,
 }
 
-impl BasicStatig {
+impl BasicStateMachine {
     pub fn new() -> Self { 
         Self { state: BasicState::A } 
     }
 
-    #[inline(never)]
-    pub fn step(&mut self) {
+    pub fn try_fire(&mut self, _event: BasicEvent) -> bool {
         let next = match self.state {
             BasicState::A => BasicState::B,
             BasicState::B => BasicState::C,
             BasicState::C => BasicState::A,
         };
         self.state = next;
+        true
     }
 }
 
-// --- Simple manual implementation for fsmentry-style benchmark ------------
-
-pub struct BasicFsmentry {
-    fsm: fsmentry::StateMachine<BasicState>,
-}
-
-impl BasicFsmentry {
-    pub fn new() -> Self { 
-        Self { fsm: fsmentry::StateMachine::new(BasicState::A) } 
-    }
-
-    #[inline(never)]
-    pub fn step(&mut self) {
-        let next = match self.fsm.state() {
-            BasicState::A => BasicState::B,
-            BasicState::B => BasicState::C,
-            BasicState::C => BasicState::A,
-        };
-        self.fsm.replace(next);
-    }
+#[derive(Debug, Clone)]
+pub enum BasicEvent {
+    Next,
 }
 
 /* ------------------------------------------------------------------------- */
@@ -76,60 +42,22 @@ impl BasicFsmentry {
 const MAX_COUNT: usize = 10;
 
 #[derive(Copy, Clone, Debug)]
-enum CounterState { Idle, Counting, Finished }
+enum GuardState { Idle, Counting, Finished }
 
-// Guard & action for statig variant
-pub struct GuardActionStatig {
-    state: CounterState,
+pub struct GuardStateMachine {
+    state: GuardState,
     counter: usize,
 }
 
-impl GuardActionStatig {
+impl GuardStateMachine {
     pub fn new() -> Self {
-        Self { state: CounterState::Idle, counter: 0 }
+        Self { state: GuardState::Idle, counter: 0 }
     }
 
-    #[inline(never)]
-    pub fn step(&mut self) {
-        use CounterState::*;
+    pub fn try_fire(&mut self, _event: GuardEvent) -> bool {
+        use GuardState::*;
 
         let next = match self.state {
-            Idle => {
-                // action – reset counter
-                self.counter = 0;
-                Counting
-            }
-            Counting => {
-                // guard: only proceed while counter < MAX_COUNT
-                if self.counter < MAX_COUNT {
-                    self.counter += 1; // action – increment
-                    Counting
-                } else {
-                    Finished
-                }
-            }
-            Finished => Idle,
-        };
-        self.state = next;
-    }
-}
-
-// Guard & action for fsmentry variant
-pub struct GuardActionFsmentry {
-    fsm: fsmentry::StateMachine<CounterState>,
-    counter: usize,
-}
-
-impl GuardActionFsmentry {
-    pub fn new() -> Self {
-        Self { fsm: fsmentry::StateMachine::new(CounterState::Idle), counter: 0 }
-    }
-
-    #[inline(never)]
-    pub fn step(&mut self) {
-        use CounterState::*;
-
-        let next = match self.fsm.state() {
             Idle => {
                 self.counter = 0;
                 Counting
@@ -144,8 +72,14 @@ impl GuardActionFsmentry {
             }
             Finished => Idle,
         };
-        self.fsm.replace(next);
+        self.state = next;
+        true
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum GuardEvent {
+    Next,
 }
 
 /* ------------------------------------------------------------------------- */
@@ -158,19 +92,20 @@ pub struct Payload { pub value: i32 }
 #[derive(Copy, Clone, Debug)]
 enum PayloadState { Start, Accumulate, Done }
 
-pub struct PayloadStatig {
+pub struct PayloadStateMachine {
     state: PayloadState,
     sum: i32,
 }
 
-impl PayloadStatig {
+impl PayloadStateMachine {
     pub fn new() -> Self {
         Self { state: PayloadState::Start, sum: 0 }
     }
 
-    #[inline(never)]
-    pub fn step(&mut self, payload: Payload) {
+    pub fn try_fire(&mut self, event: PayloadEvent) -> bool {
         use PayloadState::*;
+        
+        let PayloadEvent::Next(payload) = event;
 
         let next = match self.state {
             Start => {
@@ -188,38 +123,44 @@ impl PayloadStatig {
             Done => Start,
         };
         self.state = next;
+        true
     }
 }
 
-pub struct PayloadFsmentry {
-    fsm: fsmentry::StateMachine<PayloadState>,
-    sum: i32,
+#[derive(Debug, Clone)]
+pub enum PayloadEvent {
+    Next(Payload),
 }
 
-impl PayloadFsmentry {
+/* ------------------------------------------------------------------------- */
+/*  4. ASYNC – State machine with async transitions using tokio            */
+/* ------------------------------------------------------------------------- */
+
+#[derive(Copy, Clone, Debug)]
+enum AsyncState { A, B }
+
+pub struct AsyncStateMachine {
+    state: AsyncState,
+}
+
+impl AsyncStateMachine {
     pub fn new() -> Self {
-        Self { fsm: fsmentry::StateMachine::new(PayloadState::Start), sum: 0 }
+        Self { state: AsyncState::A }
     }
 
-    #[inline(never)]
-    pub fn step(&mut self, payload: Payload) {
-        use PayloadState::*;
-
-        let next = match self.fsm.state() {
-            Start => {
-                self.sum = 0;
-                Accumulate
-            }
-            Accumulate => {
-                self.sum += payload.value;
-                if self.sum.abs() > 1_000 {
-                    Done
-                } else {
-                    Accumulate
-                }
-            }
-            Done => Start,
+    pub async fn try_fire(&mut self, _event: AsyncEvent) -> bool {
+        tokio::task::yield_now().await;
+        
+        let next = match self.state {
+            AsyncState::A => AsyncState::B,
+            AsyncState::B => AsyncState::A,
         };
-        self.fsm.replace(next);
+        self.state = next;
+        true
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum AsyncEvent {
+    Next,
 }

@@ -4,13 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+statig = { version = "0.4", features = ["async"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+num_cpus = "1"
 futures = "0.3"
 async-trait = "0.1"
-statig = { version = "0.4.1", default-features = false, features = ["async"] }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
-# brak fsmentry – mamy stub
 
 [[bench]]
 name = "fsm_bench"
@@ -19,3 +20,8 @@ harness = false
 [[bench]]
 name = "fsm_async_bench"
 harness = false
+
+[profile.bench]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
