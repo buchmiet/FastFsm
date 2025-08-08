@@ -61,7 +61,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         var stateCount = allStates.Count;
         
         // Parent array (-1 for root states)
-        Sb.Append("private static readonly int[] s_parent = new int[] { ");
+        Sb.Append("        private static readonly int[] s_parent = new int[] { ");
         var parentValues = allStates.Select(state =>
         {
             if (Model.ParentOf.TryGetValue(state, out var parent) && parent != null)
@@ -75,7 +75,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine(" };");
         
         // Depth array
-        Sb.Append("private static readonly int[] s_depth = new int[] { ");
+        Sb.Append("        private static readonly int[] s_depth = new int[] { ");
         var depthValues = allStates.Select(state =>
         {
             if (Model.Depth.TryGetValue(state, out var depth))
@@ -88,7 +88,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine(" };");
         
         // Initial child array (-1 for non-composites)
-        Sb.Append("private static readonly int[] s_initialChild = new int[] { ");
+        Sb.Append("        private static readonly int[] s_initialChild = new int[] { ");
         var initialValues = allStates.Select(state =>
         {
             if (Model.InitialChildOf.TryGetValue(state, out var initial) && initial != null)
@@ -102,8 +102,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine(" };");
         
         // History mode array
-        AddUsing("Abstractions.Attributes");
-        Sb.Append("private static readonly HistoryMode[] s_history = new HistoryMode[] { ");
+        Sb.Append("        private static readonly HistoryMode[] s_history = new HistoryMode[] { ");
         var historyValues = allStates.Select(state =>
         {
             if (Model.HistoryOf.TryGetValue(state, out var history))
@@ -1028,8 +1027,18 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine();
     }
 
-    protected virtual IEnumerable<string> GetAdditionalUsings() =>
-        [];
+    protected virtual IEnumerable<string> GetAdditionalUsings()
+    {
+        var usings = new List<string>();
+        
+        // Add Abstractions.Attributes for HSM (HistoryMode enum)
+        if (Model.HierarchyEnabled)
+        {
+            usings.Add("Abstractions.Attributes");
+        }
+        
+        return usings;
+    }
 
     #endregion
 

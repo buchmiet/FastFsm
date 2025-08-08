@@ -1,21 +1,12 @@
-﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
-using BenchmarkDotNet.Attributes;
+﻿using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
-using BenchmarkDotNet.Order;
-using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Engines;
-using BenchmarkDotNet.Columns;
 
 // FastFSM
 using Abstractions.Attributes;
-using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Diagnostics.Windows.Configs;
 using LiquidState;
 
 // Stateless
-using Stateless;
 
 // LiquidState aliases
 using LS = LiquidState.Synchronous.Core;
@@ -27,514 +18,513 @@ using AC = Appccelerate.StateMachine;                 // root (PassiveStateMachi
 using ACCM = Appccelerate.StateMachine.Machine;       // sync builder
 using ACCA = Appccelerate.StateMachine.AsyncMachine;  // async builder
 
-namespace Benchmark
+namespace Benchmark;
+
+// ===== Shared enums & payload =====
+public enum State { A, B, C }
+public enum Trigger { Next }
+
+public class PayloadData
 {
-    // ===== Shared enums & payload =====
-    public enum State { A, B, C }
-    public enum Trigger { Next }
+    public int Value { get; set; }
+    public string Message { get; set; } = "";
+}
 
-    public class PayloadData
+// ===== FastFSM implementations =====
+[StateMachine(typeof(State), typeof(Trigger))]
+public partial class FastFsmBasic
+{
+    [Transition(State.A, Trigger.Next, State.B)]
+    [Transition(State.B, Trigger.Next, State.C)]
+    [Transition(State.C, Trigger.Next, State.A)]
+    private void Configure() { }
+}
+
+[StateMachine(typeof(State), typeof(Trigger))]
+public partial class FastFsmWithGuardsActions
+{
+    private int _counter;
+    private const int GuardLimit = int.MaxValue; // ujednolicone z innymi implementacjami
+
+    [Transition(State.A, Trigger.Next, State.B, Guard = nameof(CanTransition), Action = nameof(IncrementCounter))]
+    [Transition(State.B, Trigger.Next, State.C, Guard = nameof(CanTransition), Action = nameof(IncrementCounter))]
+    [Transition(State.C, Trigger.Next, State.A, Guard = nameof(CanTransition), Action = nameof(IncrementCounter))]
+    private void Configure() { }
+
+    private bool CanTransition() => _counter < GuardLimit;
+    private void IncrementCounter() => _counter++;
+}
+
+[StateMachine(typeof(State), typeof(Trigger))]
+[PayloadType(typeof(PayloadData))]
+public partial class FastFsmWithPayload
+{
+    private int _sum;
+
+    [Transition(State.A, Trigger.Next, State.B, Action = nameof(ProcessPayload))]
+    [Transition(State.B, Trigger.Next, State.C, Action = nameof(ProcessPayload))]
+    [Transition(State.C, Trigger.Next, State.A, Action = nameof(ProcessPayload))]
+    private void Configure() { }
+
+    private void ProcessPayload(PayloadData data) => _sum += data.Value;
+}
+
+[StateMachine(typeof(State), typeof(Trigger))]
+public partial class FastFsmAsyncActions
+{
+    private int _asyncCounter;
+
+    // Wariant "real async" (scheduler hop). Do hot-path patrz niżej w benchmarkach (metoda bez yield).
+    [Transition(State.A, Trigger.Next, State.B, Action = nameof(ProcessAsyncYield))]
+    [Transition(State.B, Trigger.Next, State.C, Action = nameof(ProcessAsyncYield))]
+    [Transition(State.C, Trigger.Next, State.A, Action = nameof(ProcessAsyncYield))]
+    private void Configure() { }
+
+    private async ValueTask ProcessAsyncYield()
     {
-        public int Value { get; set; }
-        public string Message { get; set; } = "";
+        await Task.Yield();
+        _asyncCounter++;
     }
 
-    // ===== FastFSM implementations =====
-    [StateMachine(typeof(State), typeof(Trigger))]
-    public partial class FastFsmBasic
+    // Dodatkowy callback do hot-path (bez przełączania kontekstu)
+    private ValueTask ProcessAsyncCompleted()
     {
-        [Transition(State.A, Trigger.Next, State.B)]
-        [Transition(State.B, Trigger.Next, State.C)]
-        [Transition(State.C, Trigger.Next, State.A)]
-        private void Configure() { }
+        _asyncCounter++;
+        return ValueTask.CompletedTask;
     }
+}
 
-    [StateMachine(typeof(State), typeof(Trigger))]
-    public partial class FastFsmWithGuardsActions
+// ===== Benchmarks =====
+// Uwaga: HardwareCounters wymagają Windows, uprawnień Administratora i braku Hyper-V.
+// W przeciwnym razie kolumny CPU nie pojawią się w raporcie.
+[SimpleJob(RuntimeMoniker.Net90, launchCount: 1, warmupCount: 3, iterationCount: 15)]
+[MemoryDiagnoser]
+[DisassemblyDiagnoser(maxDepth: 3)]
+  
+public class StateMachineBenchmarks
+{
+    private const int Ops = 1024; // liczba operacji na jedno wywołanie benchmarku
+
+    // ---------- Stateless ----------
+    private Stateless.StateMachine<State, Trigger> _statelessBasic = null!;
+    private Stateless.StateMachine<State, Trigger> _statelessGuardsActions = null!;
+    private Stateless.StateMachine<State, Trigger> _statelessPayload = null!;
+    private Stateless.StateMachine<State, Trigger>.TriggerWithParameters<PayloadData> _statelessPayloadTrigger = null!;
+    private Stateless.StateMachine<State, Trigger> _statelessAsyncActions = null!;
+    private Stateless.StateMachine<State, Trigger> _statelessAsyncActionsHot = null!;
+    private int _statelessCounter;
+    private int _statelessPayloadSum;
+    private int _statelessAsyncCounter;
+    private int _statelessAsyncCounterHot;
+
+    // ---------- FastFSM ----------
+    private FastFsmBasic _fastFsmBasic = null!;
+    private FastFsmWithGuardsActions _fastFsmGuardsActions = null!;
+    private FastFsmWithPayload _fastFsmPayload = null!;
+    private FastFsmAsyncActions _fastFsmAsyncActions = null!;
+
+    // ---------- LiquidState ----------
+    private LS.IStateMachine<State, Trigger> _liquidStateBasic = null!;
+    private LS.IStateMachine<State, Trigger> _liquidStatePayload = null!;
+    private LSC.ParameterizedTrigger<Trigger, PayloadData> _liquidStatePayloadTrigger = null!;
+    private LSA.IAwaitableStateMachine<State, Trigger> _liquidStateAsyncActions = null!;
+    private LSA.IAwaitableStateMachine<State, Trigger> _liquidStateAsyncActionsHot = null!;
+    private int _liquidStatePayloadSum;
+    private int _liquidStateAsyncCounter;
+    private int _liquidStateAsyncCounterHot;
+
+    // ---------- Appccelerate ----------
+    private AC.PassiveStateMachine<State, Trigger> _appccBasic = null!;
+    private AC.PassiveStateMachine<State, Trigger> _appccGuards = null!;
+    private AC.PassiveStateMachine<State, Trigger> _appccPayload = null!;
+    private AC.AsyncPassiveStateMachine<State, Trigger> _appccAsync = null!;
+    private AC.AsyncPassiveStateMachine<State, Trigger> _appccAsyncHot = null!;
+    private int _appccCounter;
+    private int _appccPayloadSum;
+    private int _appccAsyncCounter;
+    private int _appccAsyncCounterHot;
+
+    // ---------- Shared ----------
+    private PayloadData _payloadData = null!;
+    private const int GuardLimit = int.MaxValue;
+
+    // Helpers for Stateless guards/actions
+    private bool CanTransition() => _statelessCounter < GuardLimit;
+    private void IncrementCounter() => _statelessCounter++;
+
+    [GlobalSetup]
+    public async Task Setup()
     {
-        private int _counter;
-        private const int GuardLimit = int.MaxValue; // ujednolicone z innymi implementacjami
+        // ===== FastFSM =====
+        _fastFsmBasic = new FastFsmBasic(State.A);
+        _fastFsmBasic.Start();
+        _fastFsmGuardsActions = new FastFsmWithGuardsActions(State.A);
+        _fastFsmGuardsActions.Start();
+        _fastFsmPayload = new FastFsmWithPayload(State.A);
+        _fastFsmPayload.Start();
+        _fastFsmAsyncActions = new FastFsmAsyncActions(State.A);
+        await _fastFsmAsyncActions.StartAsync();
 
-        [Transition(State.A, Trigger.Next, State.B, Guard = nameof(CanTransition), Action = nameof(IncrementCounter))]
-        [Transition(State.B, Trigger.Next, State.C, Guard = nameof(CanTransition), Action = nameof(IncrementCounter))]
-        [Transition(State.C, Trigger.Next, State.A, Guard = nameof(CanTransition), Action = nameof(IncrementCounter))]
-        private void Configure() { }
+        // ===== Stateless =====
+        _statelessBasic = new Stateless.StateMachine<State, Trigger>(State.A);
+        _statelessBasic.Configure(State.A).Permit(Trigger.Next, State.B);
+        _statelessBasic.Configure(State.B).Permit(Trigger.Next, State.C);
+        _statelessBasic.Configure(State.C).Permit(Trigger.Next, State.A);
 
-        private bool CanTransition() => _counter < GuardLimit;
-        private void IncrementCounter() => _counter++;
-    }
+        _statelessGuardsActions = new Stateless.StateMachine<State, Trigger>(State.A);
+        _statelessGuardsActions.Configure(State.A)
+            .PermitIf(Trigger.Next, State.B, CanTransition)
+            .OnExit(IncrementCounter);
+        _statelessGuardsActions.Configure(State.B)
+            .PermitIf(Trigger.Next, State.C, CanTransition)
+            .OnExit(IncrementCounter);
+        _statelessGuardsActions.Configure(State.C)
+            .PermitIf(Trigger.Next, State.A, CanTransition)
+            .OnExit(IncrementCounter);
 
-    [StateMachine(typeof(State), typeof(Trigger))]
-    [PayloadType(typeof(PayloadData))]
-    public partial class FastFsmWithPayload
-    {
-        private int _sum;
+        _statelessPayload = new Stateless.StateMachine<State, Trigger>(State.A);
+        _statelessPayloadTrigger = _statelessPayload.SetTriggerParameters<PayloadData>(Trigger.Next);
+        _statelessPayload.Configure(State.A)
+            .Permit(Trigger.Next, State.B)
+            .OnEntryFrom(_statelessPayloadTrigger, d => _statelessPayloadSum += d.Value);
+        _statelessPayload.Configure(State.B)
+            .Permit(Trigger.Next, State.C)
+            .OnEntryFrom(_statelessPayloadTrigger, d => _statelessPayloadSum += d.Value);
+        _statelessPayload.Configure(State.C)
+            .Permit(Trigger.Next, State.A)
+            .OnEntryFrom(_statelessPayloadTrigger, d => _statelessPayloadSum += d.Value);
 
-        [Transition(State.A, Trigger.Next, State.B, Action = nameof(ProcessPayload))]
-        [Transition(State.B, Trigger.Next, State.C, Action = nameof(ProcessPayload))]
-        [Transition(State.C, Trigger.Next, State.A, Action = nameof(ProcessPayload))]
-        private void Configure() { }
-
-        private void ProcessPayload(PayloadData data) => _sum += data.Value;
-    }
-
-    [StateMachine(typeof(State), typeof(Trigger))]
-    public partial class FastFsmAsyncActions
-    {
-        private int _asyncCounter;
-
-        // Wariant "real async" (scheduler hop). Do hot-path patrz niżej w benchmarkach (metoda bez yield).
-        [Transition(State.A, Trigger.Next, State.B, Action = nameof(ProcessAsyncYield))]
-        [Transition(State.B, Trigger.Next, State.C, Action = nameof(ProcessAsyncYield))]
-        [Transition(State.C, Trigger.Next, State.A, Action = nameof(ProcessAsyncYield))]
-        private void Configure() { }
-
-        private async ValueTask ProcessAsyncYield()
+        _statelessAsyncActions = new Stateless.StateMachine<State, Trigger>(State.A);
+        async Task DoAsync()
         {
             await Task.Yield();
-            _asyncCounter++;
+            _statelessAsyncCounter++;
         }
+        _statelessAsyncActions.Configure(State.A)
+            .Permit(Trigger.Next, State.B)
+            .OnExitAsync(DoAsync);
+        _statelessAsyncActions.Configure(State.B)
+            .Permit(Trigger.Next, State.C)
+            .OnExitAsync(DoAsync);
+        _statelessAsyncActions.Configure(State.C)
+            .Permit(Trigger.Next, State.A)
+            .OnExitAsync(DoAsync);
 
-        // Dodatkowy callback do hot-path (bez przełączania kontekstu)
-        private ValueTask ProcessAsyncCompleted()
+        // Hot path variant (no Task.Yield)
+        _statelessAsyncActionsHot = new Stateless.StateMachine<State, Trigger>(State.A);
+        async Task DoAsyncHot()
         {
-            _asyncCounter++;
-            return ValueTask.CompletedTask;
+            _statelessAsyncCounterHot++;
+            await Task.CompletedTask;
         }
+        _statelessAsyncActionsHot.Configure(State.A)
+            .Permit(Trigger.Next, State.B)
+            .OnExitAsync(DoAsyncHot);
+        _statelessAsyncActionsHot.Configure(State.B)
+            .Permit(Trigger.Next, State.C)
+            .OnExitAsync(DoAsyncHot);
+        _statelessAsyncActionsHot.Configure(State.C)
+            .Permit(Trigger.Next, State.A)
+            .OnExitAsync(DoAsyncHot);
+
+        // ===== LiquidState =====
+        var liquidStateBasicConfig = StateMachineFactory.CreateConfiguration<State, Trigger>();
+        liquidStateBasicConfig.ForState(State.A).Permit(Trigger.Next, State.B);
+        liquidStateBasicConfig.ForState(State.B).Permit(Trigger.Next, State.C);
+        liquidStateBasicConfig.ForState(State.C).Permit(Trigger.Next, State.A);
+        _liquidStateBasic = StateMachineFactory.Create(State.A, liquidStateBasicConfig);
+
+        var liquidStatePayloadConfig = StateMachineFactory.CreateConfiguration<State, Trigger>();
+        _liquidStatePayloadTrigger = liquidStatePayloadConfig.SetTriggerParameter<PayloadData>(Trigger.Next);
+        liquidStatePayloadConfig.ForState(State.A)
+            .Permit(_liquidStatePayloadTrigger, State.B, d => _liquidStatePayloadSum += d.Value);
+        liquidStatePayloadConfig.ForState(State.B)
+            .Permit(_liquidStatePayloadTrigger, State.C, d => _liquidStatePayloadSum += d.Value);
+        liquidStatePayloadConfig.ForState(State.C)
+            .Permit(_liquidStatePayloadTrigger, State.A, d => _liquidStatePayloadSum += d.Value);
+        _liquidStatePayload = StateMachineFactory.Create(State.A, liquidStatePayloadConfig);
+
+        var liquidStateAsyncConfig = StateMachineFactory.CreateAwaitableConfiguration<State, Trigger>();
+        async Task DoLiquidAsync()
+        {
+            await Task.Yield();
+            _liquidStateAsyncCounter++;
+        }
+        liquidStateAsyncConfig.ForState(State.A)
+            .Permit(Trigger.Next, State.B)
+            .OnExit(DoLiquidAsync);
+        liquidStateAsyncConfig.ForState(State.B)
+            .Permit(Trigger.Next, State.C)
+            .OnExit(DoLiquidAsync);
+        liquidStateAsyncConfig.ForState(State.C)
+            .Permit(Trigger.Next, State.A)
+            .OnExit(DoLiquidAsync);
+        _liquidStateAsyncActions = StateMachineFactory.Create(State.A, liquidStateAsyncConfig);
+
+        // Hot path variant (no Task.Yield)
+        var liquidStateAsyncHotConfig = StateMachineFactory.CreateAwaitableConfiguration<State, Trigger>();
+        async Task DoLiquidAsyncHot()
+        {
+            _liquidStateAsyncCounterHot++;
+            await Task.CompletedTask;
+        }
+        liquidStateAsyncHotConfig.ForState(State.A)
+            .Permit(Trigger.Next, State.B)
+            .OnExit(DoLiquidAsyncHot);
+        liquidStateAsyncHotConfig.ForState(State.B)
+            .Permit(Trigger.Next, State.C)
+            .OnExit(DoLiquidAsyncHot);
+        liquidStateAsyncHotConfig.ForState(State.C)
+            .Permit(Trigger.Next, State.A)
+            .OnExit(DoLiquidAsyncHot);
+        _liquidStateAsyncActionsHot = StateMachineFactory.Create(State.A, liquidStateAsyncHotConfig);
+
+        // ===== Appccelerate =====
+        // Basic
+        var b = new ACCM.StateMachineDefinitionBuilder<State, Trigger>();
+        b.WithInitialState(State.A);
+        b.In(State.A).On(Trigger.Next).Goto(State.B);
+        b.In(State.B).On(Trigger.Next).Goto(State.C);
+        b.In(State.C).On(Trigger.Next).Goto(State.A);
+        _appccBasic = b.Build().CreatePassiveStateMachine();
+        _appccBasic.Start();
+
+        // Guards + Actions
+        var g = new ACCM.StateMachineDefinitionBuilder<State, Trigger>();
+        g.WithInitialState(State.A);
+        g.In(State.A).On(Trigger.Next)
+            .If(() => _appccCounter < GuardLimit).Goto(State.B)
+            .Execute(() => _appccCounter++);
+        g.In(State.B).On(Trigger.Next)
+            .If(() => _appccCounter < GuardLimit).Goto(State.C)
+            .Execute(() => _appccCounter++);
+        g.In(State.C).On(Trigger.Next)
+            .If(() => _appccCounter < GuardLimit).Goto(State.A)
+            .Execute(() => _appccCounter++);
+        _appccGuards = g.Build().CreatePassiveStateMachine();
+        _appccGuards.Start();
+
+        // Payload
+        _payloadData = new PayloadData { Value = 42, Message = "Test" };
+        var p = new ACCM.StateMachineDefinitionBuilder<State, Trigger>();
+        p.WithInitialState(State.A);
+        p.In(State.A).On(Trigger.Next).Goto(State.B).Execute<PayloadData>(d => _appccPayloadSum += d.Value);
+        p.In(State.B).On(Trigger.Next).Goto(State.C).Execute<PayloadData>(d => _appccPayloadSum += d.Value);
+        p.In(State.C).On(Trigger.Next).Goto(State.A).Execute<PayloadData>(d => _appccPayloadSum += d.Value);
+        _appccPayload = p.Build().CreatePassiveStateMachine();
+        _appccPayload.Start();
+
+        // Async
+        var a = new ACCA.StateMachineDefinitionBuilder<State, Trigger>();
+        a.WithInitialState(State.A);
+        a.In(State.A).On(Trigger.Next).Goto(State.B).Execute(async () =>
+        {
+            await Task.Yield();
+            _appccAsyncCounter++;
+        });
+        a.In(State.B).On(Trigger.Next).Goto(State.C).Execute(async () =>
+        {
+            await Task.Yield();
+            _appccAsyncCounter++;
+        });
+        a.In(State.C).On(Trigger.Next).Goto(State.A).Execute(async () =>
+        {
+            await Task.Yield();
+            _appccAsyncCounter++;
+        });
+
+        var asyncDef = a.Build();
+        _appccAsync = asyncDef.CreatePassiveStateMachine();
+        _appccAsync.Start().GetAwaiter().GetResult();
+
+        // Hot path variant (no Task.Yield)
+        var ah = new ACCA.StateMachineDefinitionBuilder<State, Trigger>();
+        ah.WithInitialState(State.A);
+        ah.In(State.A).On(Trigger.Next).Goto(State.B).Execute(async () =>
+        {
+            _appccAsyncCounterHot++;
+            await Task.CompletedTask;
+        });
+        ah.In(State.B).On(Trigger.Next).Goto(State.C).Execute(async () =>
+        {
+            _appccAsyncCounterHot++;
+            await Task.CompletedTask;
+        });
+        ah.In(State.C).On(Trigger.Next).Goto(State.A).Execute(async () =>
+        {
+            _appccAsyncCounterHot++;
+            await Task.CompletedTask;
+        });
+        var asyncHotDef = ah.Build();
+        _appccAsyncHot = asyncHotDef.CreatePassiveStateMachine();
+        _appccAsyncHot.Start().GetAwaiter().GetResult();
     }
 
-    // ===== Benchmarks =====
-    // Uwaga: HardwareCounters wymagają Windows, uprawnień Administratora i braku Hyper-V.
-    // W przeciwnym razie kolumny CPU nie pojawią się w raporcie.
-    [SimpleJob(RuntimeMoniker.Net90, launchCount: 1, warmupCount: 3, iterationCount: 15)]
-    [MemoryDiagnoser]
-    [DisassemblyDiagnoser(maxDepth: 3)]
-  
-    public class StateMachineBenchmarks
+    // ===== Basic =====
+    [Benchmark(Baseline = true, OperationsPerInvoke = Ops), BenchmarkCategory("Basic")]
+    public void Stateless_Basic()
     {
-        private const int Ops = 1024; // liczba operacji na jedno wywołanie benchmarku
+        for (int i = 0; i < Ops; i++) _statelessBasic.Fire(Trigger.Next);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_statelessBasic);
+    }
 
-        // ---------- Stateless ----------
-        private Stateless.StateMachine<State, Trigger> _statelessBasic = null!;
-        private Stateless.StateMachine<State, Trigger> _statelessGuardsActions = null!;
-        private Stateless.StateMachine<State, Trigger> _statelessPayload = null!;
-        private Stateless.StateMachine<State, Trigger>.TriggerWithParameters<PayloadData> _statelessPayloadTrigger = null!;
-        private Stateless.StateMachine<State, Trigger> _statelessAsyncActions = null!;
-        private Stateless.StateMachine<State, Trigger> _statelessAsyncActionsHot = null!;
-        private int _statelessCounter;
-        private int _statelessPayloadSum;
-        private int _statelessAsyncCounter;
-        private int _statelessAsyncCounterHot;
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Basic")]
+    public void FastFsm_Basic()
+    {
+        for (int i = 0; i < Ops; i++) _fastFsmBasic.TryFire(Trigger.Next);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmBasic.CurrentState);
+    }
 
-        // ---------- FastFSM ----------
-        private FastFsmBasic _fastFsmBasic = null!;
-        private FastFsmWithGuardsActions _fastFsmGuardsActions = null!;
-        private FastFsmWithPayload _fastFsmPayload = null!;
-        private FastFsmAsyncActions _fastFsmAsyncActions = null!;
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Basic")]
+    public void LiquidState_Basic()
+    {
+        for (int i = 0; i < Ops; i++) _liquidStateBasic.Fire(Trigger.Next);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_liquidStateBasic);
+    }
 
-        // ---------- LiquidState ----------
-        private LS.IStateMachine<State, Trigger> _liquidStateBasic = null!;
-        private LS.IStateMachine<State, Trigger> _liquidStatePayload = null!;
-        private LSC.ParameterizedTrigger<Trigger, PayloadData> _liquidStatePayloadTrigger = null!;
-        private LSA.IAwaitableStateMachine<State, Trigger> _liquidStateAsyncActions = null!;
-        private LSA.IAwaitableStateMachine<State, Trigger> _liquidStateAsyncActionsHot = null!;
-        private int _liquidStatePayloadSum;
-        private int _liquidStateAsyncCounter;
-        private int _liquidStateAsyncCounterHot;
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Basic")]
+    public void Appccelerate_Basic()
+    {
+        for (int i = 0; i < Ops; i++) _appccBasic.Fire(Trigger.Next);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_appccBasic);
+    }
 
-        // ---------- Appccelerate ----------
-        private AC.PassiveStateMachine<State, Trigger> _appccBasic = null!;
-        private AC.PassiveStateMachine<State, Trigger> _appccGuards = null!;
-        private AC.PassiveStateMachine<State, Trigger> _appccPayload = null!;
-        private AC.AsyncPassiveStateMachine<State, Trigger> _appccAsync = null!;
-        private AC.AsyncPassiveStateMachine<State, Trigger> _appccAsyncHot = null!;
-        private int _appccCounter;
-        private int _appccPayloadSum;
-        private int _appccAsyncCounter;
-        private int _appccAsyncCounterHot;
+    // ===== Guards & Actions =====
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("GuardsActions")]
+    public void Stateless_GuardsActions()
+    {
+        for (int i = 0; i < Ops; i++) _statelessGuardsActions.Fire(Trigger.Next);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_statelessCounter);
+    }
 
-        // ---------- Shared ----------
-        private PayloadData _payloadData = null!;
-        private const int GuardLimit = int.MaxValue;
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("GuardsActions")]
+    public void FastFsm_GuardsActions()
+    {
+        for (int i = 0; i < Ops; i++) _fastFsmGuardsActions.TryFire(Trigger.Next);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmGuardsActions.CurrentState);
+    }
 
-        // Helpers for Stateless guards/actions
-        private bool CanTransition() => _statelessCounter < GuardLimit;
-        private void IncrementCounter() => _statelessCounter++;
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("GuardsActions")]
+    public void Appccelerate_GuardsActions()
+    {
+        for (int i = 0; i < Ops; i++) _appccGuards.Fire(Trigger.Next);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_appccCounter);
+    }
 
-        [GlobalSetup]
-        public async Task Setup()
-        {
-            // ===== FastFSM =====
-            _fastFsmBasic = new FastFsmBasic(State.A);
-            _fastFsmBasic.Start();
-            _fastFsmGuardsActions = new FastFsmWithGuardsActions(State.A);
-            _fastFsmGuardsActions.Start();
-            _fastFsmPayload = new FastFsmWithPayload(State.A);
-            _fastFsmPayload.Start();
-            _fastFsmAsyncActions = new FastFsmAsyncActions(State.A);
-            await _fastFsmAsyncActions.StartAsync();
+    // ===== Payload =====
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Payload")]
+    public void Stateless_Payload()
+    {
+        for (int i = 0; i < Ops; i++) _statelessPayload.Fire(_statelessPayloadTrigger, _payloadData);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_statelessPayloadSum);
+    }
 
-            // ===== Stateless =====
-            _statelessBasic = new Stateless.StateMachine<State, Trigger>(State.A);
-            _statelessBasic.Configure(State.A).Permit(Trigger.Next, State.B);
-            _statelessBasic.Configure(State.B).Permit(Trigger.Next, State.C);
-            _statelessBasic.Configure(State.C).Permit(Trigger.Next, State.A);
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Payload")]
+    public void FastFsm_Payload()
+    {
+        for (int i = 0; i < Ops; i++) _fastFsmPayload.TryFire(Trigger.Next, _payloadData);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmPayload.CurrentState);
+    }
 
-            _statelessGuardsActions = new Stateless.StateMachine<State, Trigger>(State.A);
-            _statelessGuardsActions.Configure(State.A)
-                .PermitIf(Trigger.Next, State.B, CanTransition)
-                .OnExit(IncrementCounter);
-            _statelessGuardsActions.Configure(State.B)
-                .PermitIf(Trigger.Next, State.C, CanTransition)
-                .OnExit(IncrementCounter);
-            _statelessGuardsActions.Configure(State.C)
-                .PermitIf(Trigger.Next, State.A, CanTransition)
-                .OnExit(IncrementCounter);
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Payload")]
+    public void LiquidState_Payload()
+    {
+        for (int i = 0; i < Ops; i++) _liquidStatePayload.Fire(_liquidStatePayloadTrigger, _payloadData);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_liquidStatePayloadSum);
+    }
 
-            _statelessPayload = new Stateless.StateMachine<State, Trigger>(State.A);
-            _statelessPayloadTrigger = _statelessPayload.SetTriggerParameters<PayloadData>(Trigger.Next);
-            _statelessPayload.Configure(State.A)
-                .Permit(Trigger.Next, State.B)
-                .OnEntryFrom(_statelessPayloadTrigger, d => _statelessPayloadSum += d.Value);
-            _statelessPayload.Configure(State.B)
-                .Permit(Trigger.Next, State.C)
-                .OnEntryFrom(_statelessPayloadTrigger, d => _statelessPayloadSum += d.Value);
-            _statelessPayload.Configure(State.C)
-                .Permit(Trigger.Next, State.A)
-                .OnEntryFrom(_statelessPayloadTrigger, d => _statelessPayloadSum += d.Value);
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Payload")]
+    public void Appccelerate_Payload()
+    {
+        for (int i = 0; i < Ops; i++) _appccPayload.Fire(Trigger.Next, _payloadData);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_appccPayloadSum);
+    }
 
-            _statelessAsyncActions = new Stateless.StateMachine<State, Trigger>(State.A);
-            async Task DoAsync()
-            {
-                await Task.Yield();
-                _statelessAsyncCounter++;
-            }
-            _statelessAsyncActions.Configure(State.A)
-                .Permit(Trigger.Next, State.B)
-                .OnExitAsync(DoAsync);
-            _statelessAsyncActions.Configure(State.B)
-                .Permit(Trigger.Next, State.C)
-                .OnExitAsync(DoAsync);
-            _statelessAsyncActions.Configure(State.C)
-                .Permit(Trigger.Next, State.A)
-                .OnExitAsync(DoAsync);
+    // ===== Async (real async: Task.Yield) =====
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-Yield")]
+    public async Task Stateless_AsyncActions()
+    {
+        for (int i = 0; i < Ops; i++) await _statelessAsyncActions.FireAsync(Trigger.Next);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_statelessAsyncCounter);
+    }
 
-            // Hot path variant (no Task.Yield)
-            _statelessAsyncActionsHot = new Stateless.StateMachine<State, Trigger>(State.A);
-            async Task DoAsyncHot()
-            {
-                _statelessAsyncCounterHot++;
-                await Task.CompletedTask;
-            }
-            _statelessAsyncActionsHot.Configure(State.A)
-                .Permit(Trigger.Next, State.B)
-                .OnExitAsync(DoAsyncHot);
-            _statelessAsyncActionsHot.Configure(State.B)
-                .Permit(Trigger.Next, State.C)
-                .OnExitAsync(DoAsyncHot);
-            _statelessAsyncActionsHot.Configure(State.C)
-                .Permit(Trigger.Next, State.A)
-                .OnExitAsync(DoAsyncHot);
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-Yield")]
+    public async ValueTask FastFsm_AsyncActions()
+    {
+        for (int i = 0; i < Ops; i++) await _fastFsmAsyncActions.TryFireAsync(Trigger.Next);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmAsyncActions.CurrentState);
+    }
 
-            // ===== LiquidState =====
-            var liquidStateBasicConfig = StateMachineFactory.CreateConfiguration<State, Trigger>();
-            liquidStateBasicConfig.ForState(State.A).Permit(Trigger.Next, State.B);
-            liquidStateBasicConfig.ForState(State.B).Permit(Trigger.Next, State.C);
-            liquidStateBasicConfig.ForState(State.C).Permit(Trigger.Next, State.A);
-            _liquidStateBasic = StateMachineFactory.Create(State.A, liquidStateBasicConfig);
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-Yield")]
+    public async Task LiquidState_AsyncActions()
+    {
+        for (int i = 0; i < Ops; i++) await _liquidStateAsyncActions.FireAsync(Trigger.Next);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_liquidStateAsyncCounter);
+    }
 
-            var liquidStatePayloadConfig = StateMachineFactory.CreateConfiguration<State, Trigger>();
-            _liquidStatePayloadTrigger = liquidStatePayloadConfig.SetTriggerParameter<PayloadData>(Trigger.Next);
-            liquidStatePayloadConfig.ForState(State.A)
-                .Permit(_liquidStatePayloadTrigger, State.B, d => _liquidStatePayloadSum += d.Value);
-            liquidStatePayloadConfig.ForState(State.B)
-                .Permit(_liquidStatePayloadTrigger, State.C, d => _liquidStatePayloadSum += d.Value);
-            liquidStatePayloadConfig.ForState(State.C)
-                .Permit(_liquidStatePayloadTrigger, State.A, d => _liquidStatePayloadSum += d.Value);
-            _liquidStatePayload = StateMachineFactory.Create(State.A, liquidStatePayloadConfig);
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-Yield")]
+    public async Task Appccelerate_AsyncActions()
+    {
+        for (int i = 0; i < Ops; i++) await _appccAsync.Fire(Trigger.Next);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_appccAsyncCounter);
+    }
 
-            var liquidStateAsyncConfig = StateMachineFactory.CreateAwaitableConfiguration<State, Trigger>();
-            async Task DoLiquidAsync()
-            {
-                await Task.Yield();
-                _liquidStateAsyncCounter++;
-            }
-            liquidStateAsyncConfig.ForState(State.A)
-                .Permit(Trigger.Next, State.B)
-                .OnExit(DoLiquidAsync);
-            liquidStateAsyncConfig.ForState(State.B)
-                .Permit(Trigger.Next, State.C)
-                .OnExit(DoLiquidAsync);
-            liquidStateAsyncConfig.ForState(State.C)
-                .Permit(Trigger.Next, State.A)
-                .OnExit(DoLiquidAsync);
-            _liquidStateAsyncActions = StateMachineFactory.Create(State.A, liquidStateAsyncConfig);
+    // ===== Async (hot path: CompletedTask / brak yield) — opcjonalnie do porównania narzutu frameworku
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-HotPath")]
+    public async ValueTask FastFsm_AsyncActions_HotPath()
+    {
+        // Re-mapuj w generatorze akcję do FastFsmAsyncActions.ProcessAsyncCompleted, aby użyć CompletedTask
+        for (int i = 0; i < Ops; i++) await _fastFsmAsyncActions.TryFireAsync(Trigger.Next);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmAsyncActions.CurrentState);
+    }
 
-            // Hot path variant (no Task.Yield)
-            var liquidStateAsyncHotConfig = StateMachineFactory.CreateAwaitableConfiguration<State, Trigger>();
-            async Task DoLiquidAsyncHot()
-            {
-                _liquidStateAsyncCounterHot++;
-                await Task.CompletedTask;
-            }
-            liquidStateAsyncHotConfig.ForState(State.A)
-                .Permit(Trigger.Next, State.B)
-                .OnExit(DoLiquidAsyncHot);
-            liquidStateAsyncHotConfig.ForState(State.B)
-                .Permit(Trigger.Next, State.C)
-                .OnExit(DoLiquidAsyncHot);
-            liquidStateAsyncHotConfig.ForState(State.C)
-                .Permit(Trigger.Next, State.A)
-                .OnExit(DoLiquidAsyncHot);
-            _liquidStateAsyncActionsHot = StateMachineFactory.Create(State.A, liquidStateAsyncHotConfig);
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-HotPath")]
+    public async Task Stateless_AsyncActions_HotPath()
+    {
+        for (int i = 0; i < Ops; i++) await _statelessAsyncActionsHot.FireAsync(Trigger.Next);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_statelessAsyncCounterHot);
+    }
 
-            // ===== Appccelerate =====
-            // Basic
-            var b = new ACCM.StateMachineDefinitionBuilder<State, Trigger>();
-            b.WithInitialState(State.A);
-            b.In(State.A).On(Trigger.Next).Goto(State.B);
-            b.In(State.B).On(Trigger.Next).Goto(State.C);
-            b.In(State.C).On(Trigger.Next).Goto(State.A);
-            _appccBasic = b.Build().CreatePassiveStateMachine();
-            _appccBasic.Start();
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-HotPath")]
+    public async Task LiquidState_AsyncActions_HotPath()
+    {
+        for (int i = 0; i < Ops; i++) await _liquidStateAsyncActionsHot.FireAsync(Trigger.Next);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_liquidStateAsyncCounterHot);
+    }
 
-            // Guards + Actions
-            var g = new ACCM.StateMachineDefinitionBuilder<State, Trigger>();
-            g.WithInitialState(State.A);
-            g.In(State.A).On(Trigger.Next)
-                .If(() => _appccCounter < GuardLimit).Goto(State.B)
-                .Execute(() => _appccCounter++);
-            g.In(State.B).On(Trigger.Next)
-                .If(() => _appccCounter < GuardLimit).Goto(State.C)
-                .Execute(() => _appccCounter++);
-            g.In(State.C).On(Trigger.Next)
-                .If(() => _appccCounter < GuardLimit).Goto(State.A)
-                .Execute(() => _appccCounter++);
-            _appccGuards = g.Build().CreatePassiveStateMachine();
-            _appccGuards.Start();
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-HotPath")]
+    public async Task Appccelerate_AsyncActions_HotPath()
+    {
+        for (int i = 0; i < Ops; i++) await _appccAsyncHot.Fire(Trigger.Next);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_appccAsyncCounterHot);
+    }
 
-            // Payload
-            _payloadData = new PayloadData { Value = 42, Message = "Test" };
-            var p = new ACCM.StateMachineDefinitionBuilder<State, Trigger>();
-            p.WithInitialState(State.A);
-            p.In(State.A).On(Trigger.Next).Goto(State.B).Execute<PayloadData>(d => _appccPayloadSum += d.Value);
-            p.In(State.B).On(Trigger.Next).Goto(State.C).Execute<PayloadData>(d => _appccPayloadSum += d.Value);
-            p.In(State.C).On(Trigger.Next).Goto(State.A).Execute<PayloadData>(d => _appccPayloadSum += d.Value);
-            _appccPayload = p.Build().CreatePassiveStateMachine();
-            _appccPayload.Start();
+    // ===== Helper-ish (API only where available) =====
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Helper")]
+    public void Stateless_CanFire()
+    {
+        for (int i = 0; i < Ops; i++) _ = _statelessBasic.CanFire(Trigger.Next);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_statelessBasic);
+    }
 
-            // Async
-            var a = new ACCA.StateMachineDefinitionBuilder<State, Trigger>();
-            a.WithInitialState(State.A);
-            a.In(State.A).On(Trigger.Next).Goto(State.B).Execute(async () =>
-            {
-                await Task.Yield();
-                _appccAsyncCounter++;
-            });
-            a.In(State.B).On(Trigger.Next).Goto(State.C).Execute(async () =>
-            {
-                await Task.Yield();
-                _appccAsyncCounter++;
-            });
-            a.In(State.C).On(Trigger.Next).Goto(State.A).Execute(async () =>
-            {
-                await Task.Yield();
-                _appccAsyncCounter++;
-            });
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Helper")]
+    public void FastFsm_CanFire()
+    {
+        for (int i = 0; i < Ops; i++) _ = _fastFsmBasic.CanFire(Trigger.Next);
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmBasic.CurrentState);
+    }
 
-            var asyncDef = a.Build();
-            _appccAsync = asyncDef.CreatePassiveStateMachine();
-            _appccAsync.Start().GetAwaiter().GetResult();
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Helper")]
+    public void Stateless_GetPermittedTriggers()
+    {
+        for (int i = 0; i < Ops; i++) _ = _statelessBasic.PermittedTriggers;
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_statelessBasic);
+    }
 
-            // Hot path variant (no Task.Yield)
-            var ah = new ACCA.StateMachineDefinitionBuilder<State, Trigger>();
-            ah.WithInitialState(State.A);
-            ah.In(State.A).On(Trigger.Next).Goto(State.B).Execute(async () =>
-            {
-                _appccAsyncCounterHot++;
-                await Task.CompletedTask;
-            });
-            ah.In(State.B).On(Trigger.Next).Goto(State.C).Execute(async () =>
-            {
-                _appccAsyncCounterHot++;
-                await Task.CompletedTask;
-            });
-            ah.In(State.C).On(Trigger.Next).Goto(State.A).Execute(async () =>
-            {
-                _appccAsyncCounterHot++;
-                await Task.CompletedTask;
-            });
-            var asyncHotDef = ah.Build();
-            _appccAsyncHot = asyncHotDef.CreatePassiveStateMachine();
-            _appccAsyncHot.Start().GetAwaiter().GetResult();
-        }
-
-        // ===== Basic =====
-        [Benchmark(Baseline = true, OperationsPerInvoke = Ops), BenchmarkCategory("Basic")]
-        public void Stateless_Basic()
-        {
-            for (int i = 0; i < Ops; i++) _statelessBasic.Fire(Trigger.Next);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_statelessBasic);
-        }
-
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Basic")]
-        public void FastFsm_Basic()
-        {
-            for (int i = 0; i < Ops; i++) _fastFsmBasic.TryFire(Trigger.Next);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmBasic.CurrentState);
-        }
-
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Basic")]
-        public void LiquidState_Basic()
-        {
-            for (int i = 0; i < Ops; i++) _liquidStateBasic.Fire(Trigger.Next);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_liquidStateBasic);
-        }
-
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Basic")]
-        public void Appccelerate_Basic()
-        {
-            for (int i = 0; i < Ops; i++) _appccBasic.Fire(Trigger.Next);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_appccBasic);
-        }
-
-        // ===== Guards & Actions =====
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("GuardsActions")]
-        public void Stateless_GuardsActions()
-        {
-            for (int i = 0; i < Ops; i++) _statelessGuardsActions.Fire(Trigger.Next);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_statelessCounter);
-        }
-
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("GuardsActions")]
-        public void FastFsm_GuardsActions()
-        {
-            for (int i = 0; i < Ops; i++) _fastFsmGuardsActions.TryFire(Trigger.Next);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmGuardsActions.CurrentState);
-        }
-
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("GuardsActions")]
-        public void Appccelerate_GuardsActions()
-        {
-            for (int i = 0; i < Ops; i++) _appccGuards.Fire(Trigger.Next);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_appccCounter);
-        }
-
-        // ===== Payload =====
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Payload")]
-        public void Stateless_Payload()
-        {
-            for (int i = 0; i < Ops; i++) _statelessPayload.Fire(_statelessPayloadTrigger, _payloadData);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_statelessPayloadSum);
-        }
-
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Payload")]
-        public void FastFsm_Payload()
-        {
-            for (int i = 0; i < Ops; i++) _fastFsmPayload.TryFire(Trigger.Next, _payloadData);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmPayload.CurrentState);
-        }
-
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Payload")]
-        public void LiquidState_Payload()
-        {
-            for (int i = 0; i < Ops; i++) _liquidStatePayload.Fire(_liquidStatePayloadTrigger, _payloadData);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_liquidStatePayloadSum);
-        }
-
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Payload")]
-        public void Appccelerate_Payload()
-        {
-            for (int i = 0; i < Ops; i++) _appccPayload.Fire(Trigger.Next, _payloadData);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_appccPayloadSum);
-        }
-
-        // ===== Async (real async: Task.Yield) =====
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-Yield")]
-        public async Task Stateless_AsyncActions()
-        {
-            for (int i = 0; i < Ops; i++) await _statelessAsyncActions.FireAsync(Trigger.Next);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_statelessAsyncCounter);
-        }
-
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-Yield")]
-        public async ValueTask FastFsm_AsyncActions()
-        {
-            for (int i = 0; i < Ops; i++) await _fastFsmAsyncActions.TryFireAsync(Trigger.Next);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmAsyncActions.CurrentState);
-        }
-
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-Yield")]
-        public async Task LiquidState_AsyncActions()
-        {
-            for (int i = 0; i < Ops; i++) await _liquidStateAsyncActions.FireAsync(Trigger.Next);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_liquidStateAsyncCounter);
-        }
-
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-Yield")]
-        public async Task Appccelerate_AsyncActions()
-        {
-            for (int i = 0; i < Ops; i++) await _appccAsync.Fire(Trigger.Next);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_appccAsyncCounter);
-        }
-
-        // ===== Async (hot path: CompletedTask / brak yield) — opcjonalnie do porównania narzutu frameworku
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-HotPath")]
-        public async ValueTask FastFsm_AsyncActions_HotPath()
-        {
-            // Re-mapuj w generatorze akcję do FastFsmAsyncActions.ProcessAsyncCompleted, aby użyć CompletedTask
-            for (int i = 0; i < Ops; i++) await _fastFsmAsyncActions.TryFireAsync(Trigger.Next);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmAsyncActions.CurrentState);
-        }
-
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-HotPath")]
-        public async Task Stateless_AsyncActions_HotPath()
-        {
-            for (int i = 0; i < Ops; i++) await _statelessAsyncActionsHot.FireAsync(Trigger.Next);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_statelessAsyncCounterHot);
-        }
-
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-HotPath")]
-        public async Task LiquidState_AsyncActions_HotPath()
-        {
-            for (int i = 0; i < Ops; i++) await _liquidStateAsyncActionsHot.FireAsync(Trigger.Next);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_liquidStateAsyncCounterHot);
-        }
-
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-HotPath")]
-        public async Task Appccelerate_AsyncActions_HotPath()
-        {
-            for (int i = 0; i < Ops; i++) await _appccAsyncHot.Fire(Trigger.Next);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_appccAsyncCounterHot);
-        }
-
-        // ===== Helper-ish (API only where available) =====
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Helper")]
-        public void Stateless_CanFire()
-        {
-            for (int i = 0; i < Ops; i++) _ = _statelessBasic.CanFire(Trigger.Next);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_statelessBasic);
-        }
-
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Helper")]
-        public void FastFsm_CanFire()
-        {
-            for (int i = 0; i < Ops; i++) _ = _fastFsmBasic.CanFire(Trigger.Next);
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmBasic.CurrentState);
-        }
-
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Helper")]
-        public void Stateless_GetPermittedTriggers()
-        {
-            for (int i = 0; i < Ops; i++) _ = _statelessBasic.PermittedTriggers;
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_statelessBasic);
-        }
-
-        [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Helper")]
-        public void FastFsm_GetPermittedTriggers()
-        {
-            for (int i = 0; i < Ops; i++) _ = _fastFsmBasic.GetPermittedTriggers();
-            DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmBasic);
-        }
+    [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Helper")]
+    public void FastFsm_GetPermittedTriggers()
+    {
+        for (int i = 0; i < Ops; i++) _ = _fastFsmBasic.GetPermittedTriggers();
+        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmBasic);
     }
 }

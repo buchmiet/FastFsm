@@ -348,3 +348,4 @@ Benchmark.Java/target/
 
 # Ignorowanie folderów i artefaktów Claude AI
 .claude/
+.config/
