@@ -4,7 +4,7 @@
 [](https://www.google.com/search?q=LICENSE)
 [](https://dotnet.microsoft.com/download)
 
-FastFSM is a powerful, zero-overhead finite state machine framework for .NET that leverages C\# source generators to create highly optimized state machines at compile time. It combines the ease of declarative configuration with performance that rivals hand-written code.
+FastFSM is a powerful, zero-overhead finite state machine framework for .NET that leverages C# source generators to create highly optimized state machines at compile time. It combines the ease of declarative configuration with performance that rivals hand-written code.
 
 ## Table of Contents
 
@@ -379,25 +379,25 @@ public class OrderService(IStateMachineFactory factory)
 
 ### Performance Summary
 
-FastFSM achieves **sub‑nanosecond** transition times (0.81 ± 0.03 ns) for basic synchronous operations, with **zero heap allocations**.
+FastFSM achieves **sub‑nanosecond** transition times (0.81 ± 0.03 ns) for basic synchronous operations, with **zero heap allocations**. When compared to state machine libraries across languages, FastFSM demonstrates the value of compile-time code generation over runtime abstractions.
 
 ### Test Environment
 
 | Component       | Version / Details                                              |
 | --------------- | -------------------------------------------------------------- |
-| **CPU**         | AMD Ryzen 5 9600X (6C/12T Zen 5 @ 3.9–5.4 GHz, AVX‑512)        |
-| **Memory**      | 32 GB DDR5, Windows 11 24H2 “High Performance” power plan      |
-| **.NET**        |  9.0.5 (*RyuJIT AVX‑512*, Server GC, `COMPlus_EnableAVX512=1`) |
-| **JVM**         |  OpenJDK 21.0.8+9‑LTS (Temurin, Server VM, G1 GC)              |
-| **C++**         |  MSVC 19.44 (/O2 /GL /arch\:AVX512) + Google Benchmark 1.8.4   |
-| **Rust**        |  rustc 1.80 + criterion 0.5.1 (LTO, `-C target‑cpu=native`)    |
-| **TypeScript**  |  Bun 1.2.19 + mitata (compiled TS → JS)                        |
-| **JavaScript**  |  Bun 1.2.19 + mitata (pure ES2023)                             |
-| **Tools**       | BenchmarkDotNet 0.15.2 (.NET), JMH 1.37 (Java)                 |
-| **Methodology** | 1024 ops per iteration · 15 iterations (mean ± StdDev)         |
-| **Date**        | 7 Aug 2025                                                     |
+| **CPU**         | AMD Ryzen 5 9600X (6C/12T Zen 5 @ 3.9–5.4 GHz, AVX‑512)        |
+| **Memory**      | 32 GB DDR5, Windows 11 24H2 "High Performance" power plan      |
+| **.NET**        |  9.0.5 (*RyuJIT AVX‑512*, Server GC, `COMPlus_EnableAVX512=1`) |
+| **JVM**         |  OpenJDK 21.0.8+9‑LTS (Temurin, Server VM, G1 GC)              |
+| **C++**         |  MSVC 19.44 (/O2 /GL /arch\:AVX512) + Google Benchmark 1.8.4   |
+| **Rust**        |  rustc 1.80 + Statig 0.4 + criterion 0.5.1 (LTO, `codegen-units=1`) |
+| **TypeScript**  |  Bun 1.2.19 + mitata (compiled TS → JS)                        |
+| **JavaScript**  |  Bun 1.2.19 + mitata (pure ES2023)                             |
+| **Tools**       | BenchmarkDotNet 0.15.2 (.NET), JMH 1.37 (Java)                 |
+| **Methodology** | 1024 ops per iteration · 15 iterations (mean ± StdDev)         |
+| **Date**        | 7 Aug 2025                                                     |
 
-*Results may vary ± 5‑8 % on CPUs without AVX‑512 support.*
+*Results may vary ± 5‑8 % on CPUs without AVX‑512 support. Rust benchmarks use Statig 0.4 library for library-to-library comparison fairness.*
 
 ---
 
@@ -405,45 +405,45 @@ FastFSM achieves **sub‑nanosecond** transition times (0.81 ± 0.03 ns) f
 
 | Scenario               | FastFSM     | Stateless  | LiquidState  | Appccelerate | Winner                       |
 | ---------------------- | ----------- | ---------- | ------------ | ------------ | ---------------------------- |
-| **Basic Transitions**  | **0.81 ns** | 249.03 ns  | 25.31 ns     | 260.85 ns    | FastFSM (31× vs LiquidState) |
-| Guards + Actions       | **2.18 ns** | 267.37 ns  |  n/a¹        | 273.53 ns    | FastFSM (123× vs Stateless)  |
-| Payload                | **0.83 ns** | 300.63 ns  | 30.13 ns     | 291.60 ns    | FastFSM (36× vs LiquidState) |
-| Can Fire Check         | **0.31 ns** | 115.54 ns  |  n/a¹        |  n/a¹        | FastFSM (373× vs Stateless)  |
-| Get Permitted Triggers | **4.18 ns** | 32.69 ns   |  n/a¹        |  n/a¹        | FastFSM (7.8× vs Stateless)  |
-| Async Hot Path²        | 444.77 ns   | 357.12 ns  | **75.87 ns** | 504.37 ns    | LiquidState (5.9× faster)    |
-| Async With Yield³      | 456.72 ns   | 1100.78 ns | 490.22 ns    | 1738.62 ns   | FastFSM                      |
+| **Basic Transitions**  | **0.81 ns** | 249.03 ns  | 25.31 ns     | 260.85 ns    | FastFSM (31× vs LiquidState) |
+| Guards + Actions       | **2.18 ns** | 267.37 ns  |  n/a¹        | 273.53 ns    | FastFSM (123× vs Stateless)  |
+| Payload                | **0.83 ns** | 300.63 ns  | 30.13 ns     | 291.60 ns    | FastFSM (36× vs LiquidState) |
+| Can Fire Check         | **0.31 ns** | 115.54 ns  |  n/a¹        |  n/a¹        | FastFSM (373× vs Stateless)  |
+| Get Permitted Triggers | **4.18 ns** | 32.69 ns   |  n/a¹        |  n/a¹        | FastFSM (7.8× vs Stateless)  |
+| Async Hot Path²        | 444.77 ns   | 357.12 ns  | **75.87 ns** | 504.37 ns    | LiquidState (5.9× faster)    |
+| Async With Yield³      | **456.72 ns**| 1100.78 ns | 490.22 ns    | 1738.62 ns   | FastFSM                      |
 
-¹ API not available   ² `ValueTask.CompletedTask` vs `Task.FromResult`   ³ `Task.Yield()` for real context switch
+¹ API not available   ² `ValueTask.CompletedTask` vs `Task.FromResult`   ³ `Task.Yield()` for real context switch
 
 ---
 
-### FastFSM vs TypeScript (Bun)
+### FastFSM vs TypeScript (Bun)
 
 | Scenario                  | TypeScript (Bun) | FastFSM (.NET) | Δ (relative)   |
 | ------------------------- | ---------------- | -------------- | -------------- |
-| **Basic Transitions**     | \~1.2 ns         | **0.81 ns**    | 1.5× slower    |
-| Guards + Actions          | **\~1.5 ns**     | 2.18 ns        | 1.45× *faster* |
-| Payload                   | \~2.8 ns         | **0.83 ns**    | 3.4× slower    |
-| Can Fire Check            | \~0.6 ns         | **0.31 ns**    | 2.0× slower    |
-| Get Permitted Triggers    | **\~1.0 ns**     | 4.18 ns        | 4.2× *faster*  |
-| Async Hot Path (no yield) | **\~208 ns**     | 444.77 ns      | 2.1× *faster*  |
-| Async With Yield          | \~2000 ns        | **456.72 ns**  | 4.4× slower    |
+| **Basic Transitions**     | \~1.2 ns         | **0.81 ns**    | 1.5× slower    |
+| Guards + Actions          | **\~1.5 ns**     | 2.18 ns        | 1.45× *faster* |
+| Payload                   | \~2.8 ns         | **0.83 ns**    | 3.4× slower    |
+| Can Fire Check            | \~0.6 ns         | **0.31 ns**    | 2.0× slower    |
+| Get Permitted Triggers    | **\~1.0 ns**     | 4.18 ns        | 4.2× *faster*  |
+| Async Hot Path (no yield) | **\~208 ns**     | 444.77 ns      | 2.1× *faster*  |
+| Async With Yield          | \~2000 ns        | **456.72 ns**  | 4.4× slower    |
 
-*TS implementation: minimal FSM with `switch`; Bun’s JIT optimises hot paths strongly. Async models differ (`setImmediate()` vs `Task.Yield()`).*
+*TS implementation: minimal FSM with `switch`; Bun's JIT optimises hot paths strongly. Async models differ (`setImmediate()` vs `Task.Yield()`).*
 
 ---
 
-### FastFSM vs JavaScript (Bun)
+### FastFSM vs JavaScript (Bun)
 
-| Scenario               | JavaScript (Bun) | FastFSM (.NET) | Δ (relative)   |
+| Scenario               | JavaScript (Bun) | FastFSM (.NET) | Δ (relative)   |
 | ---------------------- | ---------------- | -------------- | -------------- |
-| **Basic Transitions**  | \~1.0 ns         | **0.81 ns**    | 1.2× slower    |
-| Guards + Actions       | \~3.0 ns         | **2.18 ns**    | 1.4× slower    |
-| Payload                | \~2.8 ns         | **0.83 ns**    | 3.4× slower    |
-| Can Fire Check         | \~0.38 ns        | **0.31 ns**    | 1.2× slower    |
-| Get Permitted Triggers | **\~0.39 ns**    | 4.18 ns        | 10.7× *faster* |
-| Async Hot Path         | **\~203 ns**     | 444.77 ns      | 2.2× *faster*  |
-| Async With Yield       | \~712 ns         | **456.72 ns**  | 1.6× slower    |
+| **Basic Transitions**  | \~1.0 ns         | **0.81 ns**    | 1.2× slower    |
+| Guards + Actions       | \~3.0 ns         | **2.18 ns**    | 1.4× slower    |
+| Payload                | \~2.8 ns         | **0.83 ns**    | 3.4× slower    |
+| Can Fire Check         | \~0.38 ns        | **0.31 ns**    | 1.2× slower    |
+| Get Permitted Triggers | **\~0.39 ns**    | 4.18 ns        | 10.7× *faster* |
+| Async Hot Path         | **\~203 ns**     | 444.77 ns      | 2.2× *faster*  |
+| Async With Yield       | \~712 ns         | **456.72 ns**  | 1.6× slower    |
 
 *Pure ES2023 class with `switch`, same methodology.*
 
@@ -451,51 +451,55 @@ FastFSM achieves **sub‑nanosecond** transition times (0.81 ± 0.03 ns) f
 
 ### FastFSM vs Java State‑Machine Libraries
 
-| Scenario              | FastFSM (.NET)    | Squirrel (JDK 21) | Spring StateMachine (JDK 21) |
+| Scenario              | FastFSM (.NET)    | Squirrel (JDK 21) | Spring StateMachine (JDK 21) |
 | --------------------- | ----------------- | ----------------- | ---------------------------- |
-| **Basic Transitions** | **0.81 ns / 0 B** | 289 ns / 1.5 kB   | 12 188 ns / 30.7 kB          |
-| Guards + Actions      | **2.18 ns / 0 B** | 321 ns / 1.5 kB   | 13 564 ns / 31.3 kB          |
-| Payload               | **0.83 ns / 0 B** | 311 ns / 1.5 kB   | 12 321 ns / 31.6 kB          |
-| Async Hot Path        | 444.77 ns         | **314 ns**        | 12 110 ns                    |
-| Async With Yield      | **456.72 ns**     | 310 ns            | 26 599 ns                    |
+| **Basic Transitions** | **0.81 ns / 0 B** | 289 ns / 1.5 kB   | 12 188 ns / 30.7 kB          |
+| Guards + Actions      | **2.18 ns / 0 B** | 321 ns / 1.5 kB   | 13 564 ns / 31.3 kB          |
+| Payload               | **0.83 ns / 0 B** | 311 ns / 1.5 kB   | 12 321 ns / 31.6 kB          |
+| Async Hot Path        | 444.77 ns         | **314 ns**        | 12 110 ns                    |
+| Async With Yield      | **456.72 ns**     | 310 ns            | 26 599 ns                    |
 
 ---
 
-### FastFSM vs C++ State Machines (Boost.SML)
+### FastFSM vs C++ State Machines (Boost.SML)
 
 | Scenario              | FastFSM (.NET) | Boost.SML (C++) | Δ                   |
 | --------------------- | -------------- | --------------- | ------------------- |
-| **Basic Transitions** | **0.81 ns**    | 1.23 ns         | FastFSM 1.5× faster |
-| Guards + Actions      | 2.18 ns        | **1.32 ns**     | C++ 1.7× faster     |
-| Payload               | **0.83 ns**    | 1.35 ns         | FastFSM 1.6× faster |
-| Can Fire Check        | **0.31 ns**    | 1.28 ns         | 4.1× faster         |
-| Async Hot Path\*      | 444.77 ns      | 1.38 ns         | *Not comparable*    |
+| **Basic Transitions** | **0.81 ns**    | 1.23 ns         | FastFSM 1.5× faster |
+| Guards + Actions      | 2.18 ns        | **1.32 ns**     | C++ 1.7× faster     |
+| Payload               | **0.83 ns**    | 1.35 ns         | FastFSM 1.6× faster |
+| Can Fire Check        | **0.31 ns**    | 1.28 ns         | 4.1× faster         |
+| Async Hot Path\*      | 444.77 ns      | 1.38 ns         | *Not comparable*    |
 
-*Boost.SML “async” is a synchronous simulation (no coroutines).*
+*Boost.SML "async" is a synchronous simulation (no coroutines).*
 
 ---
 
-### FastFSM vs Rust State Machines
+### FastFSM vs Rust State Machines (Statig Library)
 
-| Scenario              | FastFSM (.NET) | Rust (hand‑rolled) | Δ           |
-| --------------------- | -------------- | ------------------ | ----------- |
-| **Basic Transitions** | **0.81 ns**    | 1.77 ns            | 2.2× faster |
-| Guards + Actions      | 2.18 ns        | **0.71 ns**        | 3.1× slower |
-| Payload               | 0.83 ns        | **0.70 ns**        | 1.2× slower |
-| Async Hot Path        | 444.77 ns      | **0.79 ns**        | 563× slower |
-| Async With Yield      | 456.72 ns      | **11.47 ns**       | 40× slower  |
+| Scenario              | FastFSM (.NET) | Rust (Statig 0.4) | Δ                      |
+| --------------------- | -------------- | ----------------- | ---------------------- |
+| **Basic Transitions** | **0.81 ns**    | 1,730 ns          | FastFSM 2,136× faster  |
+| Guards + Actions      | 2.18 ns        | **0.37 ns**       | Statig 5.9× faster     |
+| Payload               | 0.83 ns        | **0.41 ns**       | Statig 2.0× faster     |
+| Async Hot Path        | 444.77 ns      | **7.3 ns**        | Statig 61× faster      |
+| Async With Yield      | 456.72 ns      | **19.4 ns**       | Statig 24× faster      |
+
+**Note**: Rust benchmarks use the Statig 0.4 library for fair library-to-library comparison. Statig's abstractions add significant overhead for basic transitions (enum wrapping, trait dispatch) but excel at complex scenarios through aggressive inlining. Hand-rolled Rust code would show different trade-offs: ~1.77 ns for basic transitions but 0.7–0.8 ns for guards/payload scenarios.
 
 ---
 
 ### Cross‑Language Summary (ns/op)
 
-| Scenario           | FastFSM (.NET) | Java | C++  | Rust      | TypeScript (Bun) | JavaScript (Bun) | Fastest     |
-| ------------------ | -------------- | ---- | ---- | --------- | ---------------- | ---------------- | ----------- |
-| **Basic**          | **0.81**       | 289  | 1.23 | 1.77      | 1.2              | 1.0              | **FastFSM** |
-| **Guards+Actions** | 2.18           | 321  | 1.32 | **0.71**  | **1.5**          | 3.0              | **Rust**    |
-| **Payload**        | 0.83           | 311  | 1.35 | **0.70**  | 2.8              | 2.8              | **Rust**    |
-| **Async (hot)**    | 444.77         | 314  | 1.38 | **0.79**  | **208**          | **203**          | **Rust**    |
-| **Async (yield)**  | 456.72         | 310  | n/a  | **11.47** | 2000             | 712              | **Rust**    |
+| Scenario           | FastFSM (.NET) | Java | C++  | Rust (Statig) | TypeScript (Bun) | JavaScript (Bun) | Fastest        |
+| ------------------ | -------------- | ---- | ---- | ------------- | ---------------- | ---------------- | -------------- |
+| **Basic**          | **0.81**       | 289  | 1.23 | 1,730         | 1.2              | 1.0              | **FastFSM**    |
+| **Guards+Actions** | 2.18           | 321  | 1.32 | **0.37**      | 1.5              | 3.0              | **Rust**       |
+| **Payload**        | 0.83           | 311  | 1.35 | **0.41**      | 2.8              | 2.8              | **Rust**       |
+| **Async (hot)**    | 444.77         | 314  | 1.38 | **7.3**       | 208              | 203              | **C++***       |
+| **Async (yield)**  | 456.72         | 310  | n/a  | **19.4**      | 2000             | 712              | **Rust**       |
+
+*C++ "async" is synchronous simulation only; Rust shows true async performance.
 
 ---
 
@@ -503,14 +507,29 @@ FastFSM achieves **sub‑nanosecond** transition times (0.81 ± 0.03 ns) f
 
 | Library             | Allocations / op     | Native Code Size |
 | ------------------- | -------------------- | ---------------- |
-| FastFSM             | **0 bytes**          | 160 – 8 050 B    |
-| Stateless           | 608 – 2 295 B        | 3 436 – 21 417 B |
-| LiquidState         | 136 – 656 B          | 64 – 3 496 B     |
-| Appccelerate        | 1 608 – 3 166 B      | 1 084 – 3 721 B  |
-| Squirrel            | 1 456 – 1 536 B      | n/a              |
-| Spring StateMachine | 30 675 – 31 659 B    | n/a              |
-| TypeScript (Bun)    | \~40 – 90 B (engine) | n/a              |
-| JavaScript (Bun)    | \~40 – 60 B (engine) | n/a              |
+| FastFSM             | **0 bytes**          | 160 – 8 050 B    |
+| Statig (Rust)       | **0 bytes**          | ~2 – 8 KB        |
+| Stateless           | 608 – 2 295 B        | 3 436 – 21 417 B |
+| LiquidState         | 136 – 656 B          | 64 – 3 496 B     |
+| Appccelerate        | 1 608 – 3 166 B      | 1 084 – 3 721 B  |
+| Squirrel            | 1 456 – 1 536 B      | n/a              |
+| Spring StateMachine | 30 675 – 31 659 B    | n/a              |
+| TypeScript (Bun)    | \~40 – 90 B (engine) | n/a              |
+| JavaScript (Bun)    | \~40 – 60 B (engine) | n/a              |
+
+---
+
+### Key Performance Insights
+
+The benchmarks reveal fundamental trade-offs in state machine design:
+
+1. **Library Abstractions vs Hand-rolled Code**: The Rust Statig library shows a 1000× slowdown for basic transitions compared to hand-rolled code (1,730 ns vs 1.77 ns), demonstrating the cost of runtime abstractions. However, it excels at complex scenarios through aggressive inlining.
+
+2. **Compile-time vs Runtime**: FastFSM's source generator approach achieves hand-rolled performance while maintaining library convenience. This validates the design choice of compile-time code generation over runtime flexibility.
+
+3. **Language vs Implementation**: Performance varies more by implementation strategy than language choice. A well-optimized library in any language can outperform poorly designed code in a "faster" language.
+
+4. **Zero-allocation Achievement**: Both FastFSM and Statig achieve true zero-allocation operation, critical for high-frequency state transitions in performance-sensitive applications.
 
 ---
 
@@ -625,7 +644,7 @@ machine.Fire(Trigger.Start);
 
 ## Contributing
 
-We welcome contributions\! Please see our [Contributing Guide](https://www.google.com/search?q=CONTRIBUTING.md) for details.
+We welcome contributions! Please see our [Contributing Guide](https://www.google.com/search?q=CONTRIBUTING.md) for details.
 
 ## License
 

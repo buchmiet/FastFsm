@@ -1,5 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion, Throughput};
 use fsm_benchmark::*;
+use statig::prelude::*;
 use std::hint::black_box;
 
 fn bench_basic(c: &mut Criterion) {
@@ -7,18 +8,16 @@ fn bench_basic(c: &mut Criterion) {
     group.throughput(Throughput::Elements(OPS as u64));
 
     group.bench_function("statig", |b| {
-        b.iter_custom(|iters| {
-            let mut sm = black_box(BasicStateMachine::new());
-
-            let start = std::time::Instant::now();
-            for _ in 0..iters {
-                for _ in 0..OPS {
-                    let ok = sm.try_fire(BasicEvent::Next);
-                    black_box(ok);
-                    black_box(sm.state());
-                }
+        // Create state machine ONCE before measurements (like C# GlobalSetup)
+        let mut sm = BasicMachine::default().uninitialized_state_machine().init();
+        let event = BasicEvent::Next;
+        
+        b.iter(|| {
+            // Only measure the actual state transitions
+            for _ in 0..OPS {
+                sm.handle(black_box(&event));
+                black_box(sm.state());
             }
-            start.elapsed()
         })
     });
 
@@ -30,18 +29,16 @@ fn bench_guards_actions(c: &mut Criterion) {
     group.throughput(Throughput::Elements(OPS as u64));
 
     group.bench_function("statig", |b| {
-        b.iter_custom(|iters| {
-            let mut sm = black_box(GuardStateMachine::new());
-
-            let start = std::time::Instant::now();
-            for _ in 0..iters {
-                for _ in 0..OPS {
-                    let ok = sm.try_fire(GuardEvent::Next);
-                    black_box(ok);
-                    black_box(sm.state());
-                }
+        // Create state machine ONCE before measurements
+        let mut sm = GuardMachine::default().uninitialized_state_machine().init();
+        let event = GuardEvent::Next;
+        
+        b.iter(|| {
+            // Only measure the actual state transitions
+            for _ in 0..OPS {
+                sm.handle(black_box(&event));
+                black_box(sm.state());
             }
-            start.elapsed()
         })
     });
 
@@ -53,21 +50,18 @@ fn bench_payload(c: &mut Criterion) {
     group.throughput(Throughput::Elements(OPS as u64));
     
     let payload = Payload { value: 42 };
+    let event = PayloadEvent::Next(payload);
 
     group.bench_function("statig", |b| {
-        b.iter_custom(|iters| {
-            let mut sm = black_box(PayloadStateMachine::new());
-            let p = black_box(payload);
-
-            let start = std::time::Instant::now();
-            for _ in 0..iters {
-                for _ in 0..OPS {
-                    let ok = sm.try_fire(PayloadEvent::Next(p));
-                    black_box(ok);
-                    black_box(sm.state());
-                }
+        // Create state machine ONCE before measurements
+        let mut sm = PayloadMachine::default().uninitialized_state_machine().init();
+        
+        b.iter(|| {
+            // Only measure the actual state transitions
+            for _ in 0..OPS {
+                sm.handle(black_box(&event));
+                black_box(sm.state());
             }
-            start.elapsed()
         })
     });
 
