@@ -344,8 +344,9 @@ Benchmark.cpp/vcpkg_installed/
 
 Benchmark.Java/target/
 Benchmark.Rust/target/
-
+Benchmark.Rust/Cargo.lock
 
 # Ignorowanie folderów i artefaktów Claude AI
 .claude/
 .config/
+.lock

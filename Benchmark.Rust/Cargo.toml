@@ -1,27 +1,36 @@
 [package]
-name = "fsm_benchmark"
+name    = "fsm_benchmark"
 version = "0.1.0"
 edition = "2021"
 
+###############################################################################
+#  Z A L E Ż N O Ś C I  – widoczne dla całej biblioteki
+###############################################################################
 [dependencies]
 statig = { version = "0.4", features = ["async"] }
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
-num_cpus = "1"
-futures = "0.3"
-async-trait = "0.1"
 
+# ⬇⬇⬇  TOKIO MUSI BYĆ TUTAJ, a nie tylko w dev-dependencies
+tokio  = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+
+###############################################################################
+#  Z A L E Ż N O Ś C I  T Y L K O  D O  B E N C H Y  I  T E S T Ó W
+###############################################################################
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
 
+###############################################################################
 [[bench]]
-name = "fsm_bench"
+name    = "fsm_bench"
 harness = false
 
 [[bench]]
-name = "fsm_async_bench"
+name    = "fsm_async_bench"
 harness = false
 
 [profile.bench]
-opt-level = 3
-lto = "thin"
+opt-level     = 3
+lto           = "thin"
 codegen-units = 1
+
+[features]
+default = []
