@@ -343,7 +343,7 @@ Benchmark.Artifacts/
 Benchmark.cpp/vcpkg_installed/
 
 Benchmark.Java/target/
-
+Benchmark.Rust/target/
 
 
 # Ignorowanie folderów i artefaktów Claude AI

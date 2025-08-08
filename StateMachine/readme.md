@@ -379,190 +379,141 @@ public class OrderService(IStateMachineFactory factory)
 
 ### Performance Summary
 
-FastFSM achieves **sub-nanosecond** transition times (0.81 ± 0.03 ns) for basic synchronous operations, with zero heap allocations.
+FastFSM achieves **sub‑nanosecond** transition times (0.81 ± 0.03 ns) for basic synchronous operations, with **zero heap allocations**.
 
 ### Test Environment
 
-**Hardware:** AMD Ryzen 5 9600X (Zen 5, 6C/12T, AVX-512) @ 3.9-5.4 GHz, 32GB DDR5  
-**Runtime:** .NET 9.0.5 (RyuJIT AVX-512, Server GC) with `COMPlus_EnableAVX512=1`  
-**JVM:** OpenJDK 21.0.8+9-LTS (Temurin, Server VM, default G1 GC)  
-**Benchmark:** BenchmarkDotNet 0.15.2 (.NET), JMH 1.37 (Java)  
-**Methodology:** 1024 ops/iteration, 15 iterations (mean ± StdDev), Windows 11 24H2 "High Performance"  
-**Date:** 7 Aug 2025
+| Component       | Version / Details                                              |
+| --------------- | -------------------------------------------------------------- |
+| **CPU**         | AMD Ryzen 5 9600X (6C/12T Zen 5 @ 3.9–5.4 GHz, AVX‑512)        |
+| **Memory**      | 32 GB DDR5, Windows 11 24H2 “High Performance” power plan      |
+| **.NET**        |  9.0.5 (*RyuJIT AVX‑512*, Server GC, `COMPlus_EnableAVX512=1`) |
+| **JVM**         |  OpenJDK 21.0.8+9‑LTS (Temurin, Server VM, G1 GC)              |
+| **C++**         |  MSVC 19.44 (/O2 /GL /arch\:AVX512) + Google Benchmark 1.8.4   |
+| **Rust**        |  rustc 1.80 + criterion 0.5.1 (LTO, `-C target‑cpu=native`)    |
+| **TypeScript**  |  Bun 1.2.19 + mitata (compiled TS → JS)                        |
+| **JavaScript**  |  Bun 1.2.19 + mitata (pure ES2023)                             |
+| **Tools**       | BenchmarkDotNet 0.15.2 (.NET), JMH 1.37 (Java)                 |
+| **Methodology** | 1024 ops per iteration · 15 iterations (mean ± StdDev)         |
+| **Date**        | 7 Aug 2025                                                     |
 
-*Note: Results may vary ±5-8% on CPUs without AVX-512 support.*
+*Results may vary ± 5‑8 % on CPUs without AVX‑512 support.*
 
-### FastFSM vs .NET State Machine Libraries
+---
 
-| Scenario | FastFSM | Stateless | LiquidState | Appccelerate | Winner |
-|----------|---------|-----------|-------------|--------------|--------|
-| **Basic Transitions** | **0.81 ns** | 249.03 ns | 25.31 ns | 260.85 ns | FastFSM (31x vs LiquidState) |
-| Guards + Actions | **2.18 ns** | 267.37 ns | n/a¹ | 273.53 ns | FastFSM (123x vs Stateless) |
-| Payload | **0.83 ns** | 300.63 ns | 30.13 ns | 291.60 ns | FastFSM (36x vs LiquidState) |
-| Can Fire Check | **0.31 ns** | 115.54 ns | n/a¹ | n/a¹ | FastFSM (373x vs Stateless) |
-| Get Permitted Triggers | **4.18 ns** | 32.69 ns | n/a¹ | n/a¹ | FastFSM (7.8x vs Stateless) |
-| Async Hot Path² | 444.77 ns | 357.12 ns | **75.87 ns** | 504.37 ns | LiquidState (5.9x vs FastFSM) |
-| Async With Yield³ | 456.72 ns | 1,100.78 ns | 490.22 ns | 1,738.62 ns | FastFSM (1.1x vs LiquidState) |
+### FastFSM vs .NET State‑Machine Libraries
 
-¹ API not available in this library  
-² Hot path: `ValueTask.CompletedTask` (FastFSM) vs `Task.FromResult` (others) - no scheduler switching  
-³ With yield: includes `Task.Yield()` for actual async context switch
+| Scenario               | FastFSM     | Stateless  | LiquidState  | Appccelerate | Winner                       |
+| ---------------------- | ----------- | ---------- | ------------ | ------------ | ---------------------------- |
+| **Basic Transitions**  | **0.81 ns** | 249.03 ns  | 25.31 ns     | 260.85 ns    | FastFSM (31× vs LiquidState) |
+| Guards + Actions       | **2.18 ns** | 267.37 ns  |  n/a¹        | 273.53 ns    | FastFSM (123× vs Stateless)  |
+| Payload                | **0.83 ns** | 300.63 ns  | 30.13 ns     | 291.60 ns    | FastFSM (36× vs LiquidState) |
+| Can Fire Check         | **0.31 ns** | 115.54 ns  |  n/a¹        |  n/a¹        | FastFSM (373× vs Stateless)  |
+| Get Permitted Triggers | **4.18 ns** | 32.69 ns   |  n/a¹        |  n/a¹        | FastFSM (7.8× vs Stateless)  |
+| Async Hot Path²        | 444.77 ns   | 357.12 ns  | **75.87 ns** | 504.37 ns    | LiquidState (5.9× faster)    |
+| Async With Yield³      | 456.72 ns   | 1100.78 ns | 490.22 ns    | 1738.62 ns   | FastFSM                      |
 
-### FastFSM vs Java State Machine Libraries
+¹ API not available   ² `ValueTask.CompletedTask` vs `Task.FromResult`   ³ `Task.Yield()` for real context switch
 
-| Scenario | FastFSM<br>(.NET 9) | Squirrel<br>(JDK 21) | Spring StateMachine<br>(JDK 21) | Notes |
-|----------|---------------------|----------------------|----------------------------------|-------|
-| **Basic Transitions** | **0.81 ns** / 0 B | 289 ns / 1.5 kB | 12,188 ns / 30.7 kB | FastFSM is 357x faster than Squirrel, 15,000x faster than Spring |
-| Guards + Actions | **2.18 ns** / 0 B | 321 ns / 1.5 kB | 13,564 ns / 31.3 kB | All execute same logic (counter < int.MaxValue) |
-| Payload | **0.83 ns** / 0 B | 311 ns / 1.5 kB | 12,321 ns / 31.6 kB | Java passes object reference but incurs collection overhead |
-| Async Hot Path⁴ | 444.77 ns / 0 B | **314 ns** / 1.5 kB | 12,110 ns / 31.1 kB | CompletableFuture vs ValueTask overhead |
-| Async With Yield⁵ | **456.72 ns** / 0 B | 310 ns / 1.5 kB | 26,599 ns / 31.7 kB | Real context switch via schedulers |
+---
 
-⁴ No context switching - pure library overhead only  
-⁵ Forced context switch (`Task.Yield()` / `ForkJoinPool`)
+### FastFSM vs TypeScript (Bun)
 
-**Key Observations - Java Libraries:**
-- **Squirrel** (~300 ns) outperforms Spring by 40x but is still 350x slower than FastFSM due to reflection-based dispatch
-- **Spring StateMachine** prioritizes rich features (hierarchical states, interceptors) over raw performance, resulting in ~30 kB allocations per transition
-- Both Java libraries allocate on every transition, triggering minor GC every ~1 µs under load
-- The fundamental difference: FastFSM generates optimal code at compile-time while Java libraries use runtime collections and reflection
+| Scenario                  | TypeScript (Bun) | FastFSM (.NET) | Δ (relative)   |
+| ------------------------- | ---------------- | -------------- | -------------- |
+| **Basic Transitions**     | \~1.2 ns         | **0.81 ns**    | 1.5× slower    |
+| Guards + Actions          | **\~1.5 ns**     | 2.18 ns        | 1.45× *faster* |
+| Payload                   | \~2.8 ns         | **0.83 ns**    | 3.4× slower    |
+| Can Fire Check            | \~0.6 ns         | **0.31 ns**    | 2.0× slower    |
+| Get Permitted Triggers    | **\~1.0 ns**     | 4.18 ns        | 4.2× *faster*  |
+| Async Hot Path (no yield) | **\~208 ns**     | 444.77 ns      | 2.1× *faster*  |
+| Async With Yield          | \~2000 ns        | **456.72 ns**  | 4.4× slower    |
 
-### FastFSM vs C++ State Machines
+*TS implementation: minimal FSM with `switch`; Bun’s JIT optimises hot paths strongly. Async models differ (`setImmediate()` vs `Task.Yield()`).*
 
-**C++ Implementation:** Boost.SML 1.1.9 (header-only template library)  
-**Compiler:** MSVC 19.44, Release build with `/O2 /GL /arch:AVX512`  
-**Benchmark Framework:** Google Benchmark 1.8.4  
-**Code Size Tool:** `dumpbin /summary` (executable section sizes)
+---
 
-| Scenario | FastFSM (.NET) | Boost.SML (C++) | Difference | Notes |
-|----------|----------------|-----------------|------------|--------|
-| Basic Transitions | **0.81 ns** | 1.23 ns | FastFSM 1.5x faster | JIT-optimized switch vs template dispatch |
-| Guards + Actions | 2.18 ns | **1.32 ns** | C++ 1.7x faster | C++ increments register; .NET modifies heap field⁶ |
-| Payload | **0.83 ns** | 1.35 ns | FastFSM 1.6x faster | Reference passing overhead in C++ |
-| Can Fire Check | **0.31 ns** | 1.28 ns⁷ | FastFSM 4.1x faster | Dedicated API vs state query |
-| Async Hot Path⁸ | 444.77 ns | 1.38 ns | C++ 322x faster | Not comparable - see note |
+### FastFSM vs JavaScript (Bun)
 
-⁶ FastFSM guard modifies object field (memory barrier); C++ increments local counter in CPU register  
-⁷ Boost.SML uses `is(state)` check - no dedicated CanFire API  
-⁸ C++ 'async' is synchronous simulation (simple increment); CLR uses real async state machine. True C++20 coroutines would add ~50-100ns overhead
+| Scenario               | JavaScript (Bun) | FastFSM (.NET) | Δ (relative)   |
+| ---------------------- | ---------------- | -------------- | -------------- |
+| **Basic Transitions**  | \~1.0 ns         | **0.81 ns**    | 1.2× slower    |
+| Guards + Actions       | \~3.0 ns         | **2.18 ns**    | 1.4× slower    |
+| Payload                | \~2.8 ns         | **0.83 ns**    | 3.4× slower    |
+| Can Fire Check         | \~0.38 ns        | **0.31 ns**    | 1.2× slower    |
+| Get Permitted Triggers | **\~0.39 ns**    | 4.18 ns        | 10.7× *faster* |
+| Async Hot Path         | **\~203 ns**     | 444.77 ns      | 2.2× *faster*  |
+| Async With Yield       | \~712 ns         | **456.72 ns**  | 1.6× slower    |
 
-### FastFSM vs Rust State Machines
+*Pure ES2023 class with `switch`, same methodology.*
 
-**Rust Implementation:** Hand-optimized state machine (not a library)  
-**Compiler:** rustc 1.80.0 with criterion 0.5.1, release build with LTO  
-**Flags:** `RUSTFLAGS="-C target-cpu=native"` (enables AVX-512 on Zen 5)  
-**Code Size Tool:** `cargo bloat --release`
+---
 
-| Scenario | FastFSM (.NET) | Rust | Difference | Notes |
-|----------|----------------|------|------------|--------|
-| Basic Transitions | **0.81 ns** | 1.77 ns | FastFSM 2.2x faster | JIT vs LLVM optimization patterns |
-| Guards + Actions | 2.18 ns | **0.71 ns** | Rust 3.1x faster | Zero-cost abstractions, no object overhead |
-| Payload | 0.83 ns | **0.70 ns** | Rust 1.2x faster | Stack-only operations |
-| Async Hot Path⁹ | 444.77 ns | **0.79 ns** | Rust 563x faster | Tokio future vs CLR Task |
-| Async With Yield¹⁰ | 456.72 ns | **11.47 ns** | Rust 40x faster | Runtime scheduler differences |
+### FastFSM vs Java State‑Machine Libraries
 
-⁹ No actual async work - measures runtime overhead only  
-¹⁰ `Task.Yield()` (CLR) vs `tokio::task::yield_now()` (Tokio) - different cooperative scheduling models
+| Scenario              | FastFSM (.NET)    | Squirrel (JDK 21) | Spring StateMachine (JDK 21) |
+| --------------------- | ----------------- | ----------------- | ---------------------------- |
+| **Basic Transitions** | **0.81 ns / 0 B** | 289 ns / 1.5 kB   | 12 188 ns / 30.7 kB          |
+| Guards + Actions      | **2.18 ns / 0 B** | 321 ns / 1.5 kB   | 13 564 ns / 31.3 kB          |
+| Payload               | **0.83 ns / 0 B** | 311 ns / 1.5 kB   | 12 321 ns / 31.6 kB          |
+| Async Hot Path        | 444.77 ns         | **314 ns**        | 12 110 ns                    |
+| Async With Yield      | **456.72 ns**     | 310 ns            | 26 599 ns                    |
 
-### Cross-Language Summary
+---
 
-| Scenario | FastFSM (.NET) | Java (Squirrel) | C++ (Boost.SML) | Rust | Fastest | Notes |
-|----------|----------------|-----------------|-----------------|------|---------|-------|
-| Basic Transitions | **0.81 ± 0.03 ns** | 289 ns | 1.23 ns | 1.77 ns | **FastFSM** | Simple switch statement optimal |
-| Guards + Actions | 2.18 ns | 321 ns | 1.32 ns | **0.71 ns** | **Rust** | Native register operations win |
-| Payload | 0.83 ns | 311 ns | 1.35 ns | **0.70 ns** | **Rust** | Minimal stack manipulation |
-| Async (no yield) | 444.77 ns¹¹ | 314 ns¹² | 1.38 ns¹³ | **0.79 ns** | **Rust** | CLR async overhead dominates |
-| Async (with yield) | 456.72 ns | 310 ns | n/a | **11.47 ns** | **Rust** | Tokio scheduler most efficient |
+### FastFSM vs C++ State Machines (Boost.SML)
 
-¹¹ ValueTask with async state machine overhead  
-¹² CompletableFuture with hot path optimization  
-¹³ C++ 'async' is synchronous simulation - not real async; true C++20 coroutines would be ~50-100ns
+| Scenario              | FastFSM (.NET) | Boost.SML (C++) | Δ                   |
+| --------------------- | -------------- | --------------- | ------------------- |
+| **Basic Transitions** | **0.81 ns**    | 1.23 ns         | FastFSM 1.5× faster |
+| Guards + Actions      | 2.18 ns        | **1.32 ns**     | C++ 1.7× faster     |
+| Payload               | **0.83 ns**    | 1.35 ns         | FastFSM 1.6× faster |
+| Can Fire Check        | **0.31 ns**    | 1.28 ns         | 4.1× faster         |
+| Async Hot Path\*      | 444.77 ns      | 1.38 ns         | *Not comparable*    |
 
-**Key Insights:**
-- **FastFSM leads in simple state transitions** - JIT optimization produces ideal machine code for basic switch-case patterns
-- **Native languages excel with complex logic** - Rust and C++ avoid virtual dispatch and object field access overhead
-- **Java libraries prioritize flexibility** - Both Squirrel and Spring focus on runtime configurability over raw speed
-- **CLR async carries inherent overhead** - Even empty `ValueTask` operations cost 300-500x more than synchronous code
-- **All achieve sub-2ns for synchronous work** (except Java) - Modern CPU branch prediction makes state machines incredibly efficient
+*Boost.SML “async” is a synchronous simulation (no coroutines).*
+
+---
+
+### FastFSM vs Rust State Machines
+
+| Scenario              | FastFSM (.NET) | Rust (hand‑rolled) | Δ           |
+| --------------------- | -------------- | ------------------ | ----------- |
+| **Basic Transitions** | **0.81 ns**    | 1.77 ns            | 2.2× faster |
+| Guards + Actions      | 2.18 ns        | **0.71 ns**        | 3.1× slower |
+| Payload               | 0.83 ns        | **0.70 ns**        | 1.2× slower |
+| Async Hot Path        | 444.77 ns      | **0.79 ns**        | 563× slower |
+| Async With Yield      | 456.72 ns      | **11.47 ns**       | 40× slower  |
+
+---
+
+### Cross‑Language Summary (ns/op)
+
+| Scenario           | FastFSM (.NET) | Java | C++  | Rust      | TypeScript (Bun) | JavaScript (Bun) | Fastest     |
+| ------------------ | -------------- | ---- | ---- | --------- | ---------------- | ---------------- | ----------- |
+| **Basic**          | **0.81**       | 289  | 1.23 | 1.77      | 1.2              | 1.0              | **FastFSM** |
+| **Guards+Actions** | 2.18           | 321  | 1.32 | **0.71**  | **1.5**          | 3.0              | **Rust**    |
+| **Payload**        | 0.83           | 311  | 1.35 | **0.70**  | 2.8              | 2.8              | **Rust**    |
+| **Async (hot)**    | 444.77         | 314  | 1.38 | **0.79**  | **208**          | **203**          | **Rust**    |
+| **Async (yield)**  | 456.72         | 310  | n/a  | **11.47** | 2000             | 712              | **Rust**    |
+
+---
 
 ### Memory Allocations per Operation
 
-| Library | .NET Libs | Java Libs | Native Code Size |
-|---------|-----------|-----------|------------------|
-| FastFSM | **0 bytes** | - | 160 - 8,050 bytes |
-| Stateless | 608 - 2,295 bytes | - | 3,436 - 21,417 bytes |
-| LiquidState | 136 - 656 bytes | - | 64 - 3,496 bytes |
-| Appccelerate | 1,608 - 3,166 bytes | - | 1,084 - 3,721 bytes |
-| Squirrel | - | 1,456 - 1,536 bytes | n/a¹⁴ |
-| Spring StateMachine | - | 30,675 - 31,659 bytes | n/a¹⁴ |
+| Library             | Allocations / op     | Native Code Size |
+| ------------------- | -------------------- | ---------------- |
+| FastFSM             | **0 bytes**          | 160 – 8 050 B    |
+| Stateless           | 608 – 2 295 B        | 3 436 – 21 417 B |
+| LiquidState         | 136 – 656 B          | 64 – 3 496 B     |
+| Appccelerate        | 1 608 – 3 166 B      | 1 084 – 3 721 B  |
+| Squirrel            | 1 456 – 1 536 B      | n/a              |
+| Spring StateMachine | 30 675 – 31 659 B    | n/a              |
+| TypeScript (Bun)    | \~40 – 90 B (engine) | n/a              |
+| JavaScript (Bun)    | \~40 – 60 B (engine) | n/a              |
 
-¹⁴ JVM bytecode size not directly comparable to native code size
+---
 
-Code size measured via BenchmarkDotNet DisassemblyDiagnoser (JIT Tier 1) for .NET libraries.
-
-### Reproduction Instructions
-
-#### Prerequisites
-- **.NET**: .NET 9.0.5 SDK
-- **Java**: JDK 21.0.8+ (Temurin recommended), Maven 3.9+
-- **C++**: Visual Studio 2022 (or Build Tools), vcpkg with `VCPKG_ROOT` environment variable
-- **Rust**: Rust 1.80+ with cargo
-
-#### Running Benchmarks
-
-```powershell
-# .NET Benchmarks
-cd Benchmark
-./run.ps1
-
-# Java Benchmarks (requires JDK 21 + Maven)
-cd Benchmark.Java
-./run.ps1
-
-# C++ Benchmarks (requires VS 2022 + vcpkg)
-cd Benchmark.cpp
-./run.ps1
-
-# Rust Benchmarks  
-cd Benchmark.Rust
-./run.ps1
-```
-
-All benchmarks run from PowerShell with Windows set to High Performance power plan.  
-For consistent results, disable CPU boost and set fixed frequency.
-
-### Raw Benchmark Output
-
-Full results with standard deviations and detailed metrics:
-- **.NET:** `Benchmark/BenchmarkDotNet.Artifacts/results/`
-- **Java:** `Benchmark.Java/target/jmh-results.json`
-- **C++:** `Benchmark.cpp/build/Release/` (Google Benchmark JSON output)
-- **Rust:** `Benchmark.Rust/target/criterion/`
-
-### Measurement Notes
-
-- All times represent mean of complete transition cycle: guard evaluation + state change + action execution
-- Standard deviation typically ±3-5% due to CPU frequency scaling and cache effects  
-- Java benchmarks use JMH with matching `@OperationsPerInvoke(1024)` annotation to align with other frameworks
-- C++ and Rust values calculated as: total benchmark time ÷ 1024 operations (matching BenchmarkDotNet's `OperationsPerInvoke`)
-- Async benchmarks measure different runtime models and are not directly comparable across languages
-- FastFSM uses C# source generators for compile-time code generation
-- Boost.SML uses C++ template metaprogramming for zero-overhead abstractions
-- Java libraries use reflection and runtime collections (HashMap, ConcurrentHashMap)
-- Rust implementation is hand-written without any framework overhead
-- All compilers use AVX-512 instructions when available (Zen 5 architecture)
-
-### Important Caveats
-
-**Cross-runtime benchmarks are approximations.** While we've ensured methodological consistency (same hardware, same iteration counts, same warm-up procedures), fundamental differences cannot be eliminated:
-- **Garbage Collection**: JVM allocates and collects continuously; CLR's generational GC has different characteristics; native languages have no GC
-- **Async Models**: `ValueTask` vs `CompletableFuture` vs C++20 coroutines vs Rust futures represent different design philosophies
-- **Code Generation**: FastFSM generates code at build time; Java libraries use runtime reflection; C++ uses compile-time templates
-- **Memory Models**: Each runtime has different guarantees about memory ordering and visibility
-
-References: [Spring StateMachine](https://spring.io/projects/spring-statemachine) | [Squirrel Foundation](https://github.com/hekailiang/squirrel)
-
------
 
 ## Real-World Examples
 
