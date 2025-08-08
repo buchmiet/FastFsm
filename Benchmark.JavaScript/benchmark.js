@@ -338,30 +338,4 @@ await run({
   percentiles: false,
 });
 
-// ============================================================
-// WYNIKI
-// ============================================================
 
-console.log('\n' + '='.repeat(80));
-console.log('📊 PORÓWNANIE: JavaScript vs TypeScript vs FastFSM');
-console.log('='.repeat(80));
-
-console.log(`
-| Implementacja        | Basic    | Guards  | Payload | CanFire |
-|---------------------|----------|---------|---------|---------|
-| JS Class (switch)   | ~?.? ns  | ~?.? ns | ~?.? ns | ~?.? ns |
-| JS Functional       | ~?.? ns  | -       | -       | -       |
-| JS Lookup Table     | ~?.? ns  | -       | -       | ~?.? ns |
-| TS Minimal (Bun)    | ~1.2 ns  | ~1.5 ns | ~2.8 ns | ~0.6 ns |
-| FastFSM (.NET)      | 0.81 ns  | 2.18 ns | 0.83 ns | 0.31 ns |
-
-HIPOTEZY:
-1. Czysty JS może być 5-10% szybszy niż TypeScript (brak type checking)
-2. Functional może być szybszy (mniej overhead klasy)
-3. Lookup table może być wolniejszy (hash lookup vs switch)
-
-WNIOSKI:
-- Switch/case jest najszybszy w JavaScript
-- Bun JIT świetnie optymalizuje prosty, przewidywalny kod
-- FastFSM nadal wygrywa dzięki compile-time generation
-`);
