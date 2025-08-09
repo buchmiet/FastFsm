@@ -43,8 +43,8 @@ public partial class BasicHierarchicalMachine
     [State(HsmState.A, Parent = HsmState.Root, OnEntry = nameof(OnEntryA), OnExit = nameof(OnExitA))]
     void A() { }
 
-    [State(HsmState.A1, Parent = HsmState.A, OnEntry = nameof(OnEntryA1), OnExit = nameof(OnExitA1))]
-    [InitialSubstate(HsmState.A, HsmState.A1)]
+    [State(HsmState.A1, Parent = HsmState.A, OnEntry = nameof(OnEntryA1), OnExit = nameof(OnExitA1), IsInitial = true)]
+    // [InitialSubstate(HsmState.A, HsmState.A1)] - deprecated, use IsInitial in State attribute
     void A1() { }
 
     [State(HsmState.A2, Parent = HsmState.A, OnEntry = nameof(OnEntryA2), OnExit = nameof(OnExitA2))]
@@ -56,8 +56,8 @@ public partial class BasicHierarchicalMachine
     [State(HsmState.B, Parent = HsmState.Root, OnEntry = nameof(OnEntryB), OnExit = nameof(OnExitB))]
     void B() { }
 
-    [State(HsmState.B1, Parent = HsmState.B, OnEntry = nameof(OnEntryB1), OnExit = nameof(OnExitB1))]
-    [InitialSubstate(HsmState.B, HsmState.B1)]
+    [State(HsmState.B1, Parent = HsmState.B, OnEntry = nameof(OnEntryB1), OnExit = nameof(OnExitB1), IsInitial = true)]
+    // [InitialSubstate(HsmState.B, HsmState.B1)] - deprecated, use IsInitial in State attribute
     void B1() { }
 
     [State(HsmState.B2, Parent = HsmState.B, OnEntry = nameof(OnEntryB2), OnExit = nameof(OnExitB2))]
@@ -69,8 +69,8 @@ public partial class BasicHierarchicalMachine
     [State(HsmState.C, Parent = HsmState.Root, OnEntry = nameof(OnEntryC), OnExit = nameof(OnExitC))]
     void C() { }
 
-    [State(HsmState.C1, Parent = HsmState.C, OnEntry = nameof(OnEntryC1), OnExit = nameof(OnExitC1))]
-    [InitialSubstate(HsmState.C, HsmState.C1)]
+    [State(HsmState.C1, Parent = HsmState.C, OnEntry = nameof(OnEntryC1), OnExit = nameof(OnExitC1), IsInitial = true)]
+    // [InitialSubstate(HsmState.C, HsmState.C1)] - deprecated, use IsInitial in State attribute
     void C1() { }
 
     [State(HsmState.C2, Parent = HsmState.C, OnEntry = nameof(OnEntryC2), OnExit = nameof(OnExitC2))]
@@ -155,8 +155,8 @@ public partial class ShallowHistoryMachine
     [State(HsmState.A, Parent = HsmState.Root, History = HistoryMode.Shallow, OnEntry = nameof(OnEntryA), OnExit = nameof(OnExitA))]
     void A() { }
 
-    [State(HsmState.A1, Parent = HsmState.A, OnEntry = nameof(OnEntryA1), OnExit = nameof(OnExitA1))]
-    [InitialSubstate(HsmState.A, HsmState.A1)]
+    [State(HsmState.A1, Parent = HsmState.A, OnEntry = nameof(OnEntryA1), OnExit = nameof(OnExitA1), IsInitial = true)]
+    // [InitialSubstate(HsmState.A, HsmState.A1)] - deprecated, use IsInitial in State attribute
     void A1() { }
 
     [State(HsmState.A2, Parent = HsmState.A, OnEntry = nameof(OnEntryA2), OnExit = nameof(OnExitA2))]
@@ -195,15 +195,15 @@ public partial class DeepHistoryMachine
     [State(HsmState.A, Parent = HsmState.Root, History = HistoryMode.Deep, OnEntry = nameof(OnEntryA), OnExit = nameof(OnExitA))]
     void A() { }
 
-    [State(HsmState.A1, Parent = HsmState.A, OnEntry = nameof(OnEntryA1), OnExit = nameof(OnExitA1))]
-    [InitialSubstate(HsmState.A, HsmState.A1)]
+    [State(HsmState.A1, Parent = HsmState.A, OnEntry = nameof(OnEntryA1), OnExit = nameof(OnExitA1), IsInitial = true)]
+    // [InitialSubstate(HsmState.A, HsmState.A1)] - deprecated, use IsInitial in State attribute
     void A1() { }
 
     [State(HsmState.A2, Parent = HsmState.A, History = HistoryMode.Deep, OnEntry = nameof(OnEntryA2), OnExit = nameof(OnExitA2))]
     void A2() { }
 
-    [State(HsmState.A3, Parent = HsmState.A2, OnEntry = nameof(OnEntryA3), OnExit = nameof(OnExitA3))]
-    [InitialSubstate(HsmState.A2, HsmState.A3)]
+    [State(HsmState.A3, Parent = HsmState.A2, OnEntry = nameof(OnEntryA3), OnExit = nameof(OnExitA3), IsInitial = true)]
+    // [InitialSubstate(HsmState.A2, HsmState.A3)] - deprecated, use IsInitial in State attribute
     void A3() { }
 
     [State(HsmState.B, Parent = HsmState.Root, OnEntry = nameof(OnEntryB), OnExit = nameof(OnExitB))]
@@ -241,16 +241,18 @@ public partial class InternalTransitionMachine
     [State(HsmState.A, Parent = HsmState.Root, OnEntry = nameof(OnEntryA), OnExit = nameof(OnExitA))]
     void A() { }
 
-    [State(HsmState.A1, Parent = HsmState.A, OnEntry = nameof(OnEntryA1), OnExit = nameof(OnExitA1))]
-    [InitialSubstate(HsmState.A, HsmState.A1)]
+    [State(HsmState.A1, Parent = HsmState.A, OnEntry = nameof(OnEntryA1), OnExit = nameof(OnExitA1), IsInitial = true)]
+    // [InitialSubstate(HsmState.A, HsmState.A1)] - deprecated, use IsInitial in State attribute
     void A1() { }
 
     [State(HsmState.A2, Parent = HsmState.A, OnEntry = nameof(OnEntryA2), OnExit = nameof(OnExitA2))]
     void A2() { }
 
     // Internal transition defined on parent
-    [InternalTransition(HsmState.A, HsmTrigger.Internal)]
-    void AInternal() => ExecutionLog.Add("Action-A-Internal");
+    [InternalTransition(HsmState.A, HsmTrigger.Internal, nameof(AInternalAction))]
+    void AInternal() { }
+    
+    void AInternalAction() => ExecutionLog.Add("Action-A-Internal");
 
     // External transition for comparison
     [Transition(HsmState.A1, HsmTrigger.External, HsmState.A1)]
@@ -278,8 +280,8 @@ public partial class TransitionInheritanceMachine
     [State(HsmState.A, Parent = HsmState.Root)]
     void A() { }
 
-    [State(HsmState.A1, Parent = HsmState.A)]
-    [InitialSubstate(HsmState.A, HsmState.A1)]
+    [State(HsmState.A1, Parent = HsmState.A, IsInitial = true)]
+    // [InitialSubstate(HsmState.A, HsmState.A1)] - deprecated, use IsInitial in State attribute
     void A1() { }
 
     [State(HsmState.A2, Parent = HsmState.A)]
@@ -318,8 +320,8 @@ public partial class ExceptionHandlingHsmMachine
     [State(HsmState.A, Parent = HsmState.Root, OnEntry = nameof(OnEntryA), OnExit = nameof(OnExitA))]
     void A() { }
 
-    [State(HsmState.A1, Parent = HsmState.A, OnEntry = nameof(OnEntryA1), OnExit = nameof(OnExitA1))]
-    [InitialSubstate(HsmState.A, HsmState.A1)]
+    [State(HsmState.A1, Parent = HsmState.A, OnEntry = nameof(OnEntryA1), OnExit = nameof(OnExitA1), IsInitial = true)]
+    // [InitialSubstate(HsmState.A, HsmState.A1)] - deprecated, use IsInitial in State attribute
     void A1() { }
 
     [State(HsmState.B, Parent = HsmState.Root, OnEntry = nameof(OnEntryB), OnExit = nameof(OnExitB))]
@@ -334,9 +336,10 @@ public partial class ExceptionHandlingHsmMachine
     }
 
     [OnException(ExceptionDirective.Continue)]
-    void HandleException(ExceptionContext context)
+    ExceptionDirective HandleException(ExceptionContext<HsmState, HsmTrigger> context)
     {
         ExecutionLog.Add($"Exception-{context.Stage}-{context.Exception.Message}");
+        return ExceptionDirective.Continue;
     }
 
     void OnEntryA()

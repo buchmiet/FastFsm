@@ -708,6 +708,12 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                         {
                             stateModel.ParentState = parentStateName;
                         }
+                        else if (parentValue != null)
+                        {
+                            // Parent był podany ale nie jest valid - to błąd!
+                            // GetEnumMemberName już zgłosił błąd FSM002
+                            // criticalErrorOccurred jest już ustawione przez GetEnumMemberName
+                        }
                     }
 
                     // ---------- History (HSM) ----------
@@ -1424,6 +1430,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         // Build parent-child relationships
         foreach (var state in model.States.Values)
         {
+            // report?.Invoke($"[HSM] State {state.Name}: Parent={state.ParentState}, IsInitial={state.IsInitial}, History={state.History}");
             model.ParentOf[state.Name] = state.ParentState;
             
             if (!model.ChildrenOf.ContainsKey(state.Name))
@@ -1455,11 +1462,12 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         }
 
         // Check for circular dependencies
+        // report?.Invoke($"[HSM] Checking for circular dependencies...");
         var visited = new HashSet<string>();
         var recursionStack = new HashSet<string>();
         foreach (var state in model.States.Keys)
         {
-            if (HasCircularDependency(state, model.ParentOf, visited, recursionStack))
+            if (HasCircularDependency(state, model.ParentOf, visited, recursionStack, report))
             {
                 context.ReportDiagnostic(Diagnostic.Create(
                     DiagnosticFactory.Get(RuleIdentifiers.CircularHierarchy),
@@ -1535,23 +1543,27 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
     }
 
     private bool HasCircularDependency(string state, Dictionary<string, string?> parentOf, 
-        HashSet<string> visited, HashSet<string> recursionStack)
+        HashSet<string> visited, HashSet<string> recursionStack, Action<string>? report = null)
     {
+        // Jeśli stan jest już w stosie rekursji, mamy cykl
         if (recursionStack.Contains(state))
             return true;
             
+        // Jeśli już odwiedzony i nie było cyklu, skip
         if (visited.Contains(state))
             return false;
 
         visited.Add(state);
         recursionStack.Add(state);
 
+        // Sprawdź rodzica
         if (parentOf.TryGetValue(state, out var parent) && parent != null)
         {
-            if (HasCircularDependency(parent, parentOf, visited, recursionStack))
+            if (HasCircularDependency(parent, parentOf, visited, recursionStack, report))
                 return true;
         }
 
+        // Usuń ze stosu po przetworzeniu
         recursionStack.Remove(state);
         return false;
     }
