@@ -28,6 +28,11 @@ public sealed class TransitionModel
     // Set explicitly only for [InternalTransition]. Self-transitions [Transition(A, T, A)] are NOT internal.
     public bool IsInternal { get; set; }
 
+    /// <summary>
+    /// Priorytet przejścia (dla HSM)
+    /// </summary>
+    public int Priority { get; set; } = 0;
+
     #endregion
 
     #region Callback Methods
