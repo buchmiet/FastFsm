@@ -352,6 +352,12 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
 
                 foreach (var namedArg in attrData.NamedArguments)
                 {
+                    // Priority (HSM)
+                    if (namedArg is { Key: "Priority", Value.Value: int priorityValue })
+                    {
+                        transition.Priority = priorityValue;
+                    }
+                    
                     if (namedArg is { Key: GuardCallbackType, Value.Value: string guardMethodName })
                     {
                         if (!ValidateCallbackMethodSignature(classSymbolContainingMethods, guardMethodName, GuardCallbackType,
@@ -514,6 +520,12 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                 bool guardValid = true;
                 foreach (var namedArg in attrData.NamedArguments)
                 {
+                    // Priority (HSM)
+                    if (namedArg is { Key: "Priority", Value.Value: int priorityValue })
+                    {
+                        transition.Priority = priorityValue;
+                    }
+                    
                     if (namedArg.Key == GuardCallbackType && namedArg.Value.Value is string guardMethodName)
                     {
                         if (!ValidateCallbackMethodSignature(classSymbolContainingMethods, guardMethodName, GuardCallbackType,

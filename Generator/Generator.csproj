@@ -31,7 +31,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Abstractions\Abstractions.csproj" />
     <ProjectReference Include="..\Generator.DependencyInjection\Generator.DependencyInjection.csproj" />
-    <ProjectReference Include="..\Generator.Log\Generator.Log.csproj" />
+    <ProjectReference Include="..\Generator.Logger\Generator.Logger.csproj" />
     <ProjectReference Include="..\Generator.Model\Generator.Model.csproj" />
     <ProjectReference Include="..\Generator.Rules\Generator.Rules.csproj" />
     <ProjectReference Include="..\IndentedStringBuilder\IndentedStringBuilder.csproj" />

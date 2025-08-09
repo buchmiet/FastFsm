@@ -1,614 +1,356 @@
-# FastFsm API Reference
+# FastFsm API Documentation
 
-FastFsm is a high-performance, AOT-friendly state machine generator for .NET that uses source generators to create efficient FSM implementations from attribute-decorated classes.
+This document provides an overview of the FastFsm solution structure, projects, and their APIs.
 
-## Table of Contents
-1. [Core Concepts](#core-concepts)
-2. [Attributes](#attributes)
-3. [Transition Execution Order](#transition-execution-order)
-4. [Callback Methods](#callback-methods)
-5. [Public API](#public-api)
-6. [CancellationToken Propagation](#cancellationtoken-propagation)
-7. [Exception Policy](#exception-policy)
-8. [OnException & ExceptionDirective](#onexception--exceptiondirective)
-9. [Validation Rules](#validation-rules)
-10. [Examples](#examples)
+## Solution Structure
 
-## Core Concepts
-
-### State Machine Types
-- **Sync Machines**: Synchronous state machines with `IStateMachine<TState, TTrigger>` interface
-- **Async Machines**: Asynchronous state machines with `IAsyncStateMachine<TState, TTrigger>` interface
-
-### Variants
-- **Pure**: No OnEntry/OnExit callbacks, minimal footprint
-- **Core**: Basic callbacks without payload support
-- **Payload**: Single payload type support with typed API
-- **MultiPayload**: Different payload types per trigger
-
-## Attributes
-
-### `[StateMachine]`
-Marks a partial class as a state machine.
-
-```csharp
-[StateMachine(typeof(StateEnum), typeof(TriggerEnum))]
-public partial class MyStateMachine { }
+```
+/
+├── Abstractions/
+├── Benchmark/
+├── Benchmark.cpp/
+├── Benchmark.Java/
+├── Benchmark.JavaScript/
+├── Benchmark.Rust/
+├── Benchmark.TypeScript/
+├── Generator/
+├── Generator.DependencyInjection/
+├── Generator.Model/
+├── Generator.Rules/
+├── IndentedStringBuilder/
+├── StateMachine/
+├── StateMachine.Async.Tests/
+├── StateMachine.DependencyInjection/
+├── StateMachine.DependencyInjection.Tests/
+├── StateMachine.Logging/
+└── StateMachine.Tests/
 ```
 
-**Properties:**
-- `StateType` (required): Enum type for states
-- `TriggerType` (required): Enum type for triggers
-- `DefaultPayloadType`: Default payload type for all triggers
-- `GenerateStructuralApi`: Generate HasTransition/GetDefinedTriggers methods (default: false)
-- `ContinueOnCapturedContext`: Control async continuation context (default: false)
-- `GenerateExtensibleVersion`: Generate extensible variant (default: true)
-
-### `[State]`
-Defines state callbacks (OnEntry/OnExit).
-
-```csharp
-[State(States.Processing, OnEntry = nameof(OnEnterProcessing), OnExit = nameof(OnExitProcessing))]
-private void ConfigureStates() { }
-```
-
-**Properties:**
-- `State` (required): The state enum value
-- `OnEntry`: Method name for entry callback
-- `OnExit`: Method name for exit callback
-
-### `[Transition]`
-Defines state transitions.
-
-```csharp
-[Transition(States.Initial, Triggers.Start, States.Processing, 
-    Guard = nameof(CanStart), Action = nameof(DoStart))]
-private void ConfigureTransitions() { }
-```
-
-**Properties:**
-- `FromState` (required): Source state
-- `Trigger` (required): Trigger that initiates transition
-- `ToState` (required): Target state
-- `Guard`: Method name for guard condition
-- `Action`: Method name for transition action
-
-### `[InternalTransition]`
-Defines internal transitions (no state change).
-
-```csharp
-[InternalTransition(States.Processing, Triggers.Update, nameof(UpdateData))]
-private void ConfigureInternalTransitions() { }
-```
-
-**Properties:**
-- `State` (required): Current state
-- `Trigger` (required): Trigger for internal transition
-- `Action` (required): Method name for action
-- `Guard`: Method name for guard condition
-
-### `[PayloadType]`
-Specifies payload types for the state machine.
-
-```csharp
-// Default payload for all triggers
-[PayloadType(typeof(MyPayload))]
-
-// Trigger-specific payload
-[PayloadType(Triggers.Process, typeof(ProcessData))]
-[PayloadType(Triggers.Complete, typeof(CompletionData))]
-public partial class MyStateMachine { }
-```
-
-## Transition Execution Order
-
-For successful transitions, callbacks execute in this specific order:
-
-1. **Guard** evaluation
-2. **OnExit** (from current state) - if transition fails here, state remains unchanged
-3. **State Change** - state is updated to target state
-4. **OnEntry** (to new state) - exceptions propagate to caller
-5. **Action** - exceptions propagate to caller
-
-For internal transitions, only Guard → Action is executed (no state change, no OnEntry/OnExit).
-
-## Callback Methods
-
-### Guard Methods
-Return `bool` (sync) or `ValueTask<bool>` (async) to control transition execution.
-
-```csharp
-// Synchronous guard
-private bool CanProcess() => _isReady;
-
-// Asynchronous guard
-private async ValueTask<bool> CanProcessAsync() 
-{
-    return await CheckConditionsAsync();
-}
-
-// Guard with payload
-private bool CanProcess(ProcessData data) => data.IsValid;
-
-// Guard with CancellationToken
-private async ValueTask<bool> CanProcessAsync(CancellationToken cancellationToken)
-{
-    return await CheckAsync(cancellationToken);
-}
-
-// Guard with payload and CancellationToken
-private async ValueTask<bool> CanProcessAsync(ProcessData data, CancellationToken cancellationToken)
-{
-    cancellationToken.ThrowIfCancellationRequested();
-    return data.IsValid && await CheckAsync(cancellationToken);
-}
-```
-
-### Action, OnEntry, OnExit Methods
-Return `void` (sync) or `Task`/`ValueTask` (async).
-
-```csharp
-// Synchronous action
-private void ProcessData() { }
-
-// Asynchronous action
-private async Task ProcessDataAsync() 
-{
-    await PerformOperationAsync();
-}
-
-// Action with payload
-private void ProcessData(ProcessPayload payload) { }
-
-// Action with CancellationToken
-private async Task ProcessDataAsync(CancellationToken cancellationToken)
-{
-    await PerformOperationAsync(cancellationToken);
-}
-
-// Action with payload and CancellationToken
-private async ValueTask ProcessDataAsync(ProcessPayload payload, CancellationToken cancellationToken)
-{
-    cancellationToken.ThrowIfCancellationRequested();
-    await ProcessAsync(payload, cancellationToken);
-}
-```
-
-### Overload Resolution
-The generator intelligently selects the best overload based on available parameters:
-
-1. **Priority order**: (Payload, CancellationToken) → (Payload) → (CancellationToken) → ()
-2. **Async machine with sync callback**: Allowed, executes synchronously
-3. **Sync machine with async callback**: Error FSM011
-
-### Signature Matrix
-
-| Callback Type | Sync Return | Async Return | Parameters |
-|--------------|-------------|--------------|------------|
-| Guard | `bool` | `ValueTask<bool>` | (), (T), (CT), (T, CT) |
-| Action | `void` | `Task`/`ValueTask` | (), (T), (CT), (T, CT) |
-| OnEntry | `void` | `Task`/`ValueTask` | (), (T), (CT), (T, CT) |
-| OnExit | `void` | `Task`/`ValueTask` | (), (T), (CT), (T, CT) |
-
-Where: T = payload type, CT = CancellationToken
-
-## Public API
-
-### IStateMachine<TState, TTrigger> (Sync)
-```csharp
-public interface IStateMachine<TState, TTrigger>
-{
-    TState CurrentState { get; }
-    bool TryFire(TTrigger trigger, object? payload = null);
-    void Fire(TTrigger trigger, object? payload = null);
-    bool CanFire(TTrigger trigger);
-    IReadOnlyList<TTrigger> GetPermittedTriggers();
-}
-```
-
-### IAsyncStateMachine<TState, TTrigger> (Async)
-```csharp
-public interface IAsyncStateMachine<TState, TTrigger> : IStateMachine<TState, TTrigger>
-{
-    ValueTask<bool> TryFireAsync(TTrigger trigger, object? payload = null, 
-        CancellationToken cancellationToken = default);
-    ValueTask FireAsync(TTrigger trigger, object? payload = null, 
-        CancellationToken cancellationToken = default);
-    ValueTask<bool> CanFireAsync(TTrigger trigger, 
-        CancellationToken cancellationToken = default);
-    ValueTask<IReadOnlyList<TTrigger>> GetPermittedTriggersAsync(
-        CancellationToken cancellationToken = default);
-}
-```
-
-### IStateMachineWithPayload<TState, TTrigger, TPayload>
-```csharp
-public interface IStateMachineWithPayload<TState, TTrigger, TPayload> 
-    : IStateMachine<TState, TTrigger>
-{
-    bool TryFire(TTrigger trigger, TPayload payload);
-    void Fire(TTrigger trigger, TPayload payload);
-    bool CanFire(TTrigger trigger, TPayload payload);
-    
-    // Async variants for async machines
-    ValueTask<bool> TryFireAsync(TTrigger trigger, TPayload payload, 
-        CancellationToken cancellationToken = default);
-    ValueTask FireAsync(TTrigger trigger, TPayload payload, 
-        CancellationToken cancellationToken = default);
-    ValueTask<bool> CanFireAsync(TTrigger trigger, TPayload payload, 
-        CancellationToken cancellationToken = default);
-}
-```
-
-### Structural API (when GenerateStructuralApi = true)
-```csharp
-bool HasTransition(TState fromState, TTrigger trigger);
-IEnumerable<TTrigger> GetDefinedTriggers(TState fromState);
-```
-
-## CancellationToken Propagation
-
-### Key Principles
-1. **ThrowIfCancellationRequested()** is called at the start of all public async methods
-2. **CancellationToken is propagated** to all async callbacks that accept it
-3. **OperationCanceledException is never caught** - it propagates to the caller
-4. **treatCancellationAsFailure = true** in all guard evaluations
-
-### Implementation Details
-
-#### Public API Methods
-```csharp
-public async ValueTask<bool> TryFireAsync(TTrigger trigger, 
-    CancellationToken cancellationToken = default)
-{
-    cancellationToken.ThrowIfCancellationRequested(); // First line
-    // ... implementation
-}
-```
-
-#### Callback Invocation
-```csharp
-// If callback has (CancellationToken) or (T, CancellationToken) overload
-await CallbackAsync(cancellationToken).ConfigureAwait(false);
-
-// Exception filter ensures OperationCanceledException propagates
-catch (Exception ex) when (ex is not OperationCanceledException)
-{
-    // Handle other exceptions
-}
-```
-
-#### Initial State OnEntry
-Constructor uses `CancellationToken.None` for initial OnEntry since constructors can't be async:
-```csharp
-_ = Task.Run(async () => {
-    await OnEntryInitial(CancellationToken.None).ConfigureAwait(false);
-});
-```
-
-## Exception Policy
-
-### Current Behavior (as implemented)
-1. **Guard exceptions**: Caught, treated as returning false, transition fails
-2. **OnExit exceptions**: Caught, transition fails, state unchanged
-3. **OnEntry exceptions**: **Propagate to caller**, state already changed
-4. **Action exceptions**: **Propagate to caller**, state already changed
-5. **OperationCanceledException**: Always propagates, never caught
-
-### Exception Propagation Matrix
-
-| Callback | Exception Type | Behavior | State Impact |
-|----------|---------------|----------|--------------|
-| Guard | Any except OCE | Caught, returns false | No change |
-| Guard | OperationCanceledException | Propagates | No change |
-| OnExit | Any except OCE | Caught, transition fails | No change |
-| OnExit | OperationCanceledException | Propagates | No change |
-| OnEntry | Any | Propagates | Already changed |
-| Action | Any | Propagates | Already changed |
-
-### Example
-```csharp
-// State: Initial
-try 
-{
-    await machine.FireAsync(Triggers.Process); 
-    // If OnEntry or Action throws, exception propagates here
-    // BUT state is already changed to Processing
-}
-catch (InvalidOperationException ex)
-{
-    // Handle exception
-    // Note: machine.CurrentState is now Processing (not Initial)
-}
-```
-
-**Uwaga:** zachowanie wyjątków w `OnEntry` i `Action` może zostać zmodyfikowane przez `OnException` (patrz rozdział *OnException & ExceptionDirective*); `OperationCanceledException` zawsze propaguje.
-
-## OnException & ExceptionDirective
-
-`OnException` to opcjonalny hook wywoływany przez wygenerowany kod **tylko** w dwóch miejscach:
-
-* podczas **OnEntry** (po zmianie stanu),
-* podczas **Action** (po zmianie stanu).
-
-Hook pozwala zdecydować, czy wyjątek ma zostać **zpropagowany** do wywołującego, czy też **połknięty i zignorowany**, co umożliwia kontynuację pracy maszyny (np. w scenariuszach IoT z błędami przejściowymi).
-
-> **Ważne:** `OperationCanceledException` **zawsze propaguje** (nie jest przechwytywany ani maskowany).
-
-### Kiedy hook **nie działa**
-
-* **Guard**: wyjątki są traktowane jak wynik `false`; hook nie jest wywoływany i nie może zmienić rezultatu guarda.
-* **OnExit**: wyjątek przerywa przejście; hook nie jest wywoływany.
-* **Początkowy OnEntry wywoływany w konstruktorze** (inicjalizacja stanu startowego): nie jest otoczony polityką `OnException`.
-
-### Atrybut
-
-```csharp
-using Abstractions.Attributes;
-
-[OnException(nameof(HandleException))]
-public partial class MyMachine { /* ... */ }
-```
-
-### Kontekst i dyrektywa
-
-Hook przyjmuje silnie typowany kontekst i zwraca dyrektywę:
-
-```csharp
-using StateMachine.Exceptions;
-
-public enum ExceptionDirective
-{
-    Propagate, // przekaż wyjątek do wywołującego
-    Continue   // połknij wyjątek i kontynuuj
-}
-
-public readonly struct ExceptionContext<TState, TTrigger>
-{
-    public TState From { get; }
-    public TState To { get; }
-    public TTrigger Trigger { get; }
-    public Exception Exception { get; }
-    public TransitionStage Stage { get; }       // OnEntry | Action
-    public bool StateAlreadyChanged { get; }    // OnEntry/Action = true
-}
-```
-
-### Dozwolone sygnatury hooka
-
-Generator akceptuje **jedną** z poniższych sygnatur (priorytet wyboru w tej kolejności):
-
-1. `ValueTask<ExceptionDirective> Handle(ExceptionContext<TState, TTrigger> ctx, CancellationToken ct)`
-2. `ValueTask<ExceptionDirective> Handle(ExceptionContext<TState, TTrigger> ctx)`
-3. `ExceptionDirective Handle(ExceptionContext<TState, TTrigger> ctx)`
-
-> Maszyna **async** może mieć hook **sync** lub **async**.
-> Maszyna **sync** nie może mieć hooka **async** (diagnostyka FSM011).
-
-### Semantyka
-
-* **OnEntry/Action**
-
-  * `Continue` → wyjątek jest **połykany**, maszyna **pozostaje** w nowym stanie i kontynuuje wykonanie.
-  * `Propagate` → wyjątek jest **propagowany** do wywołującego (stan już zmieniony).
-* **Guard / OnExit** – hook nie jest stosowany.
-* **OperationCanceledException** – zawsze propaguje (dyrektywa ignorowana).
-
-#### Macierz zachowania z `OnException` (tylko miejsca, gdzie działa)
-
-| Stage   | Dyrektywa | Efekt                           | Wpływ na stan |
-| ------- | --------- | ------------------------------- | ------------- |
-| OnEntry | Continue  | Połknięcie wyjątku, kontynuacja | Już zmieniony |
-| OnEntry | Propagate | Wyjątek do wywołującego         | Już zmieniony |
-| Action  | Continue  | Połknięcie wyjątku, kontynuacja | Już zmieniony |
-| Action  | Propagate | Wyjątek do wywołującego         | Już zmieniony |
-
-### Przykłady
-
-#### Sync: kontynuacja dla błędów przejściowych (IoT)
-
-```csharp
-[StateMachine(typeof(State), typeof(Trigger))]
-[OnException(nameof(HandleException))]
-public partial class DeviceMachine
-{
-    [Transition(State.Idle, Trigger.Start, State.Running, Action = nameof(DoWork))]
-    [State(State.Running, OnEntry = nameof(OnEnterRunning))]
-    private void Configure() { }
-
-    private void OnEnterRunning() { /* może rzucić IOException */ }
-    private void DoWork() { /* może rzucić TransientDeviceException */ }
-
-    private ExceptionDirective HandleException(ExceptionContext<State, Trigger> ctx)
-        => ctx.Exception switch
-        {
-            TransientDeviceException => ExceptionDirective.Continue, // połknij i jedź dalej
-            IOException io when IsRecoverable(io) => ExceptionDirective.Continue,
-            _ => ExceptionDirective.Propagate
-        };
-
-    private static bool IsRecoverable(IOException _) => true;
-}
-```
-
-#### Async: hook z `CancellationToken`
-
-```csharp
-[OnException(nameof(HandleExceptionAsync))]
-public partial class MyAsyncMachine
-{
-    private async ValueTask<ExceptionDirective> HandleExceptionAsync(
-        ExceptionContext<State, Trigger> ctx, CancellationToken ct)
-    {
-        ct.ThrowIfCancellationRequested();
-        await Telemetry.WriteAsync(ctx, ct);
-        return ctx.Exception is TimeoutException
-            ? ExceptionDirective.Continue
-            : ExceptionDirective.Propagate;
-    }
-}
-```
-
-### Dobre praktyki
-
-* Używaj `Continue` **tylko** dla dobrze rozpoznanych, przejściowych wyjątków (np. I/O, sieć, sprzęt).
-* Zawsze loguj kontekst błędu (From/To/Trigger/Stage), aby nie maskować degradacji.
-* Nie zmieniaj logiki gardów przez `OnException` — inwarianty maszyny powinny pozostać nienaruszone.
-
-## Validation Rules
-
-### Compile-Time Diagnostics
-
-| Code | Severity | Description |
-|------|----------|-------------|
-| FSM001 | Error | Missing [StateMachine] attribute |
-| FSM002 | Error | Invalid types in [StateMachine] attribute |
-| FSM003 | Error | Invalid callback method signature |
-| FSM004 | Error | Invalid enum value in transition |
-| FSM005 | Warning | Duplicate transition definition |
-| FSM006 | Warning | Unreachable state detected |
-| FSM007 | Error | Async void callback (use Task/ValueTask) |
-| FSM008 | Error | Guard returns Task (use ValueTask<bool>) |
-| FSM009 | Error | Force variant not implemented |
-| FSM010 | Warning | Guard with payload in non-payload machine |
-| FSM011 | Error | Async callback in sync machine |
-
-### Common Validation Scenarios
-
-#### Valid Callback Signatures
-- Return type matches callback type (bool for guards, void for actions)
-- Maximum 2 parameters (payload and/or CancellationToken)
-- Async methods return Task/ValueTask (not async void)
-
-#### State Machine Consistency
-- All states must be reachable from initial state
-- No duplicate transitions (same from-state + trigger combination)
-- Payload types must be consistent for multi-payload machines
-
-## Examples
-
-### Basic Async State Machine
-```csharp
-[StateMachine(typeof(OrderStates), typeof(OrderTriggers))]
-public partial class OrderStateMachine
-{
-    [Transition(OrderStates.New, OrderTriggers.Submit, OrderStates.Processing,
-        Guard = nameof(CanSubmit), Action = nameof(ProcessOrder))]
-    private void Configure() { }
-    
-    private async ValueTask<bool> CanSubmit(CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        return await ValidateOrderAsync(cancellationToken);
-    }
-    
-    private async Task ProcessOrder(CancellationToken cancellationToken)
-    {
-        await SubmitToSystemAsync(cancellationToken);
-    }
-}
-```
-
-### Payload State Machine with Overloads
-```csharp
-[StateMachine(typeof(States), typeof(Triggers))]
-[PayloadType(typeof(ProcessData))]
-public partial class DataProcessor
-{
-    [State(States.Processing, OnEntry = nameof(OnEnterProcessing))]
-    [Transition(States.Ready, Triggers.Process, States.Processing,
-        Guard = nameof(CanProcess), Action = nameof(DoProcess))]
-    private void Configure() { }
-    
-    // Overloaded callbacks - generator picks best match
-    private bool CanProcess() => true; // Fallback
-    private async ValueTask<bool> CanProcess(ProcessData data, CancellationToken ct)
-    {
-        ct.ThrowIfCancellationRequested();
-        return data.IsValid && await CheckResourcesAsync(ct);
-    }
-    
-    private async Task OnEnterProcessing()
-    {
-        await InitializeAsync();
-    }
-    
-    private async Task OnEnterProcessing(ProcessData data)
-    {
-        await InitializeWithDataAsync(data);
-    }
-    
-    private async ValueTask DoProcess(ProcessData data, CancellationToken ct)
-    {
-        await ProcessDataAsync(data, ct);
-    }
-}
-```
-
-### Multi-Payload State Machine
-```csharp
-[StateMachine(typeof(States), typeof(Triggers))]
-[PayloadType(Triggers.Configure, typeof(ConfigData))]
-[PayloadType(Triggers.Process, typeof(ProcessData))]
-[PayloadType(Triggers.Complete, typeof(ResultData))]
-public partial class MultiPayloadMachine
-{
-    [Transition(States.Ready, Triggers.Configure, States.Configured,
-        Action = nameof(ApplyConfig))]
-    [Transition(States.Configured, Triggers.Process, States.Processing,
-        Guard = nameof(CanProcess), Action = nameof(ProcessData))]
-    [Transition(States.Processing, Triggers.Complete, States.Done,
-        Action = nameof(StoreResult))]
-    private void Configure() { }
-    
-    private async Task ApplyConfig(ConfigData config, CancellationToken ct)
-    {
-        await ConfigureSystemAsync(config, ct);
-    }
-    
-    private async ValueTask<bool> CanProcess(ProcessData data)
-    {
-        return data.Items.Any();
-    }
-    
-    private async Task ProcessData(ProcessData data, CancellationToken ct)
-    {
-        await ProcessItemsAsync(data.Items, ct);
-    }
-    
-    private void StoreResult(ResultData result)
-    {
-        _results.Add(result);
-    }
-}
-```
-
-### Usage Examples
-```csharp
-// Create machine
-var machine = new OrderStateMachine(OrderStates.New);
-
-// Check if transition is possible
-if (await machine.CanFireAsync(OrderTriggers.Submit, cancellationToken))
-{
-    // Fire trigger - exceptions from OnEntry/Action propagate
-    try
-    {
-        await machine.FireAsync(OrderTriggers.Submit, cancellationToken);
-    }
-    catch (Exception ex) when (ex is not OperationCanceledException)
-    {
-        // Handle non-cancellation exceptions
-        // Note: state may have already changed
-    }
-}
-
-// Get permitted triggers
-var triggers = await machine.GetPermittedTriggersAsync(cancellationToken);
-
-// With payload
-var processor = new DataProcessor(States.Ready);
-var data = new ProcessData { Items = items };
-
-await processor.FireAsync(Triggers.Process, data, cancellationToken);
-```
+## Project: `Abstractions`
+
+This project contains the core attributes used to define state machines.
+
+### `Attributes`
+
+- **`GenerateLoggingAttribute.cs`**: Controls whether logging code should be generated for a state machine.
+- **`GenerationMode.cs`**: Defines the generation mode for the state machine (e.g., `Pure`, `Basic`, `WithPayload`).
+- **`HistoryMode.cs`**: Defines the history behavior for composite states in hierarchical state machines.
+- **`InternalTransitionAttribute.cs`**: Defines an internal transition (no state change).
+- **`OnExceptionAttribute.cs`**: Specifies a method to handle exceptions that occur during state transitions.
+- **`PayloadTypeAttribute.cs`**: Specifies the payload type for a state machine or specific triggers.
+- **`StateAttribute.cs`**: Defines a state and its associated `OnEntry` and `OnExit` callbacks.
+- **`StateMachineAttribute.cs`**: Marks a class as a state machine and configures its core properties.
+- **`TransitionAttribute.cs`**: Defines a state transition between two states.
+
+## Project: `StateMachine`
+
+This project contains the core runtime components of the state machine.
+
+### `Builder`
+
+- **`StateMachineBuilder<TState, TTrigger>`**: A builder for creating state machine instances at runtime.
+  - `Build(TState initialState)`: Builds and returns a state machine instance.
+
+### `Contracts`
+
+- **`IExtensibleStateMachine`**: A marker interface for state machines that support extensions.
+- **`IExtensibleStateMachineAsync<TState, TTrigger>`**: Asynchronous extensible state machine interface.
+- **`IExtensibleStateMachineSync<TState, TTrigger>`**: Synchronous extensible state machine interface.
+- **`IStateMachineAsync<TState, TTrigger>`**: Asynchronous state machine interface.
+  - `TState CurrentState`: Gets the current state of the machine.
+  - `bool IsStarted`: Indicates whether the state machine has been started.
+  - `ValueTask StartAsync(CancellationToken cancellationToken)`: Starts the state machine.
+  - `ValueTask<bool> TryFireAsync(TTrigger trigger, object? payload, CancellationToken cancellationToken)`: Tries to fire a trigger.
+  - `ValueTask FireAsync(TTrigger trigger, object? payload, CancellationToken cancellationToken)`: Fires a trigger, throwing an exception if the transition is not valid.
+  - `ValueTask<bool> CanFireAsync(TTrigger trigger, CancellationToken cancellationToken)`: Checks if a trigger can be fired.
+  - `ValueTask<IReadOnlyList<TTrigger>> GetPermittedTriggersAsync(CancellationToken cancellationToken)`: Gets all triggers that can be fired.
+- **`IStateMachineBuilder<TState, TTrigger>`**: Builder interface for compile-time configuration validation.
+- **`IStateMachineContext<TState, TTrigger>`**: Generic context with state and trigger information.
+- **`IStateMachineContext`**: Context passed to extensions.
+- **`IStateMachineExtension`**: Extension interface for adding cross-cutting concerns.
+- **`IStateMachineFactory<TStateMachine, TState, TTrigger>`**: Factory interface for creating state machines.
+- **`IStateMachineSync<TState, TTrigger>`**: Synchronous state machine interface.
+- **`IStateSnapshot`**: Provides a non-generic, reflection-free snapshot of a transition's key properties.
+
+### `DependencyInjection`
+
+- **`FsmServiceCollectionExtensions`**: Extension methods for registering state machines with a dependency injection container.
+- **`StateMachineFactory<TInterface, TImplementation, TState, TTrigger>`**: A factory that selects the appropriate state machine variant.
+
+### `Exceptions`
+
+- **`ExceptionContext<TState, TTrigger>`**: Provides context information about an exception that occurred during a state transition.
+- **`ExceptionDirective`**: Specifies how to handle exceptions in state machine callbacks.
+- **`SyncCallOnAsyncMachineException`**: The exception that is thrown when a synchronous method is called on an asynchronous state machine.
+- **`TransitionStage`**: Identifies the stage of a transition where an exception occurred.
+
+### `Runtime`
+
+- **`AsyncStateMachineBase<TState, TTrigger>`**: Base implementation for generated asynchronous state machines.
+- **`ExtensionRunner`**: Executes extension hooks and logs errors.
+- **`StateMachineBase<TState, TTrigger>`**: Base class providing common functionality for generated state machines.
+- **`StateMachineContext<TState, TTrigger>`**: Concrete implementation of the state machine context.
+- **`TransitionEntry<TState, TTrigger>`**: Represents a single transition in the state machine.
+- **`TransitionResult`**: Result of a transition attempt (for internal use).
+
+## Project: `IndentedStringBuilder`
+
+This project provides a helper class for building indented strings.
+
+- **`IndentedStringBuilder`**: A lightweight wrapper around `StringBuilder` that provides indentation control.
+  - `IDisposable Indent()`: Increases the indentation level.
+  - `IndentedStringBuilder AppendLine(string? text)`: Appends a line with the current indentation.
+  - `IDisposable Block(string header)`: Creates a block with a header and curly braces.
+  - `void WriteSummary(string summary)`: Writes an XML documentation summary comment.
+
+## Project: `Generator`
+
+This project contains the source generator for creating state machines.
+
+- **`StateMachineGenerator`**: The main entry point for the source generator.
+  ```pseudocode
+  CLASS StateMachineGenerator IMPLEMENTS IIncrementalGenerator
+  {
+      // Methods
+      PUBLIC VOID Initialize(IncrementalGeneratorInitializationContext context);
+      PRIVATE STATIC BOOLEAN IsPotentialStateMachine(SyntaxNode node);
+      PRIVATE STATIC ClassDeclarationSyntax? GetStateMachineClass(GeneratorSyntaxContext context);
+      PRIVATE STATIC BOOLEAN IsPartial(INamedTypeSymbol classSymbol);
+      PRIVATE STATIC BOOLEAN IsPotentialFsmClassWithoutAttribute(SyntaxNode node, CancellationToken _);
+      PRIVATE STATIC INamedTypeSymbol? GetClassIfMissingStateMachine(GeneratorSyntaxContext context, CancellationToken _);
+      PRIVATE STATIC VOID Execute(SourceProductionContext context, ... data ...);
+  }
+  ```
+
+### `Analyzers`
+
+- **`StateMachineAnalyzer`**: A Roslyn analyzer that validates state machine definitions.
+
+### `Helpers`
+
+- **`AsyncGenerationHelper`**: Centralizes sync/async transformations for code generation.
+- **`CallbackGenerationHelper`**: Generates callback invocations with support for all variants.
+- **`CallbackSignatureAnalyzer`**: Analyzes callback method signatures to determine their characteristics.
+- **`DiagnosticFactory`**: Creates Roslyn diagnostic messages from rule definitions.
+- **`FactoryGenerationModelBuilder`**: Creates a model for generating dependency injection factories.
+- **`GuardGenerationHelper`**: Generates guard check blocks with support for all variants.
+- **`TypeSystemHelper`**: Provides centralized, testable operations for type system manipulation.
+
+### `Parsers`
+
+- **`StateMachineParser`**: Parses state machine definitions from source code.
+
+  ```pseudocode
+  CLASS StateMachineParser
+  {
+      // Properties
+      PRIVATE READONLY Compilation compilation;
+      PRIVATE READONLY SourceProductionContext context;
+      PRIVATE READONLY InvalidMethodSignatureRule _invalidMethodSignatureRule;
+      PRIVATE READONLY InvalidTypesInAttributeRule _invalidTypesInAttributeRule;
+      PRIVATE READONLY InvalidEnumValueInTransitionRule _invalidEnumValueRule;
+      PRIVATE READONLY DuplicateTransitionRule _duplicateTransitionRule;
+      PRIVATE READONLY MissingStateMachineAttributeRule _missingStateMachineAttributeRule;
+      PRIVATE READONLY UnreachableStateRule _unreachableStateRule;
+      PRIVATE READONLY GuardWithPayloadInNonPayloadMachineRule _guardWithPayloadRule;
+      PRIVATE READONLY TypeSystemHelper _typeHelper;
+      PRIVATE READONLY AsyncSignatureAnalyzer _asyncAnalyzer;
+      PRIVATE READONLY HashSet<TransitionDefinition> _processedTransitionsInCurrentFsm;
+      PRIVATE READONLY MixedModeRule _mixedModeRule;
+
+      // Constructor
+      PUBLIC StateMachineParser(Compilation compilation, SourceProductionContext context);
+
+      // Methods
+      PUBLIC BOOLEAN TryParse(ClassDeclarationSyntax classDeclaration, OUT StateMachineModel? model, Action<string>? report = NULL)
+      {
+          // 1. Initialize variables and clear state
+          // 2. Get semantic model and class symbol from classDeclaration
+          // 3. Create a new StateMachineModel
+          // 4. Parse [StateMachine] attribute and its arguments (DefaultPayloadType, GenerateStructuralApi, etc.)
+          // 5. Validate that the class is partial and has the [StateMachine] attribute
+          // 6. Validate that State and Trigger types are enums
+          // 7. Build the basic model with state and trigger types
+          // 8. Parse all member attributes ([Transition], [InternalTransition], [State], [OnException], [PayloadType])
+          // 9. Build the HSM hierarchy if enabled
+          // 10. Determine the generation variant (Pure, Basic, WithPayload, etc.)
+          // 11. Validate state reachability
+          // 12. Finalize the model and return true if no critical errors occurred
+      }
+
+      PRIVATE VOID ParseMemberAttributes(INamedTypeSymbol classSymbol, StateMachineModel model, INamedTypeSymbol stateTypeSymbol, INamedTypeSymbol triggerTypeSymbol, REF BOOLEAN criticalErrorOccurred, REF BOOLEAN? isMachineAsyncMode, Action<string>? report = NULL)
+      {
+          // 1. Parse [PayloadType] attributes
+          // 2. Parse [Transition] attributes
+          // 3. Parse [InternalTransition] attributes
+          // 4. Parse [State] attributes
+          // 5. Parse [OnException] attribute
+      }
+
+      PRIVATE VOID ParseTransitionAttributes(INamedTypeSymbol classSymbol, StateMachineModel model, INamedTypeSymbol stateTypeSymbol, INamedTypeSymbol triggerTypeSymbol, REF BOOLEAN criticalErrorOccurred, REF BOOLEAN? isMachineAsyncMode);
+      PRIVATE VOID ParseInternalTransitionAttributes(INamedTypeSymbol classSymbol, StateMachineModel model, INamedTypeSymbol stateTypeSymbol, INamedTypeSymbol triggerTypeSymbol, REF BOOLEAN criticalErrorOccurred, REF BOOLEAN? isMachineAsyncMode);
+      PRIVATE VOID ParseStateAttributes(INamedTypeSymbol classSymbol, StateMachineModel model, INamedTypeSymbol stateTypeSymbol, REF BOOLEAN criticalErrorOccurred, REF BOOLEAN? isMachineAsyncMode);
+      PRIVATE VOID ParseOnExceptionAttribute(INamedTypeSymbol classSymbol, StateMachineModel model, INamedTypeSymbol stateTypeSymbol, INamedTypeSymbol triggerTypeSymbol, REF BOOLEAN criticalErrorOccurred, REF BOOLEAN? isMachineAsyncMode, Action<string>? report = NULL);
+      PRIVATE VOID BuildHierarchy(StateMachineModel model, REF BOOLEAN criticalErrorOccurred, Action<string>? report);
+      PRIVATE BOOLEAN HasCircularDependency(STRING state, Dictionary<STRING, STRING> parentOf, HashSet<STRING> visited, HashSet<STRING> recursionStack);
+      PRIVATE INT CalculateDepth(STRING state, Dictionary<STRING, STRING> parentOf);
+      PRIVATE STRING? GetEnumMemberName(TypedConstant enumValueConstant, INamedTypeSymbol enumTypeSymbol, AttributeData attributeDataForLocation, REF BOOLEAN criticalErrorOccurred);
+      PRIVATE VOID ParsePayloadTypeAttributes(INamedTypeSymbol classSymbol, StateMachineModel model, REF BOOLEAN criticalErrorOccurred);
+      PRIVATE BOOLEAN ValidateCallbackMethodSignature(INamedTypeSymbol classSymbol, STRING methodName, STRING callbackType, AttributeData attributeData, REF BOOLEAN criticalErrorOccurred, REF BOOLEAN? isMachineAsyncMode, OUT BOOLEAN isAsync, OUT BOOLEAN expectsPayload, BOOLEAN machineHasPayload, OUT IMethodSymbol? selectedMethod, STRING? expectedPayloadType = NULL);
+      PRIVATE VOID AnalyzeAndSetCallbackSignature(IMethodSymbol methodSymbol, STRING callbackType, Action<CallbackSignatureInfo> setSigAction);
+      PRIVATE VOID ProcessRuleResults(IEnumerable<ValidationResult> ruleResults, Location defaultLocation, REF BOOLEAN criticalErrorOccurredFlag);
+  }
+  ```
+
+### `SourceGenerators`
+
+- **`StateMachineCodeGenerator`**: The base class for all variant generators.
+  ```pseudocode
+  ABSTRACT CLASS StateMachineCodeGenerator
+  {
+      // Properties
+      PROTECTED READONLY StateMachineModel Model;
+      PROTECTED IndentedStringBuilder Sb;
+      PROTECTED READONLY TypeSystemHelper TypeHelper;
+      PROTECTED READONLY BOOLEAN IsAsyncMachine;
+      PROTECTED BOOLEAN ShouldGenerateLogging;
+      PROTECTED HashSet<STRING> AddedUsings;
+
+      // Constructor
+      PUBLIC StateMachineCodeGenerator(StateMachineModel model);
+
+      // Methods
+      PUBLIC VIRTUAL STRING Generate();
+      PROTECTED ABSTRACT VOID WriteNamespaceAndClass();
+      PROTECTED VIRTUAL VOID WriteHeader();
+      PROTECTED VIRTUAL VOID WriteTransitionLogic(TransitionModel transition, STRING stateTypeForUsage, STRING triggerTypeForUsage);
+      PROTECTED VIRTUAL VOID WriteGuardCheck(TransitionModel transition, STRING stateTypeForUsage, STRING triggerTypeForUsage);
+      PROTECTED VIRTUAL VOID WriteActionCall(TransitionModel transition);
+      PROTECTED VIRTUAL VOID WriteOnEntryCall(StateModel state, STRING? expectedPayloadType);
+      PROTECTED VIRTUAL VOID WriteOnExitCall(StateModel fromState, STRING? expectedPayloadType);
+      // ... and many other helper methods for code generation
+  }
+  ```
+- **`CoreVariantGenerator`**: Generates code for the "Core" and "Basic" variants.
+  ```pseudocode
+  CLASS CoreVariantGenerator INHERITS StateMachineCodeGenerator
+  {
+      // Constructor
+      PUBLIC CoreVariantGenerator(StateMachineModel model);
+
+      // Methods
+      PROTECTED OVERRIDE VOID WriteNamespaceAndClass();
+      PROTECTED OVERRIDE VOID WriteGetPermittedTriggersMethod(STRING stateTypeForUsage, STRING triggerTypeForUsage);
+      PROTECTED OVERRIDE VOID WriteCanFireMethod(STRING stateTypeForUsage, STRING triggerTypeForUsage);
+      // ... and other private methods for generating specific parts of the code
+  }
+  ```
+- **`ExtensionsFeatureWriter`**: Writes code for the extensions feature.
+  ```pseudocode
+  CLASS ExtensionsFeatureWriter
+  {
+      // Methods
+      PUBLIC VOID WriteFields(IndentedStringBuilder sb);
+      PUBLIC VOID WriteConstructorBody(IndentedStringBuilder sb, BOOLEAN generateLogging);
+      PUBLIC VOID WriteManagementMethods(IndentedStringBuilder sb);
+  }
+  ```
+- **`ExtensionsVariantGenerator`**: Generates code for the "WithExtensions" variant.
+  ```pseudocode
+  CLASS ExtensionsVariantGenerator INHERITS StateMachineCodeGenerator
+  {
+      // Properties
+      PRIVATE READONLY ExtensionsFeatureWriter _ext;
+
+      // Constructor
+      PUBLIC ExtensionsVariantGenerator(StateMachineModel model);
+
+      // Methods
+      PROTECTED OVERRIDE VOID WriteNamespaceAndClass();
+      // ... and other private/protected methods for generating specific parts of the code
+  }
+  ```
+- **`FullVariantGenerator`**: Generates code for the "Full" variant (Payloads + Extensions).
+  ```pseudocode
+  CLASS FullVariantGenerator INHERITS PayloadVariantGenerator
+  {
+      // Properties
+      PRIVATE READONLY ExtensionsFeatureWriter _ext;
+
+      // Constructor
+      PUBLIC FullVariantGenerator(StateMachineModel model);
+
+      // Methods
+      PROTECTED OVERRIDE VOID WriteNamespaceAndClass();
+      // ... and other protected methods for handling extension hooks
+  }
+  ```
+- **`PayloadVariantGenerator`**: Generates code for variants with payloads.
+  ```pseudocode
+  CLASS PayloadVariantGenerator INHERITS StateMachineCodeGenerator
+  {
+      // Constructor
+      PUBLIC PayloadVariantGenerator(StateMachineModel model);
+
+      // Methods
+      PROTECTED OVERRIDE VOID WriteNamespaceAndClass();
+      PROTECTED VIRTUAL VOID WriteTryFireMethods(STRING stateTypeForUsage, STRING triggerTypeForUsage);
+      // ... and many other protected methods for generating payload-related code
+  }
+  ```
+- **`VariantSelector`**: Determines the appropriate generation variant based on the state machine's features.
+  ```pseudocode
+  CLASS VariantSelector
+  {
+      // Methods
+      PUBLIC VOID DetermineVariant(StateMachineModel model, INamedTypeSymbol classSymbol);
+      PRIVATE VOID DetectUsedFeatures(StateMachineModel model, INamedTypeSymbol classSymbol, GenerationConfig config);
+      PRIVATE GenerationVariant? GetForcedVariant(INamedTypeSymbol classSymbol, GenerationConfig config);
+      PRIVATE GenerationVariant SelectVariantBasedOnFeatures(GenerationConfig config);
+      PRIVATE VOID AdjustFlagsForVariant(GenerationConfig config);
+  }
+  ```
+
+## Project: `Generator.Model`
+
+This project contains the data models used by the generator.
+
+- **`CallbackSignatureInfo`**: Describes a callback method's signature, including overloads.
+- **`ExceptionHandlerModel`**: Represents an exception handler method.
+- **`GenerationConfig`**: Contains configuration for the generation process.
+- **`GenerationVariant`**: Defines the generation variant for a state machine.
+- **`HistoryMode`**: Defines the history behavior for composite states.
+- **`StateMachineModel`**: The main model representing a state machine.
+- **`StateModel`**: Represents a state in the state machine.
+- **`TransitionModel`**: Represents a single transition in the state machine.
+
+### `Dtos`
+
+- **`FactoryGenerationModel`**: Data model for the `FactoryCodeGenerator`.
+- **`TypeGenerationInfo`**: Contains pre-processed information about a type.
+
+## Project: `Generator.Rules`
+
+This project contains the validation rules for state machine definitions.
+
+### `Contexts`
+
+- Contains various context classes used by the validation rules.
+
+### `Definitions`
+
+- **`RuleDefinition`**: Defines a validation rule.
+- **`RuleIdentifiers`**: Contains the unique identifiers for all validation rules.
+- **`RuleSeverity`**: Defines the severity of a validation rule.
+- **`TransitionDefinition`**: Represents a transition for validation purposes.
+- **`ValidationResult`**: Represents the result of a validation rule.
+
+### `Rules`
+
+- Contains the implementation of all validation rules.
+
+## Project: `Generator.DependencyInjection`
+
+This project contains the code generator for dependency injection integration.
+
+- **`FactoryCodeGenerator`**: Generates a factory and extension methods for the dependency injection container.

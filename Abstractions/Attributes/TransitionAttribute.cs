@@ -14,4 +14,5 @@ public sealed class TransitionAttribute(object fromState, object trigger, object
     public object ToState { get; } = toState ?? throw new ArgumentNullException(nameof(toState));
     public string Guard { get; set; }
     public string Action { get; set; }
+    public int Priority { get; set; } = 0;
 }

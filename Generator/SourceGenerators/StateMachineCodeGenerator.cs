@@ -2,12 +2,13 @@
 using Abstractions.Attributes;
 using Generator.Helpers;
 using Generator.Infrastructure;
-using Generator.Log;
+
 using Generator.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using Generator.Log;
 using static Generator.Strings;
 
 namespace Generator.SourceGenerators;
