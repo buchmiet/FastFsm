@@ -13,5 +13,6 @@ public sealed class InternalTransitionAttribute(object state, object trigger, st
     public object State { get; } = state ?? throw new ArgumentNullException(nameof(state));
     public object Trigger { get; } = trigger ?? throw new ArgumentNullException(nameof(trigger));
     public string Guard { get; set; }
-    public string Action { get; set; } = action ?? throw new ArgumentNullException(nameof(action)); 
+    public string Action { get; set; } = action ?? throw new ArgumentNullException(nameof(action));
+    public int Priority { get; set; } = 0;
 }
