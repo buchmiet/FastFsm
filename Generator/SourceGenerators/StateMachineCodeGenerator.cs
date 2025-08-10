@@ -4,6 +4,7 @@ using Generator.Helpers;
 using Generator.Infrastructure;
 
 using Generator.Model;
+using Generator.Planning;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -245,7 +246,14 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         string triggerTypeForUsage,
         Action<TransitionModel, string, string> writeTransitionLogic)
     {
-        var grouped = Model.Transitions.GroupBy(t => t.FromState);
+        // Sort transitions by priority (descending) then by declaration order
+        var sortedTransitions = Model.Transitions
+            .Select((t, index) => new { Transition = t, Index = index })
+            .OrderByDescending(x => x.Transition.Priority)
+            .ThenBy(x => x.Index)
+            .Select(x => x.Transition);
+            
+        var grouped = sortedTransitions.GroupBy(t => t.FromState);
 
         // switch (CurrentState)
         using (Sb.Block($"switch ({CurrentStateField})"))
@@ -256,17 +264,41 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                 using (Sb.Block(
                            $"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(state.Key)}:"))
                 {
+                    // Group by trigger for this state
+                    var triggerGroups = state.GroupBy(t => t.Trigger);
+                    
                     // switch (trigger)
                     using (Sb.Block("switch (trigger)"))
                     {
-                        foreach (var tr in state)
+                        foreach (var triggerGroup in triggerGroups)
                         {
                             // case <Trigger>:
                             using (Sb.Block(
-                                       $"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(tr.Trigger)}:"))
+                                       $"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(triggerGroup.Key)}:"))
                             {
-                                // Właściwa logika przejścia
-                                writeTransitionLogic(tr, stateTypeForUsage, triggerTypeForUsage);
+                                // Process all transitions for this trigger in priority order
+                                foreach (var tr in triggerGroup)
+                                {
+                                    // Use planner if available, otherwise fallback to direct logic
+                                    if (Model.HierarchyEnabled || tr.Priority != 0)
+                                    {
+                                        var context = CreateBuildContext(tr);
+                                        var planner = GetPlanner();
+                                        var plan = planner.BuildPlan(context);
+                                        
+                                        Sb.AppendLine($"// Transition: {tr.FromState} -> {tr.ToState} (Priority: {tr.Priority})");
+                                        EmitTransitionPlan(plan, tr, stateTypeForUsage, triggerTypeForUsage);
+                                        
+                                        Sb.AppendLine($"{SuccessVar} = true;");
+                                        WriteAfterTransitionHook(tr, stateTypeForUsage, triggerTypeForUsage, success: true);
+                                        Sb.AppendLine("return;");
+                                    }
+                                    else
+                                    {
+                                        // Fallback to original logic for simple cases
+                                        writeTransitionLogic(tr, stateTypeForUsage, triggerTypeForUsage);
+                                    }
+                                }
                             }
                         }
 
@@ -292,21 +324,32 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         string triggerTypeForUsage,
         Action<TransitionModel, string, string> writeTransitionLogic)
     {
-        // For hierarchical machines, we need to check transitions from the current state
-        // and all its ancestors, choosing the closest match
+        // Sort all transitions by priority (descending) then by declaration order
+        var sortedTransitions = Model.Transitions
+            .Select((t, index) => new { Transition = t, Index = index })
+            .OrderByDescending(x => x.Transition.Priority)
+            .ThenBy(x => x.Index)
+            .Select(x => x.Transition)
+            .ToList();
         
-        Sb.AppendLine("// Hierarchical trigger resolution");
+        Sb.AppendLine("// Hierarchical trigger resolution with priority support");
         Sb.AppendLine($"var currentStateIndex = (int){CurrentStateField};");
         Sb.AppendLine("var stateToCheck = currentStateIndex;");
+        Sb.AppendLine();
+        
+        // Collect all applicable transitions
+        Sb.AppendLine("// Collect applicable transitions from current state and ancestors");
+        Sb.AppendLine("var applicableTransitions = new System.Collections.Generic.List<(int depth, int priority, System.Action action)>();");
         Sb.AppendLine();
         
         // Loop through the state and its ancestors
         using (Sb.Block("while (stateToCheck >= 0)"))
         {
             Sb.AppendLine($"var stateToCheckEnum = ({stateTypeForUsage})stateToCheck;");
+            Sb.AppendLine("var currentDepth = stateToCheck == currentStateIndex ? 0 : s_depth[stateToCheck];");
             
             // Group transitions by source state
-            var grouped = Model.Transitions.GroupBy(t => t.FromState);
+            var grouped = sortedTransitions.GroupBy(t => t.FromState);
             
             using (Sb.Block("switch (stateToCheckEnum)"))
             {
@@ -314,34 +357,40 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                 {
                     using (Sb.Block($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(state.Key)}:"))
                     {
+                        // Group by trigger
+                        var triggerGroups = state.GroupBy(t => t.Trigger);
+                        
                         using (Sb.Block("switch (trigger)"))
                         {
-                            foreach (var tr in state)
+                            foreach (var triggerGroup in triggerGroups)
                             {
-                                using (Sb.Block($"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(tr.Trigger)}:"))
+                                using (Sb.Block($"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(triggerGroup.Key)}:"))
                                 {
-                                    // For internal transitions defined on ancestors, 
-                                    // we need special handling to avoid state change
-                                    if (tr.IsInternal)
+                                    // Process transitions in priority order
+                                    foreach (var tr in triggerGroup)
                                     {
-                                        Sb.AppendLine("// Internal transition on ancestor");
-                                        Sb.AppendLine($"if (stateToCheck != currentStateIndex)");
-                                        using (Sb.Block(""))
+                                        // Use planner for hierarchical transitions
+                                        var context = CreateBuildContext(tr);
+                                        var planner = GetPlanner();
+                                        var plan = planner.BuildPlan(context);
+                                        
+                                        Sb.AppendLine($"// Transition: {tr.FromState} -> {tr.ToState} (Priority: {tr.Priority})");
+                                        
+                                        // For internal transitions on ancestors, special handling
+                                        if (tr.IsInternal && state.Key != sortedTransitions.First(t => t.FromState == state.Key).FromState)
                                         {
-                                            Sb.AppendLine("// Execute internal transition without changing state");
-                                            WriteInternalTransitionOnAncestor(tr, stateTypeForUsage, triggerTypeForUsage);
+                                            Sb.AppendLine("// Internal transition on ancestor");
+                                            EmitTransitionPlan(plan, tr, stateTypeForUsage, triggerTypeForUsage);
                                         }
-                                        Sb.AppendLine("else");
-                                        using (Sb.Block(""))
+                                        else
                                         {
-                                            writeTransitionLogic(tr, stateTypeForUsage, triggerTypeForUsage);
+                                            EmitTransitionPlan(plan, tr, stateTypeForUsage, triggerTypeForUsage);
                                         }
+                                        
+                                        Sb.AppendLine($"{SuccessVar} = true;");
+                                        WriteAfterTransitionHook(tr, stateTypeForUsage, triggerTypeForUsage, success: true);
+                                        Sb.AppendLine("return true;  // Transition handled");
                                     }
-                                    else
-                                    {
-                                        writeTransitionLogic(tr, stateTypeForUsage, triggerTypeForUsage);
-                                    }
-                                    Sb.AppendLine("return;  // Transition handled");
                                 }
                             }
                             Sb.AppendLine("default: break;");
@@ -362,6 +411,8 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         
         // Hook – przejście nie znalezione
         WriteTransitionFailureHook(stateTypeForUsage, triggerTypeForUsage);
+        
+        // Return will be added by WriteTryFireInternal after END_TRY_FIRE label
     }
     
     private void WriteInternalTransitionOnAncestor(
@@ -1646,6 +1697,202 @@ if (!string.IsNullOrEmpty(transition.GuardMethod))
         Sb.AppendLine("// Exception swallowed by Continue directive");
     }
 
+    #endregion
+
+    #region Planning and Emission Support
+    
+    /// <summary>
+    /// Gets the appropriate planner based on hierarchy configuration
+    /// </summary>
+    protected ITransitionPlanner GetPlanner()
+    {
+        return Model.HierarchyEnabled 
+            ? new HierarchicalTransitionPlanner() 
+            : new FlatTransitionPlanner();
+    }
+    
+    /// <summary>
+    /// Creates a build context for planning transitions
+    /// </summary>
+    protected TransitionBuildContext CreateBuildContext(TransitionModel transition)
+    {
+        var allStates = Model.States.Keys.OrderBy(s => s).ToList();
+        var currentStateIndex = allStates.IndexOf(transition.FromState);
+        
+        // Build hierarchy arrays if needed
+        int[] parentIndices = new int[allStates.Count];
+        int[] depths = new int[allStates.Count];
+        int[] initialChildIndices = new int[allStates.Count];
+        Generator.Model.HistoryMode[] historyModes = new Generator.Model.HistoryMode[allStates.Count];
+        
+        if (Model.HierarchyEnabled)
+        {
+            for (int i = 0; i < allStates.Count; i++)
+            {
+                var state = allStates[i];
+                
+                // Parent index
+                if (Model.ParentOf.TryGetValue(state, out var parent) && parent != null)
+                {
+                    parentIndices[i] = allStates.IndexOf(parent);
+                }
+                else
+                {
+                    parentIndices[i] = -1;
+                }
+                
+                // Depth
+                if (Model.Depth.TryGetValue(state, out var depth))
+                {
+                    depths[i] = depth;
+                }
+                
+                // Initial child
+                if (Model.InitialChildOf.TryGetValue(state, out var initial) && initial != null)
+                {
+                    initialChildIndices[i] = allStates.IndexOf(initial);
+                }
+                else
+                {
+                    initialChildIndices[i] = -1;
+                }
+                
+                // History mode
+                if (Model.HistoryOf.TryGetValue(state, out var history))
+                {
+                    historyModes[i] = history;
+                }
+            }
+        }
+        
+        return new TransitionBuildContext(
+            Model,
+            transition,
+            currentStateIndex,
+            IsAsyncMachine,
+            Model.GenerationConfig.HasPayload,
+            allStates,
+            parentIndices,
+            depths,
+            initialChildIndices,
+            historyModes);
+    }
+    
+    /// <summary>
+    /// Emits code for a transition plan
+    /// </summary>
+    protected void EmitTransitionPlan(TransitionPlan plan, TransitionModel transition, string stateTypeForUsage, string triggerTypeForUsage)
+    {
+        foreach (var step in plan.Steps)
+        {
+            switch (step.Kind)
+            {
+                case PlanStepKind.GuardCheck:
+                    EmitGuardCheckStep(step, transition, stateTypeForUsage, triggerTypeForUsage);
+                    break;
+                    
+                case PlanStepKind.ExitState:
+                    EmitExitStateStep(step, transition);
+                    break;
+                    
+                case PlanStepKind.InternalAction:
+                    EmitActionStep(step, transition);
+                    break;
+                    
+                case PlanStepKind.AssignState:
+                    EmitAssignStateStep(step, stateTypeForUsage);
+                    break;
+                    
+                case PlanStepKind.EntryState:
+                    EmitEntryStateStep(step, transition);
+                    break;
+                    
+                case PlanStepKind.RecordHistory:
+                    EmitRecordHistoryStep(step, stateTypeForUsage);
+                    break;
+                    
+                case PlanStepKind.Log:
+                    EmitLogStep(step);
+                    break;
+            }
+        }
+    }
+    
+    private void EmitGuardCheckStep(PlanStep step, TransitionModel transition, string stateTypeForUsage, string triggerTypeForUsage)
+    {
+        if (!string.IsNullOrEmpty(step.GuardMethod))
+        {
+            WriteGuardEvaluationHook(transition, stateTypeForUsage, triggerTypeForUsage);
+            WriteGuardCheck(transition, stateTypeForUsage, triggerTypeForUsage);
+        }
+    }
+    
+    private void EmitExitStateStep(PlanStep step, TransitionModel transition)
+    {
+        if (!string.IsNullOrEmpty(step.OnExitMethod) && !string.IsNullOrEmpty(step.StateName))
+        {
+            if (Model.States.TryGetValue(step.StateName, out var stateDef))
+            {
+                WriteOnExitCall(stateDef, transition.ExpectedPayloadType);
+                WriteLogStatement("Debug",
+                    $"OnExitExecuted(_logger, _instanceId, \"{step.OnExitMethod}\", \"{step.StateName}\");");
+            }
+        }
+    }
+    
+    private void EmitActionStep(PlanStep step, TransitionModel transition)
+    {
+        if (!string.IsNullOrEmpty(step.ActionMethod))
+        {
+            WriteActionCall(transition);
+            WriteLogStatement("Debug",
+                $"ActionExecuted(_logger, _instanceId, \"{step.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+        }
+    }
+    
+    private void EmitAssignStateStep(PlanStep step, string stateTypeForUsage)
+    {
+        if (!string.IsNullOrEmpty(step.StateName))
+        {
+            Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(step.StateName)};");
+        }
+    }
+    
+    private void EmitEntryStateStep(PlanStep step, TransitionModel transition)
+    {
+        if (!string.IsNullOrEmpty(step.OnEntryMethod) && !string.IsNullOrEmpty(step.StateName))
+        {
+            if (Model.States.TryGetValue(step.StateName, out var stateDef))
+            {
+                WriteOnEntryCall(stateDef, transition.ExpectedPayloadType);
+                WriteLogStatement("Debug",
+                    $"OnEntryExecuted(_logger, _instanceId, \"{step.OnEntryMethod}\", \"{step.StateName}\");");
+            }
+        }
+    }
+    
+    private void EmitRecordHistoryStep(PlanStep step, string stateTypeForUsage)
+    {
+        if (step.StateIndex >= 0)
+        {
+            Sb.AppendLine($"// Record history for state index {step.StateIndex}");
+            Sb.AppendLine($"_lastActiveChild[{step.StateIndex}] = (int){CurrentStateField};");
+            
+            if (step.UseDeepHistory)
+            {
+                Sb.AppendLine("// Deep history recording would go here");
+            }
+        }
+    }
+    
+    private void EmitLogStep(PlanStep step)
+    {
+        if (!string.IsNullOrEmpty(step.LogTemplate))
+        {
+            WriteLogStatement("Debug", step.LogTemplate);
+        }
+    }
+    
     #endregion
 
     #region Abstractions to be implemented by concrete generators

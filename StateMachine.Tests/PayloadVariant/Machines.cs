@@ -169,7 +169,7 @@ namespace StateMachine.Tests.PayloadVariant
     {
         public int Counter { get; private set; }
 
-        [InternalTransition(InternalPayloadState.Active, InternalPayloadTrigger.Update, nameof(UpdateCounter))]
+        [InternalTransition(InternalPayloadState.Active, InternalPayloadTrigger.Update, Action = nameof(UpdateCounter))]
         [Transition(InternalPayloadState.Active, InternalPayloadTrigger.Deactivate, InternalPayloadState.Inactive)]
         private void Configure() { }
 

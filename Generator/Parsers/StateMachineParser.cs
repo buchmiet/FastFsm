@@ -1494,7 +1494,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                     context.ReportDiagnostic(Diagnostic.Create(
                         DiagnosticFactory.Get(RuleIdentifiers.InvalidHistoryConfiguration),
                         Location.None,
-                        state.Name));
+                        state.Name, state.History));
                     criticalErrorOccurred = true;
                 }
                 else

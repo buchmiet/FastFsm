@@ -17,7 +17,7 @@ namespace StateMachine.Tests.Machines
         private void ConfigureStates() { }
 
         [InternalTransition(InternalState.Active, InternalTrigger.Update,
-            nameof(HandleUpdate))]
+            Action = nameof(HandleUpdate))]
         [Transition(InternalState.Active, InternalTrigger.Deactivate,
             InternalState.Inactive)]
         private void Configure() { }
