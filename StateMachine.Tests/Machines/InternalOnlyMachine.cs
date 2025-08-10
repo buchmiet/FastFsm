@@ -10,7 +10,7 @@ namespace StateMachine.Tests.Machines
         public int ActionCount => _actionCount;
 
         [InternalTransition(InternalOnlyState.Static, InternalOnlyTrigger.Action,
-            nameof(PerformAction))]
+            Action = nameof(PerformAction))]
         private void Configure() { }
 
         private void PerformAction() => _actionCount++;

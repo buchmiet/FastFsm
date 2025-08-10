@@ -350,3 +350,4 @@ Benchmark.Rust/Cargo.lock
 .claude/
 .config/
 .lock
+CLAUDE.md
