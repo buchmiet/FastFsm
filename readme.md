@@ -240,6 +240,10 @@ menu.Fire(MenuTrigger.StartGame);   // Exits entire Menu hierarchy → Game
 > **Note:** Internal transitions **never** change the state and **never** run `OnExit`/`OnEntry`; they only evaluate guard and run action.
 
 #### Generated Helper Methods
+```csharp
+// Runtime hierarchy checking
+bool IsInHierarchy(TState ancestor)  // True if ancestor is current state or any parent
+```
 The generator creates optimized helper methods for hierarchy queries:
 
 ```csharp
@@ -299,7 +303,22 @@ private static readonly int[] s_initialChild = new int[] { 1, 2, -1, -1, -1 };
 
 ### Debugging HSM
 
-Debugging hierarchical state machines is straightforward with the `DumpActivePath()` method available in DEBUG builds. This method returns a human-readable string showing the complete active state path from root to current leaf state, making it easy to visualize where you are in the hierarchy during debugging sessions.
+FastFSM provides helper methods for understanding the current state hierarchy:
+
+#### IsInHierarchy() (All builds)
+
+The `IsInHierarchy(TState ancestor)` method checks if the current state lies within the hierarchy of a given ancestor state. This is useful for runtime state validation and conditional logic based on hierarchical relationships.
+
+```csharp
+var workflow = new WorkflowMachine(WorkflowState.Work_Processing_Loading);
+workflow.Start();
+
+// Check hierarchical relationships
+if (workflow.IsInHierarchy(WorkflowState.Work))
+{
+    // Current state is within the Work composite
+}
+```
 
 #### DumpActivePath() (DEBUG-only)
 

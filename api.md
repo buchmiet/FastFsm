@@ -127,6 +127,30 @@ public enum HistoryMode
 }
 ```
 
+##### HSM Runtime Helpers
+
+###### `bool IsInHierarchy(TState ancestor)`
+Checks if the current state lies within the hierarchy of a given ancestor state.
+
+**Returns:** `true` if `ancestor` is the current state or any of its parents; `false` otherwise.
+
+**Availability:** All build configurations (Debug and Release) for HSM-enabled machines.
+
+```csharp
+// Example usage
+if (machine.IsInHierarchy(WorkflowState.Processing))
+{
+    // Current state is within the Processing composite
+}
+```
+
+###### `string DumpActivePath()`
+Returns the active path from root to current leaf state as a string (DEBUG-only).
+
+**Returns:** Path string like `"Root / Menu / Menu_Settings"`
+
+**Availability:** DEBUG builds only for HSM-enabled machines.
+
 #### Additional Attributes
 
 ##### `PayloadTypeAttribute`
