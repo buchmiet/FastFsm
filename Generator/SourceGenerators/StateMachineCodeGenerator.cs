@@ -227,6 +227,34 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         }
         Sb.AppendLine("#endif");
         Sb.AppendLine();
+        
+        // Add IsInHierarchy helper (available in both Debug and Release)
+        EmitXmlDocSummary(Sb, "Returns true if the current state lies in the hierarchy of the given ancestor (i.e., ancestor is the current leaf or any of its parents).");
+        Sb.AppendLine("/// <param name=\"ancestor\">The potential ancestor state to check</param>");
+        Sb.AppendLine("/// <returns>True if ancestor is the current state or any of its parents, false otherwise</returns>");
+        using (Sb.Block($"public bool IsInHierarchy({stateTypeForUsage} ancestor)"))
+        {
+            Sb.AppendLine("const int NO_PARENT = -1;");
+            Sb.AppendLine("int idx = (int)(object)_currentState;");
+            Sb.AppendLine("int ancIdx = (int)(object)ancestor;");
+            Sb.AppendLine();
+            Sb.AppendLine("// Bounds check");
+            Sb.AppendLine("if ((uint)idx >= (uint)s_parent.Length) return false;");
+            Sb.AppendLine("if ((uint)ancIdx >= (uint)s_parent.Length) return false;");
+            Sb.AppendLine();
+            Sb.AppendLine("// Check if ancestor is current state");
+            Sb.AppendLine("if (idx == ancIdx) return true;");
+            Sb.AppendLine();
+            Sb.AppendLine("// Walk up parent chain");
+            using (Sb.Block("while (true)"))
+            {
+                Sb.AppendLine("int parent = s_parent[idx];");
+                Sb.AppendLine("if (parent == NO_PARENT) return false;");
+                Sb.AppendLine("if (parent == ancIdx) return true;");
+                Sb.AppendLine("idx = parent;");
+            }
+        }
+        Sb.AppendLine();
     }
     
     #endregion
