@@ -175,7 +175,7 @@ public static class DefinedRules
         title: "History on non-composite",
         messageFormat: "State '{0}' has History = {1} but is not a composite state (has no children). Fix: Either remove the History parameter, or add child states with Parent = {0}.",
         category: "FSM.Generator.HSM",
-        defaultSeverity: RuleSeverity.Error,
+        defaultSeverity: RuleSeverity.Warning,
         description: "Only composite states (states with children) can have history mode. History remembers which child was last active.");
 
     public static readonly RuleDefinition ConflictingTransitionTargets = new(

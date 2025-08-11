@@ -23,6 +23,9 @@
 	<ItemGroup>
 		<PackageReference Include="FastFsm.Net" Version="*-dev.*" />
 	</ItemGroup>
+	<ItemGroup>
+	  <Folder Include="HierarchicalStateMachine\" />
+	</ItemGroup>
 	<Target Name="CleanGeneratedFiles" BeforeTargets="Clean">
 		<RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)" />
 	</Target>

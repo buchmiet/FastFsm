@@ -39,6 +39,8 @@
 	<!-- analyzer (DLL generatora) -->
 	<ItemGroup>
 		<None Include="..\Generator\bin\$(Configuration)\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+		<!-- Analyzer XML documentation -->
+		<None Include="..\Generator\bin\$(Configuration)\netstandard2.0\*.xml" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
 	</ItemGroup>
 
 	

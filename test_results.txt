@@ -1,6 +1,0 @@
-MSBUILD : error MSB1008: Only one project can be specified.
-    Full command line: '/home/lukasz/.dotnet/sdk/9.0.303/MSBuild.dll -maxcpucount -verbosity:m -tlp:default=auto -nologo -restore -consoleloggerparameters:Summary StateMachine.Tests/StateMachine.Tests.csproj 2 -distributedlogger:Microsoft.DotNet.Tools.MSBuild.MSBuildLogger,/home/lukasz/.dotnet/sdk/9.0.303/dotnet.dll*Microsoft.DotNet.Tools.MSBuild.MSBuildForwardingLogger,/home/lukasz/.dotnet/sdk/9.0.303/dotnet.dll'
-  Switches appended by response files:
-Switch: 2
-
-For switch syntax, type "MSBuild -help"

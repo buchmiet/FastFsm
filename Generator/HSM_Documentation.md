@@ -43,8 +43,7 @@ Every composite state needs an initial substate (unless using history):
 [State(States.Menu, Parent = States.Root)]
 void Menu() { }
 
-[State(States.MainMenu, Parent = States.Menu)]
-[InitialSubstate(States.Menu, States.MainMenu)]
+[State(States.MainMenu, Parent = States.Menu, IsInitial = true)]
 void MainMenu() { }
 ```
 
@@ -110,14 +109,17 @@ Entry: InGame → GamePlay
 ### Structural Query Methods
 
 ```csharp
-// Check if a state is in the active path
-bool IsIn(TState state);
+// Check if a parent state is in the active hierarchy
+bool IsInHierarchy(TState parentState);
 
-// Get the full active state path from root to leaf
-IReadOnlyList<TState> GetActivePath();
+// Per-state helper methods for hierarchy checking (bitmask-based)
+// Generated for each composite state:
+bool IsInWork();  // Returns true if current state is Work or any of its children
 
-// Async variant for async machines
-ValueTask<IReadOnlyList<TState>> GetActivePathAsync(CancellationToken ct = default);
+// DEBUG-only helper for diagnostics
+#if DEBUG
+string DumpActivePath();  // Returns e.g. "Working / Working_Initializing"
+#endif
 ```
 
 ### Example Usage
@@ -125,14 +127,16 @@ ValueTask<IReadOnlyList<TState>> GetActivePathAsync(CancellationToken ct = defau
 ```csharp
 var machine = new GameStateMachine(States.MainMenu);
 
-// Check active states
-if (machine.IsIn(States.Menu)) {
+// Check active states using generated helpers
+if (machine.IsInMenu()) {
     // Currently in menu or any of its substates
 }
 
-// Get full path
-var path = machine.GetActivePath();
-// Returns: [Root, Menu, MainMenu]
+// Debug-only path dump
+#if DEBUG
+var path = machine.DumpActivePath();
+// Returns: "Root / Menu / MainMenu"
+#endif
 ```
 
 ## Exception Handling in HSM
@@ -145,7 +149,7 @@ Exception behavior follows these rules:
    - `Propagate`: Re-throw exception
 3. **OperationCanceledException**: Always propagates (no special handling)
 
-## Diagnostics (FSM100-FSM105)
+## Diagnostics (FSM100-FSM106)
 
 FastFsm provides comprehensive diagnostics for HSM configuration:
 
@@ -171,21 +175,21 @@ void Menu() { }
 
 [State(States.Item1, Parent = States.Menu)]
 void Item1() { }
-// Missing: [InitialSubstate(States.Menu, States.Item1)]
+// Missing: IsInitial = true on one child
 ```
-**Fix**: Add `InitialSubstate` attribute or use history mode
+**Fix**: Add `IsInitial = true` to exactly one child state
 
 ### FSM103: Multiple Initial Children
 ```csharp
 // ERROR: Multiple initial substates
-[InitialSubstate(States.Menu, States.Item1)]
-[InitialSubstate(States.Menu, States.Item2)]  // Duplicate!
+[State(States.Item1, Parent = States.Menu, IsInitial = true)]
+[State(States.Item2, Parent = States.Menu, IsInitial = true)]  // Duplicate!
 ```
 **Fix**: Keep only one initial substate
 
 ### FSM104: History on Non-Composite
 ```csharp
-// ERROR: Leaf state with history
+// WARNING: Leaf state with history
 [State(States.Leaf, History = HistoryMode.Shallow)]
 ```
 **Fix**: Remove history or add child states
@@ -195,7 +199,7 @@ void Item1() { }
 // INFO: Transitioning to composite without specifying child
 [Transition(States.Other, Triggers.ToMenu, States.Menu)]
 ```
-**Note**: Machine will use initial substate or history
+**Note**: Machine will use initial substate or history (declaration order break-tie for FSM106 equal priorities)
 
 ## Best Practices
 
@@ -222,6 +226,9 @@ Existing state machines continue to work without changes. To adopt HSM:
 - **HSM without history**: Small overhead for path traversal
 - **Shallow history**: Moderate overhead for state tracking
 - **Deep history**: Higher overhead for full path restoration
+- **Current fast path**: ≤64 states (bitmask), >64 uses array masks
+- **Planned (0.8+)**: Support for >256 states
+- **Zero allocation guarantee**: Maintained across all HSM features
 
 Benchmark your specific use case if performance is critical.
 
@@ -238,8 +245,7 @@ public partial class MenuSystem
     [State(State.Menu, Parent = State.Root, History = HistoryMode.Shallow)]
     void Menu() { }
 
-    [State(State.MainMenu, Parent = State.Menu)]
-    [InitialSubstate(State.Menu, State.MainMenu)]
+    [State(State.MainMenu, Parent = State.Menu, IsInitial = true)]
     void MainMenu() { }
 
     [State(State.Settings, Parent = State.Menu)]
@@ -266,16 +272,13 @@ public partial class GameStateMachine
     [State(State.Playing, Parent = State.Root, History = HistoryMode.Deep)]
     void Playing() { }
 
-    [State(State.Level, Parent = State.Playing)]
-    [InitialSubstate(State.Playing, State.Level)]
+    [State(State.Level, Parent = State.Playing, IsInitial = true)]
     void Level() { }
 
-    [State(State.Combat, Parent = State.Level, History = HistoryMode.Deep)]
-    [InitialSubstate(State.Level, State.Combat)]
+    [State(State.Combat, Parent = State.Level, History = HistoryMode.Deep, IsInitial = true)]
     void Combat() { }
 
-    [State(State.PlayerTurn, Parent = State.Combat)]
-    [InitialSubstate(State.Combat, State.PlayerTurn)]
+    [State(State.PlayerTurn, Parent = State.Combat, IsInitial = true)]
     void PlayerTurn() { }
 
     [State(State.Paused, Parent = State.Root)]

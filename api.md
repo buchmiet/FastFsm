@@ -68,6 +68,10 @@ public partial class MyStateMachine { }
 - `bool ContinueOnCapturedContext` - Control async continuation context (default: false)
 - `bool EnableHierarchy` - Enable HSM features (auto-enabled when HSM attributes used)
 
+**Nested Classes Support:**
+
+State machine classes may be declared as nested partial classes inside other types. The generator will emit matching nested partial declarations so that callback methods (OnEntry/OnExit, guards, actions) resolve correctly in their containing scopes.
+
 ##### `TransitionAttribute`
 Defines a state transition with optional guard and action.
 
