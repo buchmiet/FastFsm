@@ -89,6 +89,17 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             Namespace = classSymbol.ContainingNamespace.IsGlobalNamespace ? string.Empty : classSymbol.ContainingNamespace.ToDisplayString(),
             ClassName = classSymbol.Name
         };
+        // Capture nested containing types (outer classes) to mirror nested partials
+        {
+            var containers = new List<string>();
+            var containerSymbol = classSymbol.ContainingType;
+            while (containerSymbol != null)
+            {
+                containers.Insert(0, containerSymbol.Name);
+                containerSymbol = containerSymbol.ContainingType;
+            }
+            currentModel.ContainerClasses = containers;
+        }
         report?.Invoke($"Model created - Namespace: {currentModel.Namespace}, ClassName: {currentModel.ClassName}");
 
         // === SEKCJA 3: Pobieranie atrybutu StateMachine ===
@@ -222,6 +233,53 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         if (isAsyncOce)
             report?.Invoke($"[DEBUG AOE] After ParseMemberAttributes - criticalError: {criticalErrorOccurred}, isAsync: {isMachineAsyncMode}");
 
+        // === SEKCJA 8.4: Enum-only fallback ===
+        // If no [State] attributes were found, ensure all enum members are in the model
+        bool hasStateAttributes = currentModel.States.Values.Any(s => 
+            !string.IsNullOrEmpty(s.OnEntryMethod) || 
+            !string.IsNullOrEmpty(s.OnExitMethod) ||
+            s.ParentState != null ||
+            s.History != Generator.Model.HistoryMode.None ||
+            s.IsInitial);
+            
+        if (!hasStateAttributes)
+        {
+            report?.Invoke("Section 8.4: Enum-only fallback - no [State] attributes found");
+            
+            // Rebuild states from enum to ensure they're all present
+            currentModel.States.Clear();
+            foreach (var member in stateTypeArg.GetMembers().OfType<IFieldSymbol>())
+            {
+                if (member.IsConst)
+                {
+                    currentModel.States[member.Name] = new StateModel 
+                    { 
+                        Name = member.Name,
+                        OnEntryMethod = null,
+                        OnExitMethod = null,
+                        ParentState = null,
+                        History = Generator.Model.HistoryMode.None,
+                        IsInitial = false
+                    };
+                }
+            }
+            
+            currentModel.UsedEnumOnlyFallback = true;
+            report?.Invoke($"Enum-only fallback applied: {currentModel.States.Count} states from enum");
+            
+            // Report FSM994 diagnostic
+            context.ReportDiagnostic(Diagnostic.Create(
+                new DiagnosticDescriptor(
+                    "FSM994",
+                    "Enum-only states fallback",
+                    "Enum-only states fallback applied for '{0}' — 0 [State] attributes found; using all enum members as states",
+                    "FSM.Generator",
+                    DiagnosticSeverity.Info,
+                    true),
+                classDeclaration.GetLocation(),
+                string.IsNullOrEmpty(currentModel.Namespace) ? currentModel.ClassName : $"{currentModel.Namespace}.{currentModel.ClassName}"));
+        }
+
         // === SEKCJA 8.5: Build HSM hierarchy if needed ===
         report?.Invoke("Section 8.5: Building HSM hierarchy");
         BuildHierarchy(currentModel, ref criticalErrorOccurred, report);
@@ -250,25 +308,83 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         var allStateNames = currentModel.States.Keys.ToList();
         report?.Invoke($"Total states count: {allStateNames.Count}");
 
+        // Calculate transition metrics
+        int internalCount = currentModel.Transitions.Count(t => t.IsInternal);
+        int externalCount = currentModel.Transitions.Count(t => !t.IsInternal);
+        int totalCount = internalCount + externalCount;
+        bool isInternalOnly = internalCount > 0 && externalCount == 0;
+        bool hasAnyTransitions = totalCount > 0;
+        
+        report?.Invoke($"Transition metrics: internal={internalCount}, external={externalCount}, total={totalCount}");
+
         var transitionsForReachability = currentModel.Transitions
             .Where(t => !string.IsNullOrEmpty(t.ToState))
             .Select(t => new TransitionDefinition(t.FromState, t.Trigger, t.ToState!))
             .ToList();
-        report?.Invoke($"Transitions count: {transitionsForReachability.Count}");
+        
+        // Report diagnostic for internal-only or no-transitions machines
+        if (externalCount == 0 && internalCount > 0)
+        {
+            report?.Invoke($"Internal-only machine detected: {internalCount} internal transitions");
+            context.ReportDiagnostic(Diagnostic.Create(
+                new DiagnosticDescriptor(
+                    "FSM982",
+                    "Internal-only machine",
+                    "Machine '{0}' has only internal transitions ({1}) - generating with internal-only support",
+                    "FSM.Generator.Parser",
+                    DiagnosticSeverity.Info,
+                    true),
+                classDeclaration.GetLocation(),
+                currentModel.ClassName,
+                internalCount));
+        }
+        else if (totalCount == 0)
+        {
+            report?.Invoke("No-transitions machine detected");
+            context.ReportDiagnostic(Diagnostic.Create(
+                new DiagnosticDescriptor(
+                    "FSM981",
+                    "No transitions",
+                    "Machine '{0}' has no transitions - generating minimal API skeleton",
+                    "FSM.Generator.Parser",
+                    DiagnosticSeverity.Info,
+                    true),
+                classDeclaration.GetLocation(),
+                currentModel.ClassName));
+        }
+        
+        // Skip reachability validation for internal-only or no-transitions machines
+        if (isInternalOnly || totalCount == 0)
+        {
+            report?.Invoke($"Skipping reachability check for internal-only or no-transitions machine");
+            // Don't run unreachable state validation for these cases
+        }
+        else if (externalCount > 0)
+        {
+            // Only validate reachability when there are external transitions
+            string initialStateForReachability = allStateNames.FirstOrDefault() ?? string.Empty;
+            report?.Invoke($"Initial state: {initialStateForReachability}");
 
-        string initialStateForReachability = allStateNames.FirstOrDefault() ?? string.Empty;
-        report?.Invoke($"Initial state: {initialStateForReachability}");
-
-        var unreachableCtx = new UnreachableStateContext(initialStateForReachability, allStateNames, transitionsForReachability);
-        report?.Invoke("Validating unreachable states");
-        ProcessRuleResults(_unreachableStateRule.Validate(unreachableCtx), classDeclaration.Identifier.GetLocation(), ref criticalErrorOccurred);
-        report?.Invoke($"Critical error after reachability validation: {criticalErrorOccurred}");
+            var unreachableCtx = new UnreachableStateContext(initialStateForReachability, allStateNames, transitionsForReachability);
+            report?.Invoke("Validating unreachable states");
+            ProcessRuleResults(_unreachableStateRule.Validate(unreachableCtx), classDeclaration.Identifier.GetLocation(), ref criticalErrorOccurred);
+            report?.Invoke($"Critical error after reachability validation: {criticalErrorOccurred}");
+        }
 
         // === SEKCJA 12: Finalizacja ===
         report?.Invoke("Section 12: Finalization");
         if (criticalErrorOccurred)
         {
-            report?.Invoke("ERROR: Critical error occurred - returning false");
+            report?.Invoke($"ERROR: Critical error occurred for {model.ClassName} - returning false");
+            context.ReportDiagnostic(Diagnostic.Create(
+                new DiagnosticDescriptor(
+                    "FSM999",
+                    "Parser critical error",
+                    $"Critical error occurred while parsing {model.ClassName}, code generation skipped",
+                    "FSM.Generator",
+                    DiagnosticSeverity.Warning,
+                    true),
+                classDeclaration.GetLocation()));
             return false;
         }
 
@@ -290,11 +406,73 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         ref bool? isMachineAsyncMode,
         Action<string>? report = null)
     {
+        // Collect configuration sections for FSM989 diagnostic
+        var stateMethodNames = new HashSet<string>();
+        var transitionMethodNames = new HashSet<string>();
+        var internalMethodNames = new HashSet<string>();
+        var payloadTypeCount = 0;
+        
+        // Scan all methods to collect configuration info
+        foreach (var method in classSymbol.GetMembers().OfType<IMethodSymbol>())
+        {
+            var hasStateAttrs = method.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == StateAttributeFullName);
+            var hasTransitionAttrs = method.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == TransitionAttributeFullName);
+            var hasInternalAttrs = method.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == InternalTransitionAttributeFullName);
+            
+            if (hasStateAttrs) stateMethodNames.Add(method.Name);
+            if (hasTransitionAttrs) transitionMethodNames.Add(method.Name);
+            if (hasInternalAttrs) internalMethodNames.Add(method.Name);
+        }
+        
+        // Count payload type attributes on class
+        payloadTypeCount = classSymbol.GetAttributes()
+            .Count(a => a.AttributeClass?.ToDisplayString() == PayloadTypeAttributeFullName);
+        
         ParsePayloadTypeAttributes(classSymbol, model, ref criticalErrorOccurred);
         ParseTransitionAttributes(classSymbol, model, stateTypeSymbol, triggerTypeSymbol, ref criticalErrorOccurred, ref isMachineAsyncMode);
         ParseInternalTransitionAttributes(classSymbol, model, stateTypeSymbol, triggerTypeSymbol, ref criticalErrorOccurred, ref isMachineAsyncMode);
         ParseStateAttributes(classSymbol, model, stateTypeSymbol, ref criticalErrorOccurred, ref isMachineAsyncMode);
         ParseOnExceptionAttribute(classSymbol, model, stateTypeSymbol, triggerTypeSymbol, ref criticalErrorOccurred, ref isMachineAsyncMode, report);
+        
+        // Report FSM989 diagnostic after parsing to get accurate counts
+        var externalCount = model.Transitions.Count(t => !t.IsInternal);
+        var internalCount = model.Transitions.Count(t => t.IsInternal);
+        
+        var fullName = string.IsNullOrEmpty(model.Namespace) 
+            ? model.ClassName 
+            : $"{model.Namespace}.{model.ClassName}";
+        
+        var stateMethods = string.Join(",", stateMethodNames);
+        var transitionMethods = string.Join(",", transitionMethodNames);
+        var internalMethods = string.Join(",", internalMethodNames);
+        
+        if (string.IsNullOrEmpty(stateMethods)) stateMethods = "(none)";
+        if (string.IsNullOrEmpty(transitionMethods)) transitionMethods = "(none)";
+        if (string.IsNullOrEmpty(internalMethods)) internalMethods = "(none)";
+        
+        // Report FSM989 diagnostic - use the descriptor directly from Generator.cs
+        var location = classSymbol.Locations.FirstOrDefault() ?? Location.None;
+        
+        // Create FSM989 descriptor inline since we can't access Generator's static field
+        var fsm989 = new DiagnosticDescriptor(
+            "FSM989",
+            "Configuration sections",
+            "{0} - StatesFrom: {1} | TransitionsFrom: {2} (ext={3}) | InternalFrom: {4} (int={5}) | PayloadTypes: {6}",
+            "FSM.Generator.Parser",
+            DiagnosticSeverity.Info,
+            isEnabledByDefault: true);
+            
+        // Report the diagnostic using the context from the parser instance
+        context.ReportDiagnostic(Diagnostic.Create(
+            fsm989,
+            location,
+            fullName,
+            stateMethods,
+            transitionMethods,
+            externalCount,
+            internalMethods,
+            internalCount,
+            payloadTypeCount));
     }
 
 
@@ -449,9 +627,41 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             {
                 Location attrLocation = attrData.ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation() ?? methodSymbol.Locations.FirstOrDefault() ?? Location.None;
 
-                if (attrData.ConstructorArguments.Length < 3 || !(attrData.ConstructorArguments[2].Value is string actionMethodNameFromCtor))
+                // Get action method name from either constructor argument or named parameter
+                string? actionMethodNameFromCtor = null;
+                
+                // First try to get from constructor argument (backward compatibility)
+                if (attrData.ConstructorArguments.Length >= 3 && attrData.ConstructorArguments[2].Value is string ctorAction)
+                {
+                    actionMethodNameFromCtor = ctorAction;
+                }
+                
+                // If not found in constructor, check named arguments
+                if (actionMethodNameFromCtor == null)
+                {
+                    foreach (var namedArg in attrData.NamedArguments)
+                    {
+                        if (namedArg.Key == "Action" && namedArg.Value.Value is string namedAction)
+                        {
+                            actionMethodNameFromCtor = namedAction;
+                            break;
+                        }
+                    }
+                }
+                
+                // If still no action method found, it's an error
+                if (actionMethodNameFromCtor == null)
                 {
                     criticalErrorOccurred = true;
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        new DiagnosticDescriptor(
+                            "FSM983",
+                            "Missing action method",
+                            "InternalTransition attribute requires an Action method name, either as third constructor argument or Action named parameter",
+                            "FSM.Generator.Parser",
+                            DiagnosticSeverity.Error,
+                            true),
+                        attrLocation));
                     continue;
                 }
 
@@ -1495,7 +1705,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                         DiagnosticFactory.Get(RuleIdentifiers.InvalidHistoryConfiguration),
                         Location.None,
                         state.Name, state.History));
-                    criticalErrorOccurred = true;
+                    // FSM104 is now a warning, don't set criticalErrorOccurred
                 }
                 else
                 {

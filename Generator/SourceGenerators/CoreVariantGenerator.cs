@@ -24,15 +24,35 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
         {
             using (Sb.Block($"namespace {userNamespace}"))
             {
+                WriteContainingTypes();
                 WriteClassContent();
+                CloseContainingTypes();
             }
         }
         else
         {
+            WriteContainingTypes();
             WriteClassContent();
+            CloseContainingTypes();
+        }
+        return;
+
+        void WriteContainingTypes()
+        {
+            foreach (var container in Model.ContainerClasses)
+            {
+                Sb.AppendLine($"public partial class {container}");
+                Sb.AppendLine("{");
+            }
         }
 
-        return;
+        void CloseContainingTypes()
+        {
+            for (int i = 0; i < Model.ContainerClasses.Count; i++)
+            {
+                Sb.AppendLine("}");
+            }
+        }
 
         void WriteClassContent()
         {

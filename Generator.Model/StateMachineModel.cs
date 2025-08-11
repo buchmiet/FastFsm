@@ -4,6 +4,11 @@ public class StateMachineModel
 {
     public string Namespace { get; set; } = "";
     public string ClassName { get; set; } = "";
+    /// <summary>
+    /// Names of containing types if the state machine class is nested.
+    /// Represents the outer types in declaration order.
+    /// </summary>
+    public List<string> ContainerClasses { get; set; } = new();
     public string StateType { get; set; } = ""; // Fully qualified name
     public string TriggerType { get; set; } = ""; // Fully qualified name
     public List<TransitionModel> Transitions { get; set; } = [];
@@ -59,6 +64,11 @@ public class StateMachineModel
     /// Whether any HSM features are actually used
     /// </summary>
     public bool HasHierarchy => ParentOf.Any(p => p.Value != null) || ChildrenOf.Any(c => c.Value.Count > 0);
+    
+    /// <summary>
+    /// Whether enum-only fallback was used (no [State] attributes found)
+    /// </summary>
+    public bool UsedEnumOnlyFallback { get; set; } = false;
 
     #endregion
 }

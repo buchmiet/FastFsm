@@ -9,7 +9,7 @@ namespace StateMachine.Tests.HierarchicalTests;
 /// All machines here represent correct usage of HSM attributes.
 /// Invalid/error cases should be tested in a separate diagnostics project.
 /// </summary>
-public class HsmParsingCompilationTests
+public partial class HsmParsingCompilationTests
 {
     #region Test Enums
 

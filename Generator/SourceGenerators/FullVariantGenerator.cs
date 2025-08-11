@@ -22,15 +22,35 @@ internal sealed class FullVariantGenerator(StateMachineModel model) : PayloadVar
         {
             using (Sb.Block($"namespace {userNamespace}"))
             {
+                WriteContainingTypes();
                 WriteClassContent();
+                CloseContainingTypes();
             }
         }
         else
         {
+            WriteContainingTypes();
             WriteClassContent();
+            CloseContainingTypes();
+        }
+        return;
+
+        void WriteContainingTypes()
+        {
+            foreach (var container in Model.ContainerClasses)
+            {
+                Sb.AppendLine($"public partial class {container}");
+                Sb.AppendLine("{");
+            }
         }
 
-        return;
+        void CloseContainingTypes()
+        {
+            for (int i = 0; i < Model.ContainerClasses.Count; i++)
+            {
+                Sb.AppendLine("}");
+            }
+        }
 
         void WriteClassContent()
         {
@@ -77,6 +97,7 @@ internal sealed class FullVariantGenerator(StateMachineModel model) : PayloadVar
 
                 _ext.WriteManagementMethods(Sb);
                 WriteStructuralApiMethods(stateTypeForUsage, triggerTypeForUsage);
+                WriteHierarchyMethods(stateTypeForUsage, triggerTypeForUsage);
             }
         }
     }

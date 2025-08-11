@@ -1,27 +1,25 @@
 ﻿# FastFSM - High-Performance State Machines for .NET
 
-[](https://www.nuget.org/packages/FastFSM.Net/)
-[](https://www.google.com/search?q=LICENSE)
-[](https://dotnet.microsoft.com/download)
 
 FastFSM is a powerful, zero-overhead finite state machine framework for .NET that leverages C# source generators to create highly optimized state machines at compile time. It combines the ease of declarative configuration with performance that rivals hand-written code.
 
 ## Table of Contents
 
-  - [Why FastFSM?]
-  - [Key Features]
-  - [Getting Started]
-  - [Core Concepts]
-  - [The State Machine Lifecycle (New in 0.6)]
-  - [Basic Usage]
-  - [API Reference]
-  - [Advanced Features]
-  - [Performance]
-  - [Real-World Examples]
-  - [Architecture Overview]
-  - [Migration Guide]
-  - [Contributing]
-  - [License]
+  - [Why FastFSM?](#why-fastfsm)
+  - [Key Features](#key-features)
+  - [Getting Started](#getting-started)
+  - [Core Concepts](#core-concepts)
+  - [New in 0.7: Hierarchical State Machines (HSM)](#new-in-07-hierarchical-state-machines-hsm)
+  - [The State Machine Lifecycle (New in 0.6)](#the-state-machine-lifecycle-new-in-06)
+  - [Basic Usage](#basic-usage)
+  - [API Reference](#api-reference)
+  - [Advanced Features](#advanced-features)
+  - [Performance](#performance)
+  - [Real-World Examples](#real-world-examples)
+  - [Architecture Overview](#architecture-overview)
+  - [Migration Guide](#migration-guide)
+  - [Contributing](#contributing)
+  - [License](#license)
 
 ## Why FastFSM?
 
@@ -119,6 +117,257 @@ States can have entry and exit callbacks that execute when entering or leaving a
 
   - **OnEntry** - executes when entering a state
   - **OnExit** - executes when leaving a state
+
+-----
+
+## New in 0.7: Hierarchical State Machines (HSM)
+
+FastFSM 0.7 introduces **Hierarchical State Machines** (HSM), enabling you to organize states into parent-child relationships for more maintainable and scalable designs. HSM adds powerful features while maintaining FastFSM's zero-allocation, sub-nanosecond performance guarantees.
+
+### Enabling HSM
+
+> **Enable HSM in one of two ways:**
+> - Set `EnableHierarchy = true` on the `[StateMachine]` attribute
+> - Use any HSM feature (`Parent`, `History`, `IsInitial`) - auto-enables hierarchy
+>
+> HSM is also **automatically enabled** as soon as you use `Parent` or `History` on any state; specifying `EnableHierarchy=true` is optional in that case.
+
+### What HSM Adds
+
+Hierarchical State Machines bring several powerful capabilities to FastFSM:
+
+- **Composite Parents**: States can contain child states, creating a hierarchy
+- **Initial Substates**: Each composite parent must designate exactly one child with `IsInitial = true`
+- **History Modes**: Shallow history remembers the last active child; deep history remembers the entire substate path
+- **Internal Transitions**: Execute actions without changing state or triggering exit/entry callbacks
+- **Explicit Priorities**: Control transition precedence with numeric priorities
+- **Deterministic Tie-Breaking**: Equal priorities resolve by declaration order
+- **Transition Inheritance**: Child states inherit parent transitions, with child transitions overriding parent ones
+
+### Transition Resolution Order
+
+When multiple transitions could handle the same trigger, FastFSM resolves them deterministically:
+
+1. **Higher Priority first** - Transitions with higher `Priority` values win
+2. **Child beats Parent** - Child state transitions override parent transitions
+3. **Source order on ties** - When priorities are equal, first declared wins
+
+> **Summary:** Priority → Child over Parent → Source order (deterministic)
+
+### Quick Start
+
+Here's a minimal HSM example showing a menu system with parent-child states:
+
+```csharp
+// Define states with hierarchy naming convention
+public enum MenuState 
+{ 
+    Root,
+    Menu,           // Parent state
+    Menu_Main,      // Child of Menu
+    Menu_Settings,  // Child of Menu
+    Game
+}
+
+public enum MenuTrigger { Enter, Settings, Back, StartGame, RefreshUI }
+
+[StateMachine(typeof(MenuState), typeof(MenuTrigger), EnableHierarchy = true)]
+public partial class MenuSystem
+{
+    // Define parent state with shallow history
+    [State(MenuState.Menu, History = HistoryMode.Shallow)]
+    private void ConfigureMenu() { }
+    
+    // Define children with one marked as initial
+    [State(MenuState.Menu_Main, Parent = MenuState.Menu, IsInitial = true)]
+    private void ConfigureMainMenu() { }
+    
+    [State(MenuState.Menu_Settings, Parent = MenuState.Menu)]
+    private void ConfigureSettings() { }
+    
+    // Transitions between menu states
+    [Transition(MenuState.Menu_Main, MenuTrigger.Settings, MenuState.Menu_Settings)]
+    [Transition(MenuState.Menu_Settings, MenuTrigger.Back, MenuState.Menu_Main, 
+        Priority = 100)]
+    [Transition(MenuState.Menu, MenuTrigger.StartGame, MenuState.Game)]
+    private void ConfigureTransitions() { }
+    
+    // Internal transition at parent level - applies to all children
+    [InternalTransition(MenuState.Menu, MenuTrigger.RefreshUI, 
+        Action = nameof(RefreshDisplay))]
+    private void ConfigureRefresh() { }
+    
+    private void RefreshDisplay() => Console.WriteLine("Refreshing UI...");
+}
+
+// Usage
+var menu = new MenuSystem(MenuState.Menu);
+menu.Start();  // Enters Menu, then auto-enters Menu_Main (initial child)
+
+menu.Fire(MenuTrigger.Settings);    // Menu_Main → Menu_Settings
+menu.Fire(MenuTrigger.RefreshUI);   // Internal transition, stays in Menu_Settings
+menu.Fire(MenuTrigger.StartGame);   // Exits entire Menu hierarchy → Game
+```
+
+### API Cheatsheet
+
+#### State Configuration
+```csharp
+[State(state, 
+    Parent = parentState,        // Makes this a child of parentState
+    IsInitial = true,           // Marks as initial child (exactly one required per parent)
+    History = HistoryMode.X,    // None, Shallow, or Deep
+    OnEntry = "method",         // Entry callback
+    OnExit = "method")]         // Exit callback
+```
+
+#### Transitions with Priorities
+```csharp
+[Transition(fromState, trigger, toState,
+    Priority = 100,             // Higher number = higher priority (default: 0)
+    Guard = "guardMethod",      // Optional condition
+    Action = "actionMethod")]   // Optional action during transition
+```
+
+#### Internal Transitions
+```csharp
+[InternalTransition(state, trigger,
+    Priority = 100,             // Priority for resolution order
+    Guard = "guardMethod",      // Optional condition
+    Action = "actionMethod")]   // Action without state change or exit/entry
+```
+
+> **Note:** Internal transitions **never** change the state and **never** run `OnExit`/`OnEntry`; they only evaluate guard and run action.
+
+#### Generated Helper Methods
+The generator creates optimized helper methods for hierarchy queries:
+
+```csharp
+// Check if current state is within a parent's hierarchy
+bool IsInHierarchy(MenuState parentState);
+
+// Per-state helpers for ≤64 states (uses bitmasks for speed)
+bool IsInMenu();     // true if in Menu or any child
+bool IsInSettings(); // true if in Settings or its children
+
+// DEBUG-only path visualization
+#if DEBUG
+string DumpActivePath(); // Returns e.g., "Menu / Menu_Settings"
+#endif
+```
+
+#### Generated HSM Fields
+
+The generator creates zero-allocation structures for hierarchy support:
+
+_One of the following forms is emitted depending on the number of states._
+
+```csharp
+// For ≤64 states: Single ulong bitmask per state
+private static readonly ulong[] s_hierarchyMask = new ulong[] { 
+    0b0001, // Root
+    0b0110, // Menu (includes children)
+    0b0110, // Menu_Main (part of Menu)
+    // ...
+};
+
+// For >64 states: Array of uint32 backing
+private static readonly uint[][] s_hierarchyMask = new uint[][] {
+    new uint[] { 0x00000001 }, // Root
+    new uint[] { 0x00000006 }, // Menu
+    // ...
+};
+
+// Parent indices and initial children
+private static readonly byte[] s_parent = new byte[] { 255, 0, 1, 1, 0 };  // 255 = NO_PARENT sentinel
+private static readonly int[] s_initialChild = new int[] { 1, 2, -1, -1, -1 };
+
+// Note: Types/sentinels match the emitted code; parent indices commonly use byte with 255 as NO_PARENT.
+```
+
+### Caveats (Must-Read)
+
+- **Composite states must have children and exactly one `IsInitial` child** (FSM102: Error). The generator will fail if a parent has no initial child.
+- **History on a non-composite parent is a warning** (FSM104: Warning). Fix by removing history or adding child states.
+- **Implicit transitions to a composite parent** resolve via initial substate or history (FSM105: Info).
+- **Equal priorities are allowed**; ties are resolved by declaration order (FSM106: Warning).
+- **Internal transitions do not change state** and never run `OnExit`/`OnEntry` callbacks.
+- **Cross-hierarchy transitions are allowed**; child transition handlers pre-empt parent handlers.
+- **Payload + HSM**: When a transition targets a parent, the automatic descent to its initial child uses the parameterless `OnEntry`. Payload reaches `OnEntry(TPayload)` only when the transition targets that specific child directly.
+- **Enum-only fallback** (no `[State]` method declarations): Supported but remains flat—no HSM features without explicit `[State]` attributes.
+- **`DumpActivePath()` is DEBUG-only**: Returns the active state path as a string for debugging (e.g., `"Root / Menu / Menu_Settings"`).
+
+### Debugging HSM
+
+Debugging hierarchical state machines is straightforward with the `DumpActivePath()` method available in DEBUG builds. This method returns a human-readable string showing the complete active state path from root to current leaf state, making it easy to visualize where you are in the hierarchy during debugging sessions.
+
+#### DumpActivePath() (DEBUG-only)
+
+```csharp
+#if DEBUG
+var workflow = new WorkflowMachine(WorkflowState.Work_Processing_Loading);
+workflow.Start();
+Console.WriteLine(workflow.DumpActivePath());
+// Output: "Work / Work_Processing / Work_Processing_Loading"
+#endif
+```
+
+This method walks up the parent chain from the current state to build the complete path string. This method is emitted **only in DEBUG builds**; it is not present in Release.
+
+### Enum-only Fallback
+
+If no `[State]` attributes are present in your state machine class, FastFSM automatically uses all enum members as states (flat mode only - no hierarchy support). This provides a quick way to define simple state machines:
+
+```csharp
+public enum SimpleState { Idle, Running, Complete }
+
+[StateMachine(typeof(SimpleState), typeof(SimpleTrigger))]
+public partial class SimpleMachine 
+{
+    // No [State] attributes - all enum values become states
+    // Generator emits FSM994 info diagnostic to confirm enum-only mode
+}
+```
+
+The generator emits diagnostic **FSM994** (info level) when using enum-only fallback mode. Enum-only fallback machines are **always flat** (no hierarchy); HSM requires `[State]` declarations with `Parent/IsInitial/History`.
+
+### Async + Cancellation in HSM
+
+HSM fully supports async operations with proper cancellation handling:
+
+- **Cancellation during transition**: If cancelled during exit/action/entry sequence, the state remains unchanged
+- **Exception handling**: Exceptions propagate normally, following the configured `OnException` directive
+- **OperationCanceledException**: Always propagates without special handling
+
+If a transition is cancelled during `OnExit`, `Action`, or `OnEntry`, the **state remains unchanged**; exceptions propagate as usual.
+
+### Migration (0.6 → 0.7) - Backwards Compatibility
+
+Flat FSMs are completely unaffected by the 0.7 update—all existing state machines continue to work without any changes. **Internal-only machines are fully supported** - you don't need any external transitions for a valid state machine.
+
+To enable HSM features:
+
+1. Add parent relationships using the `Parent` parameter on child states
+2. Mark exactly one child per parent with `IsInitial = true`
+3. Optionally enable hierarchy explicitly with `EnableHierarchy = true` on the `[StateMachine]` attribute
+4. Hierarchy is automatically enabled if any HSM attributes (`Parent`, `IsInitial`, `History`) are used
+
+The generator handles all the complexity of hierarchy management, maintaining the same high-performance characteristics as flat machines.
+
+### Performance
+
+HSM maintains FastFSM's commitment to zero allocations and predictable performance:
+
+- **≤64 states**: Uses bitmask fast path for hierarchy checks (sub-nanosecond operations)
+- **>64 states**: Switches to array masks for larger state spaces
+- **>256 states**: Planned for future releases (0.8+)
+- **Zero allocations**: All HSM features maintain zero heap allocation guarantees
+- **Compile-time optimization**: Hierarchy is flattened to switch statements at compile time
+- **History tracking**: Minimal overhead with stack-allocated structures
+
+Benchmark results show HSM transitions execute in ~0.85ns for simple parent→child transitions, with internal transitions even faster at ~0.70ns.
+
+Results are indicative; see `/Benchmark` for methodology & code.
 
 -----
 
@@ -298,6 +547,30 @@ IReadOnlyList<TTrigger> GetPermittedTriggers()
 -----
 
 ## Advanced Features
+
+### Nested State Machine Classes
+
+State machine types can be declared as nested partial classes inside other types. The generator will mirror the containing class hierarchy so that callbacks and guard/action methods resolve correctly:
+
+```csharp
+public class OuterContainer
+{
+    public enum InnerState { A, B }
+    public enum InnerTrigger { Next }
+
+    [StateMachine(typeof(InnerState), typeof(InnerTrigger))]
+    public partial class InnerMachine
+    {
+        [Transition(InnerState.A, InnerTrigger.Next, InnerState.B)]
+        private void Configure() { }
+        private void OnEntryA() => Console.WriteLine("Entering A");
+    }
+}
+
+// Usage
+var machine = new OuterContainer.InnerMachine(OuterContainer.InnerState.A);
+machine.Start(); // Nested callbacks resolve in correct scope
+```
 
 ### Typed Payloads
 
@@ -644,11 +917,11 @@ machine.Fire(Trigger.Start);
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](https://www.google.com/search?q=CONTRIBUTING.md) for details.
+We welcome contributions!
 
 ## License
 
-FastFSM is licensed under the MIT License. See [LICENSE](https://www.google.com/search?q=LICENSE) for details.
+FastFSM is licensed under the MIT License. See [LICENSE] for details.
 
 [1]: https://www.google.com/search?q=%5Bhttps://benchmarkdotnet.org/%3Futm_source%3Dchatgpt.com%5D\(https://benchmarkdotnet.org/%3Futm_source%3Dchatgpt.com\) "BenchmarkDotNet: Home"
 [2]: https://www.google.com/search?q=%5Bhttps://benchmarkdotnet.org/articles/configs/diagnosers.html%3Futm_source%3Dchatgpt.com%5D\(https://benchmarkdotnet.org/articles/configs/diagnosers.html%3Futm_source%3Dchatgpt.com\) "Diagnosers - BenchmarkDotNet"

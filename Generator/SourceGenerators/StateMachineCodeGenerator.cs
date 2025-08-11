@@ -194,6 +194,39 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             }
             Sb.AppendLine();
         }
+        
+        // Add DEBUG-only DumpActivePath helper
+        Sb.AppendLine("#if DEBUG");
+        EmitXmlDocSummary(Sb, "Returns the active path from the root composite down to the current leaf state, e.g. \"Working / Working_Initializing\". DEBUG-only helper to diagnose hierarchy.");
+        using (Sb.Block("public string DumpActivePath()"))
+        {
+            Sb.AppendLine("const int NO_PARENT = -1;");
+            Sb.AppendLine();
+            Sb.AppendLine("var sb = new global::System.Text.StringBuilder(64);");
+            Sb.AppendLine($"var current = {CurrentStateField}; // {stateTypeForUsage} enum");
+            Sb.AppendLine("// Convert enum to index:");
+            Sb.AppendLine("int idx = (int)(object)current;");
+            Sb.AppendLine();
+            Sb.AppendLine("// Seed with leaf");
+            Sb.AppendLine("sb.Insert(0, current.ToString());");
+            Sb.AppendLine();
+            Sb.AppendLine("// Walk up to root");
+            using (Sb.Block("while (true)"))
+            {
+                Sb.AppendLine("int parent = s_parent[idx];");
+                Sb.AppendLine("if (parent == NO_PARENT) break;");
+                Sb.AppendLine();
+                Sb.AppendLine("// Cast parent index back to enum");
+                Sb.AppendLine($"current = ({stateTypeForUsage})(object)parent;");
+                Sb.AppendLine("sb.Insert(0, \" / \");");
+                Sb.AppendLine("sb.Insert(0, current.ToString());");
+                Sb.AppendLine("idx = parent;");
+            }
+            Sb.AppendLine();
+            Sb.AppendLine("return sb.ToString();");
+        }
+        Sb.AppendLine("#endif");
+        Sb.AppendLine();
     }
     
     #endregion
@@ -1897,5 +1930,15 @@ if (!string.IsNullOrEmpty(transition.GuardMethod))
 
     #region Abstractions to be implemented by concrete generators
     protected abstract void WriteNamespaceAndClass();
+    #endregion
+    
+    #region Helper Methods
+    private static void EmitXmlDocSummary(IndentedStringBuilder.IndentedStringBuilder sb, string text)
+    {
+        var normalized = global::System.Text.RegularExpressions.Regex.Replace(text ?? string.Empty, @"\s+", " ").Trim();
+        sb.AppendLine("/// <summary>");
+        sb.Append("/// ").AppendLine(normalized);
+        sb.AppendLine("/// </summary>");
+    }
     #endregion
 }

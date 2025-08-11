@@ -61,6 +61,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 WriteGetPermittedTriggersMethod(stateTypeForUsage, triggerTypeForUsage);
                 WriteGetPermittedTriggersWithResolver(stateTypeForUsage, triggerTypeForUsage);
                 WriteStructuralApiMethods(stateTypeForUsage, triggerTypeForUsage);
+                WriteHierarchyMethods(stateTypeForUsage, triggerTypeForUsage);
             }
         }
 
@@ -68,12 +69,32 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         {
             using (Sb.Block($"namespace {userNamespace}"))
             {
+                WriteContainingTypes();
                 WriteClassContent();
+                CloseContainingTypes();
             }
         }
         else
         {
+            WriteContainingTypes();
             WriteClassContent();
+            CloseContainingTypes();
+        }
+        void WriteContainingTypes()
+        {
+            foreach (var container in Model.ContainerClasses)
+            {
+                Sb.AppendLine($"public partial class {container}");
+                Sb.AppendLine("{");
+            }
+        }
+
+        void CloseContainingTypes()
+        {
+            for (int i = 0; i < Model.ContainerClasses.Count; i++)
+            {
+                Sb.AppendLine("}");
+            }
         }
     }
 
