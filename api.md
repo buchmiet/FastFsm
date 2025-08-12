@@ -848,12 +848,19 @@ The main model representing a complete state machine definition.
 **Key Properties:**
 - `string Namespace` - Target namespace
 - `string ClassName` - State machine class name
+- `List<string> ContainerClasses` - Names of containing types if the state machine class is nested
 - `string StateType` - Fully qualified state enum type
 - `string TriggerType` - Fully qualified trigger enum type
 - `List<TransitionModel> Transitions` - All defined transitions
 - `Dictionary<string, StateModel> States` - All states with configurations
 - `GenerationConfig GenerationConfig` - Generation settings
 - `ExceptionHandlerModel? ExceptionHandler` - Exception handling configuration
+- `string? DefaultPayloadType` - Fully qualified name of default payload type
+- `Dictionary<string, string> TriggerPayloadTypes` - Trigger-specific payload types
+- `bool GenerateLogging` - Whether to generate logging support
+- `bool GenerateDependencyInjection` - Whether to generate DI support
+- `bool EmitStructuralHelpers` - Whether to emit structural API helpers
+- `bool ContinueOnCapturedContext` - Control async continuation context (default: false)
 
 **HSM-Specific Properties:**
 - `Dictionary<string, string?> ParentOf` - Maps states to parent states
@@ -863,6 +870,7 @@ The main model representing a complete state machine definition.
 - `Dictionary<string, HistoryMode> HistoryOf` - History mode for composite states
 - `bool HierarchyEnabled` - Whether HSM features are enabled
 - `bool HasHierarchy` - Whether hierarchy is actually used
+- `bool UsedEnumOnlyFallback` - Whether enum-only fallback was used (no [State] attributes found)
 
 #### `StateModel`
 Represents a single state with its callbacks and hierarchy information.
@@ -874,6 +882,14 @@ Represents a single state with its callbacks and hierarchy information.
 - `CallbackSignatureInfo OnEntrySignature` - Entry method signature details
 - `CallbackSignatureInfo OnExitSignature` - Exit method signature details
 
+**Convenience Properties (derived from signatures):**
+- `bool OnEntryIsAsync` - Whether OnEntry method is async
+- `bool OnExitIsAsync` - Whether OnExit method is async
+- `bool OnEntryExpectsPayload` - Whether OnEntry expects a payload parameter
+- `bool OnEntryHasParameterlessOverload` - Whether OnEntry has parameterless overload
+- `bool OnExitExpectsPayload` - Whether OnExit expects a payload parameter
+- `bool OnExitHasParameterlessOverload` - Whether OnExit has parameterless overload
+
 **HSM Properties:**
 - `string? ParentState` - Parent state name for hierarchical states
 - `List<string> ChildStates` - List of child state names
@@ -881,18 +897,34 @@ Represents a single state with its callbacks and hierarchy information.
 - `HistoryMode History` - History behavior for composite states
 - `bool IsInitial` - Whether state is initial substate of parent
 
+**Factory Methods:**
+- `static StateModel Create(string name, string? onEntryMethod, string? onExitMethod)` - Creates a state model
+
 #### `TransitionModel`
 Represents a single state transition.
 
-**Properties:**
+**Core Properties:**
 - `string FromState` - Source state
 - `string Trigger` - Triggering event
 - `string ToState` - Target state
 - `string? GuardMethod` - Guard condition method
 - `string? ActionMethod` - Transition action method
-- `bool IsInternal` - Whether transition is internal (no state change)
+- `bool IsInternal` - Whether transition is internal (no state change, set explicitly only for [InternalTransition])
+- `int Priority` - Transition priority for HSM (default: 0)
 - `CallbackSignatureInfo GuardSignature` - Guard method signature
 - `CallbackSignatureInfo ActionSignature` - Action method signature
+- `string? ExpectedPayloadType` - Expected payload type for this transition
+
+**Convenience Properties (derived from signatures):**
+- `bool GuardIsAsync` - Whether guard method is async
+- `bool ActionIsAsync` - Whether action method is async
+- `bool GuardExpectsPayload` - Whether guard expects a payload parameter
+- `bool GuardHasParameterlessOverload` - Whether guard has parameterless overload
+- `bool ActionExpectsPayload` - Whether action expects a payload parameter
+- `bool ActionHasParameterlessOverload` - Whether action has parameterless overload
+
+**Factory Methods:**
+- `static TransitionModel Create(string fromState, string toState, string trigger, string? guardMethod, string? actionMethod, string? expectedPayloadType)` - Creates a transition model
 
 #### `CallbackSignatureInfo`
 Describes callback method signatures with support for multiple overloads.
@@ -978,6 +1010,33 @@ Defines a validation rule's metadata.
 - `string MessageFormat` - Diagnostic message template
 - `RuleSeverity Severity` - Error, Warning, or Info
 - `string Category` - Rule category
+
+##### `RuleCatalog`
+Central, validated catalog of all rule definitions.
+
+**Static Methods:**
+- `RuleDefinition Get(string id)` - Returns rule definition by ID or throws if unknown
+- `bool TryGet(string id, out RuleDefinition def)` - Tries to get a rule by ID
+- `IReadOnlyList<RuleDefinition> All` - Returns all rule definitions
+
+**Features:**
+- Validates unique rule IDs at static initialization
+- Ensures all rules have required fields (Id, Title, MessageFormat, Category)
+- Provides centralized access to rule definitions
+
+##### `RuleCategories`
+Central constants for rule categories.
+
+**Constants:**
+- `FSM_Generator` - "FSM.Generator" - General generator rules
+- `FSM_Generator_Async` - "FSM.Generator.Async" - Async-specific rules
+- `FSM_Generator_HSM` - "FSM.Generator.HSM" - HSM-specific rules
+
+##### `RuleLookup`
+Provides strongly-typed access to rule definitions (if present).
+
+##### `SeverityDefaults`
+Defines default severity levels for rules (if present).
 
 ##### `RuleSeverity`
 Validation severity levels.

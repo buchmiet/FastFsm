@@ -16,7 +16,7 @@ public static class RuleIdentifiers
     public const string GuardWithPayloadInNonPayloadMachine = "FSM010";
     public const string MixedSyncAsyncCallbacks = "FSM011";
     public const string InvalidGuardTaskReturnType = "FSM012";
-    public const string AsyncCallbackInSyncMachine = "FSM013"; // Ta reguła jest logocznie tożsama z FSM011, ale może mieć inny komunikat
+    public const string AsyncCallbackInSyncMachine = "FSM013";
     public const string InvalidAsyncVoid = "FSM014";
     
     // HSM-specific diagnostics

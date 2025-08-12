@@ -31,8 +31,15 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
             {
                 _ext.WriteFields(Sb);
                 WriteLoggerField(className);
+                
+                // Write HSM arrays and runtime helpers
+                WriteHierarchyArrays(stateTypeForUsage);
+                WriteHierarchyRuntimeFieldsAndHelpers(stateTypeForUsage);
 
                 WriteConstructor(stateTypeForUsage, className);
+                
+                // Generate Start override for HSM
+                WriteStartMethod();
                 
                 // Generate OnInitialEntry override if needed
                 if (ShouldGenerateInitialOnEntry())
@@ -93,6 +100,11 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
 
         using (Sb.Block($"public {className}({string.Join(", ", paramList)}) : base(initialState)"))
         {
+            if (Model.HierarchyEnabled)
+            {
+                Sb.AppendLine("DescendToInitialIfComposite();");
+            }
+            
             WriteLoggerAssignment();
             _ext.WriteConstructorBody(Sb, ShouldGenerateLogging);
 

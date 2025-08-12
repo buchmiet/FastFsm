@@ -44,7 +44,14 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                     WritePayloadMap(triggerTypeForUsage);
                 }
 
+                // Write HSM arrays and runtime helpers
+                WriteHierarchyArrays(stateTypeForUsage);
+                WriteHierarchyRuntimeFieldsAndHelpers(stateTypeForUsage);
+
                 WriteConstructor(stateTypeForUsage, className);
+                
+                // Generate Start override for HSM
+                WriteStartMethod();
                 
                 // Generate OnInitialEntry/OnInitialEntryAsync override
                 if (ShouldGenerateInitialOnEntry())
@@ -109,9 +116,15 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
 
         using (Sb.Block($"public {className}({string.Join(", ", paramList)}) : {baseCall}"))
         {
+            if (Model.HierarchyEnabled)
+            {
+                Sb.AppendLine("DescendToInitialIfComposite();");
+            }
+            
             WriteLoggerAssignment();
 
             // Initial OnEntry dispatch moved to OnInitialEntry/OnInitialEntryAsync method
+            // HSM initial state resolution is done in Start() method, not constructor
         }
         Sb.AppendLine();
     }
@@ -126,21 +139,72 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         {
             using (Sb.Block("protected override async ValueTask OnInitialEntryAsync(System.Threading.CancellationToken cancellationToken = default)"))
             {
-                using (Sb.Block($"switch ({CurrentStateField})"))
+                if (Model.HierarchyEnabled)
                 {
-                    foreach (var stateEntry in statesWithParameterlessOnEntry)
+                    // For HSM: Build entry chain from root to current leaf and call each OnEntry
+                    Sb.AppendLine("// Build entry chain from root to current leaf");
+                    Sb.AppendLine($"var entryChain = new List<{stateTypeForUsage}>();");
+                    Sb.AppendLine($"int currentIdx = (int){CurrentStateField};");
+                    Sb.AppendLine();
+                    
+                    // Build chain from leaf to root
+                    Sb.AppendLine("// Walk from leaf to root");
+                    using (Sb.Block("while (currentIdx >= 0)"))
                     {
-                        Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
-                        using (Sb.Indent())
+                        Sb.AppendLine($"entryChain.Add(({stateTypeForUsage})currentIdx);");
+                        Sb.AppendLine("if ((uint)currentIdx >= (uint)s_parent.Length) break;");
+                        Sb.AppendLine("currentIdx = s_parent[currentIdx];");
+                    }
+                    Sb.AppendLine();
+                    
+                    // Reverse to get root-to-leaf order
+                    Sb.AppendLine("// Reverse to get root-to-leaf order");
+                    Sb.AppendLine("entryChain.Reverse();");
+                    Sb.AppendLine();
+                    
+                    // Call OnEntry for each state in the chain that has one
+                    Sb.AppendLine("// Call OnEntry for each state in the chain");
+                    using (Sb.Block("foreach (var state in entryChain)"))
+                    {
+                        using (Sb.Block("switch (state)"))
                         {
-                            AsyncGenerationHelper.EmitMethodInvocation(
-                                Sb,
-                                stateEntry.OnEntryMethod,
-                                stateEntry.OnEntryIsAsync,
-                                callerIsAsync: true,
-                                Model.ContinueOnCapturedContext
-                            );
-                            Sb.AppendLine("break;");
+                            foreach (var stateEntry in statesWithParameterlessOnEntry)
+                            {
+                                Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                                using (Sb.Indent())
+                                {
+                                    AsyncGenerationHelper.EmitMethodInvocation(
+                                        Sb,
+                                        stateEntry.OnEntryMethod,
+                                        stateEntry.OnEntryIsAsync,
+                                        callerIsAsync: true,
+                                        Model.ContinueOnCapturedContext
+                                    );
+                                    Sb.AppendLine("break;");
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // Non-HSM: Original single-state entry
+                    using (Sb.Block($"switch ({CurrentStateField})"))
+                    {
+                        foreach (var stateEntry in statesWithParameterlessOnEntry)
+                        {
+                            Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                            using (Sb.Indent())
+                            {
+                                AsyncGenerationHelper.EmitMethodInvocation(
+                                    Sb,
+                                    stateEntry.OnEntryMethod,
+                                    stateEntry.OnEntryIsAsync,
+                                    callerIsAsync: true,
+                                    Model.ContinueOnCapturedContext
+                                );
+                                Sb.AppendLine("break;");
+                            }
                         }
                     }
                 }
@@ -247,17 +311,64 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         {
             using (Sb.Block("protected override void OnInitialEntry()"))
             {
-                using (Sb.Block($"switch ({CurrentStateField})"))
+                if (Model.HierarchyEnabled)
                 {
-                    foreach (var stateEntry in statesWithParameterlessOnEntry)
+                    // For HSM: Build entry chain from root to current leaf and call each OnEntry
+                    Sb.AppendLine("// Build entry chain from root to current leaf");
+                    Sb.AppendLine($"var entryChain = new List<{stateTypeForUsage}>();");
+                    Sb.AppendLine($"int currentIdx = (int){CurrentStateField};");
+                    Sb.AppendLine();
+                    
+                    // Build chain from leaf to root
+                    Sb.AppendLine("// Walk from leaf to root");
+                    using (Sb.Block("while (currentIdx >= 0)"))
                     {
-                        Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
-                        using (Sb.Indent())
+                        Sb.AppendLine($"entryChain.Add(({stateTypeForUsage})currentIdx);");
+                        Sb.AppendLine("if ((uint)currentIdx >= (uint)s_parent.Length) break;");
+                        Sb.AppendLine("currentIdx = s_parent[currentIdx];");
+                    }
+                    Sb.AppendLine();
+                    
+                    // Reverse to get root-to-leaf order
+                    Sb.AppendLine("// Reverse to get root-to-leaf order");
+                    Sb.AppendLine("entryChain.Reverse();");
+                    Sb.AppendLine();
+                    
+                    // Call OnEntry for each state in the chain that has one
+                    Sb.AppendLine("// Call OnEntry for each state in the chain");
+                    using (Sb.Block("foreach (var state in entryChain)"))
+                    {
+                        using (Sb.Block("switch (state)"))
                         {
-                            Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
-                            WriteLogStatement("Debug",
-                                $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
-                            Sb.AppendLine("break;");
+                            foreach (var stateEntry in statesWithParameterlessOnEntry)
+                            {
+                                Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                                using (Sb.Indent())
+                                {
+                                    Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                                    WriteLogStatement("Debug",
+                                        $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
+                                    Sb.AppendLine("break;");
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // Non-HSM: Original single-state entry
+                    using (Sb.Block($"switch ({CurrentStateField})"))
+                    {
+                        foreach (var stateEntry in statesWithParameterlessOnEntry)
+                        {
+                            Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                            using (Sb.Indent())
+                            {
+                                Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                                WriteLogStatement("Debug",
+                                    $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
+                                Sb.AppendLine("break;");
+                            }
                         }
                     }
                 }

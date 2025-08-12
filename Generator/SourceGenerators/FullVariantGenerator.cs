@@ -112,6 +112,11 @@ internal sealed class FullVariantGenerator(StateMachineModel model) : PayloadVar
 
         using (Sb.Block($"public {className}({string.Join(", ", paramList)}) : base(initialState)"))
         {
+            if (Model.HierarchyEnabled)
+            {
+                Sb.AppendLine("DescendToInitialIfComposite();");
+            }
+            
             WriteLoggerAssignment();
             _ext.WriteConstructorBody(Sb, ShouldGenerateLogging);
 

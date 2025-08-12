@@ -54,6 +54,9 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     /// </summary>
     protected virtual void WriteHierarchyArrays(string stateTypeForUsage)
     {
+        // FSM990_HSM_FLAG: Log before writing HSM blocks
+        Sb.AppendLine($"// FSM990_HSM_FLAG [4-WriteHSM] {Model.ClassName}: HierarchyEnabled={Model.HierarchyEnabled}");
+        
         if (!Model.HierarchyEnabled) return;
         
         Sb.AppendLine("// Hierarchical state machine support arrays");
@@ -257,9 +260,120 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine();
     }
     
+    /// <summary>
+    /// Writes HSM runtime fields and helper methods (instance-level) if HSM is enabled.
+    /// </summary>
+    protected virtual void WriteHierarchyRuntimeFieldsAndHelpers(string stateTypeForUsage)
+    {
+        if (!Model.HierarchyEnabled) return;
+
+        // Instance array for SHALLOW/DEEP history bookkeeping (index by composite state)
+        Sb.AppendLine("        private readonly int[] _lastActiveChild = new int[s_initialChild.Length];");
+        Sb.AppendLine();
+
+        // UpdateLastActiveChild: called before changing state away from a composite
+        Sb.WriteSummary("Records the last active child for the given composite parent.");
+        using (Sb.Block("private void UpdateLastActiveChild(int parentIndex)"))
+        {
+            Sb.AppendLine("if ((uint)parentIndex < (uint)_lastActiveChild.Length)");
+            using (Sb.Indent())
+                Sb.AppendLine("_lastActiveChild[parentIndex] = (int)_currentState;");
+        }
+        Sb.AppendLine();
+
+        // GetCompositeEntryTarget: resolve initial/history for a composite index → leaf index
+        Sb.WriteSummary("Resolves the actual leaf to enter for a composite state, using Initial/History semantics.");
+        using (Sb.Block("private int GetCompositeEntryTarget(int compositeIndex)"))
+        {
+            Sb.AppendLine("int idx = compositeIndex;");
+            Sb.AppendLine("while (true)");
+            using (Sb.Block(""))
+            {
+                Sb.AppendLine("// Check if this is a leaf (no initial child)");
+                Sb.AppendLine("if ((uint)idx >= (uint)s_initialChild.Length || s_initialChild[idx] < 0)");
+                Sb.AppendLine("    return idx;");
+                Sb.AppendLine();
+                Sb.AppendLine("// Check for history");
+                Sb.AppendLine("var mode = s_history[idx];");
+                Sb.AppendLine("int child = -1;");
+                Sb.AppendLine();
+                Sb.AppendLine("if (mode != HistoryMode.None && _lastActiveChild[idx] > 0)");
+                using (Sb.Block(""))
+                {
+                    Sb.AppendLine("// Use recorded history");
+                    Sb.AppendLine("child = _lastActiveChild[idx];");
+                }
+                Sb.AppendLine("else");
+                using (Sb.Block(""))
+                {
+                    Sb.AppendLine("// Use initial child");
+                    Sb.AppendLine("child = s_initialChild[idx];");
+                }
+                Sb.AppendLine();
+                Sb.AppendLine("if (child < 0) return idx; // Safety check");
+                Sb.AppendLine("idx = child; // Descend");
+            }
+        }
+        Sb.AppendLine();
+
+        // DescendToInitialIfComposite: applied at startup (and can be reused if needed)
+        Sb.WriteSummary("If CurrentState is composite, resolves and assigns the leaf according to Initial/History.");
+        using (Sb.Block("private void DescendToInitialIfComposite()"))
+        {
+            Sb.AppendLine("int currentIdx = (int)_currentState;");
+            Sb.AppendLine("if ((uint)currentIdx >= (uint)s_initialChild.Length) return;");
+            Sb.AppendLine("int initialChild = s_initialChild[currentIdx];");
+            Sb.AppendLine("if (initialChild < 0) return; // Already a leaf");
+            Sb.AppendLine("int resolved = GetCompositeEntryTarget(currentIdx);");
+            Sb.AppendLine("_currentState = (" + stateTypeForUsage + ")resolved;");
+        }
+        Sb.AppendLine();
+    }
+    
     #endregion
 
     #region Common Implementation Methods
+
+    protected virtual void WriteStartMethod()
+    {
+        // For debugging: Always generate Start() method if there are hierarchy arrays
+        // Check if we have hierarchy by looking for parent/child relationships
+        bool hasHierarchy = Model.ParentOf.Any() || Model.InitialChildOf.Any() || Model.States.Values.Any(s => s.History != Generator.Model.HistoryMode.None);
+        
+        if (!Model.HierarchyEnabled && !hasHierarchy) 
+        {
+            return;
+        }
+        
+        if (IsAsyncMachine)
+        {
+            Sb.WriteSummary("Starts the state machine asynchronously and ensures proper HSM initialization.");
+            Sb.AppendLine("/// <param name=\"cancellationToken\">A token to observe for cancellation requests</param>");
+            using (Sb.Block("public override async ValueTask StartAsync(CancellationToken cancellationToken = default)"))
+            {
+                Sb.AppendLine("if (IsStarted) return;");
+                Sb.AppendLine();
+                Sb.AppendLine("// For HSM: resolve composite initial state to leaf before calling OnInitialEntryAsync");
+                Sb.AppendLine("DescendToInitialIfComposite();");
+                Sb.AppendLine();
+                Sb.AppendLine("await base.StartAsync(cancellationToken).ConfigureAwait(" + Model.ContinueOnCapturedContext.ToString().ToLowerInvariant() + ");");
+            }
+        }
+        else
+        {
+            Sb.WriteSummary("Starts the state machine and ensures proper HSM initialization.");
+            using (Sb.Block("public override void Start()"))
+            {
+                Sb.AppendLine("if (IsStarted) return;");
+                Sb.AppendLine();
+                Sb.AppendLine("// For HSM: resolve composite initial state to leaf before calling OnInitialEntry");
+                Sb.AppendLine("DescendToInitialIfComposite();");
+                Sb.AppendLine();
+                Sb.AppendLine("base.Start();");
+            }
+        }
+        Sb.AppendLine();
+    }
 
     protected virtual void WriteOnInitialEntryMethod(string stateTypeForUsage)
     {
@@ -268,18 +382,66 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             
         using (Sb.Block("protected override void OnInitialEntry()"))
         {
-            using (Sb.Block($"switch ({CurrentStateField})"))
+            if (Model.HierarchyEnabled)
             {
-                foreach (var stateEntry in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
+                // For HSM: Build entry chain from root to current leaf and call each OnEntry
+                Sb.AppendLine("// Build entry chain from root to current leaf");
+                Sb.AppendLine($"var entryChain = new List<{stateTypeForUsage}>();");
+                Sb.AppendLine($"int currentIdx = (int){CurrentStateField};");
+                Sb.AppendLine();
+                
+                // Build chain from leaf to root
+                Sb.AppendLine("// Walk from leaf to root");
+                using (Sb.Block("while (currentIdx >= 0)"))
                 {
-                    Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
-                    using (Sb.Indent())
+                    Sb.AppendLine($"entryChain.Add(({stateTypeForUsage})currentIdx);");
+                    Sb.AppendLine("if ((uint)currentIdx >= (uint)s_parent.Length) break;");
+                    Sb.AppendLine("currentIdx = s_parent[currentIdx];");
+                }
+                Sb.AppendLine();
+                
+                // Reverse to get root-to-leaf order
+                Sb.AppendLine("// Reverse to get root-to-leaf order");
+                Sb.AppendLine("entryChain.Reverse();");
+                Sb.AppendLine();
+                
+                // Call OnEntry for each state in the chain that has one
+                Sb.AppendLine("// Call OnEntry for each state in the chain");
+                using (Sb.Block("foreach (var state in entryChain)"))
+                {
+                    using (Sb.Block("switch (state)"))
                     {
-                        // Direct call without WriteCallbackInvocation to avoid try-catch in constructor
-                        Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
-                        WriteLogStatement("Debug",
-                            $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
-                        Sb.AppendLine("break;");
+                        foreach (var stateEntry in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
+                        {
+                            Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                            using (Sb.Indent())
+                            {
+                                // Direct call without WriteCallbackInvocation to avoid try-catch in constructor
+                                Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                                WriteLogStatement("Debug",
+                                    $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
+                                Sb.AppendLine("break;");
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // Non-HSM: Original single-state entry
+                using (Sb.Block($"switch ({CurrentStateField})"))
+                {
+                    foreach (var stateEntry in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
+                    {
+                        Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                        using (Sb.Indent())
+                        {
+                            // Direct call without WriteCallbackInvocation to avoid try-catch in constructor
+                            Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                            WriteLogStatement("Debug",
+                                $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
+                            Sb.AppendLine("break;");
+                        }
                     }
                 }
             }
