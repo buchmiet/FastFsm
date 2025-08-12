@@ -26,6 +26,18 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
     private readonly MissingStateMachineAttributeRule _missingStateMachineAttributeRule = new();
     private readonly UnreachableStateRule _unreachableStateRule = new();
     private readonly GuardWithPayloadInNonPayloadMachineRule _guardWithPayloadRule = new();
+    private readonly MissingPayloadTypeRule _missingPayloadTypeRule = new();
+    private readonly ConflictingPayloadRule _conflictingPayloadRule = new();
+    private readonly InvalidVariantConfigRule _invalidVariantConfigRule = new();
+    private readonly InvalidGuardTaskReturnTypeRule _invalidGuardTaskReturnTypeRule = new();
+    private readonly AsyncCallbackInSyncMachineRule _asyncCallbackInSyncMachineRule = new();
+    private readonly InvalidAsyncVoidRule _invalidAsyncVoidRule = new();
+    private readonly CircularHierarchyRule _circularHierarchyRule = new();
+    private readonly OrphanSubstateRule _orphanSubstateRule = new();
+    private readonly InvalidHierarchyConfigurationRule _invalidHierarchyConfigRule = new();
+    private readonly MultipleInitialSubstatesRule _multipleInitialSubstatesRule = new();
+    private readonly InvalidHistoryConfigurationRule _invalidHistoryConfigRule = new();
+    private readonly ConflictingTransitionTargetsRule _conflictingTransitionTargetsRule = new();
     private readonly TypeSystemHelper _typeHelper = new();
     private readonly AsyncSignatureAnalyzer _asyncAnalyzer = new(new TypeSystemHelper());
     private readonly HashSet<TransitionDefinition> _processedTransitionsInCurrentFsm = [];
@@ -388,8 +400,101 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
 
         // === SEKCJA 10: Walidacje po ustaleniu wariantu ===
         report?.Invoke("Section 10: Post-variant validations");
-        // Tu powinna być logika walidacji dla Force (FSM007, FSM008, FSM009)
-        // Nie widzę jej w kodzie, ale zostawiam komentarz
+        
+        // Validate FSM007-009: Payload configuration with forced variants
+        if (currentModel.GenerationConfig.IsForced)
+        {
+            report?.Invoke($"Validating forced variant: {currentModel.GenerationConfig.Variant}");
+            
+            // FSM007: MissingPayloadType - forced payload variant needs payload type
+            var missingPayloadCtx = new MissingPayloadTypeContext(
+                variant: currentModel.GenerationConfig.Variant.ToString(),
+                hasDefaultPayloadType: !string.IsNullOrEmpty(currentModel.DefaultPayloadType),
+                hasTriggerPayloadTypes: currentModel.TriggerPayloadTypes.Any(),
+                isForced: true);
+            
+            var missingPayloadResults = _missingPayloadTypeRule.Validate(missingPayloadCtx);
+            ProcessRuleResults(missingPayloadResults, classDeclaration.GetLocation(), ref criticalErrorOccurred);
+            
+            // FSM008: ConflictingPayloadConfiguration - WithPayload variant can't have trigger-specific payloads
+            if (currentModel.GenerationConfig.Variant == GenerationVariant.WithPayload)
+            {
+                var conflictingPayloadCtx = new ConflictingPayloadContext(
+                    isWithPayloadVariant: true,
+                    triggerSpecificPayloadCount: currentModel.TriggerPayloadTypes.Count);
+                
+                var conflictingPayloadResults = _conflictingPayloadRule.Validate(conflictingPayloadCtx);
+                ProcessRuleResults(conflictingPayloadResults, classDeclaration.GetLocation(), ref criticalErrorOccurred);
+            }
+            
+            // FSM009: InvalidForcedVariantConfiguration - forced variant conflicts with actual usage
+            string? conflictType = null;
+            bool hasConflict = false;
+            
+            if (currentModel.GenerationConfig.Variant == GenerationVariant.Pure)
+            {
+                // Pure variant can't have callbacks, payloads, or extensions
+                if (currentModel.GenerationConfig.HasOnEntryExit)
+                {
+                    conflictType = "OnEntryExit";
+                    hasConflict = true;
+                }
+                else if (currentModel.GenerationConfig.HasPayload || currentModel.TriggerPayloadTypes.Any())
+                {
+                    conflictType = "PayloadTypes";
+                    hasConflict = true;
+                }
+                else if (currentModel.GenerationConfig.HasExtensions)
+                {
+                    conflictType = "Extensions";
+                    hasConflict = true;
+                }
+            }
+            else if (currentModel.GenerationConfig.Variant == GenerationVariant.Basic)
+            {
+                // Basic variant can have callbacks but not payloads or extensions
+                if (currentModel.GenerationConfig.HasPayload || currentModel.TriggerPayloadTypes.Any())
+                {
+                    conflictType = "PayloadTypes";
+                    hasConflict = true;
+                }
+                else if (currentModel.GenerationConfig.HasExtensions)
+                {
+                    conflictType = "Extensions";
+                    hasConflict = true;
+                }
+            }
+            else if (currentModel.GenerationConfig.Variant == GenerationVariant.WithPayload)
+            {
+                // WithPayload variant can't have extensions
+                if (currentModel.GenerationConfig.HasExtensions)
+                {
+                    conflictType = "Extensions";
+                    hasConflict = true;
+                }
+            }
+            else if (currentModel.GenerationConfig.Variant == GenerationVariant.WithExtensions)
+            {
+                // WithExtensions variant can't have payloads
+                if (currentModel.GenerationConfig.HasPayload || currentModel.TriggerPayloadTypes.Any())
+                {
+                    conflictType = "PayloadTypes";
+                    hasConflict = true;
+                }
+            }
+            // Full variant can have everything, so no conflicts
+            
+            if (hasConflict)
+            {
+                var invalidVariantCtx = new InvalidVariantConfigContext(
+                    variantName: currentModel.GenerationConfig.Variant.ToString(),
+                    conflictType: conflictType!,
+                    hasConflict: true);
+                
+                var invalidVariantResults = _invalidVariantConfigRule.Validate(invalidVariantCtx);
+                ProcessRuleResults(invalidVariantResults, classDeclaration.GetLocation(), ref criticalErrorOccurred);
+            }
+        }
 
         if (criticalErrorOccurred)
         {
@@ -1155,30 +1260,50 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         // ---------------------------------------------------------------------
         // 5. Walidacja detali async (async void, Task<bool> dla guarda)
         // ---------------------------------------------------------------------
+        
+        // FSM014: Check for async void
         if (signatureInfo.IsInvalidAsyncVoid)
         {
-            var result = ValidationResult.Fail(
-                RuleIdentifiers.InvalidAsyncVoid,
-                string.Format(DefinedRules.InvalidAsyncVoid.MessageFormat, methodName),
-                RuleSeverity.Warning);
-
-            // Use EmitRule for catalogued rule
-            EmitRule(context, RuleIdentifiers.InvalidAsyncVoid, loc, methodName);
-            // Ostrzeżenie – nie przerywamy
+            var asyncVoidCtx = new InvalidAsyncVoidContext(
+                methodName: methodName,
+                returnType: "void",
+                isAsync: true);
+            
+            var asyncVoidResults = _invalidAsyncVoidRule.Validate(asyncVoidCtx);
+            ProcessRuleResults(asyncVoidResults, loc, ref criticalErrorOccurred);
+            // Warning - don't stop processing
         }
 
+        // FSM012: Check for Task<bool> instead of ValueTask<bool> for guards
         if (callbackType == GuardCallbackType && signatureInfo.IsInvalidGuardTask)
         {
-            var result = ValidationResult.Fail(
-                RuleIdentifiers.InvalidGuardTaskReturnType,
-                string.Format(DefinedRules.InvalidGuardTaskReturnType.MessageFormat, methodName),
-                RuleSeverity.Error);
-
-            // Use EmitRule for catalogued rule
-            EmitRule(context, RuleIdentifiers.InvalidGuardTaskReturnType, loc, methodName);
-
-            criticalErrorOccurred = true;
-            return false; // błąd krytyczny
+            var guardTaskCtx = new InvalidGuardTaskReturnTypeContext(
+                methodName: methodName,
+                actualReturnType: "System.Threading.Tasks.Task<bool>",
+                isAsync: signatureInfo.IsAsync);
+            
+            var guardTaskResults = _invalidGuardTaskReturnTypeRule.Validate(guardTaskCtx);
+            ProcessRuleResults(guardTaskResults, loc, ref criticalErrorOccurred);
+            
+            if (criticalErrorOccurred)
+                return false; // critical error
+        }
+        
+        // FSM013: Check for async callback in established sync machine
+        // This is stricter than FSM011 - it's for when machine mode is already established
+        if (isMachineAsyncMode.HasValue && !isMachineAsyncMode.Value && signatureInfo.IsAsync)
+        {
+            var asyncInSyncCtx = new AsyncCallbackInSyncMachineContext(
+                methodName: methodName,
+                isCallbackAsync: signatureInfo.IsAsync,
+                isMachineAsync: isMachineAsyncMode.Value,
+                isMachineEstablished: true);
+            
+            var asyncInSyncResults = _asyncCallbackInSyncMachineRule.Validate(asyncInSyncCtx);
+            ProcessRuleResults(asyncInSyncResults, loc, ref criticalErrorOccurred);
+            
+            if (criticalErrorOccurred)
+                return false; // critical error
         }
 
         // ---------------------------------------------------------------------
@@ -1706,11 +1831,12 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                 // Validate parent exists
                 if (!model.States.ContainsKey(state.ParentState))
                 {
-                    EmitRule(context, RuleIdentifiers.OrphanSubstate,
-                        Location.None,
-                        state.Name,
-                        state.ParentState);
-                    criticalErrorOccurred = true;
+                    var orphanCtx = new OrphanSubstateContext(
+                        substateName: state.Name,
+                        parentStateName: state.ParentState,
+                        parentExists: false);
+                    var orphanResults = _orphanSubstateRule.Validate(orphanCtx);
+                    ProcessRuleResults(orphanResults, Location.None, ref criticalErrorOccurred);
                     continue;
                 }
 
@@ -1729,12 +1855,12 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         var recursionStack = new HashSet<string>();
         foreach (var state in model.States.Keys)
         {
-            if (HasCircularDependency(state, model.ParentOf, visited, recursionStack, report))
+            var cyclePath = new List<string>();
+            if (HasCircularDependency(state, model.ParentOf, visited, recursionStack, report, cyclePath))
             {
-                EmitRule(context, RuleIdentifiers.CircularHierarchy,
-                    Location.None,
-                    state);
-                criticalErrorOccurred = true;
+                var circularCtx = new CircularHierarchyContext(state, cyclePath);
+                var circularResults = _circularHierarchyRule.Validate(circularCtx);
+                ProcessRuleResults(circularResults, Location.None, ref criticalErrorOccurred);
             }
         }
 
@@ -1752,9 +1878,13 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             {
                 if (!state.IsComposite)
                 {
-                    EmitRule(context, RuleIdentifiers.InvalidHistoryConfiguration,
-                        Location.None,
-                        state.Name, state.History);
+                    var historyCtx = new InvalidHistoryConfigurationContext(
+                        stateName: state.Name,
+                        hasHistory: true,
+                        historyMode: state.History.ToString(),
+                        isComposite: false);
+                    var historyResults = _invalidHistoryConfigRule.Validate(historyCtx);
+                    ProcessRuleResults(historyResults, Location.None, ref criticalErrorOccurred);
                     // FSM104 is now a warning, don't set criticalErrorOccurred
                 }
                 else
@@ -1769,12 +1899,11 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                 if (model.InitialChildOf.ContainsKey(state.ParentState))
                 {
                     // Multiple initial substates for the same parent
-                    EmitRule(context, RuleIdentifiers.MultipleInitialSubstates,
-                        Location.None,
-                        state.ParentState,
-                        model.InitialChildOf[state.ParentState],
-                        state.Name);
-                    criticalErrorOccurred = true;
+                    var multipleInitialCtx = new MultipleInitialSubstatesContext(
+                        parentStateName: state.ParentState,
+                        initialSubstates: new List<string> { model.InitialChildOf[state.ParentState], state.Name });
+                    var multipleInitialResults = _multipleInitialSubstatesRule.Validate(multipleInitialCtx);
+                    ProcessRuleResults(multipleInitialResults, Location.None, ref criticalErrorOccurred);
                 }
                 else
                 {
@@ -1790,9 +1919,13 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                 !model.InitialChildOf.ContainsKey(state.Name) && 
                 state.History == Generator.Model.HistoryMode.None)
             {
-                EmitRule(context, RuleIdentifiers.InvalidHierarchyConfiguration,
-                    Location.None,
-                    state.Name);
+                var hierarchyCtx = new InvalidHierarchyConfigurationContext(
+                    compositeStateName: state.Name,
+                    isComposite: true,
+                    hasInitialSubstate: false,
+                    hasHistory: false);
+                var hierarchyResults = _invalidHierarchyConfigRule.Validate(hierarchyCtx);
+                ProcessRuleResults(hierarchyResults, Location.None, ref criticalErrorOccurred);
                 // Not critical - can use first child as default
             }
         }
@@ -1801,11 +1934,24 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
     }
 
     private bool HasCircularDependency(string state, Dictionary<string, string?> parentOf, 
-        HashSet<string> visited, HashSet<string> recursionStack, Action<string>? report = null)
+        HashSet<string> visited, HashSet<string> recursionStack, Action<string>? report, List<string> cyclePath)
     {
         // Jeśli stan jest już w stosie rekursji, mamy cykl
         if (recursionStack.Contains(state))
+        {
+            // Build the cycle path
+            cyclePath.Clear();
+            bool foundStart = false;
+            foreach (var s in recursionStack)
+            {
+                if (s == state)
+                    foundStart = true;
+                if (foundStart)
+                    cyclePath.Add(s);
+            }
+            cyclePath.Add(state); // Add the state again to show the cycle
             return true;
+        }
             
         // Jeśli już odwiedzony i nie było cyklu, skip
         if (visited.Contains(state))
@@ -1817,7 +1963,7 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         // Sprawdź rodzica
         if (parentOf.TryGetValue(state, out var parent) && parent != null)
         {
-            if (HasCircularDependency(parent, parentOf, visited, recursionStack, report))
+            if (HasCircularDependency(parent, parentOf, visited, recursionStack, report, cyclePath))
                 return true;
         }
 
