@@ -445,6 +445,20 @@ public class StateMachineGenerator : IIncrementalGenerator
                 true));
             
             // Create appropriate generator
+            // FSM990_HSM_FLAG: Log at generator entry
+            context.ReportDiagnostic(Diagnostic.Create(
+                new DiagnosticDescriptor(
+                    "FSM990_HSM_FLAG",
+                    "HSM Flag Tracking",
+                    "[3-GenEntry] {0}: HierarchyEnabled={1}, Variant={2}",
+                    "FSM.Generator",
+                    DiagnosticSeverity.Info,
+                    isEnabledByDefault: true),
+                Location.None,
+                model.ClassName,
+                model.HierarchyEnabled,
+                model.Variant));
+            
             StateMachineCodeGenerator generator = model.Variant switch
             {
                 GenerationVariant.Full => new FullVariantGenerator(model),

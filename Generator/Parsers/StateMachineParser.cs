@@ -30,6 +30,82 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
     private readonly AsyncSignatureAnalyzer _asyncAnalyzer = new(new TypeSystemHelper());
     private readonly HashSet<TransitionDefinition> _processedTransitionsInCurrentFsm = [];
     private readonly MixedModeRule _mixedModeRule = new();
+
+    // Maps our RuleSeverity to Roslyn DiagnosticSeverity locally in the parser
+    private static DiagnosticSeverity Map(RuleSeverity s) => s switch
+    {
+        RuleSeverity.Error   => DiagnosticSeverity.Error,
+        RuleSeverity.Warning => DiagnosticSeverity.Warning,
+        _                    => DiagnosticSeverity.Info
+    };
+
+    // Emit for catalogued rules (present in RuleLookup)
+    private static void EmitRule(
+        SourceProductionContext context,
+        string ruleId,
+        Location? location,
+        params object?[] args)
+    {
+        var def = RuleLookup.Get(ruleId);
+        var descriptor = new DiagnosticDescriptor(
+            id: def.Id,
+            title: def.Title,
+            messageFormat: def.MessageFormat,
+            category: def.Category,
+            defaultSeverity: Map(def.DefaultSeverity),
+            isEnabledByDefault: def.IsEnabledByDefault,
+            description: def.Description
+        );
+        var diag = Diagnostic.Create(descriptor, location, args ?? System.Array.Empty<object?>());
+        context.ReportDiagnostic(diag);
+    }
+
+    // Emit for legacy, ad-hoc IDs that are NOT in RuleLookup (behavior 1:1)
+    private static void EmitLegacy(
+        SourceProductionContext context,
+        string id,
+        string title,
+        string messageFormat,
+        string category,
+        RuleSeverity severity,
+        Location? location,
+        params object?[] args)
+    {
+        var descriptor = new DiagnosticDescriptor(
+            id: id,
+            title: title,
+            messageFormat: messageFormat,
+            category: category,
+            defaultSeverity: Map(severity),
+            isEnabledByDefault: true,
+            description: null
+        );
+        var diag = Diagnostic.Create(descriptor, location, args ?? System.Array.Empty<object?>());
+        context.ReportDiagnostic(diag);
+    }
+
+    // Emit for catalogued rules when we already have a preformatted message (no string.Format args).
+    private static void EmitRulePreformatted(
+        SourceProductionContext context,
+        string ruleId,
+        Location? location,
+        string message,
+        RuleSeverity? severityOverride = null)
+    {
+        var def = RuleLookup.Get(ruleId);
+        var descriptor = new DiagnosticDescriptor(
+            id: def.Id,
+            title: def.Title,
+            messageFormat: "{0}", // pass the message as the only argument
+            category: def.Category,
+            defaultSeverity: Map(severityOverride ?? def.DefaultSeverity),
+            isEnabledByDefault: def.IsEnabledByDefault,
+            description: def.Description
+        );
+        var diag = Diagnostic.Create(descriptor, location, message);
+        context.ReportDiagnostic(diag);
+    }
+
     private void ProcessRuleResults(IEnumerable<ValidationResult> ruleResults,
         Location defaultLocation,
         ref bool criticalErrorOccurredFlag)
@@ -38,9 +114,19 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         {
             if (!result.IsValid && result.RuleId != null)
             {
-                if (DiagnosticFactory.TryCreateDiagnostic(result, defaultLocation, out Diagnostic diagnosticToReport))
+                // Try to get from catalog first
+                if (RuleLookup.TryGet(result.RuleId, out var def))
                 {
-                    context.ReportDiagnostic(diagnosticToReport);
+                    // Use the new preformatted helper for catalogued rules
+                    EmitRulePreformatted(context, result.RuleId, defaultLocation, 
+                        result.Message ?? string.Empty, result.Severity);
+                }
+                else
+                {
+                    // Legacy handling for non-catalogued rules
+                    // This shouldn't happen if all rules are in catalog, but kept for safety
+                    EmitLegacy(context, result.RuleId, result.RuleId, result.Message ?? "", 
+                        "FSM.Generator", result.Severity, defaultLocation);
                 }
 
                 if (result.Severity == RuleSeverity.Error)
@@ -268,16 +354,10 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             report?.Invoke($"Enum-only fallback applied: {currentModel.States.Count} states from enum");
             
             // Report FSM994 diagnostic
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    "FSM994",
-                    "Enum-only states fallback",
-                    "Enum-only states fallback applied for '{0}' — 0 [State] attributes found; using all enum members as states",
-                    "FSM.Generator",
-                    DiagnosticSeverity.Info,
-                    true),
-                classDeclaration.GetLocation(),
-                string.IsNullOrEmpty(currentModel.Namespace) ? currentModel.ClassName : $"{currentModel.Namespace}.{currentModel.ClassName}"));
+            EmitLegacy(context, "FSM994", "Enum-only states fallback",
+                "Enum-only states fallback applied for '{0}' — 0 [State] attributes found; using all enum members as states",
+                "FSM.Generator", RuleSeverity.Info, classDeclaration.GetLocation(),
+                string.IsNullOrEmpty(currentModel.Namespace) ? currentModel.ClassName : $"{currentModel.Namespace}.{currentModel.ClassName}");
         }
 
         // === SEKCJA 8.5: Build HSM hierarchy if needed ===
@@ -291,6 +371,20 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         report?.Invoke("Calling DetermineVariant");
         variantSelector.DetermineVariant(currentModel, classSymbol);
         report?.Invoke($"Variant determined: {currentModel.GenerationConfig.Variant}");
+        
+        // FSM990_HSM_FLAG: Log after variant selection
+        context.ReportDiagnostic(Diagnostic.Create(
+            new DiagnosticDescriptor(
+                "FSM990_HSM_FLAG",
+                "HSM Flag Tracking",
+                "[2-AfterVariant] {0}: HierarchyEnabled={1}, Variant={2}",
+                "FSM.Generator",
+                DiagnosticSeverity.Info,
+                isEnabledByDefault: true),
+            classDeclaration.GetLocation(),
+            currentModel.ClassName,
+            currentModel.HierarchyEnabled,
+            currentModel.GenerationConfig.Variant));
 
         // === SEKCJA 10: Walidacje po ustaleniu wariantu ===
         report?.Invoke("Section 10: Post-variant validations");
@@ -326,31 +420,18 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         if (externalCount == 0 && internalCount > 0)
         {
             report?.Invoke($"Internal-only machine detected: {internalCount} internal transitions");
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    "FSM982",
-                    "Internal-only machine",
-                    "Machine '{0}' has only internal transitions ({1}) - generating with internal-only support",
-                    "FSM.Generator.Parser",
-                    DiagnosticSeverity.Info,
-                    true),
-                classDeclaration.GetLocation(),
-                currentModel.ClassName,
-                internalCount));
+            EmitLegacy(context, "FSM982", "Internal-only machine",
+                "Machine '{0}' has only internal transitions ({1}) - generating with internal-only support",
+                "FSM.Generator.Parser", RuleSeverity.Info, classDeclaration.GetLocation(),
+                currentModel.ClassName, internalCount);
         }
         else if (totalCount == 0)
         {
             report?.Invoke("No-transitions machine detected");
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    "FSM981",
-                    "No transitions",
-                    "Machine '{0}' has no transitions - generating minimal API skeleton",
-                    "FSM.Generator.Parser",
-                    DiagnosticSeverity.Info,
-                    true),
-                classDeclaration.GetLocation(),
-                currentModel.ClassName));
+            EmitLegacy(context, "FSM981", "No transitions",
+                "Machine '{0}' has no transitions - generating minimal API skeleton",
+                "FSM.Generator.Parser", RuleSeverity.Info, classDeclaration.GetLocation(),
+                currentModel.ClassName);
         }
         
         // Skip reachability validation for internal-only or no-transitions machines
@@ -375,16 +456,10 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         report?.Invoke("Section 12: Finalization");
         if (criticalErrorOccurred)
         {
-            report?.Invoke($"ERROR: Critical error occurred for {model.ClassName} - returning false");
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    "FSM999",
-                    "Parser critical error",
-                    $"Critical error occurred while parsing {model.ClassName}, code generation skipped",
-                    "FSM.Generator",
-                    DiagnosticSeverity.Warning,
-                    true),
-                classDeclaration.GetLocation()));
+            report?.Invoke($"ERROR: Critical error occurred for {currentModel.ClassName} - returning false");
+            EmitLegacy(context, "FSM999", "Parser critical error",
+                $"Critical error occurred while parsing {currentModel.ClassName}, code generation skipped",
+                "FSM.Generator", RuleSeverity.Warning, classDeclaration.GetLocation());
             return false;
         }
 
@@ -394,6 +469,22 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         if (isAsyncOce)
             report?.Invoke($"[DEBUG AOE] Final state - IsAsync: {currentModel.GenerationConfig.IsAsync}, ExceptionHandler: {currentModel.ExceptionHandler != null}");
 
+        // FSM990_HSM_FLAG: Log at parser output
+        context.ReportDiagnostic(Diagnostic.Create(
+            new DiagnosticDescriptor(
+                "FSM990_HSM_FLAG",
+                "HSM Flag Tracking",
+                "[1-Parser] {0}: HierarchyEnabled={1}, UsedEnumOnlyFallback={2}, HasPayload={3}, Variant={4}",
+                "FSM.Generator",
+                DiagnosticSeverity.Info,
+                isEnabledByDefault: true),
+            classDeclaration.GetLocation(),
+            currentModel.ClassName,
+            currentModel.HierarchyEnabled,
+            currentModel.UsedEnumOnlyFallback,
+            currentModel.GenerationConfig.HasPayload,
+            currentModel.GenerationConfig.Variant));
+        
         model = currentModel;
         report?.Invoke("=== SUCCESS: TryParse completed successfully ===");
         return true;
@@ -453,26 +544,12 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         // Report FSM989 diagnostic - use the descriptor directly from Generator.cs
         var location = classSymbol.Locations.FirstOrDefault() ?? Location.None;
         
-        // Create FSM989 descriptor inline since we can't access Generator's static field
-        var fsm989 = new DiagnosticDescriptor(
-            "FSM989",
-            "Configuration sections",
+        // Report FSM989 diagnostic
+        EmitLegacy(context, "FSM989", "Configuration sections",
             "{0} - StatesFrom: {1} | TransitionsFrom: {2} (ext={3}) | InternalFrom: {4} (int={5}) | PayloadTypes: {6}",
-            "FSM.Generator.Parser",
-            DiagnosticSeverity.Info,
-            isEnabledByDefault: true);
-            
-        // Report the diagnostic using the context from the parser instance
-        context.ReportDiagnostic(Diagnostic.Create(
-            fsm989,
-            location,
-            fullName,
-            stateMethods,
-            transitionMethods,
-            externalCount,
-            internalMethods,
-            internalCount,
-            payloadTypeCount));
+            "FSM.Generator.Parser", RuleSeverity.Info, location,
+            fullName, stateMethods, transitionMethods, externalCount,
+            internalMethods, internalCount, payloadTypeCount);
     }
 
 
@@ -653,15 +730,9 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                 if (actionMethodNameFromCtor == null)
                 {
                     criticalErrorOccurred = true;
-                    context.ReportDiagnostic(Diagnostic.Create(
-                        new DiagnosticDescriptor(
-                            "FSM983",
-                            "Missing action method",
-                            "InternalTransition attribute requires an Action method name, either as third constructor argument or Action named parameter",
-                            "FSM.Generator.Parser",
-                            DiagnosticSeverity.Error,
-                            true),
-                        attrLocation));
+                    EmitLegacy(context, "FSM983", "Missing action method",
+                        "InternalTransition attribute requires an Action method name, either as third constructor argument or Action named parameter",
+                        "FSM.Generator.Parser", RuleSeverity.Error, attrLocation);
                     continue;
                 }
 
@@ -1091,10 +1162,8 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                 string.Format(DefinedRules.InvalidAsyncVoid.MessageFormat, methodName),
                 RuleSeverity.Warning);
 
-            if (DiagnosticFactory.TryCreateDiagnostic(result, loc, out var diag))
-            {
-                context.ReportDiagnostic(diag);
-            }
+            // Use EmitRule for catalogued rule
+            EmitRule(context, RuleIdentifiers.InvalidAsyncVoid, loc, methodName);
             // Ostrzeżenie – nie przerywamy
         }
 
@@ -1105,10 +1174,8 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                 string.Format(DefinedRules.InvalidGuardTaskReturnType.MessageFormat, methodName),
                 RuleSeverity.Error);
 
-            if (DiagnosticFactory.TryCreateDiagnostic(result, loc, out var diag))
-            {
-                context.ReportDiagnostic(diag);
-            }
+            // Use EmitRule for catalogued rule
+            EmitRule(context, RuleIdentifiers.InvalidGuardTaskReturnType, loc, methodName);
 
             criticalErrorOccurred = true;
             return false; // błąd krytyczny
@@ -1197,9 +1264,18 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         {
             if (!result.IsValid && result.RuleId != null)
             {
-                if (DiagnosticFactory.TryCreateDiagnostic(result, errorLocation, out Diagnostic? diagnosticToReport))
+                // Try to get from catalog first
+                if (RuleLookup.TryGet(result.RuleId!, out var def))
                 {
-                    context.ReportDiagnostic(diagnosticToReport);
+                    // Use the preformatted helper for catalogued rules
+                    EmitRulePreformatted(context, result.RuleId!, errorLocation, 
+                        result.Message ?? string.Empty, result.Severity);
+                }
+                else
+                {
+                    // Legacy handling
+                    EmitLegacy(context, result.RuleId!, result.RuleId!, result.Message ?? "", 
+                        "FSM.Generator", result.Severity, errorLocation);
                 }
 
                 isValidOverall = false;
@@ -1245,13 +1321,10 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                 }
                 else
                 {
-                    var diag = Diagnostic.Create(
-                        DiagnosticFactory.Get(RuleIdentifiers.InvalidTypesInAttribute),
+                    EmitRule(context, RuleIdentifiers.InvalidTypesInAttribute,
                         attrLocation,
                         PayloadTypeArgName,
                         attr.ConstructorArguments[0].Value?.ToString() ?? NullString);
-
-                    context.ReportDiagnostic(diag);
                     criticalErrorOccurred = true;
                 }
 
@@ -1282,13 +1355,10 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                 }
                 else
                 {
-                    var diag = Diagnostic.Create(
-                        DiagnosticFactory.Get(RuleIdentifiers.InvalidTypesInAttribute),
+                    EmitRule(context, RuleIdentifiers.InvalidTypesInAttribute,
                         attrLocation,
                         $"{PayloadTypeForTriggerArgName}{triggerName}",
                         payloadTypeArg.Value?.ToString() ?? NullString);
-
-                    context.ReportDiagnostic(diag);
                     criticalErrorOccurred = true;
                 }
             }
@@ -1331,13 +1401,10 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                     if (model.TriggerPayloadTypes.TryGetValue(triggerName, out var existing) &&
                         existing != fqName)
                     {
-                        var diag = Diagnostic.Create(
-                            DiagnosticFactory.Get(RuleIdentifiers.InvalidMethodSignature),
+                        EmitRule(context, RuleIdentifiers.InvalidMethodSignature,
                             attrLocation,
                             string.Format(PayloadTypeForTriggerConflictArgName, triggerName),
                             ConflictsWithAlreadyDefinedType);
-
-                        context.ReportDiagnostic(diag);
                         criticalErrorOccurred = true;
                     }
                     else
@@ -1497,15 +1564,8 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             
             // Create custom error message since we need specific parameter expectations
             var message = $"Method '{methodName}' used as OnException has an invalid signature. Expected: '{expectedSig}'.";
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    "FSM003",
-                    "Invalid method signature",
-                    message,
-                    "FastFSM",
-                    DiagnosticSeverity.Error,
-                    true),
-                attrLocation));
+            EmitLegacy(context, "FSM003", "Invalid method signature",
+                message, "FastFSM", RuleSeverity.Error, attrLocation);
             
             criticalErrorOccurred = true;
             return;
@@ -1553,15 +1613,8 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             var actualReturn = selectedMethod.ReturnType.ToDisplayString();
             
             var message = $"Method '{methodName}' used as OnException has an invalid return type. Expected: '{expectedReturn}', but found: '{actualReturn}'.";
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    "FSM003",
-                    "Invalid method signature",
-                    message,
-                    "FastFSM",
-                    DiagnosticSeverity.Error,
-                    true),
-                attrLocation));
+            EmitLegacy(context, "FSM003", "Invalid method signature",
+                message, "FastFSM", RuleSeverity.Error, attrLocation);
                 
             criticalErrorOccurred = true;
             return;
@@ -1571,15 +1624,8 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         if (selectedMethod.Parameters.Length > 2)
         {
             var message = $"Method '{methodName}' used as OnException has too many parameters. Expected: 0-2 parameters, but found: {selectedMethod.Parameters.Length}.";
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    "FSM003",
-                    "Invalid method signature",
-                    message,
-                    "FastFSM",
-                    DiagnosticSeverity.Error,
-                    true),
-                attrLocation));
+            EmitLegacy(context, "FSM003", "Invalid method signature",
+                message, "FastFSM", RuleSeverity.Error, attrLocation);
                 
             criticalErrorOccurred = true;
             return;
@@ -1624,10 +1670,17 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         }
 
         // Auto-enable hierarchy if HSM features are detected
-        if (hasHsmFeatures && !model.HierarchyEnabled)
+        if (hasHsmFeatures)
         {
-            model.HierarchyEnabled = true;
-            report?.Invoke("HierarchyEnabled auto-set to true due to HSM attribute usage");
+            if (!model.HierarchyEnabled)
+            {
+                model.HierarchyEnabled = true;
+                report?.Invoke("HierarchyEnabled auto-set to true due to HSM attribute usage");
+            }
+            else
+            {
+                report?.Invoke("HierarchyEnabled already true from attribute");
+            }
         }
 
         // If hierarchy is not enabled, skip building
@@ -1653,11 +1706,10 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                 // Validate parent exists
                 if (!model.States.ContainsKey(state.ParentState))
                 {
-                    context.ReportDiagnostic(Diagnostic.Create(
-                        DiagnosticFactory.Get(RuleIdentifiers.OrphanSubstate),
+                    EmitRule(context, RuleIdentifiers.OrphanSubstate,
                         Location.None,
                         state.Name,
-                        state.ParentState));
+                        state.ParentState);
                     criticalErrorOccurred = true;
                     continue;
                 }
@@ -1679,10 +1731,9 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         {
             if (HasCircularDependency(state, model.ParentOf, visited, recursionStack, report))
             {
-                context.ReportDiagnostic(Diagnostic.Create(
-                    DiagnosticFactory.Get(RuleIdentifiers.CircularHierarchy),
+                EmitRule(context, RuleIdentifiers.CircularHierarchy,
                     Location.None,
-                    state));
+                    state);
                 criticalErrorOccurred = true;
             }
         }
@@ -1701,10 +1752,9 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             {
                 if (!state.IsComposite)
                 {
-                    context.ReportDiagnostic(Diagnostic.Create(
-                        DiagnosticFactory.Get(RuleIdentifiers.InvalidHistoryConfiguration),
+                    EmitRule(context, RuleIdentifiers.InvalidHistoryConfiguration,
                         Location.None,
-                        state.Name, state.History));
+                        state.Name, state.History);
                     // FSM104 is now a warning, don't set criticalErrorOccurred
                 }
                 else
@@ -1719,12 +1769,11 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                 if (model.InitialChildOf.ContainsKey(state.ParentState))
                 {
                     // Multiple initial substates for the same parent
-                    context.ReportDiagnostic(Diagnostic.Create(
-                        DiagnosticFactory.Get(RuleIdentifiers.MultipleInitialSubstates),
+                    EmitRule(context, RuleIdentifiers.MultipleInitialSubstates,
                         Location.None,
                         state.ParentState,
                         model.InitialChildOf[state.ParentState],
-                        state.Name));
+                        state.Name);
                     criticalErrorOccurred = true;
                 }
                 else
@@ -1741,10 +1790,9 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                 !model.InitialChildOf.ContainsKey(state.Name) && 
                 state.History == Generator.Model.HistoryMode.None)
             {
-                context.ReportDiagnostic(Diagnostic.Create(
-                    DiagnosticFactory.Get(RuleIdentifiers.InvalidHierarchyConfiguration),
+                EmitRule(context, RuleIdentifiers.InvalidHierarchyConfiguration,
                     Location.None,
-                    state.Name));
+                    state.Name);
                 // Not critical - can use first child as default
             }
         }

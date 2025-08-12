@@ -70,20 +70,16 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
                     Sb.AppendLine();
                 }
 
-                // Hierarchical state machine arrays
-                WriteHierarchyArrays(stateTypeForUsage);
-                
-                // Instance field for history tracking
-                if (Model.HierarchyEnabled)
-                {
-                    Sb.AppendLine("// Last active child tracking for history");
-                    var stateCount = Model.States.Count;
-                    Sb.AppendLine($"private readonly int[] _lastActiveChild = new int[{stateCount}];");
-                    Sb.AppendLine();
-                }
-
                 WriteLoggerField(className);
+                
+                // Write HSM arrays and runtime helpers
+                WriteHierarchyArrays(stateTypeForUsage);
+                WriteHierarchyRuntimeFieldsAndHelpers(stateTypeForUsage);
+
                 WriteConstructor(stateTypeForUsage, className);
+                
+                // Generate Start override for HSM
+                WriteStartMethod();
                 
                 // Generate OnInitialEntry/OnInitialEntryAsync override
                 if (ShouldGenerateInitialOnEntry())
@@ -334,19 +330,12 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
 
         using (Sb.Block($"public {className}({string.Join(", ", paramList)}) : {baseCall}"))
         {
-            WriteLoggerAssignment();
-            
-            // Initialize history tracking array for HSM
             if (Model.HierarchyEnabled)
             {
-                Sb.AppendLine();
-                Sb.AppendLine("// Initialize last active child tracking");
-                Sb.AppendLine("for (int i = 0; i < _lastActiveChild.Length; i++)");
-                using (Sb.Indent())
-                {
-                    Sb.AppendLine("_lastActiveChild[i] = -1;");
-                }
+                Sb.AppendLine("DescendToInitialIfComposite();");
             }
+            
+            WriteLoggerAssignment();
 
             // Initial OnEntry dispatch moved to OnInitialEntry/OnInitialEntryAsync method
         }
@@ -357,39 +346,108 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
     {
         using (Sb.Block("protected override async ValueTask OnInitialEntryAsync(System.Threading.CancellationToken cancellationToken = default)"))
         {
-            using (Sb.Block($"switch ({CurrentStateField})"))
+            if (Model.HierarchyEnabled)
             {
-                foreach (var stateEntry in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
+                // For HSM: Build entry chain from root to current leaf and call each OnEntry
+                Sb.AppendLine("// Build entry chain from root to current leaf");
+                Sb.AppendLine($"var entryChain = new List<{stateTypeForUsage}>();");
+                Sb.AppendLine($"int currentIdx = (int){CurrentStateField};");
+                Sb.AppendLine();
+                
+                // Build chain from leaf to root
+                Sb.AppendLine("// Walk from leaf to root");
+                using (Sb.Block("while (currentIdx >= 0)"))
                 {
-                    Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
-                    using (Sb.Indent())
+                    Sb.AppendLine($"entryChain.Add(({stateTypeForUsage})currentIdx);");
+                    Sb.AppendLine("if ((uint)currentIdx >= (uint)s_parent.Length) break;");
+                    Sb.AppendLine("currentIdx = s_parent[currentIdx];");
+                }
+                Sb.AppendLine();
+                
+                // Reverse to get root-to-leaf order
+                Sb.AppendLine("// Reverse to get root-to-leaf order");
+                Sb.AppendLine("entryChain.Reverse();");
+                Sb.AppendLine();
+                
+                // Call OnEntry for each state in the chain that has one
+                Sb.AppendLine("// Call OnEntry for each state in the chain");
+                using (Sb.Block("foreach (var state in entryChain)"))
+                {
+                    using (Sb.Block("switch (state)"))
                     {
-                        // Check if OnEntry has token overload
-                        var sig = stateEntry.OnEntrySignature;
+                        foreach (var stateEntry in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
+                        {
+                            Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                            using (Sb.Indent())
+                            {
+                                // Check if OnEntry has token overload
+                                var sig = stateEntry.OnEntrySignature;
 
-                        // If it has token-only or payload+token overload, pass the cancellationToken
-                        if (sig.HasTokenOnly || (sig.HasPayloadAndToken && !sig.HasParameterless))
-                        {
-                            AsyncGenerationHelper.EmitMethodInvocation(
-                                Sb,
-                                stateEntry.OnEntryMethod,
-                                stateEntry.OnEntryIsAsync,
-                                callerIsAsync: true,
-                                Model.ContinueOnCapturedContext,
-                                "cancellationToken"
-                            );
+                                // If it has token-only or payload+token overload, pass the cancellationToken
+                                if (sig.HasTokenOnly || (sig.HasPayloadAndToken && !sig.HasParameterless))
+                                {
+                                    AsyncGenerationHelper.EmitMethodInvocation(
+                                        Sb,
+                                        stateEntry.OnEntryMethod,
+                                        stateEntry.OnEntryIsAsync,
+                                        callerIsAsync: true,
+                                        Model.ContinueOnCapturedContext,
+                                        "cancellationToken"
+                                    );
+                                }
+                                else
+                                {
+                                    AsyncGenerationHelper.EmitMethodInvocation(
+                                        Sb,
+                                        stateEntry.OnEntryMethod,
+                                        stateEntry.OnEntryIsAsync,
+                                        callerIsAsync: true,
+                                        Model.ContinueOnCapturedContext
+                                    );
+                                }
+                                Sb.AppendLine("break;");
+                            }
                         }
-                        else
+                    }
+                }
+            }
+            else
+            {
+                // Non-HSM: Original single-state entry
+                using (Sb.Block($"switch ({CurrentStateField})"))
+                {
+                    foreach (var stateEntry in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
+                    {
+                        Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                        using (Sb.Indent())
                         {
-                            AsyncGenerationHelper.EmitMethodInvocation(
-                                Sb,
-                                stateEntry.OnEntryMethod,
-                                stateEntry.OnEntryIsAsync,
-                                callerIsAsync: true,
-                                Model.ContinueOnCapturedContext
-                            );
+                            // Check if OnEntry has token overload
+                            var sig = stateEntry.OnEntrySignature;
+
+                            // If it has token-only or payload+token overload, pass the cancellationToken
+                            if (sig.HasTokenOnly || (sig.HasPayloadAndToken && !sig.HasParameterless))
+                            {
+                                AsyncGenerationHelper.EmitMethodInvocation(
+                                    Sb,
+                                    stateEntry.OnEntryMethod,
+                                    stateEntry.OnEntryIsAsync,
+                                    callerIsAsync: true,
+                                    Model.ContinueOnCapturedContext,
+                                    "cancellationToken"
+                                );
+                            }
+                            else
+                            {
+                                AsyncGenerationHelper.EmitMethodInvocation(
+                                    Sb,
+                                    stateEntry.OnEntryMethod,
+                                    stateEntry.OnEntryIsAsync,
+                                    callerIsAsync: true,
+                                    Model.ContinueOnCapturedContext
+                                );
+                            }
+                            Sb.AppendLine("break;");
                         }
-                        Sb.AppendLine("break;");
                     }
                 }
             }
@@ -399,24 +457,8 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
     
     private void WriteOnInitialEntryMethod(string stateTypeForUsage)
     {
-        using (Sb.Block("protected override void OnInitialEntry()"))
-        {
-            using (Sb.Block($"switch ({CurrentStateField})"))
-            {
-                foreach (var stateEntry in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
-                {
-                    Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
-                    using (Sb.Indent())
-                    {
-                        Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
-                        WriteLogStatement("Debug",
-                            $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
-                        Sb.AppendLine("break;");
-                    }
-                }
-            }
-        }
-        Sb.AppendLine();
+        // Use the base class implementation which now handles HSM
+        base.WriteOnInitialEntryMethod(stateTypeForUsage);
     }
 
     private void WriteTryFireMethod(string stateTypeForUsage, string triggerTypeForUsage)
