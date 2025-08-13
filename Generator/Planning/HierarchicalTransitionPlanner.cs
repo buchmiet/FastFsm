@@ -61,32 +61,25 @@ public class HierarchicalTransitionPlanner : ITransitionPlanner
                 hasPayload: transition.GuardExpectsPayload));
         }
         
-        // 2. Resolve target to leaf state (handle composite states)
-        var resolvedToState = ResolveToLeafState(context, transition.ToState);
-        var resolvedToStateIndex = allStatesList.IndexOf(resolvedToState);
+        // 2. Use the target state as-is (composite or leaf)
+        // The runtime will handle composite resolution via GetCompositeEntryTarget
+        var targetState = transition.ToState;
+        var targetStateIndex = allStatesList.IndexOf(targetState);
         
         // 3. Calculate LCA (Lowest Common Ancestor)
-        var lcaIndex = CalculateLCA(context, fromStateIndex, resolvedToStateIndex);
+        var lcaIndex = CalculateLCA(context, fromStateIndex, targetStateIndex);
+        
+        // 3.5. Record history before any exits happen
+        steps.Add(new PlanStep(
+            PlanStepKind.RecordHistory,
+            stateIndex: -1,  // -1 means current state  
+            stateName: "current"));
         
         // 4. Build exit chain (from current state up to but not including LCA)
         var exitChain = BuildExitChain(context, fromStateIndex, lcaIndex);
         foreach (var exitStateIndex in exitChain)
         {
             var stateName = context.AllStates[exitStateIndex];
-            
-            // Check if we need to record history
-            if (ShouldRecordHistory(context, exitStateIndex))
-            {
-                var historyMode = context.HistoryModes.Length > exitStateIndex 
-                    ? context.HistoryModes[exitStateIndex] 
-                    : HistoryMode.None;
-                    
-                steps.Add(new PlanStep(
-                    PlanStepKind.RecordHistory,
-                    stateIndex: exitStateIndex,
-                    useDeepHistory: historyMode == HistoryMode.Deep,
-                    stateName: stateName));
-            }
             
             // Add OnExit call
             if (context.Model.States.TryGetValue(stateName, out var stateDef) && 
@@ -113,14 +106,17 @@ public class HierarchicalTransitionPlanner : ITransitionPlanner
                 stateName: transition.FromState));
         }
         
-        // 6. Assign new state
+        // 5.5. Record history is now done in exits, not here
+        // The RecordHistory during exit will capture the correct state
+        
+        // 6. Assign new state (composite or leaf - runtime will resolve)
         steps.Add(new PlanStep(
             PlanStepKind.AssignState,
-            stateIndex: resolvedToStateIndex,
-            stateName: resolvedToState));
+            stateIndex: targetStateIndex,
+            stateName: targetState));
         
-        // 7. Build entry chain (from LCA down to resolved target)
-        var entryChain = BuildEntryChain(context, lcaIndex, resolvedToStateIndex);
+        // 7. Build entry chain (from LCA down to target)
+        var entryChain = BuildEntryChain(context, lcaIndex, targetStateIndex);
         foreach (var entryStateIndex in entryChain)
         {
             var stateName = context.AllStates[entryStateIndex];
@@ -142,7 +138,7 @@ public class HierarchicalTransitionPlanner : ITransitionPlanner
         return new TransitionPlan(
             isInternal: false,
             fromStateIndex: fromStateIndex,
-            toStateIndex: resolvedToStateIndex,
+            toStateIndex: targetStateIndex,
             lcaIndex: lcaIndex,
             steps: steps);
     }

@@ -310,11 +310,15 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         int stateCount = 0;
         foreach (var member in stateTypeArg.GetMembers().OfType<IFieldSymbol>())
         {
-            if (member.IsConst)
+            if (member.IsConst && member.HasConstantValue)
             {
                 if (!currentModel.States.ContainsKey(member.Name))
                 {
-                    currentModel.States[member.Name] = new StateModel { Name = member.Name };
+                    currentModel.States[member.Name] = new StateModel 
+                    { 
+                        Name = member.Name,
+                        OrdinalValue = member.ConstantValue != null ? Convert.ToInt32(member.ConstantValue) : 0
+                    };
                     stateCount++;
                 }
             }
@@ -348,11 +352,12 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             currentModel.States.Clear();
             foreach (var member in stateTypeArg.GetMembers().OfType<IFieldSymbol>())
             {
-                if (member.IsConst)
+                if (member.IsConst && member.HasConstantValue)
                 {
                     currentModel.States[member.Name] = new StateModel 
                     { 
                         Name = member.Name,
+                        OrdinalValue = member.ConstantValue != null ? Convert.ToInt32(member.ConstantValue) : 0,
                         OnEntryMethod = null,
                         OnExitMethod = null,
                         ParentState = null,
@@ -1870,12 +1875,25 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             model.Depth[state] = CalculateDepth(state, model.ParentOf);
         }
 
+        // Populate StateModel.ChildStates from model.ChildrenOf
+        foreach (var state in model.States.Values)
+        {
+            if (model.ChildrenOf.TryGetValue(state.Name, out var children))
+            {
+                state.ChildStates = children.ToList();
+            }
+        }
+        
         // Process initial substates and history
         foreach (var state in model.States.Values)
         {
             // Process history mode
             if (state.History != Generator.Model.HistoryMode.None)
             {
+                // Always add history to the model
+                model.HistoryOf[state.Name] = state.History;
+                
+                // Validate that history is only set on composite states
                 if (!state.IsComposite)
                 {
                     var historyCtx = new InvalidHistoryConfigurationContext(
@@ -1886,10 +1904,6 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
                     var historyResults = _invalidHistoryConfigRule.Validate(historyCtx);
                     ProcessRuleResults(historyResults, Location.None, ref criticalErrorOccurred);
                     // FSM104 is now a warning, don't set criticalErrorOccurred
-                }
-                else
-                {
-                    model.HistoryOf[state.Name] = state.History;
                 }
             }
 

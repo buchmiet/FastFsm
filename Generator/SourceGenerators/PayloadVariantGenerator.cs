@@ -118,7 +118,9 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         {
             if (Model.HierarchyEnabled)
             {
-                Sb.AppendLine("DescendToInitialIfComposite();");
+                Sb.AppendLine("// Initialize history tracking array with -1 (no history)");
+                Sb.AppendLine("_lastActiveChild = new int[s_initialChild.Length];");
+                Sb.AppendLine("for (int i = 0; i < _lastActiveChild.Length; i++) _lastActiveChild[i] = -1;");
             }
             
             WriteLoggerAssignment();
@@ -266,7 +268,21 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         // State change (before OnEntry)
         if (!transition.IsInternal)
         {
-            Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            // Record history before changing state (for HSM)
+            if (Model.HierarchyEnabled)
+            {
+                Sb.AppendLine("RecordHistoryForCurrentPath();");
+            }
+            
+            // For HSM, handle composite states properly
+            if (Model.HierarchyEnabled)
+            {
+                WriteStateChangeWithCompositeHandling(transition.ToState, stateTypeForUsage);
+            }
+            else
+            {
+                Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            }
         }
 
         // OnEntry (with optional exception policy)
@@ -300,6 +316,176 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         Sb.AppendLine($"{SuccessVar} = true;");
         WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
         Sb.AppendLine($"goto {EndOfTryFireLabel};");
+    }
+    
+    private void WriteTransitionLogicDirect(
+       TransitionModel transition,
+       string stateTypeForUsage,
+       string triggerTypeForUsage)
+    {
+        // Get state definitions
+        Model.States.TryGetValue(transition.FromState, out var fromStateDef);
+        Model.States.TryGetValue(transition.ToState, out var toStateDef);
+
+        bool fromHasExit = !transition.IsInternal
+                            && fromStateDef != null
+                            && !string.IsNullOrEmpty(fromStateDef.OnExitMethod);
+
+        bool toHasEntry = !transition.IsInternal
+                            && toStateDef != null
+                            && !string.IsNullOrEmpty(toStateDef.OnEntryMethod);
+
+        // Hook before transition
+        WriteBeforeTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage);
+
+        // Guard with direct return
+        if (!string.IsNullOrEmpty(transition.GuardMethod))
+        {
+            WriteGuardEvaluationHook(transition, stateTypeForUsage, triggerTypeForUsage);
+            
+            GuardGenerationHelper.EmitGuardCheck(
+                Sb,
+                transition,
+                "guardOk",
+                PayloadVar,
+                IsAsyncMachine,
+                wrapInTryCatch: true,
+                Model.ContinueOnCapturedContext,
+                handleResultAfterTry: true,
+                cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+                treatCancellationAsFailure: IsAsyncMachine
+            );
+
+            WriteAfterGuardEvaluatedHook(transition, "guardOk", stateTypeForUsage, triggerTypeForUsage);
+
+            using (Sb.Block("if (!guardOk)"))
+            {
+                WriteLogStatement("Warning",
+                    $"GuardFailed(_logger, _instanceId, \"{transition.GuardMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+                WriteLogStatement("Warning",
+                    $"TransitionFailed(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\");");
+                WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                Sb.AppendLine("return false;");
+            }
+        }
+
+        // OnExit with direct return on failure
+        if (fromHasExit)
+        {
+            // Using helper but need to handle the return on failure
+            Sb.AppendLine("try");
+            using (Sb.Block(""))
+            {
+                CallbackGenerationHelper.EmitCallbackInvocation(
+                    Sb,
+                    fromStateDef!.OnExitMethod,
+                    CallbackGenerationHelper.CallbackType.OnExit,
+                    fromStateDef.OnExitExpectsPayload,
+                    fromStateDef.OnExitHasParameterlessOverload,
+                    fromStateDef.OnExitIsAsync,
+                    IsAsyncMachine,
+                    transition.ExpectedPayloadType,
+                    PayloadVar,
+                    wrapInTryCatch: false,
+                    Model.ContinueOnCapturedContext,
+                    IsMultiPayloadVariant(),
+                    false,
+                    fromStateDef.OnExitSignature,
+                    IsAsyncMachine ? "cancellationToken" : null,
+                    IsAsyncMachine
+                );
+            }
+            Sb.AppendLine("catch { return false; }");
+            
+            WriteLogStatement("Debug",
+                $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef!.OnExitMethod}\", \"{transition.FromState}\");");
+        }
+
+        // State change
+        if (!transition.IsInternal)
+        {
+            if (Model.HierarchyEnabled)
+            {
+                Sb.AppendLine("RecordHistoryForCurrentPath();");
+                WriteStateChangeWithCompositeHandling(transition.ToState, stateTypeForUsage);
+            }
+            else
+            {
+                Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            }
+        }
+
+        // OnEntry with direct return on failure
+        if (toHasEntry)
+        {
+            Sb.AppendLine("try");
+            using (Sb.Block(""))
+            {
+                CallbackGenerationHelper.EmitCallbackInvocation(
+                    Sb,
+                    toStateDef!.OnEntryMethod,
+                    CallbackGenerationHelper.CallbackType.OnEntry,
+                    toStateDef.OnEntryExpectsPayload,
+                    toStateDef.OnEntryHasParameterlessOverload,
+                    toStateDef.OnEntryIsAsync,
+                    IsAsyncMachine,
+                    transition.ExpectedPayloadType,
+                    PayloadVar,
+                    wrapInTryCatch: false,
+                    Model.ContinueOnCapturedContext,
+                    IsMultiPayloadVariant(),
+                    false,
+                    toStateDef.OnEntrySignature,
+                    IsAsyncMachine ? "cancellationToken" : null,
+                    IsAsyncMachine
+                );
+            }
+            Sb.AppendLine("catch { return false; }");
+            
+            WriteLogStatement("Debug",
+                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef!.OnEntryMethod}\", \"{transition.ToState}\");");
+        }
+
+        // Action with direct return on failure
+        if (!string.IsNullOrEmpty(transition.ActionMethod))
+        {
+            Sb.AppendLine("try");
+            using (Sb.Block(""))
+            {
+                CallbackGenerationHelper.EmitCallbackInvocation(
+                    Sb,
+                    transition.ActionMethod,
+                    CallbackGenerationHelper.CallbackType.Action,
+                    transition.ActionExpectsPayload,
+                    transition.ActionHasParameterlessOverload,
+                    transition.ActionIsAsync,
+                    IsAsyncMachine,
+                    transition.ExpectedPayloadType,
+                    PayloadVar,
+                    wrapInTryCatch: false,
+                    Model.ContinueOnCapturedContext,
+                    IsMultiPayloadVariant(),
+                    false,
+                    transition.ActionSignature,
+                    IsAsyncMachine ? "cancellationToken" : null,
+                    IsAsyncMachine
+                );
+            }
+            Sb.AppendLine("catch { return false; }");
+            
+            WriteLogStatement("Debug",
+                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+        }
+
+        // Success
+        if (!transition.IsInternal)
+        {
+            WriteLogStatement("Information",
+                $"TransitionSucceeded(_logger, _instanceId, \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+        }
+
+        WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
+        Sb.AppendLine("return true;");
     }
 
     protected override void WriteOnInitialEntryMethod(string stateTypeForUsage)
@@ -523,7 +709,6 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             }
 
             Sb.AppendLine($"var {OriginalStateVar} = {CurrentStateField};");
-            Sb.AppendLine($"bool {SuccessVar} = false;");
             Sb.AppendLine();
 
             // Payload validation for multi-payload variant
@@ -544,18 +729,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             WriteTryFireStructure(
                 stateTypeForUsage,
                 triggerTypeForUsage,
-                WriteTransitionLogic);
-
-            Sb.AppendLine($"{EndOfTryFireLabel}:;");
-
-            // Logowanie niepowodzenia
-            using (Sb.Block($"if (!{SuccessVar})"))
-            {
-                WriteLogStatement("Warning",
-                    $"TransitionFailed(_logger, _instanceId, {OriginalStateVar}.ToString(), trigger.ToString());");
-            }
-
-            Sb.AppendLine($"return {SuccessVar};");
+                WriteTransitionLogicDirect);
         }
         Sb.AppendLine();
     }
@@ -575,7 +749,6 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             }
 
             Sb.AppendLine($"var {OriginalStateVar} = {CurrentStateField};");
-            Sb.AppendLine($"bool {SuccessVar} = false;");
             Sb.AppendLine();
 
             // Payload validation for multi-payload variant
@@ -596,19 +769,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             WriteTryFireStructure(
                 stateTypeForUsage,
                 triggerTypeForUsage,
-                WriteTransitionLogic);
-
-            Sb.AppendLine($"{EndOfTryFireLabel}:;");
-            Sb.AppendLine();
-
-            // Logowanie niepowodzenia
-            using (Sb.Block($"if (!{SuccessVar})"))
-            {
-                WriteLogStatement("Warning",
-                    $"TransitionFailed(_logger, _instanceId, {OriginalStateVar}.ToString(), trigger.ToString());");
-            }
-
-            Sb.AppendLine($"return {SuccessVar};");
+                WriteTransitionLogicDirect);
         }
         Sb.AppendLine();
     }

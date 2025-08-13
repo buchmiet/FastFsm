@@ -332,7 +332,9 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
         {
             if (Model.HierarchyEnabled)
             {
-                Sb.AppendLine("DescendToInitialIfComposite();");
+                Sb.AppendLine("// Initialize history tracking array with -1 (no history)");
+                Sb.AppendLine("_lastActiveChild = new int[s_initialChild.Length];");
+                Sb.AppendLine("for (int i = 0; i < _lastActiveChild.Length; i++) _lastActiveChild[i] = -1;");
             }
             
             WriteLoggerAssignment();
@@ -463,48 +465,83 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
 
     private void WriteTryFireMethod(string stateTypeForUsage, string triggerTypeForUsage)
     {
-        var returnType = GetMethodReturnType("bool");
-        var methodName = GetTryFireMethodName();
-        var parameters = GetTryFireParameters(triggerTypeForUsage);
-        var asyncKeyword = GetAsyncKeyword();
-        var visibility = GetTryFireVisibility();
-
-        WriteMethodAttribute();
-        using (Sb.Block($"{visibility} {asyncKeyword}{returnType} {methodName}({parameters})"))
+        if (IsAsyncMachine)
         {
-            if (IsAsyncMachine)
+            // Async machines need special handling - keep the existing async method
+            var returnType = GetMethodReturnType("bool");
+            var methodName = GetTryFireMethodName();
+            var parameters = GetTryFireParameters(triggerTypeForUsage);
+            var asyncKeyword = GetAsyncKeyword();
+            var visibility = GetTryFireVisibility();
+
+            WriteMethodAttribute();
+            using (Sb.Block($"protected override {asyncKeyword}{returnType} TryFireInternalAsync({parameters})"))
             {
                 Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
                 Sb.AppendLine();
+                
+                if (!Model.Transitions.Any())
+                {
+                    Sb.AppendLine($"return false; {NoTransitionsComment}");
+                    return;
+                }
+
+                Sb.AppendLine($"var {OriginalStateVar} = {CurrentStateField};");
+                Sb.AppendLine($"bool {SuccessVar} = false;");
+                Sb.AppendLine();
+
+                WriteTryFireStructure(
+                    stateTypeForUsage,
+                    triggerTypeForUsage,
+                    WriteTransitionLogic);
+
+                Sb.AppendLine($"{EndOfTryFireLabel}:;");
+                Sb.AppendLine();
+
+                // Logowanie niepowodzenia
+                using (Sb.Block($"if (!{SuccessVar})"))
+                {
+                    WriteLogStatement("Warning",
+                        $"TransitionFailed(_logger, _instanceId, {OriginalStateVar}.ToString(), trigger.ToString());");
+                }
+                Sb.AppendLine($"return {SuccessVar};");
             }
+            Sb.AppendLine();
             
-            if (!Model.Transitions.Any())
-            {
-                Sb.AppendLine($"return false; {NoTransitionsComment}");
-                return;
-            }
-
-            Sb.AppendLine($"var {OriginalStateVar} = {CurrentStateField};");
-            Sb.AppendLine($"bool {SuccessVar} = false;");
-            Sb.AppendLine();
-
-            WriteTryFireStructure(
-                stateTypeForUsage,
-                triggerTypeForUsage,
-                WriteTransitionLogic);
-
-            Sb.AppendLine($"{EndOfTryFireLabel}:;");
-            Sb.AppendLine();
-
-            // Logowanie niepowodzenia
-            using (Sb.Block($"if (!{SuccessVar})"))
-            {
-                WriteLogStatement("Warning",
-                    $"TransitionFailed(_logger, _instanceId, {OriginalStateVar}.ToString(), trigger.ToString());");
-            }
-            Sb.AppendLine($"return {SuccessVar};");
+            // No need for public wrapper - base class handles it
         }
-        Sb.AppendLine();
+        else
+        {
+            // Sync machines use the unified signature
+            WriteMethodAttribute();
+            using (Sb.Block($"protected override bool TryFireInternal({triggerTypeForUsage} trigger, object? payload)"))
+            {
+                if (!Model.Transitions.Any())
+                {
+                    Sb.AppendLine($"return false; {NoTransitionsComment}");
+                    return;
+                }
+
+                Sb.AppendLine($"var {OriginalStateVar} = {CurrentStateField};");
+                Sb.AppendLine();
+
+                WriteTryFireStructure(
+                    stateTypeForUsage,
+                    triggerTypeForUsage,
+                    WriteTransitionLogic);
+
+                // Return is handled inside WriteTryFireStructure
+            }
+            Sb.AppendLine();
+            
+            // Generate public wrapper for sync
+            WriteMethodAttribute();
+            using (Sb.Block($"public override bool TryFire({triggerTypeForUsage} trigger, object? payload = null)"))
+            {
+                Sb.AppendLine("return TryFireInternal(trigger, payload);");
+            }
+            Sb.AppendLine();
+        }
     }
 
 
@@ -570,7 +607,21 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
         // State change (before OnEntry)
         if (!transition.IsInternal)
         {
-            Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            // Record history before changing state (for HSM)
+            if (Model.HierarchyEnabled)
+            {
+                Sb.AppendLine("RecordHistoryForCurrentPath();");
+            }
+            
+            // For HSM, handle composite states properly
+            if (Model.HierarchyEnabled)
+            {
+                WriteStateChangeWithCompositeHandling(transition.ToState, stateTypeForUsage);
+            }
+            else
+            {
+                Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            }
         }
 
         // OnEntry (with optional exception policy)

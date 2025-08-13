@@ -5,19 +5,38 @@ namespace Generator.Rules.Contexts;
 /// </summary>
 public class InvalidHierarchyConfigurationContext
 {
-    /// <summary>State in which the issue was detected (non-null).</summary>
-    public string StateName { get; }
+    /// <summary>
+    /// Gets the name of the composite state.
+    /// </summary>
+    public string CompositeStateName { get; }
 
-    /// <summary>Short machine-readable issue key or label (non-null).</summary>
-    public string Issue { get; }
+    /// <summary>
+    /// Gets a value indicating whether the state is composite.
+    /// </summary>
+    public bool IsComposite { get; }
 
-    /// <summary>Optional human-readable details. May be <c>null</c>.</summary>
-    public string? Details { get; }
+    /// <summary>
+    /// Gets a value indicating whether the composite state has an initial substate.
+    /// </summary>
+    public bool HasInitialSubstate { get; }
 
-    public InvalidHierarchyConfigurationContext(string stateName, string issue, string? details = null)
+    /// <summary>
+    /// Gets a value indicating whether the composite state has history.
+    /// </summary>
+    public bool HasHistory { get; }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="InvalidHierarchyConfigurationContext"/> class.
+    /// </summary>
+    /// <param name="compositeStateName">The name of the composite state.</param>
+    /// <param name="isComposite">Indicates whether the state is composite.</param>
+    /// <param name="hasInitialSubstate">Indicates whether the composite state has an initial substate.</param>
+    /// <param name="hasHistory">Indicates whether the composite state has history.</param>
+    public InvalidHierarchyConfigurationContext(string compositeStateName, bool isComposite, bool hasInitialSubstate, bool hasHistory)
     {
-        StateName = stateName;
-        Issue = issue;
-        Details = details;
+        CompositeStateName = compositeStateName;
+        IsComposite = isComposite;
+        HasInitialSubstate = hasInitialSubstate;
+        HasHistory = hasHistory;
     }
 }

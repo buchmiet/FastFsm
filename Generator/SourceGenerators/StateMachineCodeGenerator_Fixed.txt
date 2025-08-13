@@ -1,0 +1,266 @@
+    private void WriteTryFireStructureHierarchical(
+        string stateTypeForUsage,
+        string triggerTypeForUsage,
+        Action<TransitionModel, string, string> writeTransitionLogic)
+    {
+        // Get payload type info
+        string payloadType = Model.GenerationConfig.PayloadType;
+        bool hasTypedPayload = !string.IsNullOrEmpty(payloadType);
+        
+        Sb.AppendLine("// Hierarchical trigger resolution with inline winner selection");
+        Sb.AppendLine("bool found = false;");
+        Sb.AppendLine();
+        
+        // Best candidate tracking variables (allocation-free)
+        Sb.AppendLine("// Best candidate tracking");
+        Sb.AppendLine("int bestPriority = int.MinValue;");
+        Sb.AppendLine("int bestDepthFromCurrent = int.MaxValue;");  
+        Sb.AppendLine("int bestDeclOrder = int.MaxValue;");
+        Sb.AppendLine("bool bestIsInternal = false;");
+        Sb.AppendLine($"{stateTypeForUsage} bestDestState = default;");
+        
+        // Store transition info for later execution
+        Sb.AppendLine("int bestTransitionIndex = -1;");
+        Sb.AppendLine();
+        
+        Sb.AppendLine("int declOrderCounter = 0;");
+        Sb.AppendLine("int currentIndex = (int)_currentState;");
+        Sb.AppendLine("int check = currentIndex;");
+        Sb.AppendLine();
+        
+        // Build lookup of all transitions by index
+        var allTransitions = Model.Transitions.Select((t, i) => new { Transition = t, Index = i }).ToList();
+        
+        // Walk up hierarchy
+        using (Sb.Block("while (check >= 0)"))
+        {
+            Sb.AppendLine($"var stateEnum = ({stateTypeForUsage})check;");
+            Sb.AppendLine("int depthFromCurrent = (check == currentIndex) ? 0 : (s_depth[currentIndex] - s_depth[check]);");
+            Sb.AppendLine();
+            
+            // Group by source state
+            var byState = allTransitions.GroupBy(x => x.Transition.FromState);
+            
+            using (Sb.Block("switch (stateEnum)"))
+            {
+                foreach (var stateGroup in byState)
+                {
+                    using (Sb.Block($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateGroup.Key)}:"))
+                    {
+                        var byTrigger = stateGroup.GroupBy(x => x.Transition.Trigger);
+                        
+                        using (Sb.Block("switch (trigger)"))
+                        {
+                            foreach (var triggerGroup in byTrigger)
+                            {
+                                using (Sb.Block($"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(triggerGroup.Key)}:"))
+                                {
+                                    foreach (var item in triggerGroup)
+                                    {
+                                        var tr = item.Transition;
+                                        
+                                        Sb.AppendLine($"// Evaluate: {tr.FromState} -> {tr.ToState ?? "(internal)"}");
+                                        Sb.AppendLine("{");
+                                        Sb.IncreaseIndent();
+                                        
+                                        // Guard check inline
+                                        if (!string.IsNullOrEmpty(tr.GuardMethod))
+                                        {
+                                            Sb.AppendLine("bool guardPassed = false;");
+                                            
+                                            if (tr.GuardExpectsPayload && hasTypedPayload)
+                                            {
+                                                using (Sb.Block($"if (payload is {payloadType} p)"))
+                                                {
+                                                    Sb.AppendLine($"try {{ guardPassed = {tr.GuardMethod}(p); }} catch {{ }}");
+                                                }
+                                            }
+                                            else if (!tr.GuardExpectsPayload)
+                                            {
+                                                Sb.AppendLine($"try {{ guardPassed = {tr.GuardMethod}(); }} catch {{ }}");
+                                            }
+                                            
+                                            using (Sb.Block("if (!guardPassed)"))
+                                            {
+                                                Sb.AppendLine("declOrderCounter++;");
+                                                Sb.DecreaseIndent();
+                                                Sb.AppendLine("}");
+                                                Sb.AppendLine("break;");
+                                            }
+                                        }
+                                        
+                                        // Check if better
+                                        Sb.AppendLine($"int thisPriority = {tr.Priority};");
+                                        Sb.AppendLine("int thisDepth = depthFromCurrent;");
+                                        Sb.AppendLine("int thisDeclOrder = declOrderCounter++;");
+                                        
+                                        Sb.AppendLine("bool isBetter = false;");
+                                        Sb.AppendLine("if (thisPriority > bestPriority) isBetter = true;");
+                                        Sb.AppendLine("else if (thisPriority == bestPriority && thisDepth < bestDepthFromCurrent) isBetter = true;");
+                                        Sb.AppendLine("else if (thisPriority == bestPriority && thisDepth == bestDepthFromCurrent && thisDeclOrder < bestDeclOrder) isBetter = true;");
+                                        
+                                        using (Sb.Block("if (isBetter)"))
+                                        {
+                                            Sb.AppendLine("found = true;");
+                                            Sb.AppendLine("bestPriority = thisPriority;");
+                                            Sb.AppendLine("bestDepthFromCurrent = thisDepth;");
+                                            Sb.AppendLine("bestDeclOrder = thisDeclOrder;");
+                                            Sb.AppendLine($"bestIsInternal = {(tr.IsInternal ? "true" : "false")};");
+                                            Sb.AppendLine($"bestTransitionIndex = {item.Index};");
+                                            
+                                            if (!tr.IsInternal)
+                                            {
+                                                Sb.AppendLine($"bestDestState = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(tr.ToState)};");
+                                            }
+                                        }
+                                        
+                                        Sb.DecreaseIndent();
+                                        Sb.AppendLine("}");
+                                    }
+                                    Sb.AppendLine("break;");
+                                }
+                            }
+                            Sb.AppendLine("default: break;");
+                        }
+                        Sb.AppendLine("break;");
+                    }
+                }
+                Sb.AppendLine("default: break;");
+            }
+            
+            Sb.AppendLine();
+            Sb.AppendLine("// Move to parent");
+            Sb.AppendLine("check = (check >= 0 && (uint)check < (uint)s_parent.Length) ? s_parent[check] : -1;");
+        }
+        
+        Sb.AppendLine();
+        
+        // Execute winner
+        using (Sb.Block("if (found)"))
+        {
+            // Generate switch to execute the winning transition
+            Sb.AppendLine("// Execute winning transition");
+            using (Sb.Block("switch (bestTransitionIndex)"))
+            {
+                foreach (var item in allTransitions)
+                {
+                    var tr = item.Transition;
+                    using (Sb.Block($"case {item.Index}:"))
+                    {
+                        if (tr.IsInternal)
+                        {
+                            Sb.AppendLine("// Internal transition");
+                            WriteBeforeTransitionHook(tr, stateTypeForUsage, triggerTypeForUsage);
+                            
+                            if (!string.IsNullOrEmpty(tr.ActionMethod))
+                            {
+                                if (tr.ActionExpectsPayload && hasTypedPayload)
+                                {
+                                    using (Sb.Block($"if (payload is {payloadType} p)"))
+                                    {
+                                        Sb.AppendLine($"{tr.ActionMethod}(p);");
+                                    }
+                                }
+                                else if (!tr.ActionExpectsPayload)
+                                {
+                                    Sb.AppendLine($"{tr.ActionMethod}();");
+                                }
+                            }
+                            
+                            Sb.AppendLine("success = true;");
+                            WriteAfterTransitionHook(tr, stateTypeForUsage, triggerTypeForUsage, true);
+                        }
+                        else
+                        {
+                            Sb.AppendLine("// External transition");
+                            
+                            // Build and execute plan inline
+                            var context = CreateBuildContext(tr);
+                            var planner = GetPlanner();
+                            var plan = planner.BuildPlan(context);
+                            
+                            // Execute plan steps inline
+                            foreach (var step in plan.Steps)
+                            {
+                                switch (step.Kind)
+                                {
+                                    case PlanStepKind.RecordHistory:
+                                        Sb.AppendLine("RecordHistoryForCurrentPath();");
+                                        break;
+                                        
+                                    case PlanStepKind.ExitState:
+                                        if (!string.IsNullOrEmpty(step.OnExitMethod))
+                                        {
+                                            // Handle payload for exit
+                                            var exitState = Model.States.Values.FirstOrDefault(s => s.OnExitMethod == step.OnExitMethod);
+                                            if (exitState?.OnExitExpectsPayload == true && hasTypedPayload)
+                                            {
+                                                using (Sb.Block($"if (payload is {payloadType} p)"))
+                                                {
+                                                    Sb.AppendLine($"{step.OnExitMethod}(p);");
+                                                }
+                                            }
+                                            else
+                                            {
+                                                Sb.AppendLine($"{step.OnExitMethod}();");
+                                            }
+                                        }
+                                        break;
+                                        
+                                    case PlanStepKind.InternalAction:
+                                        if (!string.IsNullOrEmpty(step.ActionMethod))
+                                        {
+                                            if (tr.ActionExpectsPayload && hasTypedPayload)
+                                            {
+                                                using (Sb.Block($"if (payload is {payloadType} p)"))
+                                                {
+                                                    Sb.AppendLine($"{step.ActionMethod}(p);");
+                                                }
+                                            }
+                                            else
+                                            {
+                                                Sb.AppendLine($"{step.ActionMethod}();");
+                                            }
+                                        }
+                                        break;
+                                        
+                                    case PlanStepKind.AssignState:
+                                        Sb.AppendLine($"_currentState = bestDestState;");
+                                        Sb.AppendLine($"_currentState = ({stateTypeForUsage})GetCompositeEntryTarget((int)_currentState);");
+                                        break;
+                                        
+                                    case PlanStepKind.EntryState:
+                                        if (!string.IsNullOrEmpty(step.OnEntryMethod))
+                                        {
+                                            // Handle payload for entry
+                                            var entryState = Model.States.Values.FirstOrDefault(s => s.OnEntryMethod == step.OnEntryMethod);
+                                            if (entryState?.OnEntryExpectsPayload == true && hasTypedPayload)
+                                            {
+                                                using (Sb.Block($"if (payload is {payloadType} p)"))
+                                                {
+                                                    Sb.AppendLine($"{step.OnEntryMethod}(p);");
+                                                }
+                                            }
+                                            else
+                                            {
+                                                Sb.AppendLine($"{step.OnEntryMethod}();");
+                                            }
+                                        }
+                                        break;
+                                }
+                            }
+                            
+                            Sb.AppendLine("success = true;");
+                            WriteAfterTransitionHook(tr, stateTypeForUsage, triggerTypeForUsage, true);
+                        }
+                        Sb.AppendLine("break;");
+                    }
+                }
+                Sb.AppendLine("default: break;");
+            }
+            Sb.AppendLine("return true;");
+        }
+        
+        Sb.AppendLine();
+        Sb.AppendLine("return false;");
+    }

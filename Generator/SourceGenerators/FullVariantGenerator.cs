@@ -114,7 +114,9 @@ internal sealed class FullVariantGenerator(StateMachineModel model) : PayloadVar
         {
             if (Model.HierarchyEnabled)
             {
-                Sb.AppendLine("DescendToInitialIfComposite();");
+                Sb.AppendLine("// Initialize history tracking array with -1 (no history)");
+                Sb.AppendLine("_lastActiveChild = new int[s_initialChild.Length];");
+                Sb.AppendLine("for (int i = 0; i < _lastActiveChild.Length; i++) _lastActiveChild[i] = -1;");
             }
             
             WriteLoggerAssignment();

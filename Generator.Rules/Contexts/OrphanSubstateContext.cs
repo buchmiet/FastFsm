@@ -8,7 +8,7 @@ namespace Generator.Rules.Contexts
         /// <summary>
         /// Gets the name of the orphan substate.
         /// </summary>
-        public string StateName { get; }
+        public string SubstateName { get; }
 
         /// <summary>
         /// Gets the name of the non-existent parent state.
@@ -16,14 +16,21 @@ namespace Generator.Rules.Contexts
         public string ParentStateName { get; }
 
         /// <summary>
+        /// Gets a value indicating whether the parent exists.
+        /// </summary>
+        public bool ParentExists { get; }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="OrphanSubstateContext"/> class.
         /// </summary>
-        /// <param name="stateName">The name of the orphan substate.</param>
+        /// <param name="substateName">The name of the orphan substate.</param>
         /// <param name="parentStateName">The name of the non-existent parent state.</param>
-        public OrphanSubstateContext(string stateName, string parentStateName)
+        /// <param name="parentExists">Indicates whether the parent exists.</param>
+        public OrphanSubstateContext(string substateName, string parentStateName, bool parentExists)
         {
-            StateName = stateName;
+            SubstateName = substateName;
             ParentStateName = parentStateName;
+            ParentExists = parentExists;
         }
     }
 }

@@ -39,9 +39,13 @@ namespace StateMachine.Tests.HierarchicalTests
         {
             var m = new HsmPayloadMachine(HP_State.Root);
             Assert.NotNull(m);
+            Assert.Equal(HP_State.Root, m.CurrentState); // Before Start, should be at Root
+            
             // Basic API usage with payload (compile-time check)
             var payload = new PayloadData { Value = 42 };
             m.Start();
+            Assert.Equal(HP_State.ChildA, m.CurrentState); // After Start, should descend to initial child
+            
             m.Fire(HP_Trigger.Configure, payload); // internal branch
             m.TryFire(HP_Trigger.Submit, payload); // external branch
         }
