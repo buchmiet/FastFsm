@@ -61,8 +61,11 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         
         Sb.AppendLine("// Hierarchical state machine support arrays");
         
-        // Get all states in enum order
-        var allStates = Model.States.Keys.OrderBy(s => s).ToList();
+        // Get all states in enum ordinal order (by their numeric value, not alphabetically)
+        var allStates = Model.States.Values
+            .OrderBy(s => s.OrdinalValue)
+            .Select(s => s.Name)
+            .ToList();
         var stateCount = allStates.Count;
         
         // Parent array (-1 for root states)
@@ -268,9 +271,28 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         if (!Model.HierarchyEnabled) return;
 
         // Instance array for SHALLOW/DEEP history bookkeeping (index by composite state)
-        Sb.AppendLine("        private readonly int[] _lastActiveChild = new int[s_initialChild.Length];");
+        // Initialize with -1 to distinguish "never visited" from "visited state 0"
+        Sb.AppendLine("        private readonly int[] _lastActiveChild;");
         Sb.AppendLine();
 
+        // RecordHistoryForCurrentPath: walks up the parent chain recording current leaf for history
+        Sb.WriteSummary("Records the current leaf state in all ancestor composite states that have history enabled.");
+        Sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]");
+        using (Sb.Block("private void RecordHistoryForCurrentPath()"))
+        {
+            Sb.AppendLine("int leaf = (int)_currentState;");
+            Sb.AppendLine("int parent = (uint)leaf < (uint)s_parent.Length ? s_parent[leaf] : -1;");
+            using (Sb.Block("while (parent >= 0)"))
+            {
+                Sb.AppendLine("if (s_history[parent] != HistoryMode.None)");
+                using (Sb.Indent())
+                    Sb.AppendLine("_lastActiveChild[parent] = leaf;");
+                Sb.AppendLine("leaf = parent;");
+                Sb.AppendLine("parent = s_parent[leaf];");
+            }
+        }
+        Sb.AppendLine();
+        
         // UpdateLastActiveChild: called before changing state away from a composite
         Sb.WriteSummary("Records the last active child for the given composite parent.");
         using (Sb.Block("private void UpdateLastActiveChild(int parentIndex)"))
@@ -297,16 +319,31 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                 Sb.AppendLine("var mode = s_history[idx];");
                 Sb.AppendLine("int child = -1;");
                 Sb.AppendLine();
-                Sb.AppendLine("if (mode != HistoryMode.None && _lastActiveChild[idx] > 0)");
+                Sb.AppendLine("if (mode != HistoryMode.None && _lastActiveChild[idx] >= 0)");
                 using (Sb.Block(""))
                 {
-                    Sb.AppendLine("// Use recorded history");
-                    Sb.AppendLine("child = _lastActiveChild[idx];");
+                    Sb.AppendLine("int remembered = _lastActiveChild[idx];");
+                    Sb.AppendLine();
+                    Sb.AppendLine("if (mode == HistoryMode.Shallow)");
+                    using (Sb.Block(""))
+                    {
+                        Sb.AppendLine("// Map remembered LEAF up to the IMMEDIATE child of 'idx'");
+                        Sb.AppendLine("int immediate = remembered;");
+                        Sb.AppendLine("while (immediate >= 0 && s_parent[immediate] != idx)");
+                        Sb.AppendLine("    immediate = s_parent[immediate];");
+                        Sb.AppendLine();
+                        Sb.AppendLine("// Fallback to initial if something went wrong");
+                        Sb.AppendLine("child = immediate >= 0 ? immediate : s_initialChild[idx];");
+                    }
+                    Sb.AppendLine("else // Deep");
+                    using (Sb.Block(""))
+                    {
+                        Sb.AppendLine("child = remembered;");
+                    }
                 }
                 Sb.AppendLine("else");
                 using (Sb.Block(""))
                 {
-                    Sb.AppendLine("// Use initial child");
                     Sb.AppendLine("child = s_initialChild[idx];");
                 }
                 Sb.AppendLine();
@@ -484,62 +521,49 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             foreach (var state in grouped)
             {
                 // case <State>:
-                using (Sb.Block(
-                           $"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(state.Key)}:"))
+                using (Sb.Block($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(state.Key)}:"))
                 {
-                    // Group by trigger for this state
-                    var triggerGroups = state.GroupBy(t => t.Trigger);
-                    
-                    // switch (trigger)
-                    using (Sb.Block("switch (trigger)"))
+                    Sb.AppendLine("{");
+                    using (Sb.Indent())
                     {
-                        foreach (var triggerGroup in triggerGroups)
+                        // Group by trigger for this state
+                        var triggerGroups = state.GroupBy(t => t.Trigger);
+                        
+                        // switch (trigger)
+                        using (Sb.Block("switch (trigger)"))
                         {
-                            // case <Trigger>:
-                            using (Sb.Block(
-                                       $"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(triggerGroup.Key)}:"))
+                            foreach (var triggerGroup in triggerGroups)
                             {
-                                // Process all transitions for this trigger in priority order
-                                foreach (var tr in triggerGroup)
+                                // case <Trigger>:
+                                using (Sb.Block($"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(triggerGroup.Key)}:"))
                                 {
-                                    // Use planner if available, otherwise fallback to direct logic
-                                    if (Model.HierarchyEnabled || tr.Priority != 0)
+                                    Sb.AppendLine("{");
+                                    using (Sb.Indent())
                                     {
-                                        var context = CreateBuildContext(tr);
-                                        var planner = GetPlanner();
-                                        var plan = planner.BuildPlan(context);
-                                        
-                                        Sb.AppendLine($"// Transition: {tr.FromState} -> {tr.ToState} (Priority: {tr.Priority})");
-                                        EmitTransitionPlan(plan, tr, stateTypeForUsage, triggerTypeForUsage);
-                                        
-                                        Sb.AppendLine($"{SuccessVar} = true;");
-                                        WriteAfterTransitionHook(tr, stateTypeForUsage, triggerTypeForUsage, success: true);
-                                        Sb.AppendLine("return;");
+                                        // Process all transitions for this trigger in priority order
+                                        foreach (var tr in triggerGroup)
+                                        {
+                                            Sb.AppendLine($"// Transition: {tr.FromState} -> {tr.ToState} (Priority: {tr.Priority})");
+                                            WriteTransitionLogicDirect(tr, stateTypeForUsage, triggerTypeForUsage);
+                                            // Only first matching transition executes due to return
+                                            break;
+                                        }
                                     }
-                                    else
-                                    {
-                                        // Fallback to original logic for simple cases
-                                        writeTransitionLogic(tr, stateTypeForUsage, triggerTypeForUsage);
-                                    }
+                                    Sb.AppendLine("}");
                                 }
                             }
+                            Sb.AppendLine("default: break;");
                         }
-
-                        Sb.AppendLine("default: break;");
+                        Sb.AppendLine("break;");
                     }
-
-                    // break;  ── kończy zewnętrzne switch (CurrentState)
-                    Sb.AppendLine("break;");
+                    Sb.AppendLine("}");
                 }
             }
-
             Sb.AppendLine("default: break;");
         }
-
+        
         Sb.AppendLine();
-
-        // Hook – przejście nie znalezione
-        WriteTransitionFailureHook(stateTypeForUsage, triggerTypeForUsage);
+        Sb.AppendLine("return false;");
     }
     
     private void WriteTryFireStructureHierarchical(
@@ -547,41 +571,47 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         string triggerTypeForUsage,
         Action<TransitionModel, string, string> writeTransitionLogic)
     {
-        // Sort all transitions by priority (descending) then by declaration order
-        var sortedTransitions = Model.Transitions
-            .Select((t, index) => new { Transition = t, Index = index })
-            .OrderByDescending(x => x.Transition.Priority)
-            .ThenBy(x => x.Index)
-            .Select(x => x.Transition)
-            .ToList();
-        
-        Sb.AppendLine("// Hierarchical trigger resolution with priority support");
-        Sb.AppendLine($"var currentStateIndex = (int){CurrentStateField};");
-        Sb.AppendLine("var stateToCheck = currentStateIndex;");
+        // Generate inline winner selection without goto or local functions
+        Sb.AppendLine("// Hierarchical trigger resolution with inline winner selection");
+        Sb.AppendLine("bool found = false;");
         Sb.AppendLine();
         
-        // Collect all applicable transitions
-        Sb.AppendLine("// Collect applicable transitions from current state and ancestors");
-        Sb.AppendLine("var applicableTransitions = new System.Collections.Generic.List<(int depth, int priority, System.Action action)>();");
+        // Best candidate tracking variables (allocation-free)
+        Sb.AppendLine("// Best candidate tracking");
+        Sb.AppendLine("int bestPriority = int.MinValue;");
+        Sb.AppendLine("int bestDepthFromCurrent = int.MaxValue;");  
+        Sb.AppendLine("int bestDeclOrder = int.MaxValue;");
+        Sb.AppendLine("bool bestIsInternal = false;");
+        Sb.AppendLine("int bestDestIndex = -1;");
+        Sb.AppendLine("System.Action? bestAction = null;");
         Sb.AppendLine();
+        
+        Sb.AppendLine("int declOrder = 0;");
+        Sb.AppendLine("int currentIndex = (int)_currentState;");
+        Sb.AppendLine("int check = currentIndex;");
+        Sb.AppendLine();
+        
+        // Build lookup of all transitions by index
+        var allTransitions = Model.Transitions.Select((t, i) => new { Transition = t, Index = i }).ToList();
         
         // Loop through the state and its ancestors
-        using (Sb.Block("while (stateToCheck >= 0)"))
+        using (Sb.Block("while (check >= 0)"))
         {
-            Sb.AppendLine($"var stateToCheckEnum = ({stateTypeForUsage})stateToCheck;");
-            Sb.AppendLine("var currentDepth = stateToCheck == currentStateIndex ? 0 : s_depth[stateToCheck];");
+            Sb.AppendLine($"var enumState = ({stateTypeForUsage})check;");
+            Sb.AppendLine($"int depthFromCurrent = (check == currentIndex) ? 0 : (s_depth[currentIndex] - s_depth[check]);");
+            Sb.AppendLine();
             
             // Group transitions by source state
-            var grouped = sortedTransitions.GroupBy(t => t.FromState);
+            var grouped = allTransitions.GroupBy(x => x.Transition.FromState);
             
-            using (Sb.Block("switch (stateToCheckEnum)"))
+            using (Sb.Block("switch (enumState)"))
             {
                 foreach (var state in grouped)
                 {
                     using (Sb.Block($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(state.Key)}:"))
                     {
                         // Group by trigger
-                        var triggerGroups = state.GroupBy(t => t.Trigger);
+                        var triggerGroups = state.GroupBy(x => x.Transition.Trigger);
                         
                         using (Sb.Block("switch (trigger)"))
                         {
@@ -589,31 +619,16 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                             {
                                 using (Sb.Block($"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(triggerGroup.Key)}:"))
                                 {
-                                    // Process transitions in priority order
-                                    foreach (var tr in triggerGroup)
+                                    // Process all matching transitions inline
+                                    foreach (var item in triggerGroup)
                                     {
-                                        // Use planner for hierarchical transitions
-                                        var context = CreateBuildContext(tr);
-                                        var planner = GetPlanner();
-                                        var plan = planner.BuildPlan(context);
+                                        var tr = item.Transition;
+                                        Sb.AppendLine($"// Candidate: {tr.FromState} -> {tr.ToState} (Priority: {tr.Priority})");
                                         
-                                        Sb.AppendLine($"// Transition: {tr.FromState} -> {tr.ToState} (Priority: {tr.Priority})");
-                                        
-                                        // For internal transitions on ancestors, special handling
-                                        if (tr.IsInternal && state.Key != sortedTransitions.First(t => t.FromState == state.Key).FromState)
-                                        {
-                                            Sb.AppendLine("// Internal transition on ancestor");
-                                            EmitTransitionPlan(plan, tr, stateTypeForUsage, triggerTypeForUsage);
-                                        }
-                                        else
-                                        {
-                                            EmitTransitionPlan(plan, tr, stateTypeForUsage, triggerTypeForUsage);
-                                        }
-                                        
-                                        Sb.AppendLine($"{SuccessVar} = true;");
-                                        WriteAfterTransitionHook(tr, stateTypeForUsage, triggerTypeForUsage, success: true);
-                                        Sb.AppendLine("return true;  // Transition handled");
+                                        // Generate inline candidate evaluation
+                                        GenerateInlineCandidateEvaluation(tr, item.Index, stateTypeForUsage, triggerTypeForUsage);
                                     }
+                                    Sb.AppendLine("break;");
                                 }
                             }
                             Sb.AppendLine("default: break;");
@@ -626,16 +641,155 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             
             // Move to parent state
             Sb.AppendLine();
-            Sb.AppendLine("// Check parent state");
-            Sb.AppendLine("stateToCheck = s_parent[stateToCheck];");
+            Sb.AppendLine("// Move to parent state");
+            Sb.AppendLine("check = (uint)check < (uint)s_parent.Length ? s_parent[check] : -1;");
         }
         
         Sb.AppendLine();
         
-        // Hook – przejście nie znalezione
-        WriteTransitionFailureHook(stateTypeForUsage, triggerTypeForUsage);
+        // Apply the best candidate if found
+        Sb.AppendLine("// Apply winner");
+        using (Sb.Block("if (!found)"))
+        {
+            Sb.AppendLine("return false;");
+        }
+        Sb.AppendLine();
         
-        // Return will be added by WriteTryFireInternal after END_TRY_FIRE label
+        using (Sb.Block("if (bestIsInternal)"))
+        {
+            Sb.AppendLine("// Internal transition: execute action without state change");
+            using (Sb.Block("if (bestAction != null)"))
+            {
+                Sb.AppendLine("try { bestAction(); } catch { return false; }");
+            }
+            Sb.AppendLine("return true; // state unchanged, no history recording");
+        }
+        using (Sb.Block("else"))
+        {
+            Sb.AppendLine("// External transition: record history and resolve composite destination");
+            Sb.AppendLine("RecordHistoryForCurrentPath();");
+            Sb.AppendLine($"_currentState = ({stateTypeForUsage})bestDestIndex;");
+            Sb.AppendLine($"_currentState = ({stateTypeForUsage})GetCompositeEntryTarget((int)_currentState);");
+            
+            // Execute action if present
+            using (Sb.Block("if (bestAction != null)"))
+            {
+                Sb.AppendLine("try { bestAction(); } catch { /* action failed but transition succeeded */ }");
+            }
+            
+            Sb.AppendLine("return true;");
+        }
+    }
+    
+    private void GenerateInlineCandidateEvaluation(
+        TransitionModel transition,
+        int transitionIndex,
+        string stateTypeForUsage,
+        string triggerTypeForUsage)
+    {
+        Sb.AppendLine("{");
+        using (Sb.Indent())
+        {
+            // Guard check if present
+            if (!string.IsNullOrEmpty(transition.GuardMethod))
+            {
+                Sb.AppendLine("bool guardResult = false;");
+                
+                // Handle payload-based guards
+                if (transition.GuardExpectsPayload && Model.GenerationConfig.HasPayload)
+                {
+                    var payloadType = transition.ExpectedPayloadType ?? Model.DefaultPayloadType;
+                    if (!string.IsNullOrEmpty(payloadType))
+                    {
+                        Sb.AppendLine($"if (payload is {GetTypeNameForUsage(payloadType)} p)");
+                        Sb.AppendLine("{");
+                        Sb.AppendLine($"    try {{ guardResult = {transition.GuardMethod}(p); }} catch {{ guardResult = false; }}");
+                        Sb.AppendLine("}");
+                    }
+                    else
+                    {
+                        Sb.AppendLine($"try {{ guardResult = {transition.GuardMethod}(payload); }} catch {{ guardResult = false; }}");
+                    }
+                }
+                else
+                {
+                    Sb.AppendLine($"try {{ guardResult = {transition.GuardMethod}(); }} catch {{ guardResult = false; }}");
+                }
+                
+                Sb.AppendLine("if (!guardResult) { declOrder++; } // skip this candidate");
+                Sb.AppendLine("else");
+                Sb.AppendLine("{");
+                using (Sb.Indent())
+                {
+                    GenerateCandidateSelection(transition, transitionIndex, stateTypeForUsage);
+                }
+                Sb.AppendLine("}");
+            }
+            else
+            {
+                // No guard - always evaluate
+                GenerateCandidateSelection(transition, transitionIndex, stateTypeForUsage);
+            }
+        }
+        Sb.AppendLine("}");
+    }
+    
+    private void GenerateCandidateSelection(
+        TransitionModel transition,
+        int transitionIndex,
+        string stateTypeForUsage)
+    {
+        // Compare with current best using priority rules
+        Sb.AppendLine($"int priority = {transition.Priority};");
+        Sb.AppendLine("bool isBetter = false;");
+        
+        Sb.AppendLine("if (!found) isBetter = true;");
+        Sb.AppendLine("else if (priority > bestPriority) isBetter = true;");
+        Sb.AppendLine("else if (priority == bestPriority && depthFromCurrent < bestDepthFromCurrent) isBetter = true;");
+        Sb.AppendLine("else if (priority == bestPriority && depthFromCurrent == bestDepthFromCurrent && declOrder < bestDeclOrder) isBetter = true;");
+        
+        Sb.AppendLine("if (isBetter)");
+        Sb.AppendLine("{");
+        using (Sb.Indent())
+        {
+            Sb.AppendLine("found = true;");
+            Sb.AppendLine($"bestPriority = priority;");
+            Sb.AppendLine("bestDepthFromCurrent = depthFromCurrent;");
+            Sb.AppendLine("bestDeclOrder = declOrder;");
+            Sb.AppendLine($"bestIsInternal = {(transition.IsInternal ? "true" : "false")};");
+            
+            if (!transition.IsInternal)
+            {
+                Sb.AppendLine($"bestDestIndex = (int){stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            }
+            
+            // Store action to execute later
+            if (!string.IsNullOrEmpty(transition.ActionMethod))
+            {
+                if (transition.ActionExpectsPayload && Model.GenerationConfig.HasPayload)
+                {
+                    var payloadType = transition.ExpectedPayloadType ?? Model.DefaultPayloadType;
+                    if (!string.IsNullOrEmpty(payloadType))
+                    {
+                        Sb.AppendLine($"bestAction = () => {{ if (payload is {GetTypeNameForUsage(payloadType)} p) {transition.ActionMethod}(p); }};");
+                    }
+                    else
+                    {
+                        Sb.AppendLine($"bestAction = () => {transition.ActionMethod}(payload);");
+                    }
+                }
+                else
+                {
+                    Sb.AppendLine($"bestAction = () => {transition.ActionMethod}();");
+                }
+            }
+            else
+            {
+                Sb.AppendLine("bestAction = null;");
+            }
+        }
+        Sb.AppendLine("}");
+        Sb.AppendLine("declOrder++;");
     }
     
     private void WriteInternalTransitionOnAncestor(
@@ -694,16 +848,54 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         string stateTypeForUsage,
         string triggerTypeForUsage)
     {
+        // DEPRECATED - use WriteTransitionLogicDirect instead
+        WriteTransitionLogicDirect(transition, stateTypeForUsage, triggerTypeForUsage);
+    }
+    
+    private void WriteTransitionLogicDirect(
+        TransitionModel transition,
+        string stateTypeForUsage,
+        string triggerTypeForUsage)
+    {
         var hasOnEntryExit = ShouldGenerateOnEntryExit();
 
         // Hook: Before transition
         WriteBeforeTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage);
 
-        // Guard check
+        // Guard check with direct return
         if (!string.IsNullOrEmpty(transition.GuardMethod))
         {
             WriteGuardEvaluationHook(transition, stateTypeForUsage, triggerTypeForUsage);
-            WriteGuardCheck(transition, stateTypeForUsage, triggerTypeForUsage);
+            
+            Sb.AppendLine("bool guardOk = true;");
+            if (transition.GuardExpectsPayload && !string.IsNullOrEmpty(transition.ExpectedPayloadType))
+            {
+                var payloadType = TypeHelper.FormatTypeForUsage(transition.ExpectedPayloadType);
+                Sb.AppendLine($"if (payload is {payloadType} guardPayload)");
+                Sb.AppendLine($"    try {{ guardOk = {transition.GuardMethod}(guardPayload); }} catch {{ return false; }}");
+                Sb.AppendLine("else");
+                Sb.AppendLine("    return false;");
+            }
+            else
+            {
+                Sb.AppendLine($"try {{ guardOk = {transition.GuardMethod}(); }} catch {{ return false; }}");
+            }
+            
+            // Hook: After guard evaluated
+            WriteAfterGuardEvaluatedHook(transition, "guardOk", stateTypeForUsage, triggerTypeForUsage);
+            
+            Sb.AppendLine("if (!guardOk)");
+            Sb.AppendLine("{");
+            using (Sb.Indent())
+            {
+                WriteLogStatement("Warning",
+                    $"GuardFailed(_logger, _instanceId, \"{transition.GuardMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+                WriteLogStatement("Warning",
+                    $"TransitionFailed(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\");");
+                WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                Sb.AppendLine("return false;");
+            }
+            Sb.AppendLine("}");
         }
 
         // OnExit
@@ -711,49 +903,80 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             Model.States.TryGetValue(transition.FromState, out var fromStateDef) &&
             !string.IsNullOrEmpty(fromStateDef.OnExitMethod))
         {
-            WriteOnExitCall(fromStateDef, transition.ExpectedPayloadType);
+            if (fromStateDef.OnExitExpectsPayload && !string.IsNullOrEmpty(transition.ExpectedPayloadType))
+            {
+                var payloadType = TypeHelper.FormatTypeForUsage(transition.ExpectedPayloadType);
+                Sb.AppendLine($"if (payload is {payloadType} exitPayload)");
+                Sb.AppendLine($"    try {{ {fromStateDef.OnExitMethod}(exitPayload); }} catch {{ return false; }}");
+                Sb.AppendLine("else");
+                Sb.AppendLine("    return false;");
+            }
+            else
+            {
+                Sb.AppendLine($"try {{ {fromStateDef.OnExitMethod}(); }} catch {{ return false; }}");
+            }
             WriteLogStatement("Debug",
                 $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
         }
 
-        // State change (before OnEntry)
+        // Action (if present)
+        if (!string.IsNullOrEmpty(transition.ActionMethod))
+        {
+            if (transition.ActionExpectsPayload && !string.IsNullOrEmpty(transition.ExpectedPayloadType))
+            {
+                var payloadType = TypeHelper.FormatTypeForUsage(transition.ExpectedPayloadType);
+                Sb.AppendLine($"if (payload is {payloadType} actionPayload)");
+                Sb.AppendLine($"    try {{ {transition.ActionMethod}(actionPayload); }} catch {{ return false; }}");
+                Sb.AppendLine("else");
+                Sb.AppendLine("    return false;");
+            }
+            else
+            {
+                Sb.AppendLine($"try {{ {transition.ActionMethod}(); }} catch {{ return false; }}");
+            }
+            WriteLogStatement("Debug",
+                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+        }
+
+        // State change (after action succeeds)
         if (!transition.IsInternal)
         {
             Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
         }
 
-        // OnEntry (no exception catching - let it propagate)
+        // OnEntry (after state change)
         if (!transition.IsInternal && hasOnEntryExit &&
             Model.States.TryGetValue(transition.ToState, out var toStateDef) &&
             !string.IsNullOrEmpty(toStateDef.OnEntryMethod))
         {
-            WriteOnEntryCall(toStateDef, transition.ExpectedPayloadType);
+            if (toStateDef.OnEntryExpectsPayload && !string.IsNullOrEmpty(transition.ExpectedPayloadType))
+            {
+                var payloadType = TypeHelper.FormatTypeForUsage(transition.ExpectedPayloadType);
+                Sb.AppendLine($"if (payload is {payloadType} entryPayload)");
+                Sb.AppendLine($"    try {{ {toStateDef.OnEntryMethod}(entryPayload); }} catch {{ return false; }}");
+                Sb.AppendLine("else");
+                Sb.AppendLine("    return false;");
+            }
+            else
+            {
+                Sb.AppendLine($"try {{ {toStateDef.OnEntryMethod}(); }} catch {{ return false; }}");
+            }
             WriteLogStatement("Debug",
                 $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
         }
 
-        // Action (after OnEntry, no exception catching - let it propagate)
-        if (!string.IsNullOrEmpty(transition.ActionMethod))
-        {
-            WriteActionCall(transition);
-            WriteLogStatement("Debug",
-                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
-        }
-        
-        // Log successful transition only after OnEntry succeeds
+        // Log successful transition
         if (!transition.IsInternal)
         {
             WriteLogStatement("Information",
                 $"TransitionSucceeded(_logger, _instanceId, \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
         }
 
-        // Success
-        Sb.AppendLine($"{SuccessVar} = true;");
-
         // Hook: After successful transition
         WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
 
-        Sb.AppendLine($"goto {EndOfTryFireLabel};");
+        // Direct return success
+        Sb.AppendLine("return true;");
     }
     
     private void WriteTransitionLogicHierarchical(
@@ -781,7 +1004,10 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine("// Hierarchical transition sequence");
         
         // Get state indices
-        var allStates = Model.States.Keys.OrderBy(s => s).ToList();
+        var allStates = Model.States.Values
+            .OrderBy(s => s.OrdinalValue)
+            .Select(s => s.Name)
+            .ToList();
         var fromIndex = allStates.IndexOf(transition.FromState);
         var toIndex = allStates.IndexOf(transition.ToState);
         
@@ -995,39 +1221,13 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         }
     }
     
-    private void WriteStateChangeWithCompositeHandling(string targetState, string stateTypeForUsage)
+    protected void WriteStateChangeWithCompositeHandling(string targetState, string stateTypeForUsage)
     {
-        // Check if target is a composite state
-        var allStates = Model.States.Keys.OrderBy(s => s).ToList();
-        var targetIndex = allStates.IndexOf(targetState);
-        
-        // Check if target has children (is composite)
-        if (Model.ChildrenOf.TryGetValue(targetState, out var children) && children.Count > 0)
-        {
-            Sb.AppendLine($"// Target is composite, resolve to leaf using initial/history");
-            Sb.AppendLine($"var targetIndex = {targetIndex};");
-            Sb.AppendLine($"var resolvedTarget = GetCompositeEntryTarget(targetIndex);");
-            Sb.AppendLine($"{CurrentStateField} = ({stateTypeForUsage})resolvedTarget;");
-            
-            // Log composite state resolution
-            if (ShouldGenerateLogging)
-            {
-                // Determine resolution method based on history mode
-                var resolutionMethod = "Initial";
-                if (Model.HistoryOf.TryGetValue(targetState, out var historyMode) && historyMode != Generator.Model.HistoryMode.None)
-                {
-                    resolutionMethod = historyMode.ToString() + "History";
-                }
-                
-                WriteLogStatement("Debug",
-                    $"CompositeStateEntry(_logger, _instanceId, \"{targetState}\", (({stateTypeForUsage})resolvedTarget).ToString(), \"{resolutionMethod}\");");
-            }
-        }
-        else
-        {
-            // Simple state change
-            Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(targetState)};");
-        }
+        // Always use GetCompositeEntryTarget for all external transitions
+        // This ensures proper history handling even for leaf destinations
+        Sb.AppendLine($"// Set destination and resolve through GetCompositeEntryTarget");
+        Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(targetState)};");
+        Sb.AppendLine($"{CurrentStateField} = ({stateTypeForUsage})GetCompositeEntryTarget((int){CurrentStateField});");
     }
 
     #endregion
@@ -1353,21 +1553,21 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                                 Sb.AppendLine($"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}:");
                                 using (Sb.Indent())
                                 {
-if (!string.IsNullOrEmpty(transition.GuardMethod))
-{
-    // Generate guard call with exception handling
-    GuardGenerationHelper.EmitGuardCheck(
-        Sb,
-        transition,
-        "guardResult",
-        "null",
-        IsAsyncMachine,
-        wrapInTryCatch: true,
-        Model.ContinueOnCapturedContext,
-        handleResultAfterTry: true  // <- zadeklaruje zmienną przed try
-    );
-    Sb.AppendLine("return guardResult;");
-}
+                                    if (!string.IsNullOrEmpty(transition.GuardMethod))
+                                    {
+                                        // Generate guard call with exception handling
+                                        GuardGenerationHelper.EmitGuardCheck(
+                                            Sb,
+                                            transition,
+                                            "guardResult",
+                                            "null",
+                                            IsAsyncMachine,
+                                            wrapInTryCatch: true,
+                                            Model.ContinueOnCapturedContext,
+                                            handleResultAfterTry: true
+                                        );
+                                        Sb.AppendLine("return guardResult;");
+                                    }
                                     else
                                     {
                                         Sb.AppendLine("return true;");
@@ -1939,7 +2139,10 @@ if (!string.IsNullOrEmpty(transition.GuardMethod))
     /// </summary>
     protected TransitionBuildContext CreateBuildContext(TransitionModel transition)
     {
-        var allStates = Model.States.Keys.OrderBy(s => s).ToList();
+        var allStates = Model.States.Values
+            .OrderBy(s => s.OrdinalValue)
+            .Select(s => s.Name)
+            .ToList();
         var currentStateIndex = allStates.IndexOf(transition.FromState);
         
         // Build hierarchy arrays if needed
@@ -2077,7 +2280,15 @@ if (!string.IsNullOrEmpty(transition.GuardMethod))
     {
         if (!string.IsNullOrEmpty(step.StateName))
         {
-            Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(step.StateName)};");
+            // For HSM, use composite handling to properly resolve history/initial
+            if (Model.HierarchyEnabled)
+            {
+                WriteStateChangeWithCompositeHandling(step.StateName, stateTypeForUsage);
+            }
+            else
+            {
+                Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(step.StateName)};");
+            }
         }
     }
     
@@ -2096,15 +2307,10 @@ if (!string.IsNullOrEmpty(transition.GuardMethod))
     
     private void EmitRecordHistoryStep(PlanStep step, string stateTypeForUsage)
     {
-        if (step.StateIndex >= 0)
+        // Record history before changing state
+        if (Model.HierarchyEnabled)
         {
-            Sb.AppendLine($"// Record history for state index {step.StateIndex}");
-            Sb.AppendLine($"_lastActiveChild[{step.StateIndex}] = (int){CurrentStateField};");
-            
-            if (step.UseDeepHistory)
-            {
-                Sb.AppendLine("// Deep history recording would go here");
-            }
+            Sb.AppendLine("RecordHistoryForCurrentPath();");
         }
     }
     

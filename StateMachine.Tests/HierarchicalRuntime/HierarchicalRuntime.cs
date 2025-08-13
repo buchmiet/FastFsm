@@ -94,6 +94,40 @@ namespace StateMachine.Tests.HierarchicalRuntime
     public partial class DeepHistoryTests
     {
         [Fact]
+        public void DeepHistory_Arrays_Generated_Correctly()
+        {
+            // Use reflection to check generated arrays
+            var type = typeof(DeepHistoryMachine);
+            var parentField = type.GetField("s_parent", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var initialField = type.GetField("s_initialChild", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var depthField = type.GetField("s_depth", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var historyField = type.GetField("s_history", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            var parent = (int[])parentField.GetValue(null);
+            var initial = (int[])initialField.GetValue(null);
+            var depth = (int[])depthField.GetValue(null);
+            var history = (System.Array)historyField.GetValue(null);
+            
+            // Expected: Out=0, Work=1, Work_S1=2, Work_S1_Loading=3, Work_S1_Calc=4
+            Assert.Equal(new[] { -1, -1, 1, 2, 2 }, parent);
+            Assert.Equal(new[] { -1, 2, 3, -1, -1 }, initial);
+            Assert.Equal(new[] { 0, 0, 1, 2, 2 }, depth);
+            
+            // Verify history array: Only Work should have Deep history
+            // Debug: Print actual values
+            for (int i = 0; i < history.Length; i++)
+            {
+                Console.WriteLine($"s_history[{i}] = {history.GetValue(i)}");
+            }
+            
+            Assert.Equal("None", history.GetValue(0).ToString());
+            Assert.Equal("Deep", history.GetValue(1).ToString());
+            Assert.Equal("None", history.GetValue(2).ToString());
+            Assert.Equal("None", history.GetValue(3).ToString());
+            Assert.Equal("None", history.GetValue(4).ToString());
+        }
+
+        [Fact]
         public void DeepHistory_Restores_LeafPath_After_Reentering()
         {
             var m = new DeepHistoryMachine(S.Out);

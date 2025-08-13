@@ -13,6 +13,11 @@ public sealed class StateModel
     public string Name { get; set; } = "";
 
     /// <summary>
+    /// Ordinal value of the enum member (for correct array indexing)
+    /// </summary>
+    public int OrdinalValue { get; set; } = 0;
+
+    /// <summary>
     /// Nazwa metody OnEntry (wykonywana przy wejściu do stanu)
     /// </summary>
     public string OnEntryMethod { get; set; }

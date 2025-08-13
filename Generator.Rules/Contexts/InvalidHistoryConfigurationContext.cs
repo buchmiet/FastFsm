@@ -11,9 +11,14 @@ namespace Generator.Rules.Contexts
         public string StateName { get; }
 
         /// <summary>
-        /// Gets the history mode value that is causing the issue.
+        /// Gets a value indicating whether the state has history.
         /// </summary>
-        public int History { get; }
+        public bool HasHistory { get; }
+
+        /// <summary>
+        /// Gets the history mode as a string.
+        /// </summary>
+        public string HistoryMode { get; }
 
         /// <summary>
         /// Gets a value indicating whether the state is a composite state.
@@ -24,12 +29,14 @@ namespace Generator.Rules.Contexts
         /// Initializes a new instance of the <see cref="InvalidHistoryConfigurationContext"/> class.
         /// </summary>
         /// <param name="stateName">The name of the state with the invalid history configuration.</param>
-        /// <param name="history">The history mode value.</param>
+        /// <param name="hasHistory">Indicates whether the state has history.</param>
+        /// <param name="historyMode">The history mode as a string.</param>
         /// <param name="isComposite">A flag indicating if the state is composite.</param>
-        public InvalidHistoryConfigurationContext(string stateName, int history, bool isComposite)
+        public InvalidHistoryConfigurationContext(string stateName, bool hasHistory, string historyMode, bool isComposite)
         {
             StateName = stateName;
-            History = history;
+            HasHistory = hasHistory;
+            HistoryMode = historyMode;
             IsComposite = isComposite;
         }
     }

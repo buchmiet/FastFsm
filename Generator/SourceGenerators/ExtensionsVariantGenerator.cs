@@ -1,5 +1,6 @@
 ﻿
 using Generator.Model;
+using System.Linq;
 using static Generator.Strings;
 
 namespace Generator.SourceGenerators;
@@ -102,7 +103,9 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
         {
             if (Model.HierarchyEnabled)
             {
-                Sb.AppendLine("DescendToInitialIfComposite();");
+                Sb.AppendLine("// Initialize history tracking array with -1 (no history)");
+                Sb.AppendLine("_lastActiveChild = new int[s_initialChild.Length];");
+                Sb.AppendLine("for (int i = 0; i < _lastActiveChild.Length; i++) _lastActiveChild[i] = -1;");
             }
             
             WriteLoggerAssignment();
@@ -115,11 +118,17 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
 
     private void WriteTryFireMethod(string stateTypeForUsage, string triggerTypeForUsage)
     {
+        // Generate unified TryFireInternal method
         WriteMethodAttribute();
-        using (Sb.Block($"protected override bool TryFireInternal({triggerTypeForUsage} trigger, object? {PayloadVar} = null)"))
+        using (Sb.Block($"protected override bool TryFireInternal({triggerTypeForUsage} trigger, object? payload)"))
         {
+            if (!Model.Transitions.Any())
+            {
+                Sb.AppendLine($"return false; {NoTransitionsComment}");
+                return;
+            }
+            
             Sb.AddProperty($"var {OriginalStateVar}", CurrentStateField);
-            Sb.AddProperty($"bool {SuccessVar}", "false");
             Sb.AppendLine();
 
             WriteTryFireStructure(
@@ -127,8 +136,15 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
                 triggerTypeForUsage,
                 WriteTransitionLogic);
 
-            Sb.AppendLine($"{EndOfTryFireLabel}:;");
-            Sb.AppendLine($"return {SuccessVar};");
+            // Return is handled inside WriteTryFireStructure
+        }
+        Sb.AppendLine();
+        
+        // Generate public wrapper
+        WriteMethodAttribute();
+        using (Sb.Block($"public override bool TryFire({triggerTypeForUsage} trigger, object? payload = null)"))
+        {
+            Sb.AppendLine("return TryFireInternal(trigger, payload);");
         }
         Sb.AppendLine();
     }
@@ -179,8 +195,11 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
                 }
                 else
                 {
-                    Sb.AppendLine(
-                        $"{transition.ActionMethod}(({transition.ExpectedPayloadType}){PayloadVar});");
+                    var payloadType = TypeHelper.FormatTypeForUsage(transition.ExpectedPayloadType);
+                    Sb.AppendLine($"if ({PayloadVar} is {payloadType} p)");
+                    Sb.AppendLine($"    {transition.ActionMethod}(p);");
+                    Sb.AppendLine("else");
+                    Sb.AppendLine($"    return false;");
                 }
 
                 WriteLogStatement(
@@ -204,8 +223,22 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
             // ---------- zmiana stanu ----------
             if (!transition.IsInternal)
             {
-                Sb.AppendLine(
-                    $"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+                // Record history before changing state (for HSM)
+                if (Model.HierarchyEnabled)
+                {
+                    Sb.AppendLine("RecordHistoryForCurrentPath();");
+                }
+                
+                // For HSM, handle composite states properly
+                if (Model.HierarchyEnabled)
+                {
+                    WriteStateChangeWithCompositeHandling(transition.ToState, stateTypeForUsage);
+                }
+                else
+                {
+                    Sb.AppendLine(
+                        $"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+                }
                 WriteLogStatement(
                     "Information",
                     $"TransitionSucceeded(_logger, _instanceId, \"{transition.FromState}\", " +
@@ -213,28 +246,24 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
             }
 
             // ---------- sukces ----------
-            Sb.AppendLine($"{SuccessVar} = true;");
-
             // HOOK: AfterTransition – sukces
             WriteAfterTransitionHook(
                 transition, stateTypeForUsage, triggerTypeForUsage, success: true);
 
-            // przejdź do etykiety końcowej
-            Sb.AppendLine($"goto {EndOfTryFireLabel};");
+            // Direct return success
+            Sb.AppendLine("return true;");
         }                                          // ← koniec bloku try
 
         Sb.AppendLine("catch (Exception)");
         using (Sb.Block(""))                        // ← blok catch { … }
         {
-            // oznacz niepowodzenie
-            Sb.AppendLine($"{SuccessVar} = false;");
 
             // HOOK: AfterTransition – porażka (KLUCZOWA POPRAWKA)
             WriteAfterTransitionHook(
                 transition, stateTypeForUsage, triggerTypeForUsage, success: false);
 
-            // pomiń dalszą wspólną obsługę (if (!success) …)
-            Sb.AppendLine($"goto {EndOfTryFireLabel};");
+            // Direct return failure
+            Sb.AppendLine("return false;");
         }
     }
 
@@ -292,19 +321,8 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
         string stateTypeForUsage,
         string triggerTypeForUsage)
     {
-        using (Sb.Block($"if (!{SuccessVar})"))
-        {
-            Sb.AppendLine($"var failCtx = new StateMachineContext<{stateTypeForUsage}, {triggerTypeForUsage}>(");
-            using (Sb.Indent())
-            {
-                Sb.AppendLine("Guid.NewGuid().ToString(),");
-                Sb.AppendLine($"{OriginalStateVar},");
-                Sb.AppendLine("trigger,");
-                Sb.AppendLine($"{OriginalStateVar},");
-                Sb.AppendLine($"{PayloadVar});");
-            }
-            Sb.AppendLine("_extensionRunner.RunAfterTransition(_extensions, failCtx, false);");
-        }
+        // In the new direct-return pattern, this hook is not needed
+        // Failures are handled inline with WriteAfterTransitionHook(..., success: false)
     }
 
     #endregion
