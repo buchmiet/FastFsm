@@ -32,7 +32,10 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     protected HashSet<string> AddedUsings = [];
 
     // Hook variable names
-    protected const string HookVarContext = "smCtx";
+    protected const string HookVarContext_Pre = "smCtx";
+    protected const string HookVarContext_Guard = "smCtxG";
+    protected const string HookVarContext_Post = "smCtxP";
+    protected const string HookVarContext_Error = "smCtxE";
     protected const string EndOfTryFireLabel = "END_TRY_FIRE";
     #endregion
 
