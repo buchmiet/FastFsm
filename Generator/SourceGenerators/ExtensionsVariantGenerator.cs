@@ -144,6 +144,7 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
         WriteMethodAttribute();
         using (Sb.Block($"public override bool TryFire({triggerTypeForUsage} trigger, object? payload = null)"))
         {
+            Sb.AppendLine("EnsureStarted();");
             Sb.AppendLine("return TryFireInternal(trigger, payload);");
         }
         Sb.AppendLine();

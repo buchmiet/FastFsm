@@ -38,8 +38,8 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
     private readonly MultipleInitialSubstatesRule _multipleInitialSubstatesRule = new();
     private readonly InvalidHistoryConfigurationRule _invalidHistoryConfigRule = new();
     private readonly ConflictingTransitionTargetsRule _conflictingTransitionTargetsRule = new();
-    private readonly TypeSystemHelper _typeHelper = new();
-    private readonly AsyncSignatureAnalyzer _asyncAnalyzer = new(new TypeSystemHelper());
+    private readonly TypeSystemHelper _typeHelper = new TypeSystemHelper();
+    private readonly AsyncSignatureAnalyzer _asyncAnalyzer = new AsyncSignatureAnalyzer(new TypeSystemHelper());
     private readonly HashSet<TransitionDefinition> _processedTransitionsInCurrentFsm = [];
     private readonly MixedModeRule _mixedModeRule = new();
 
@@ -1586,17 +1586,58 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         Action<string>? report = null)
     {
         bool isAsyncOce = classSymbol.Name.Contains("AsyncOceOnEntryMachine");
+        bool isContinueMachine = classSymbol.Name.Contains("ContinueOnActionMachine");
         if (isAsyncOce)
             report?.Invoke("[DEBUG AOE] ParseOnExceptionAttribute started");
             
-        // Find [OnException] attribute on class
+        // Debug: Log all attributes for ContinueOnActionMachine
+        if (isContinueMachine)
+        {
+            report?.Invoke($"[DEBUG] Attributes for ContinueOnActionMachine:");
+            foreach (var attr in classSymbol.GetAttributes())
+            {
+                report?.Invoke($"[DEBUG]   - {attr.AttributeClass?.ToDisplayString()}");
+            }
+            report?.Invoke($"[DEBUG] Looking for: {OnExceptionAttributeFullName}");
+        }
+            
+        // Find [OnException] attribute on class - use TypeSystemHelper for robust matching
         var onExceptionAttr = classSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == OnExceptionAttributeFullName);
+            .FirstOrDefault(a =>
+            {
+                var cls = a.AttributeClass;
+                if (cls is null) return false;
+                
+                // Get the simple name using TypeSystemHelper
+                var fullName = _typeHelper.BuildFullTypeName(cls);
+                var simpleName = _typeHelper.GetSimpleTypeName(fullName);
+                
+                // Check for both with and without "Attribute" suffix
+                if (simpleName == "OnExceptionAttribute" || simpleName == "OnException")
+                {
+                    if (isContinueMachine)
+                        report?.Invoke($"[DEBUG] Matched by simple name: {simpleName}");
+                    return true;
+                }
+                
+                // Fallback: check if full name ends with the expected pattern
+                if (fullName.EndsWith(".OnExceptionAttribute", StringComparison.Ordinal) ||
+                    fullName.EndsWith("+OnExceptionAttribute", StringComparison.Ordinal))
+                {
+                    if (isContinueMachine)
+                        report?.Invoke($"[DEBUG] Matched by full name suffix: {fullName}");
+                    return true;
+                }
+                
+                return false;
+            });
 
         if (onExceptionAttr == null)
         {
             if (isAsyncOce)
                 report?.Invoke("[DEBUG AOE] No OnException attribute found");
+            if (isContinueMachine)
+                report?.Invoke("[DEBUG] No OnException attribute found for ContinueOnActionMachine");
             return;
         }
         
@@ -1782,6 +1823,15 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             AcceptsCancellationToken = selectedMethod.Parameters.Length == 2,
             ExceptionContextClosedType = _typeHelper.BuildFullTypeName(exceptionContextClosed)
         };
+        
+        if (isContinueMachine)
+        {
+            report?.Invoke($"[DEBUG] ExceptionHandler set for ContinueOnActionMachine:");
+            report?.Invoke($"[DEBUG]   MethodName: {model.ExceptionHandler.MethodName}");
+            report?.Invoke($"[DEBUG]   IsAsync: {model.ExceptionHandler.IsAsync}");
+            report?.Invoke($"[DEBUG]   AcceptsCancellationToken: {model.ExceptionHandler.AcceptsCancellationToken}");
+            report?.Invoke($"[DEBUG]   ExceptionContextClosedType: {model.ExceptionHandler.ExceptionContextClosedType}");
+        }
     }
 
     private void BuildHierarchy(StateMachineModel model, ref bool criticalErrorOccurred, Action<string>? report)

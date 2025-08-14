@@ -536,6 +536,7 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
             WriteMethodAttribute();
             using (Sb.Block($"public override bool TryFire({triggerTypeForUsage} trigger, object? payload = null)"))
             {
+                Sb.AppendLine("EnsureStarted();");
                 Sb.AppendLine("return TryFireInternal(trigger, payload);");
             }
             Sb.AppendLine();

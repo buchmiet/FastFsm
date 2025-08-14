@@ -635,6 +635,17 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             }
         }
 
+        // Store the previous state for potential rollback (only if we have exception handler and action)
+        if (Model.ExceptionHandler != null && !string.IsNullOrEmpty(transition.ActionMethod))
+        {
+            Sb.AppendLine($"// FSM_DEBUG: Handler found: {Model.ExceptionHandler.MethodName}");
+            Sb.AppendLine($"var prevState = {CurrentStateField};");
+        }
+        else if (!string.IsNullOrEmpty(transition.ActionMethod))
+        {
+            Sb.AppendLine($"// FSM_DEBUG: No handler for {Model.ClassName}, action={transition.ActionMethod}");
+        }
+        
         // State change
         if (!transition.IsInternal)
         {
@@ -665,18 +676,69 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         // Action (if present)
         if (!string.IsNullOrEmpty(transition.ActionMethod))
         {
-            Sb.AppendLine("try");
-            using (Sb.Block(""))
+            if (Model.ExceptionHandler == null)
             {
-                Sb.AppendLine($"{transition.ActionMethod}();");
-                WriteLogStatement("Debug",
-                    $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+                // No exception handler - use existing try/catch logic
+                Sb.AppendLine("try");
+                using (Sb.Block(""))
+                {
+                    Sb.AppendLine($"{transition.ActionMethod}();");
+                    WriteLogStatement("Debug",
+                        $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+                }
+                Sb.AppendLine("catch");
+                using (Sb.Block(""))
+                {
+                    WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                    Sb.AppendLine("return false;");
+                }
             }
-            Sb.AppendLine("catch");
-            using (Sb.Block(""))
+            else
             {
-                WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-                Sb.AppendLine("return false;");
+                // Has exception handler - use directive-based exception handling
+                Sb.AppendLine("try");
+                using (Sb.Block(""))
+                {
+                    Sb.AppendLine($"{transition.ActionMethod}();");
+                    WriteLogStatement("Debug",
+                        $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+                }
+                Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
+                using (Sb.Block(""))
+                {
+                    var handler = Model.ExceptionHandler;
+                    var stateType = GetTypeNameForUsage(Model.StateType);
+                    var triggerType = GetTypeNameForUsage(Model.TriggerType);
+                    
+                    // Create exception context
+                    Sb.AppendLine($"var exceptionContext = new {handler.ExceptionContextClosedType}(");
+                    using (Sb.Indent())
+                    {
+                        Sb.AppendLine($"{stateType}.{TypeHelper.EscapeIdentifier(transition.FromState)},");
+                        Sb.AppendLine($"{stateType}.{TypeHelper.EscapeIdentifier(transition.ToState)},");
+                        Sb.AppendLine($"{triggerType}.{TypeHelper.EscapeIdentifier(transition.Trigger)},");
+                        Sb.AppendLine("ex,");
+                        Sb.AppendLine("TransitionStage.Action,");
+                        Sb.AppendLine("true);"); // State already changed for actions
+                    }
+                    
+                    // Call handler
+                    Sb.AppendLine($"var directive = {handler.MethodName}(exceptionContext);");
+                    
+                    // Apply directive based on policy
+                    using (Sb.Block("if (directive == ExceptionDirective.Throw)"))
+                    {
+                        Sb.AppendLine($"_currentState = prevState;"); // Restore state
+                        Sb.AppendLine("throw;");
+                    }
+                    using (Sb.Block("else if (directive == ExceptionDirective.StopTransition)"))
+                    {
+                        Sb.AppendLine($"_currentState = prevState;"); // Restore state
+                        WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                        Sb.AppendLine("return false;");
+                    }
+                    Sb.AppendLine("// Continue: keep new state and continue execution");
+                }
             }
         }
 
@@ -2249,6 +2311,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         if (Model.ExceptionHandler == null)
         {
             // No exception handler - use existing logic
+            Sb.AppendLine($"// FSM_DEBUG: No exception handler found for {Model.ClassName}");
             WriteActionCall(transition);
             WriteLogStatement("Debug",
                 $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
@@ -2266,7 +2329,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
         using (Sb.Block(""))
         {
-            EmitExceptionHandlerCall(fromState, toState, transition.Trigger, "TransitionStage.Action", true);
+            EmitExceptionHandlerCallForAction(fromState, toState, transition.Trigger);
         }
     }
 
@@ -2379,7 +2442,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
         using (Sb.Block(""))
         {
-            EmitExceptionHandlerCall(fromState, toState, transition.Trigger, "TransitionStage.Action", true);
+            EmitExceptionHandlerCallForAction(fromState, toState, transition.Trigger);
         }
     }
 
@@ -2432,6 +2495,62 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             Sb.AppendLine("throw;");
         }
         Sb.AppendLine("// Exception swallowed by Continue directive");
+    }
+
+    /// <summary>
+    /// Emits the call to the exception handler for Actions with proper directive handling.
+    /// </summary>
+    private void EmitExceptionHandlerCallForAction(
+        string fromState,
+        string toState,
+        string trigger)
+    {
+        var handler = Model.ExceptionHandler!;
+        var stateType = GetTypeNameForUsage(Model.StateType);
+        var triggerType = GetTypeNameForUsage(Model.TriggerType);
+
+        // Create exception context
+        Sb.AppendLine($"var exceptionContext = new {handler.ExceptionContextClosedType}(");
+        using (Sb.Indent())
+        {
+            Sb.AppendLine($"{stateType}.{TypeHelper.EscapeIdentifier(fromState)},");
+            Sb.AppendLine($"{stateType}.{TypeHelper.EscapeIdentifier(toState)},");
+            Sb.AppendLine($"{triggerType}.{TypeHelper.EscapeIdentifier(trigger)},");
+            Sb.AppendLine("ex,");
+            Sb.AppendLine("TransitionStage.Action,");
+            Sb.AppendLine("true);"); // State already changed for actions
+        }
+
+        // Call handler
+        string directiveVar = "directive";
+        if (handler.IsAsync)
+        {
+            var args = handler.AcceptsCancellationToken
+                ? "exceptionContext, cancellationToken"
+                : "exceptionContext";
+            Sb.AppendLine($"var {directiveVar} = await {handler.MethodName}({args}).ConfigureAwait({Model.ContinueOnCapturedContext.ToString().ToLowerInvariant()});");
+        }
+        else
+        {
+            var args = handler.AcceptsCancellationToken
+                ? "exceptionContext, cancellationToken"
+                : "exceptionContext";
+            Sb.AppendLine($"var {directiveVar} = {handler.MethodName}({args});");
+        }
+
+        // Apply directive based on policy
+        using (Sb.Block($"if ({directiveVar} == ExceptionDirective.Throw)"))
+        {
+            Sb.AppendLine($"_currentState = {stateType}.{TypeHelper.EscapeIdentifier(fromState)};"); // Restore state
+            Sb.AppendLine("throw;");
+        }
+        using (Sb.Block($"else if ({directiveVar} == ExceptionDirective.StopTransition)"))
+        {
+            Sb.AppendLine($"_currentState = {stateType}.{TypeHelper.EscapeIdentifier(fromState)};"); // Restore state
+            Sb.AppendLine($"{SuccessVar} = false;");
+            Sb.AppendLine($"goto {EndOfTryFireLabel};");
+        }
+        Sb.AppendLine("// Continue: keep new state and continue execution");
     }
 
     #endregion
