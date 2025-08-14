@@ -356,22 +356,29 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                             && toStateDef != null
                             && !string.IsNullOrEmpty(toStateDef.OnEntryMethod);
 
-        // Determine if we need payload pattern matching
+        // Determine if any callback expects payload (pattern matching needed)
         bool needsPayload = (transition.GuardExpectsPayload && !string.IsNullOrEmpty(transition.ExpectedPayloadType))
                           || (transition.ActionExpectsPayload && !string.IsNullOrEmpty(transition.ExpectedPayloadType))
                           || (fromHasExit && fromStateDef!.OnExitExpectsPayload && !string.IsNullOrEmpty(transition.ExpectedPayloadType))
                           || (toHasEntry && toStateDef!.OnEntryExpectsPayload && !string.IsNullOrEmpty(transition.ExpectedPayloadType));
 
-        // Hook before transition (must be called for all transitions)
+        // If no payload is needed, fall back to non-payload logic (which includes callbacks)
+        if (!needsPayload)
+        {
+            WriteTransitionLogicForFlatNonPayload(transition, stateTypeForUsage, triggerTypeForUsage);
+            return;
+        }
+
+        // Hook before transition for payload-dependent logic
         WriteBeforeTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage);
-        
+
         // Generate unique payload variable name if needed
         string payloadVarName = "";
-        if (needsPayload && !string.IsNullOrEmpty(transition.ExpectedPayloadType))
+        if (!string.IsNullOrEmpty(transition.ExpectedPayloadType))
         {
             payloadVarName = MakeSafeIdentifier($"p_{transition.FromState}_{transition.Trigger}_{transition.ToState}");
             var payloadType = TypeHelper.FormatTypeForUsage(transition.ExpectedPayloadType);
-            
+
             // Open payload pattern matching block
             Sb.AppendLine($"if ({PayloadVar} is {payloadType} {payloadVarName})");
             Sb.AppendLine("{");
@@ -529,26 +536,8 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         }
         else
         {
-            // For transitions without payload requirements, emit simple logic
-            // State change
-            if (!transition.IsInternal)
-            {
-                if (Model.HierarchyEnabled)
-                {
-                    Sb.AppendLine("RecordHistoryForCurrentPath();");
-                    WriteStateChangeWithCompositeHandling(transition.ToState, stateTypeForUsage);
-                }
-                else
-                {
-                    Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
-                }
-                
-                WriteLogStatement("Information",
-                    $"TransitionSucceeded(_logger, _instanceId, \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
-            }
-            
-            WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
-            Sb.AppendLine("return true;");
+            // Fallback when payload type is unknown
+            WriteTransitionLogicForFlatNonPayload(transition, stateTypeForUsage, triggerTypeForUsage);
         }
     }
 
