@@ -522,13 +522,11 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
                     return;
                 }
 
-                Sb.AppendLine($"var {OriginalStateVar} = {CurrentStateField};");
-                Sb.AppendLine();
-
+                // For flat non-payload, use direct returns without success/goto
                 WriteTryFireStructure(
                     stateTypeForUsage,
                     triggerTypeForUsage,
-                    WriteTransitionLogic);
+                    WriteTransitionLogicForFlatNonPayload);
 
                 // Return is handled inside WriteTryFireStructure
             }
