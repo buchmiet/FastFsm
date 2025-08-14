@@ -531,13 +531,28 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             Sb.AppendLine("else");
             using (Sb.Block(""))
             {
-                if (ParameterlessPathIsValid(transition, fromStateDef, toStateDef, fromHasExit, toHasEntry))
+                if (IsSinglePayloadVariant())
                 {
-                    WriteTransitionLogicForFlatNonPayload(transition, stateTypeForUsage, triggerTypeForUsage);
+                    // Allow transition without payload; skip payload-only callbacks
+                    WriteTransitionLogicNoPayload_SkipPayloadOnlyCallbacks(
+                        transition,
+                        fromStateDef,
+                        toStateDef,
+                        fromHasExit,
+                        toHasEntry,
+                        stateTypeForUsage,
+                        triggerTypeForUsage);
                 }
                 else
                 {
-                    Sb.AppendLine("return false;");
+                    if (ParameterlessPathIsValid(transition, fromStateDef, toStateDef, fromHasExit, toHasEntry))
+                    {
+                        WriteTransitionLogicForFlatNonPayload(transition, stateTypeForUsage, triggerTypeForUsage);
+                    }
+                    else
+                    {
+                        Sb.AppendLine("return false;");
+                    }
                 }
             }
         }
@@ -546,6 +561,249 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             // Fallback when payload type is unknown
             WriteTransitionLogicForFlatNonPayload(transition, stateTypeForUsage, triggerTypeForUsage);
         }
+    }
+
+    // Emits flat transition logic for the case "no payload provided"
+    // Uses parameterless guard/OnExit/OnEntry if available; skips payload-only callbacks.
+    private void WriteTransitionLogicNoPayload_SkipPayloadOnlyCallbacks(
+        TransitionModel transition,
+        StateModel? fromStateDef,
+        StateModel? toStateDef,
+        bool fromHasExit,
+        bool toHasEntry,
+        string stateTypeForUsage,
+        string triggerTypeForUsage)
+    {
+        // Hook before transition
+        WriteBeforeTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage);
+
+        // Guard logic
+        if (!string.IsNullOrEmpty(transition.GuardMethod))
+        {
+            if (transition.GuardExpectsPayload && !transition.GuardSignature.HasParameterless)
+            {
+                Sb.AppendLine("return false;");
+                return;
+            }
+
+            WriteGuardEvaluationHook(transition, stateTypeForUsage, triggerTypeForUsage);
+            Sb.AppendLine("bool guardOk = true;");
+            Sb.AppendLine($"try {{ guardOk = {transition.GuardMethod}(); }} catch {{ return false; }}");
+            WriteAfterGuardEvaluatedHook(transition, "guardOk", stateTypeForUsage, triggerTypeForUsage);
+
+            using (Sb.Block("if (!guardOk)"))
+            {
+                WriteLogStatement("Warning",
+                    $"GuardFailed(_logger, _instanceId, \"{transition.GuardMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+                WriteLogStatement("Warning",
+                    $"TransitionFailed(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\");");
+                WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                Sb.AppendLine("return false;");
+            }
+        }
+
+        // OnExit
+        if (fromHasExit && fromStateDef != null)
+        {
+            if (fromStateDef.OnExitExpectsPayload)
+            {
+                if (fromStateDef.OnExitHasParameterlessOverload)
+                {
+                    Sb.AppendLine("try");
+                    using (Sb.Block(""))
+                    {
+                        if (fromStateDef.OnExitIsAsync && !IsAsyncMachine)
+                            Sb.AppendLine($"{fromStateDef.OnExitMethod}(System.Threading.CancellationToken.None);");
+                        else
+                            Sb.AppendLine($"{fromStateDef.OnExitMethod}();");
+                        WriteLogStatement("Debug",
+                            $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
+                    }
+                    Sb.AppendLine("catch");
+                    using (Sb.Block(""))
+                    {
+                        WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                        Sb.AppendLine("return false;");
+                    }
+                }
+            }
+            else
+            {
+                Sb.AppendLine("try");
+                using (Sb.Block(""))
+                {
+                    if (fromStateDef.OnExitIsAsync && !IsAsyncMachine)
+                        Sb.AppendLine($"{fromStateDef.OnExitMethod}(System.Threading.CancellationToken.None);");
+                    else
+                        Sb.AppendLine($"{fromStateDef.OnExitMethod}();");
+                    WriteLogStatement("Debug",
+                        $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
+                }
+                Sb.AppendLine("catch");
+                using (Sb.Block(""))
+                {
+                    WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                    Sb.AppendLine("return false;");
+                }
+            }
+        }
+
+        bool callAction = !string.IsNullOrEmpty(transition.ActionMethod)
+            && (!transition.ActionExpectsPayload || transition.ActionSignature.HasParameterless);
+
+        if (Model.ExceptionHandler != null && callAction)
+        {
+            Sb.AppendLine($"// FSM_DEBUG: Handler found: {Model.ExceptionHandler.MethodName}");
+            Sb.AppendLine($"var prevState = {CurrentStateField};");
+        }
+        else if (callAction)
+        {
+            Sb.AppendLine($"// FSM_DEBUG: No handler for {Model.ClassName}, action={transition.ActionMethod}");
+        }
+
+        // State change
+        if (!transition.IsInternal)
+        {
+            if (Model.HierarchyEnabled)
+            {
+                Sb.AppendLine("RecordHistoryForCurrentPath();");
+                WriteStateChangeWithCompositeHandling(transition.ToState, stateTypeForUsage);
+            }
+            else
+            {
+                Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            }
+        }
+
+        // OnEntry
+        if (toHasEntry && toStateDef != null)
+        {
+            if (toStateDef.OnEntryExpectsPayload)
+            {
+                if (toStateDef.OnEntryHasParameterlessOverload)
+                {
+                    Sb.AppendLine("try");
+                    using (Sb.Block(""))
+                    {
+                        if (toStateDef.OnEntryIsAsync && !IsAsyncMachine)
+                            Sb.AppendLine($"{toStateDef.OnEntryMethod}(System.Threading.CancellationToken.None);");
+                        else
+                            Sb.AppendLine($"{toStateDef.OnEntryMethod}();");
+                        WriteLogStatement("Debug",
+                            $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
+                    }
+                    Sb.AppendLine("catch");
+                    using (Sb.Block(""))
+                    {
+                        WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                        Sb.AppendLine("return false;");
+                    }
+                }
+            }
+            else
+            {
+                Sb.AppendLine("try");
+                using (Sb.Block(""))
+                {
+                    if (toStateDef.OnEntryIsAsync && !IsAsyncMachine)
+                        Sb.AppendLine($"{toStateDef.OnEntryMethod}(System.Threading.CancellationToken.None);");
+                    else
+                        Sb.AppendLine($"{toStateDef.OnEntryMethod}();");
+                    WriteLogStatement("Debug",
+                        $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
+                }
+                Sb.AppendLine("catch");
+                using (Sb.Block(""))
+                {
+                    WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                    Sb.AppendLine("return false;");
+                }
+            }
+        }
+
+        // Action
+        if (callAction)
+        {
+            if (Model.ExceptionHandler == null)
+            {
+                Sb.AppendLine("try");
+                using (Sb.Block(""))
+                {
+                    if (transition.ActionIsAsync && !IsAsyncMachine)
+                    {
+                        Sb.AppendLine($"{transition.ActionMethod}(System.Threading.CancellationToken.None);");
+                    }
+                    else
+                    {
+                        Sb.AppendLine($"{transition.ActionMethod}();");
+                    }
+                    WriteLogStatement("Debug",
+                        $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+                }
+                Sb.AppendLine("catch");
+                using (Sb.Block(""))
+                {
+                    WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                    Sb.AppendLine("return false;");
+                }
+            }
+            else
+            {
+                Sb.AppendLine("try");
+                using (Sb.Block(""))
+                {
+                    if (transition.ActionIsAsync && !IsAsyncMachine)
+                    {
+                        Sb.AppendLine($"{transition.ActionMethod}(System.Threading.CancellationToken.None);");
+                    }
+                    else
+                    {
+                        Sb.AppendLine($"{transition.ActionMethod}();");
+                    }
+                    WriteLogStatement("Debug",
+                        $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+                }
+                Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
+                using (Sb.Block(""))
+                {
+                    var handler = Model.ExceptionHandler;
+                    var stateType = GetTypeNameForUsage(Model.StateType);
+                    var triggerType = GetTypeNameForUsage(Model.TriggerType);
+                    Sb.AppendLine($"var exceptionContext = new {handler.ExceptionContextClosedType}(");
+                    using (Sb.Indent())
+                    {
+                        Sb.AppendLine($"{stateType}.{TypeHelper.EscapeIdentifier(transition.FromState)},");
+                        Sb.AppendLine($"{stateType}.{TypeHelper.EscapeIdentifier(transition.ToState)},");
+                        Sb.AppendLine($"{triggerType}.{TypeHelper.EscapeIdentifier(transition.Trigger)},");
+                        Sb.AppendLine("ex,");
+                        Sb.AppendLine("TransitionStage.Action,");
+                        Sb.AppendLine("true);");
+                    }
+                    Sb.AppendLine($"var directive = {handler.MethodName}(exceptionContext);");
+                    using (Sb.Block("if (directive == ExceptionDirective.Propagate)"))
+                    {
+                        Sb.AppendLine("throw;");
+                    }
+                    using (Sb.Block("if (directive == ExceptionDirective.Abort)"))
+                    {
+                        Sb.AppendLine($"{CurrentStateField} = prevState;");
+                        WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                        Sb.AppendLine("return false;");
+                    }
+                    Sb.AppendLine("// Continue: keep new state and continue execution");
+                }
+            }
+        }
+
+        // Success
+        if (!transition.IsInternal)
+        {
+            WriteLogStatement("Information",
+                $"TransitionSucceeded(_logger, _instanceId, \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+        }
+
+        WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
+        Sb.AppendLine("return true;");
     }
 
     private bool ParameterlessPathIsValid(
