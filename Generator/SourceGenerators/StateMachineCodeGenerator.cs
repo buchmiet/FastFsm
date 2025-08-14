@@ -726,16 +726,10 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                     Sb.AppendLine($"var directive = {handler.MethodName}(exceptionContext);");
                     
                     // Apply directive based on policy
-                    using (Sb.Block("if (directive == ExceptionDirective.Throw)"))
+                    using (Sb.Block("if (directive == ExceptionDirective.Propagate)"))
                     {
                         Sb.AppendLine($"_currentState = prevState;"); // Restore state
                         Sb.AppendLine("throw;");
-                    }
-                    using (Sb.Block("else if (directive == ExceptionDirective.StopTransition)"))
-                    {
-                        Sb.AppendLine($"_currentState = prevState;"); // Restore state
-                        WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-                        Sb.AppendLine("return false;");
                     }
                     Sb.AppendLine("// Continue: keep new state and continue execution");
                 }
@@ -2539,16 +2533,10 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         }
 
         // Apply directive based on policy
-        using (Sb.Block($"if ({directiveVar} == ExceptionDirective.Throw)"))
+        using (Sb.Block($"if ({directiveVar} == ExceptionDirective.Propagate)"))
         {
             Sb.AppendLine($"_currentState = {stateType}.{TypeHelper.EscapeIdentifier(fromState)};"); // Restore state
             Sb.AppendLine("throw;");
-        }
-        using (Sb.Block($"else if ({directiveVar} == ExceptionDirective.StopTransition)"))
-        {
-            Sb.AppendLine($"_currentState = {stateType}.{TypeHelper.EscapeIdentifier(fromState)};"); // Restore state
-            Sb.AppendLine($"{SuccessVar} = false;");
-            Sb.AppendLine($"goto {EndOfTryFireLabel};");
         }
         Sb.AppendLine("// Continue: keep new state and continue execution");
     }
