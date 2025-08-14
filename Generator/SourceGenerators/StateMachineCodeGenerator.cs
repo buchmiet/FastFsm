@@ -728,7 +728,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                     // Apply directive based on policy
                     using (Sb.Block("if (directive == ExceptionDirective.Propagate)"))
                     {
-                        Sb.AppendLine($"_currentState = prevState;"); // Restore state
+                        // Keep the new state on Propagate in flat FSM
                         Sb.AppendLine("throw;");
                     }
                     Sb.AppendLine("// Continue: keep new state and continue execution");
@@ -2535,7 +2535,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         // Apply directive based on policy
         using (Sb.Block($"if ({directiveVar} == ExceptionDirective.Propagate)"))
         {
-            Sb.AppendLine($"_currentState = {stateType}.{TypeHelper.EscapeIdentifier(fromState)};"); // Restore state
+            // Keep the new state on Propagate in flat FSM
             Sb.AppendLine("throw;");
         }
         Sb.AppendLine("// Continue: keep new state and continue execution");
