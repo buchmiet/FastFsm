@@ -134,7 +134,7 @@ internal sealed class FullVariantGenerator(StateMachineModel model) : PayloadVar
         string stateTypeForUsage,
         string triggerTypeForUsage)
     {
-        Sb.AppendLine($"var {HookVarContext} = new StateMachineContext<{stateTypeForUsage}, {triggerTypeForUsage}>(");
+        Sb.AppendLine($"var {HookVarContext_Pre} = new StateMachineContext<{stateTypeForUsage}, {triggerTypeForUsage}>(");
         using (Sb.Indent())
         {
             Sb.AppendLine("Guid.NewGuid().ToString(),");
@@ -144,7 +144,7 @@ internal sealed class FullVariantGenerator(StateMachineModel model) : PayloadVar
             Sb.AppendLine($"{PayloadVar});");
         }
         Sb.AppendLine();
-        Sb.AppendLine($"_extensionRunner.RunBeforeTransition(_extensions, {HookVarContext});");
+        Sb.AppendLine($"_extensionRunner.RunBeforeTransition(_extensions, {HookVarContext_Pre});");
         Sb.AppendLine();
     }
 
@@ -153,7 +153,17 @@ internal sealed class FullVariantGenerator(StateMachineModel model) : PayloadVar
         string stateTypeForUsage,
         string triggerTypeForUsage)
     {
-        Sb.AppendLine($"_extensionRunner.RunGuardEvaluation(_extensions, {HookVarContext}, \"{transition.GuardMethod}\");");
+        Sb.AppendLine($"var {HookVarContext_Guard} = new StateMachineContext<{stateTypeForUsage}, {triggerTypeForUsage}>(");
+        using (Sb.Indent())
+        {
+            Sb.AppendLine("Guid.NewGuid().ToString(),");
+            Sb.AppendLine($"{CurrentStateField},");
+            Sb.AppendLine("trigger,");
+            Sb.AppendLine($"{stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)},");
+            Sb.AppendLine($"{PayloadVar});");
+        }
+        Sb.AppendLine();
+        Sb.AppendLine($"_extensionRunner.RunGuardEvaluation(_extensions, {HookVarContext_Guard}, \"{transition.GuardMethod}\");");
         Sb.AppendLine();
     }
 
@@ -163,7 +173,7 @@ internal sealed class FullVariantGenerator(StateMachineModel model) : PayloadVar
         string stateTypeForUsage,
         string triggerTypeForUsage)
     {
-        Sb.AppendLine($"_extensionRunner.RunGuardEvaluated(_extensions, {HookVarContext}, \"{transition.GuardMethod}\", {guardResultVar});");
+        Sb.AppendLine($"_extensionRunner.RunGuardEvaluated(_extensions, {HookVarContext_Guard}, \"{transition.GuardMethod}\", {guardResultVar});");
         Sb.AppendLine();
     }
 
@@ -173,7 +183,7 @@ internal sealed class FullVariantGenerator(StateMachineModel model) : PayloadVar
         string triggerTypeForUsage,
         bool success)
     {
-        Sb.AppendLine($"_extensionRunner.RunAfterTransition(_extensions, {HookVarContext}, {success.ToString().ToLower()});");
+        Sb.AppendLine($"_extensionRunner.RunAfterTransition(_extensions, {HookVarContext_Pre}, {success.ToString().ToLower()});");
     }
 
     protected override void WriteTransitionFailureHook(
