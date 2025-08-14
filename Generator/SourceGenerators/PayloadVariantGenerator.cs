@@ -531,7 +531,14 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             Sb.AppendLine("else");
             using (Sb.Block(""))
             {
-                Sb.AppendLine("return false;");
+                if (ParameterlessPathIsValid(transition, fromStateDef, toStateDef, fromHasExit, toHasEntry))
+                {
+                    WriteTransitionLogicForFlatNonPayload(transition, stateTypeForUsage, triggerTypeForUsage);
+                }
+                else
+                {
+                    Sb.AppendLine("return false;");
+                }
             }
         }
         else
@@ -539,6 +546,72 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
             // Fallback when payload type is unknown
             WriteTransitionLogicForFlatNonPayload(transition, stateTypeForUsage, triggerTypeForUsage);
         }
+    }
+
+    private bool ParameterlessPathIsValid(
+        TransitionModel transition,
+        StateModel? fromStateDef,
+        StateModel? toStateDef,
+        bool fromHasExit,
+        bool toHasEntry)
+    {
+        bool guardOk;
+        if (string.IsNullOrEmpty(transition.GuardMethod))
+        {
+            guardOk = true;
+        }
+        else if (!transition.GuardExpectsPayload)
+        {
+            guardOk = true;
+        }
+        else
+        {
+            guardOk = transition.GuardSignature.HasParameterless;
+        }
+
+        bool actionOk;
+        if (string.IsNullOrEmpty(transition.ActionMethod))
+        {
+            actionOk = true;
+        }
+        else if (!transition.ActionExpectsPayload)
+        {
+            actionOk = true;
+        }
+        else
+        {
+            actionOk = transition.ActionSignature.HasParameterless;
+        }
+
+        bool exitOk;
+        if (!fromHasExit || fromStateDef == null)
+        {
+            exitOk = true;
+        }
+        else if (!fromStateDef.OnExitExpectsPayload)
+        {
+            exitOk = true;
+        }
+        else
+        {
+            exitOk = fromStateDef.OnExitHasParameterlessOverload;
+        }
+
+        bool entryOk;
+        if (!toHasEntry || toStateDef == null)
+        {
+            entryOk = true;
+        }
+        else if (!toStateDef.OnEntryExpectsPayload)
+        {
+            entryOk = true;
+        }
+        else
+        {
+            entryOk = toStateDef.OnEntryHasParameterlessOverload;
+        }
+
+        return guardOk && actionOk && exitOk && entryOk;
     }
 
     protected override void WriteOnInitialEntryMethod(string stateTypeForUsage)
