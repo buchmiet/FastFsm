@@ -164,7 +164,7 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
         if (!string.IsNullOrEmpty(transition.GuardMethod))
         {
             WriteGuardEvaluationHook(transition, stateTypeForUsage, triggerTypeForUsage);
-            WriteGuardCheck(transition, stateTypeForUsage, triggerTypeForUsage);
+            WriteGuardCheckForExtensions(transition, stateTypeForUsage, triggerTypeForUsage);
         }
 
         // ────────────────────────────────────────────────────
@@ -197,9 +197,15 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
                 {
                     var payloadType = TypeHelper.FormatTypeForUsage(transition.ExpectedPayloadType);
                     Sb.AppendLine($"if ({PayloadVar} is {payloadType} p)");
-                    Sb.AppendLine($"    {transition.ActionMethod}(p);");
+                    using (Sb.Indent())
+                    {
+                        Sb.AppendLine($"{transition.ActionMethod}(p);");
+                    }
                     Sb.AppendLine("else");
-                    Sb.AppendLine($"    return false;");
+                    using (Sb.Indent())
+                    {
+                        Sb.AppendLine("return false;");
+                    }
                 }
 
                 WriteLogStatement(
@@ -262,6 +268,52 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
             WriteAfterTransitionHook(
                 transition, stateTypeForUsage, triggerTypeForUsage, success: false);
 
+            // Direct return failure
+            Sb.AppendLine("return false;");
+        }
+    }
+    
+    private void WriteGuardCheckForExtensions(TransitionModel transition, string stateTypeForUsage, string triggerTypeForUsage)
+    {
+        if (string.IsNullOrEmpty(transition.GuardMethod)) return;
+
+        // Emit guard evaluation with direct return on failure
+        Sb.AppendLine($"bool {GuardResultVar};");
+        Sb.AppendLine("try");
+        using (Sb.Block(""))
+        {
+            Sb.AppendLine($"{GuardResultVar} = {transition.GuardMethod}();");
+        }
+        Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
+        using (Sb.Block(""))
+        {
+            // Treat exception in guard as false (guard failed)
+            WriteLogStatement("Warning",
+                $"GuardFailed(_logger, _instanceId, \"{transition.GuardMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+            WriteLogStatement("Warning",
+                $"TransitionFailed(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\");");
+            
+            // Hook: After failed transition
+            WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+            
+            // Direct return failure  
+            Sb.AppendLine("return false;");
+        }
+        
+        // Hook: After guard evaluated
+        WriteAfterGuardEvaluatedHook(transition, GuardResultVar, stateTypeForUsage, triggerTypeForUsage);
+        
+        // Check guard result
+        using (Sb.Block($"if (!{GuardResultVar})"))
+        {
+            WriteLogStatement("Warning",
+                $"GuardFailed(_logger, _instanceId, \"{transition.GuardMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+            WriteLogStatement("Warning",
+                $"TransitionFailed(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\");");
+            
+            // Hook: After failed transition
+            WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+            
             // Direct return failure
             Sb.AppendLine("return false;");
         }

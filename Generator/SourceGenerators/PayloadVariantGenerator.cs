@@ -10,6 +10,27 @@ namespace Generator.SourceGenerators;
 /// </summary>
 internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCodeGenerator(model)
 {
+    /// <summary>
+    /// Creates a safe identifier from the provided base name by sanitizing special characters.
+    /// </summary>
+    private static string MakeSafeIdentifier(string baseName)
+    {
+        var sb = new System.Text.StringBuilder(baseName.Length + 8);
+        bool first = true;
+        foreach (var ch in baseName)
+        {
+            if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_'
+                || (!first && ch >= '0' && ch <= '9'))
+                sb.Append(ch);
+            else
+                sb.Append('_');
+            first = false;
+        }
+        if (sb.Length == 0 || (sb[0] >= '0' && sb[0] <= '9'))
+            sb.Insert(0, '_');
+        return sb.ToString();
+    }
+
     protected override void WriteNamespaceAndClass()
     {
         var stateTypeForUsage = GetTypeNameForUsage(Model.StateType);
@@ -335,26 +356,42 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                             && toStateDef != null
                             && !string.IsNullOrEmpty(toStateDef.OnEntryMethod);
 
-        // Hook before transition
+        // Determine if we need payload pattern matching
+        bool needsPayload = (transition.GuardExpectsPayload && !string.IsNullOrEmpty(transition.ExpectedPayloadType))
+                          || (transition.ActionExpectsPayload && !string.IsNullOrEmpty(transition.ExpectedPayloadType))
+                          || (fromHasExit && fromStateDef!.OnExitExpectsPayload && !string.IsNullOrEmpty(transition.ExpectedPayloadType))
+                          || (toHasEntry && toStateDef!.OnEntryExpectsPayload && !string.IsNullOrEmpty(transition.ExpectedPayloadType));
+
+        // Hook before transition (must be called for all transitions)
         WriteBeforeTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage);
+        
+        // Generate unique payload variable name if needed
+        string payloadVarName = "";
+        if (needsPayload && !string.IsNullOrEmpty(transition.ExpectedPayloadType))
+        {
+            payloadVarName = MakeSafeIdentifier($"p_{transition.FromState}_{transition.Trigger}_{transition.ToState}");
+            var payloadType = TypeHelper.FormatTypeForUsage(transition.ExpectedPayloadType);
+            
+            // Open payload pattern matching block
+            Sb.AppendLine($"if ({PayloadVar} is {payloadType} {payloadVarName})");
+            Sb.AppendLine("{");
+            using (Sb.Indent())
+            {
 
         // Guard with direct return
         if (!string.IsNullOrEmpty(transition.GuardMethod))
         {
             WriteGuardEvaluationHook(transition, stateTypeForUsage, triggerTypeForUsage);
             
-            GuardGenerationHelper.EmitGuardCheck(
-                Sb,
-                transition,
-                "guardOk",
-                PayloadVar,
-                IsAsyncMachine,
-                wrapInTryCatch: true,
-                Model.ContinueOnCapturedContext,
-                handleResultAfterTry: true,
-                cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
-                treatCancellationAsFailure: IsAsyncMachine
-            );
+            Sb.AppendLine("bool guardOk = true;");
+            if (transition.GuardExpectsPayload && !string.IsNullOrEmpty(payloadVarName))
+            {
+                Sb.AppendLine($"try {{ guardOk = {transition.GuardMethod}({payloadVarName}); }} catch {{ return false; }}");
+            }
+            else
+            {
+                Sb.AppendLine($"try {{ guardOk = {transition.GuardMethod}(); }} catch {{ return false; }}");
+            }
 
             WriteAfterGuardEvaluatedHook(transition, "guardOk", stateTypeForUsage, triggerTypeForUsage);
 
@@ -372,33 +409,31 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         // OnExit with direct return on failure
         if (fromHasExit)
         {
-            // Using helper but need to handle the return on failure
-            Sb.AppendLine("try");
-            using (Sb.Block(""))
+            if (fromStateDef!.OnExitExpectsPayload && !string.IsNullOrEmpty(payloadVarName))
             {
-                CallbackGenerationHelper.EmitCallbackInvocation(
-                    Sb,
-                    fromStateDef!.OnExitMethod,
-                    CallbackGenerationHelper.CallbackType.OnExit,
-                    fromStateDef.OnExitExpectsPayload,
-                    fromStateDef.OnExitHasParameterlessOverload,
-                    fromStateDef.OnExitIsAsync,
-                    IsAsyncMachine,
-                    transition.ExpectedPayloadType,
-                    PayloadVar,
-                    wrapInTryCatch: false,
-                    Model.ContinueOnCapturedContext,
-                    IsMultiPayloadVariant(),
-                    false,
-                    fromStateDef.OnExitSignature,
-                    IsAsyncMachine ? "cancellationToken" : null,
-                    IsAsyncMachine
-                );
+                if (fromStateDef.OnExitIsAsync && !IsAsyncMachine)
+                {
+                    Sb.AppendLine($"try {{ {fromStateDef.OnExitMethod}({payloadVarName}, System.Threading.CancellationToken.None); }} catch {{ return false; }}");
+                }
+                else
+                {
+                    Sb.AppendLine($"try {{ {fromStateDef.OnExitMethod}({payloadVarName}); }} catch {{ return false; }}");
+                }
             }
-            Sb.AppendLine("catch { return false; }");
+            else
+            {
+                if (fromStateDef.OnExitIsAsync && !IsAsyncMachine)
+                {
+                    Sb.AppendLine($"try {{ {fromStateDef.OnExitMethod}(System.Threading.CancellationToken.None); }} catch {{ return false; }}");
+                }
+                else
+                {
+                    Sb.AppendLine($"try {{ {fromStateDef.OnExitMethod}(); }} catch {{ return false; }}");
+                }
+            }
             
             WriteLogStatement("Debug",
-                $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef!.OnExitMethod}\", \"{transition.FromState}\");");
+                $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
         }
 
         // State change
@@ -418,60 +453,58 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
         // OnEntry with direct return on failure
         if (toHasEntry)
         {
-            Sb.AppendLine("try");
-            using (Sb.Block(""))
+            if (toStateDef!.OnEntryExpectsPayload && !string.IsNullOrEmpty(payloadVarName))
             {
-                CallbackGenerationHelper.EmitCallbackInvocation(
-                    Sb,
-                    toStateDef!.OnEntryMethod,
-                    CallbackGenerationHelper.CallbackType.OnEntry,
-                    toStateDef.OnEntryExpectsPayload,
-                    toStateDef.OnEntryHasParameterlessOverload,
-                    toStateDef.OnEntryIsAsync,
-                    IsAsyncMachine,
-                    transition.ExpectedPayloadType,
-                    PayloadVar,
-                    wrapInTryCatch: false,
-                    Model.ContinueOnCapturedContext,
-                    IsMultiPayloadVariant(),
-                    false,
-                    toStateDef.OnEntrySignature,
-                    IsAsyncMachine ? "cancellationToken" : null,
-                    IsAsyncMachine
-                );
+                if (toStateDef.OnEntryIsAsync && !IsAsyncMachine)
+                {
+                    Sb.AppendLine($"try {{ {toStateDef.OnEntryMethod}({payloadVarName}, System.Threading.CancellationToken.None); }} catch {{ return false; }}");
+                }
+                else
+                {
+                    Sb.AppendLine($"try {{ {toStateDef.OnEntryMethod}({payloadVarName}); }} catch {{ return false; }}");
+                }
             }
-            Sb.AppendLine("catch { return false; }");
+            else
+            {
+                if (toStateDef.OnEntryIsAsync && !IsAsyncMachine)
+                {
+                    Sb.AppendLine($"try {{ {toStateDef.OnEntryMethod}(System.Threading.CancellationToken.None); }} catch {{ return false; }}");
+                }
+                else
+                {
+                    Sb.AppendLine($"try {{ {toStateDef.OnEntryMethod}(); }} catch {{ return false; }}");
+                }
+            }
             
             WriteLogStatement("Debug",
-                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef!.OnEntryMethod}\", \"{transition.ToState}\");");
+                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
         }
 
         // Action with direct return on failure
         if (!string.IsNullOrEmpty(transition.ActionMethod))
         {
-            Sb.AppendLine("try");
-            using (Sb.Block(""))
+            if (transition.ActionExpectsPayload && !string.IsNullOrEmpty(payloadVarName))
             {
-                CallbackGenerationHelper.EmitCallbackInvocation(
-                    Sb,
-                    transition.ActionMethod,
-                    CallbackGenerationHelper.CallbackType.Action,
-                    transition.ActionExpectsPayload,
-                    transition.ActionHasParameterlessOverload,
-                    transition.ActionIsAsync,
-                    IsAsyncMachine,
-                    transition.ExpectedPayloadType,
-                    PayloadVar,
-                    wrapInTryCatch: false,
-                    Model.ContinueOnCapturedContext,
-                    IsMultiPayloadVariant(),
-                    false,
-                    transition.ActionSignature,
-                    IsAsyncMachine ? "cancellationToken" : null,
-                    IsAsyncMachine
-                );
+                if (transition.ActionIsAsync && !IsAsyncMachine)
+                {
+                    Sb.AppendLine($"try {{ {transition.ActionMethod}({payloadVarName}, System.Threading.CancellationToken.None); }} catch {{ return false; }}");
+                }
+                else
+                {
+                    Sb.AppendLine($"try {{ {transition.ActionMethod}({payloadVarName}); }} catch {{ return false; }}");
+                }
             }
-            Sb.AppendLine("catch { return false; }");
+            else
+            {
+                if (transition.ActionIsAsync && !IsAsyncMachine)
+                {
+                    Sb.AppendLine($"try {{ {transition.ActionMethod}(System.Threading.CancellationToken.None); }} catch {{ return false; }}");
+                }
+                else
+                {
+                    Sb.AppendLine($"try {{ {transition.ActionMethod}(); }} catch {{ return false; }}");
+                }
+            }
             
             WriteLogStatement("Debug",
                 $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
@@ -484,8 +517,39 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 $"TransitionSucceeded(_logger, _instanceId, \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
         }
 
-        WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
-        Sb.AppendLine("return true;");
+                WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
+                Sb.AppendLine("return true;");
+            } // This closes the using(Sb.Indent()) from payload block
+            Sb.AppendLine("}");
+            Sb.AppendLine("else");
+            using (Sb.Block(""))
+            {
+                Sb.AppendLine("return false;");
+            }
+        }
+        else
+        {
+            // For transitions without payload requirements, emit simple logic
+            // State change
+            if (!transition.IsInternal)
+            {
+                if (Model.HierarchyEnabled)
+                {
+                    Sb.AppendLine("RecordHistoryForCurrentPath();");
+                    WriteStateChangeWithCompositeHandling(transition.ToState, stateTypeForUsage);
+                }
+                else
+                {
+                    Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+                }
+                
+                WriteLogStatement("Information",
+                    $"TransitionSucceeded(_logger, _instanceId, \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+            }
+            
+            WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
+            Sb.AppendLine("return true;");
+        }
     }
 
     protected override void WriteOnInitialEntryMethod(string stateTypeForUsage)
@@ -1207,51 +1271,114 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 }
             }
 
-            using (Sb.Block($"switch ({CurrentStateField})"))
+            if (Model.HierarchyEnabled)
             {
-                var allHandledFromStates = Model.Transitions.Select(t => t.FromState).Distinct().OrderBy(s => s);
-
-                foreach (var stateName in allHandledFromStates)
+                // HSM: Walk up the parent chain
+                Sb.AppendLine($"int currentIndex = (int){CurrentStateField};");
+                Sb.AppendLine("int check = currentIndex;");
+                using (Sb.Block("while (check >= 0)"))
                 {
-                    Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}:");
-                    using (Sb.Indent())
+                    Sb.AppendLine($"var enumState = ({stateTypeForUsage})check;");
+                    using (Sb.Block("switch (enumState)"))
                     {
-                        using (Sb.Block("switch (trigger)"))
-                        {
-                            var transitionsFromThisState = Model.Transitions
-                                .Where(t => t.FromState == stateName);
+                        var allHandledFromStates = Model.Transitions.Select(t => t.FromState).Distinct().OrderBy(s => s);
 
-                            foreach (var transition in transitionsFromThisState)
+                        foreach (var stateName in allHandledFromStates)
+                        {
+                            Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}:");
+                            using (Sb.Indent())
                             {
-                                Sb.AppendLine($"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}:");
-                                using (Sb.Indent())
+                                using (Sb.Block("switch (trigger)"))
                                 {
-                                    if (!string.IsNullOrEmpty(transition.GuardMethod))
+                                    var transitionsFromThisState = Model.Transitions
+                                        .Where(t => t.FromState == stateName);
+
+                                    foreach (var transition in transitionsFromThisState)
                                     {
-                                        // ZMIANA: Użyj helpera zamiast WriteGuardCall
-                                        GuardGenerationHelper.EmitGuardCheck(
-                                            Sb,
-                                            transition,
-                                            "guardResult",
-                                            PayloadVar,
-                                            IsAsyncMachine,
-                                            wrapInTryCatch: true,
-                                            Model.ContinueOnCapturedContext,
-                                            handleResultAfterTry: true
-                                        );
-                                        Sb.AppendLine("return guardResult;");
+                                        Sb.AppendLine($"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}:");
+                                        using (Sb.Indent())
+                                        {
+                                            if (!string.IsNullOrEmpty(transition.GuardMethod))
+                                            {
+                                                // ZMIANA: Użyj helpera zamiast WriteGuardCall
+                                                GuardGenerationHelper.EmitGuardCheck(
+                                                    Sb,
+                                                    transition,
+                                                    "guardResult",
+                                                    PayloadVar,
+                                                    IsAsyncMachine,
+                                                    wrapInTryCatch: true,
+                                                    Model.ContinueOnCapturedContext,
+                                                    handleResultAfterTry: true
+                                                );
+                                                Sb.AppendLine("return guardResult;");
+                                            }
+                                            else
+                                            {
+                                                Sb.AppendLine("return true;");
+                                            }
+                                        }
                                     }
-                                    else
+                                    Sb.AppendLine("default: break;");
+                                }
+                                Sb.AppendLine("break;");
+                            }
+                        }
+                        Sb.AppendLine("default: break;");
+                    }
+                    Sb.AppendLine("check = (uint)check < (uint)s_parent.Length ? s_parent[check] : -1;");
+                }
+                Sb.AppendLine("return false;");
+            }
+            else
+            {
+                // Flat FSM: Original implementation
+                using (Sb.Block($"switch ({CurrentStateField})"))
+                {
+                    var allHandledFromStates = Model.Transitions.Select(t => t.FromState).Distinct().OrderBy(s => s);
+
+                    foreach (var stateName in allHandledFromStates)
+                    {
+                        Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}:");
+                        using (Sb.Indent())
+                        {
+                            using (Sb.Block("switch (trigger)"))
+                            {
+                                var transitionsFromThisState = Model.Transitions
+                                    .Where(t => t.FromState == stateName);
+
+                                foreach (var transition in transitionsFromThisState)
+                                {
+                                    Sb.AppendLine($"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}:");
+                                    using (Sb.Indent())
                                     {
-                                        Sb.AppendLine("return true;");
+                                        if (!string.IsNullOrEmpty(transition.GuardMethod))
+                                        {
+                                            // ZMIANA: Użyj helpera zamiast WriteGuardCall
+                                            GuardGenerationHelper.EmitGuardCheck(
+                                                Sb,
+                                                transition,
+                                                "guardResult",
+                                                PayloadVar,
+                                                IsAsyncMachine,
+                                                wrapInTryCatch: true,
+                                                Model.ContinueOnCapturedContext,
+                                                handleResultAfterTry: true
+                                            );
+                                            Sb.AppendLine("return guardResult;");
+                                        }
+                                        else
+                                        {
+                                            Sb.AppendLine("return true;");
+                                        }
                                     }
                                 }
+                                Sb.AppendLine("default: return false;");
                             }
-                            Sb.AppendLine("default: return false;");
                         }
                     }
+                    Sb.AppendLine("default: return false;");
                 }
-                Sb.AppendLine("default: return false;");
             }
         }
         Sb.AppendLine();
@@ -1379,86 +1506,173 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
                 Sb.AppendLine("if (payloadResolver == null) throw new ArgumentNullException(nameof(payloadResolver));");
                 Sb.AppendLine();
 
-                using (Sb.Block($"switch ({CurrentStateField})"))
+                if (Model.HierarchyEnabled)
                 {
-                    var transitionsByFromState = Model.Transitions
-                        .GroupBy(t => t.FromState)
-                        .OrderBy(g => g.Key);
-
-                    foreach (var stateGroup in transitionsByFromState)
+                    // HSM: Walk up the parent chain and collect all possible triggers
+                    Sb.AppendLine($"var permitted = new HashSet<{triggerTypeForUsage}>();");
+                    Sb.AppendLine($"int currentIndex = (int){CurrentStateField};");
+                    Sb.AppendLine("int check = currentIndex;");
+                    
+                    using (Sb.Block("while (check >= 0)"))
                     {
-                        var stateName = stateGroup.Key;
-                        Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}:");
-                        using (Sb.Block(""))
+                        Sb.AppendLine($"var enumState = ({stateTypeForUsage})check;");
+                        using (Sb.Block("switch (enumState)"))
                         {
-                            Sb.AppendLine($"var permitted = new List<{triggerTypeForUsage}>();");
+                            var transitionsByFromState = Model.Transitions
+                                .GroupBy(t => t.FromState)
+                                .OrderBy(g => g.Key);
 
-                            foreach (var transition in stateGroup)
+                            foreach (var stateGroup in transitionsByFromState)
                             {
-                                if (!string.IsNullOrEmpty(transition.GuardMethod))
+                                var stateName = stateGroup.Key;
+                                Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}:");
+                                using (Sb.Block(""))
                                 {
-                                    if (transition.GuardExpectsPayload)
+                                    foreach (var transition in stateGroup)
                                     {
-                                        // Guard needs payload - use resolver
-                                        Sb.AppendLine($"var payload_{transition.Trigger} = payloadResolver({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
-                                        // ZMIANA: Użyj helpera z rzeczywistym payloadem
-                                        GuardGenerationHelper.EmitGuardCheck(
-                                            Sb,
-                                            transition,
-                                            "canFire",
-                                            $"payload_{transition.Trigger}",
-                                            IsAsyncMachine,
-                                            wrapInTryCatch: true,
-                                            Model.ContinueOnCapturedContext,
-                                            handleResultAfterTry: true
-                                        );
+                                        if (!string.IsNullOrEmpty(transition.GuardMethod))
+                                        {
+                                            if (transition.GuardExpectsPayload)
+                                            {
+                                                // Guard needs payload - use resolver
+                                                Sb.AppendLine($"var payload_{transition.Trigger} = payloadResolver({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+                                                // ZMIANA: Użyj helpera z rzeczywistym payloadem
+                                                GuardGenerationHelper.EmitGuardCheck(
+                                                    Sb,
+                                                    transition,
+                                                    "canFire",
+                                                    $"payload_{transition.Trigger}",
+                                                    IsAsyncMachine,
+                                                    wrapInTryCatch: true,
+                                                    Model.ContinueOnCapturedContext,
+                                                    handleResultAfterTry: true
+                                                );
+                                            }
+                                            else
+                                            {
+                                                // Guard doesn't need payload
+                                                // ZMIANA: Użyj helpera bez payloadu
+                                                GuardGenerationHelper.EmitGuardCheck(
+                                                    Sb,
+                                                    transition,
+                                                    "canFire",
+                                                    "null",
+                                                    IsAsyncMachine,
+                                                    wrapInTryCatch: true,
+                                                    Model.ContinueOnCapturedContext,
+                                                    handleResultAfterTry: true
+                                                );
+                                            }
+
+                                            using (Sb.Block("if (canFire)"))
+                                            {
+                                                Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+                                            }
+                                        }
+                                        else
+                                        {
+                                            Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+                                        }
+                                    }
+                                    Sb.AppendLine("break;");
+                                }
+                            }
+                            Sb.AppendLine("default: break;");
+                        }
+                        Sb.AppendLine("check = (uint)check < (uint)s_parent.Length ? s_parent[check] : -1;");
+                    }
+                    
+                    Sb.AppendLine("return permitted.Count == 0 ? ");
+                    using (Sb.Indent())
+                    {
+                        Sb.AppendLine($"{ArrayEmptyMethod}<{triggerTypeForUsage}>() :");
+                        Sb.AppendLine("permitted.ToArray();");
+                    }
+                }
+                else
+                {
+                    // Flat FSM: Original implementation
+                    using (Sb.Block($"switch ({CurrentStateField})"))
+                    {
+                        var transitionsByFromState = Model.Transitions
+                            .GroupBy(t => t.FromState)
+                            .OrderBy(g => g.Key);
+
+                        foreach (var stateGroup in transitionsByFromState)
+                        {
+                            var stateName = stateGroup.Key;
+                            Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}:");
+                            using (Sb.Block(""))
+                            {
+                                Sb.AppendLine($"var permitted = new List<{triggerTypeForUsage}>();");
+
+                                foreach (var transition in stateGroup)
+                                {
+                                    if (!string.IsNullOrEmpty(transition.GuardMethod))
+                                    {
+                                        if (transition.GuardExpectsPayload)
+                                        {
+                                            // Guard needs payload - use resolver
+                                            Sb.AppendLine($"var payload_{transition.Trigger} = payloadResolver({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+                                            // ZMIANA: Użyj helpera z rzeczywistym payloadem
+                                            GuardGenerationHelper.EmitGuardCheck(
+                                                Sb,
+                                                transition,
+                                                "canFire",
+                                                $"payload_{transition.Trigger}",
+                                                IsAsyncMachine,
+                                                wrapInTryCatch: true,
+                                                Model.ContinueOnCapturedContext,
+                                                handleResultAfterTry: true
+                                            );
+                                        }
+                                        else
+                                        {
+                                            // Guard doesn't need payload
+                                            // ZMIANA: Użyj helpera bez payloadu
+                                            GuardGenerationHelper.EmitGuardCheck(
+                                                Sb,
+                                                transition,
+                                                "canFire",
+                                                "null",
+                                                IsAsyncMachine,
+                                                wrapInTryCatch: true,
+                                                Model.ContinueOnCapturedContext,
+                                                handleResultAfterTry: true
+                                            );
+                                        }
+
+                                        using (Sb.Block("if (canFire)"))
+                                        {
+                                            Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+                                        }
                                     }
                                     else
-                                    {
-                                        // Guard doesn't need payload
-                                        // ZMIANA: Użyj helpera bez payloadu
-                                        GuardGenerationHelper.EmitGuardCheck(
-                                            Sb,
-                                            transition,
-                                            "canFire",
-                                            "null",
-                                            IsAsyncMachine,
-                                            wrapInTryCatch: true,
-                                            Model.ContinueOnCapturedContext,
-                                            handleResultAfterTry: true
-                                        );
-                                    }
-
-                                    using (Sb.Block("if (canFire)"))
                                     {
                                         Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
                                     }
                                 }
-                                else
+
+                                Sb.AppendLine("return permitted.Count == 0 ? ");
+                                using (Sb.Indent())
                                 {
-                                    Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+                                    Sb.AppendLine($"{ArrayEmptyMethod}<{triggerTypeForUsage}>() :");
+                                    Sb.AppendLine("permitted.ToArray();");
                                 }
                             }
-
-                            Sb.AppendLine("return permitted.Count == 0 ? ");
-                            using (Sb.Indent())
-                            {
-                                Sb.AppendLine($"{ArrayEmptyMethod}<{triggerTypeForUsage}>() :");
-                                Sb.AppendLine("permitted.ToArray();");
-                            }
                         }
+
+                        var statesWithNoOutgoingTransitions = Model.States.Keys
+                            .Except(transitionsByFromState.Select(g => g.Key))
+                            .OrderBy(s => s);
+
+                        foreach (var stateName in statesWithNoOutgoingTransitions)
+                        {
+                            Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}: return {ArrayEmptyMethod}<{triggerTypeForUsage}>();");
+                        }
+
+                        Sb.AppendLine($"default: return {ArrayEmptyMethod}<{triggerTypeForUsage}>();");
                     }
-
-                    var statesWithNoOutgoingTransitions = Model.States.Keys
-                        .Except(transitionsByFromState.Select(g => g.Key))
-                        .OrderBy(s => s);
-
-                    foreach (var stateName in statesWithNoOutgoingTransitions)
-                    {
-                        Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}: return {ArrayEmptyMethod}<{triggerTypeForUsage}>();");
-                    }
-
-                    Sb.AppendLine($"default: return {ArrayEmptyMethod}<{triggerTypeForUsage}>();");
                 }
             }
             Sb.AppendLine();
