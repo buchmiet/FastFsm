@@ -28,6 +28,9 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
     private bool IsHierarchical => Model.HierarchyEnabled;
     private bool HasMultiPayload => Model.TriggerPayloadTypes?.Any() == true;
     
+    // Track if smCtx variable has been created in current transition context
+    private bool _smCtxCreated = false;
+    
     // Extensions feature writer (used when HasExtensions)
     private readonly ExtensionsFeatureWriter _ext = new();
 
@@ -586,11 +589,19 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         // Use payload-aware or core transition logic based on feature flags
         if (HasPayload)
         {
-            WriteTryFireStructure(stateType, triggerType, WriteTransitionLogicPayloadAsync);
+            WriteTryFireStructure(stateType, triggerType, (transition, stateType, triggerType) =>
+            {
+                _smCtxCreated = false;  // Reset flag for each transition
+                WriteTransitionLogicPayloadAsync(transition, stateType, triggerType);
+            });
         }
         else
         {
-            WriteTryFireStructure(stateType, triggerType, WriteTransitionLogic);
+            WriteTryFireStructure(stateType, triggerType, (transition, stateType, triggerType) =>
+            {
+                _smCtxCreated = false;  // Reset flag for each transition
+                WriteTransitionLogic(transition, stateType, triggerType);
+            });
         }
 
         Sb.AppendLine($"        {EndOfTryFireLabel}:;");
@@ -654,7 +665,11 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
             ? (Action<TransitionModel, string, string>)WriteTransitionLogicPayloadSyncDirect
             : (Action<TransitionModel, string, string>)WriteTransitionLogicSyncCore;
 
-        WriteTryFireStructure(stateType, triggerType, writer);
+        WriteTryFireStructure(stateType, triggerType, (transition, stateType, triggerType) =>
+        {
+            _smCtxCreated = false;  // Reset flag for each transition
+            writer(transition, stateType, triggerType);
+        });
 
         Sb.AppendLine("    }");
         Sb.AppendLine();
@@ -777,7 +792,7 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         Sb.AppendLine("return true;");
     }
     
-    private void WriteTryFireStructure(string stateType, string triggerType, Action<TransitionModel, string, string> writeTransitionLogic)
+    private new void WriteTryFireStructure(string stateType, string triggerType, Action<TransitionModel, string, string> writeTransitionLogic)
     {
         // For Extensions variant, we need special handling for no-transition case
         if (ExtensionsOn)
@@ -1251,6 +1266,7 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
             Sb.AppendLine($"{PayloadVar});");
         }
         Sb.AppendLine();
+        _smCtxCreated = true;  // Mark that smCtx has been created
         Sb.AppendLine($"_extensionRunner.RunBeforeTransition(_extensions, {HookVarContext});");
         Sb.AppendLine();
     }
@@ -1261,6 +1277,24 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         string triggerTypeForUsage)
     {
         if (!ExtensionsOn) return;
+        
+        // Ensure smCtx variable exists - create it if not already created by WriteBeforeTransitionHook
+        // This can happen in payload variants where guard hooks are emitted directly
+        if (!_smCtxCreated)
+        {
+            Sb.AppendLine($"var {HookVarContext} = new StateMachineContext<{stateTypeForUsage}, {triggerTypeForUsage}>(");
+            using (Sb.Indent())
+            {
+                Sb.AppendLine("Guid.NewGuid().ToString(),");
+                Sb.AppendLine($"{CurrentStateField},");
+                Sb.AppendLine("trigger,");
+                Sb.AppendLine($"{stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)},");
+                Sb.AppendLine($"{PayloadVar});");
+            }
+            Sb.AppendLine();
+            _smCtxCreated = true;
+        }
+        
         Sb.AppendLine($"_extensionRunner.RunGuardEvaluation(_extensions, {HookVarContext}, \"{transition.GuardMethod}\");");
         Sb.AppendLine();
     }
@@ -1440,6 +1474,9 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         string stateTypeForUsage,
         string triggerTypeForUsage)
     {
+        // Hook: Before transition (must be before guard check)
+        WriteBeforeTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage);
+
         // Guard with direct return
         if (!string.IsNullOrEmpty(transition.GuardMethod))
         {
@@ -1448,7 +1485,11 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
             // Ensure extensions get the evaluated notification
             WriteAfterGuardEvaluatedHook(transition, "guardResult", stateTypeForUsage, triggerTypeForUsage);
             Sb.AppendLine("                        if (!guardResult)");
+            Sb.AppendLine("                        {");
+            // Hook: After failed transition (guard failed)
+            WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
             Sb.AppendLine("                            return false;");
+            Sb.AppendLine("                        }");
         }
 
         // OnExit with try/catch → false on failure
@@ -1473,7 +1514,12 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                 treatCancellationAsFailure: false
             );
             Sb.AppendLine("                        }");
-            Sb.AppendLine("                        catch { return false; }");
+            Sb.AppendLine("                        catch");
+            Sb.AppendLine("                        {");
+            // Hook: After failed transition (OnExit exception)
+            WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+            Sb.AppendLine("                            return false;");
+            Sb.AppendLine("                        }");
         }
 
         // State change BEFORE action
@@ -1504,6 +1550,9 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         {
             EmitActionWithExceptionPolicyPayload(transition, transition.FromState, transition.ToState);
         }
+
+        // Hook: After successful transition
+        WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
 
         Sb.AppendLine("                        return true;");
     }
