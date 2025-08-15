@@ -226,14 +226,13 @@ namespace Generator.DependencyInjection
                 {
                     _sb.AppendLine($"typeof({fullInterfaceName}),");
                     _sb.AppendLine("provider =>");
-                    _sb.AppendLine("{");
-                    using (_sb.Indent())
+                    using (_sb.Block(""))
                     {
                         WriteFactoryResolution(fullInterfaceName, fullStateType);
                         WriteInitialStateResolution(fullStateType);
                         _sb.AppendLine("return factory.Create(actualInitialState);");
                     }
-                    _sb.AppendLine("},");
+                    _sb.Append(",");
                     _sb.AppendLine("lifetime));");
                 }
                 _sb.AppendLine();
@@ -256,9 +255,8 @@ namespace Generator.DependencyInjection
                     _sb.AppendLine("actualInitialState = initialState.Value;");
                 }
                 _sb.AppendLine("else");
-                using (_sb.Indent())
+                using (_sb.Block(""))
                 {
-                    _sb.AppendLine("{");
                     _sb.AppendLine($"// Check for registered initial state provider");
                     _sb.AppendLine($"var stateProvider = provider.GetService<{StateMachineDINamespace}.{InitialStateProviderInterface}<{fullStateType}>>();");
                     using (_sb.Block("if (stateProvider != null)"))
@@ -266,14 +264,11 @@ namespace Generator.DependencyInjection
                         _sb.AppendLine("actualInitialState = stateProvider.GetInitialState(provider);");
                     }
                     _sb.AppendLine("else");
-                    using (_sb.Indent())
+                    using (_sb.Block(""))
                     {
-                        _sb.AppendLine("{");
                         _sb.AppendLine("// Default to first enum value");
                         _sb.AppendLine($"actualInitialState = ({fullStateType})Enum.GetValues(typeof({fullStateType})).GetValue(0)!;");
-                        _sb.AppendLine("}");
                     }
-                    _sb.AppendLine("}");
                 }
                 _sb.AppendLine();
             }

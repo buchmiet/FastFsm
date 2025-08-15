@@ -154,12 +154,12 @@ namespace Generator.Helpers
             IndentedStringBuilder.IndentedStringBuilder sb,
             Action<IndentedStringBuilder.IndentedStringBuilder> generateAsyncCode)
         {
-            sb.AppendLine("_ = Task.Run(async () => {");
-            using (sb.Indent())
+            sb.AppendLine("_ = Task.Run(async () =>");
+            using (sb.Block(""))
             {
                 generateAsyncCode(sb);
             }
-            sb.AppendLine("});");
+            sb.Append(");");
         }
     }
 }
