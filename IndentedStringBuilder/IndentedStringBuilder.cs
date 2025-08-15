@@ -42,8 +42,31 @@ public sealed class IndentedStringBuilder(string indentUnit = "    ")
 
     public IDisposable Block(string header)
     {
-        AppendLine(header);
-        AppendLine("{");
+        if (!string.IsNullOrEmpty(header))
+        {
+            // For headers like "try", "catch", etc., put the brace on the same line
+            AppendLine($"{header} {{");
+        }
+        else
+        {
+            // For empty headers, just add the opening brace
+            AppendLine("{");
+        }
+        var indent = Indent();
+        return new DisposableAction(() =>
+        {
+            indent.Dispose();
+            AppendLine("}");
+        });
+    }
+    
+    /// <summary>
+    /// Creates a block with the header and opening brace on the same line
+    /// Example: "try {" instead of "try" on one line and "{" on the next
+    /// </summary>
+    public IDisposable InlineBlock(string header)
+    {
+        AppendLine($"{header} {{");
         var indent = Indent();
         return new DisposableAction(() =>
         {

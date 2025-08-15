@@ -77,8 +77,7 @@ namespace Generator.Helpers
             // Generate with or without try-catch
             if (wrapInTryCatch)
             {
-                sb.AppendLine("try");
-                using (sb.Block(""))
+                using (sb.Block("try"))
                 {
                     EmitGuardCall(sb, transition, sig, bestOverload, resultVar, payloadVar,
                         cancellationTokenVar, awaitPrefix, configureAwait, !handleResultAfterTry);
@@ -87,16 +86,14 @@ namespace Generator.Helpers
                 // Handle cancellation separately if configured
                 if (!treatCancellationAsFailure && hasToken)
                 {
-                    sb.AppendLine("catch (System.OperationCanceledException)");
-                    using (sb.Block(""))
+                    using (sb.Block("catch (System.OperationCanceledException)"))
                     {
                         sb.AppendLine($"{resultVar} = false;");
                         // TODO: Add optional GuardCanceled log
                     }
                 }
 
-                sb.AppendLine("catch (System.Exception ex)");
-                using (sb.Block(""))
+                using (sb.Block("catch (System.Exception ex)"))
                 {
                     sb.AppendLine($"{resultVar} = false;");
                     // TODO: Add optional GuardFailed log

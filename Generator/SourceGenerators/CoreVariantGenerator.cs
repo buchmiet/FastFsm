@@ -580,15 +580,13 @@ internal sealed class CoreVariantGenerator(StateMachineModel model) : StateMachi
         {
             if (IsAsyncMachine)
             {
-                Sb.AppendLine("try");
-                using (Sb.Block(""))
+                using (Sb.Block("try"))
                 {
                     WriteCallbackInvocation(fromStateDef.OnExitMethod, fromStateDef.OnExitIsAsync);
                     WriteLogStatement("Debug",
                         $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
                 }
-                Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
-                using (Sb.Block(""))
+                using (Sb.Block("catch (Exception ex) when (ex is not System.OperationCanceledException)"))
                 {
                     Sb.AppendLine($"{SuccessVar} = false;");
                     WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);

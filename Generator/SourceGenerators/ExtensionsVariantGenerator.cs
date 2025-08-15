@@ -172,8 +172,7 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
         // GŁÓWNA LOGIKA PRZEJŚCIA umieszczona w try/catch,
         // aby w razie wyjątku wywołać RunAfterTransition(..., false).
         // ────────────────────────────────────────────────────
-        Sb.AppendLine("try");
-        using (Sb.Block(""))                        // ← otwiera klamrę try { … }
+        using (Sb.Block("try"))                        // ← otwiera klamrę try { … }
         {
             // ---------- OnExit ----------
             if (!transition.IsInternal &&
@@ -261,8 +260,7 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
             Sb.AppendLine("return true;");
         }                                          // ← koniec bloku try
 
-        Sb.AppendLine("catch (Exception)");
-        using (Sb.Block(""))                        // ← blok catch { … }
+        using (Sb.Block("catch (Exception)"))                        // ← blok catch { … }
         {
 
             // HOOK: AfterTransition – porażka (KLUCZOWA POPRAWKA)
@@ -280,13 +278,11 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
 
         // Emit guard evaluation with direct return on failure
         Sb.AppendLine($"bool {GuardResultVar};");
-        Sb.AppendLine("try");
-        using (Sb.Block(""))
+        using (Sb.Block("try"))
         {
             Sb.AppendLine($"{GuardResultVar} = {transition.GuardMethod}();");
         }
-        Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
-        using (Sb.Block(""))
+        using (Sb.Block("catch (Exception ex) when (ex is not System.OperationCanceledException)"))
         {
             // Treat exception in guard as false (guard failed)
             WriteLogStatement("Warning",
