@@ -584,21 +584,19 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         {
             WriteGuardEvaluationHook(transition, stateTypeForUsage, triggerTypeForUsage);
             
-            // Emit guard check with direct return on failure
-            Sb.AppendLine("bool guardOk;");
-            using (Sb.Block("try"))
-            {
-                Sb.AppendLine($"guardOk = {transition.GuardMethod}();");
-            }
-            using (Sb.Block("catch"))
-            {
-                WriteLogStatement("Warning",
-                    $"GuardFailed(_logger, _instanceId, \"{transition.GuardMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
-                WriteLogStatement("Warning",
-                    $"TransitionFailed(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\");");
-                WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-                Sb.AppendLine("return false;");
-            }
+            // Use GuardGenerationHelper for consistent guard handling
+            GuardGenerationHelper.EmitGuardCheck(
+                Sb,
+                transition,
+                "guardOk",
+                payloadVar: "null", // WriteTransitionLogicForFlatNonPayload doesn't use payload
+                IsAsyncMachine,
+                wrapInTryCatch: true,
+                Model.ContinueOnCapturedContext,
+                handleResultAfterTry: true,
+                cancellationTokenVar: null, // Not async variant
+                treatCancellationAsFailure: false
+            );
             
             // Check guard result
             WriteAfterGuardEvaluatedHook(transition, "guardOk", stateTypeForUsage, triggerTypeForUsage);
@@ -620,7 +618,21 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         {
             using (Sb.Block("try"))
             {
-                Sb.AppendLine($"{fromStateDef.OnExitMethod}();");
+                // Use CallbackGenerationHelper for consistent OnExit handling
+                CallbackGenerationHelper.EmitOnExitCall(
+                    Sb,
+                    fromStateDef,
+                    transition.ExpectedPayloadType,
+                    null, // no default payload type
+                    "null", // no payload in FlatNonPayload variant
+                    IsAsyncMachine,
+                    wrapInTryCatch: false, // We're already in a try block
+                    Model.ContinueOnCapturedContext,
+                    isSinglePayload: false,
+                    isMultiPayload: false,
+                    cancellationTokenVar: null, // Not async variant
+                    treatCancellationAsFailure: false
+                );
                 WriteLogStatement("Debug",
                     $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
             }
@@ -655,7 +667,21 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         {
             using (Sb.Block("try"))
             {
-                Sb.AppendLine($"{toStateDef.OnEntryMethod}();");
+                // Use CallbackGenerationHelper for consistent OnEntry handling
+                CallbackGenerationHelper.EmitOnEntryCall(
+                    Sb,
+                    toStateDef,
+                    transition.ExpectedPayloadType,
+                    null, // no default payload type
+                    "null", // no payload in FlatNonPayload variant
+                    IsAsyncMachine,
+                    wrapInTryCatch: false, // We're already in a try block
+                    Model.ContinueOnCapturedContext,
+                    isSinglePayload: false,
+                    isMultiPayload: false,
+                    cancellationTokenVar: null, // Not async variant
+                    treatCancellationAsFailure: false
+                );
                 WriteLogStatement("Debug",
                     $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
             }
@@ -675,7 +701,17 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                 // No exception handler - use existing try/catch logic
                 using (Sb.Block("try"))
                 {
-                    Sb.AppendLine($"{transition.ActionMethod}();");
+                    // Use CallbackGenerationHelper for consistent Action handling
+                    CallbackGenerationHelper.EmitActionCall(
+                        Sb,
+                        transition,
+                        "null", // no payload in FlatNonPayload variant
+                        IsAsyncMachine,
+                        wrapInTryCatch: false, // We're already in a try block
+                        Model.ContinueOnCapturedContext,
+                        cancellationTokenVar: null, // Not async variant
+                        treatCancellationAsFailure: false
+                    );
                     WriteLogStatement("Debug",
                         $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
                 }
@@ -690,7 +726,17 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                 // Has exception handler - use directive-based exception handling
                 using (Sb.Block("try"))
                 {
-                    Sb.AppendLine($"{transition.ActionMethod}();");
+                    // Use CallbackGenerationHelper for consistent Action handling
+                    CallbackGenerationHelper.EmitActionCall(
+                        Sb,
+                        transition,
+                        "null", // no payload in FlatNonPayload variant
+                        IsAsyncMachine,
+                        wrapInTryCatch: false, // We're already in a try block
+                        Model.ContinueOnCapturedContext,
+                        cancellationTokenVar: null, // Not async variant
+                        treatCancellationAsFailure: false
+                    );
                     WriteLogStatement("Debug",
                         $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
                 }
