@@ -871,8 +871,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         string stateTypeForUsage,
         string triggerTypeForUsage)
     {
-        Sb.AppendLine("{");
-        using (Sb.Indent())
+        using (Sb.Block(""))
         {
             // Guard check if present
             if (!string.IsNullOrEmpty(transition.GuardMethod))
@@ -903,12 +902,10 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                 
                 Sb.AppendLine("if (!guardResult) { declOrder++; } // skip this candidate");
                 Sb.AppendLine("else");
-                Sb.AppendLine("{");
-                using (Sb.Indent())
+                using (Sb.Block(""))
                 {
                     GenerateCandidateSelection(transition, transitionIndex, stateTypeForUsage);
                 }
-                Sb.AppendLine("}");
             }
             else
             {
@@ -916,7 +913,6 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                 GenerateCandidateSelection(transition, transitionIndex, stateTypeForUsage);
             }
         }
-        Sb.AppendLine("}");
     }
     
     private void GenerateCandidateSelection(
@@ -934,8 +930,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine("else if (priority == bestPriority && depthFromCurrent == bestDepthFromCurrent && declOrder < bestDeclOrder) isBetter = true;");
         
         Sb.AppendLine("if (isBetter)");
-        Sb.AppendLine("{");
-        using (Sb.Indent())
+        using (Sb.Block(""))
         {
             Sb.AppendLine("found = true;");
             Sb.AppendLine($"bestPriority = priority;");
@@ -973,7 +968,6 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                 Sb.AppendLine("bestAction = null;");
             }
         }
-        Sb.AppendLine("}");
         Sb.AppendLine("declOrder++;");
     }
     
@@ -1076,8 +1070,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             WriteAfterGuardEvaluatedHook(transition, "guardOk", stateTypeForUsage, triggerTypeForUsage);
             
             Sb.AppendLine("if (!guardOk)");
-            Sb.AppendLine("{");
-            using (Sb.Indent())
+            using (Sb.Block(""))
             {
                 WriteLogStatement("Warning",
                     $"GuardFailed(_logger, _instanceId, \"{transition.GuardMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
@@ -1086,7 +1079,6 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                 WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
                 Sb.AppendLine("return false;");
             }
-            Sb.AppendLine("}");
         }
 
         // OnExit

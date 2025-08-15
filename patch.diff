@@ -1,0 +1,63 @@
+--- a/Generator/SourceGenerators/StateMachineCodeGenerator.cs
++++ b/Generator/SourceGenerators/StateMachineCodeGenerator.cs
+@@ -1574,6 +1574,21 @@ namespace Generator.SourceGenerators
+ 
+     protected virtual void WriteTransitionWithPayloadTypeCheck(TransitionModel transition, string stateTypeForUsage, string triggerTypeForUsage)
+     {
++        // Declare context once if extensions are enabled (id, from, trigger, to, payload)
++        if (Model.UseExtensions)
++        {
++            Sb.AppendLine($"var smCtx = new {Model.ExtensionContextClosedType}(");
++            using (Sb.Indent())
++            {
++                Sb.AppendLine("Guid.NewGuid().ToString(),");
++                Sb.AppendLine("_currentState,");
++                Sb.AppendLine($"{triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)},");
++                Sb.AppendLine($"{stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)},");
++                Sb.AppendLine("payload);");
++            }
++            
++            Sb.AppendLine("_extensionRunner.RunBeforeTransition(_extensions, smCtx);");
++        }
++        
+         // Check payload type
+         Sb.AppendLine($"if (payload is {TypeHelper.FormatTypeForUsage(transition.ExpectedPayloadType)} p_{transition.FromState}_{transition.Trigger}_{transition.ToState})");
+         using (Sb.Block(""))
+@@ -1626,17 +1641,6 @@ namespace Generator.SourceGenerators
+             // Hook after successful transition
+             if (Model.UseExtensions)
+             {
+-                Sb.AppendLine($"var smCtx = new {Model.ExtensionContextClosedType}(");
+-                using (Sb.Indent())
+-                {
+-                    Sb.AppendLine($"{stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.FromState)},");
+-                    Sb.AppendLine($"{stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)},");
+-                    Sb.AppendLine($"{triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+-                }
+-                
+-                // Before transition hook
+-                Sb.AppendLine($"_extensionRunner.RunBeforeTransition(_extensions, smCtx);");
+-                
+                 // After transition hook with success = true
+                 Sb.AppendLine($"_extensionRunner.RunAfterTransition(_extensions, smCtx, true);");
+             }
+@@ -1652,17 +1656,6 @@ namespace Generator.SourceGenerators
+                 WriteTransitionLogicForFlatNonPayload(transition, stateTypeForUsage, triggerTypeForUsage);
+             }
+             else
+             {
+-                if (Model.UseExtensions)
+-                {
+-                    Sb.AppendLine($"var smCtx = new {Model.ExtensionContextClosedType}(");
+-                    using (Sb.Indent())
+-                    {
+-                        Sb.AppendLine($"{stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.FromState)},");
+-                        Sb.AppendLine($"{stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)},");
+-                        Sb.AppendLine($"{triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+-                    }
+-                    
+-                    Sb.AppendLine($"_extensionRunner.RunBeforeTransition(_extensions, smCtx);");
+-                }
+-                
+                 // Write guard check if present
+                 if (!string.IsNullOrEmpty(transition.GuardMethod))

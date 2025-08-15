@@ -64,7 +64,7 @@ internal sealed class FullVariantGenerator(StateMachineModel model) : PayloadVar
                 Sb.AppendLine(extensibleInterface);
             }
 
-            Sb.AppendLine("{ }");
+            using (Sb.Block("")) { }
             Sb.AppendLine();
 
             // Class generation

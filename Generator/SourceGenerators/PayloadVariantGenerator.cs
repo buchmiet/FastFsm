@@ -381,8 +381,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
 
             // Open payload pattern matching block
             Sb.AppendLine($"if ({PayloadVar} is {payloadType} {payloadVarName})");
-            Sb.AppendLine("{");
-            using (Sb.Indent())
+            using (Sb.Block(""))
             {
 
         // Guard with direct return
@@ -526,8 +525,7 @@ internal class PayloadVariantGenerator(StateMachineModel model) : StateMachineCo
 
                 WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
                 Sb.AppendLine("return true;");
-            } // This closes the using(Sb.Indent()) from payload block
-            Sb.AppendLine("}");
+            } // This closes the using(Sb.Block("")) from payload block
             Sb.AppendLine("else");
             using (Sb.Block(""))
             {
