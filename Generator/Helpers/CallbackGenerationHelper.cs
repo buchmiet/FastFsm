@@ -17,7 +17,7 @@ namespace Generator.Helpers
         /// <summary>
         /// Generuje wywołanie callback z pełną obsługą wariantów.
         /// </summary>
-        public static void EmitCallbackInvocation(
+        private static void EmitCallbackInvocation(
             IndentedStringBuilder.IndentedStringBuilder sb,
             string callbackMethod,
             CallbackType type,
