@@ -586,13 +586,11 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             
             // Emit guard check with direct return on failure
             Sb.AppendLine("bool guardOk;");
-            Sb.AppendLine("try");
-            using (Sb.Block(""))
+            using (Sb.Block("try"))
             {
                 Sb.AppendLine($"guardOk = {transition.GuardMethod}();");
             }
-            Sb.AppendLine("catch");
-            using (Sb.Block(""))
+            using (Sb.Block("catch"))
             {
                 WriteLogStatement("Warning",
                     $"GuardFailed(_logger, _instanceId, \"{transition.GuardMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
@@ -620,15 +618,13 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             Model.States.TryGetValue(transition.FromState, out var fromStateDef) &&
             !string.IsNullOrEmpty(fromStateDef.OnExitMethod))
         {
-            Sb.AppendLine("try");
-            using (Sb.Block(""))
+            using (Sb.Block("try"))
             {
                 Sb.AppendLine($"{fromStateDef.OnExitMethod}();");
                 WriteLogStatement("Debug",
                     $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
             }
-            Sb.AppendLine("catch");
-            using (Sb.Block(""))
+            using (Sb.Block("catch"))
             {
                 WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
                 Sb.AppendLine("return false;");
@@ -657,15 +653,13 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             Model.States.TryGetValue(transition.ToState, out var toStateDef) &&
             !string.IsNullOrEmpty(toStateDef.OnEntryMethod))
         {
-            Sb.AppendLine("try");
-            using (Sb.Block(""))
+            using (Sb.Block("try"))
             {
                 Sb.AppendLine($"{toStateDef.OnEntryMethod}();");
                 WriteLogStatement("Debug",
                     $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
             }
-            Sb.AppendLine("catch");
-            using (Sb.Block(""))
+            using (Sb.Block("catch"))
             {
                 // On OnEntry failure, we're already in the new state, so don't revert
                 WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
@@ -679,15 +673,13 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             if (Model.ExceptionHandler == null)
             {
                 // No exception handler - use existing try/catch logic
-                Sb.AppendLine("try");
-                using (Sb.Block(""))
+                using (Sb.Block("try"))
                 {
                     Sb.AppendLine($"{transition.ActionMethod}();");
                     WriteLogStatement("Debug",
                         $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
                 }
-                Sb.AppendLine("catch");
-                using (Sb.Block(""))
+                using (Sb.Block("catch"))
                 {
                     WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
                     Sb.AppendLine("return false;");
@@ -696,15 +688,13 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             else
             {
                 // Has exception handler - use directive-based exception handling
-                Sb.AppendLine("try");
-                using (Sb.Block(""))
+                using (Sb.Block("try"))
                 {
                     Sb.AppendLine($"{transition.ActionMethod}();");
                     WriteLogStatement("Debug",
                         $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
                 }
-                Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
-                using (Sb.Block(""))
+                using (Sb.Block("catch (Exception ex) when (ex is not System.OperationCanceledException)"))
                 {
                     var handler = Model.ExceptionHandler;
                     var stateType = GetTypeNameForUsage(Model.StateType);
@@ -1521,8 +1511,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         if (string.IsNullOrEmpty(transition.GuardMethod)) return;
 
         // Owijamy całą logikę guard w try-catch
-        Sb.AppendLine("try");
-        using (Sb.Block(""))
+        using (Sb.Block("try"))
         {
             Sb.AddProperty($"bool {GuardResultVar}", $"{transition.GuardMethod}()");
 
@@ -1544,8 +1533,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                 Sb.AppendLine($"goto {EndOfTryFireLabel};");
             }
         }
-        Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
-        using (Sb.Block(""))
+        using (Sb.Block("catch (Exception ex) when (ex is not System.OperationCanceledException)"))
         {
             // Traktujemy wyjątek w guard jako false (guard nie przeszedł)
             WriteLogStatement("Warning",
@@ -2272,15 +2260,13 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         }
 
         // Wrap in try/catch with exception policy
-        Sb.AppendLine("try");
-        using (Sb.Block(""))
+        using (Sb.Block("try"))
         {
             WriteOnEntryCall(toStateDef, expectedPayloadType);
             WriteLogStatement("Debug",
                 $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{toState}\");");
         }
-        Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
-        using (Sb.Block(""))
+        using (Sb.Block("catch (Exception ex) when (ex is not System.OperationCanceledException)"))
         {
             EmitExceptionHandlerCall(fromState, toState, trigger, "TransitionStage.OnEntry", true);
         }
@@ -2305,15 +2291,13 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         }
 
         // Wrap in try/catch with exception policy
-        Sb.AppendLine("try");
-        using (Sb.Block(""))
+        using (Sb.Block("try"))
         {
             WriteActionCall(transition);
             WriteLogStatement("Debug",
                 $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
         }
-        Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
-        using (Sb.Block(""))
+        using (Sb.Block("catch (Exception ex) when (ex is not System.OperationCanceledException)"))
         {
             EmitExceptionHandlerCallForAction(fromState, toState, transition.Trigger);
         }
@@ -2355,8 +2339,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         }
 
         // Wrap in try/catch with exception policy
-        Sb.AppendLine("try");
-        using (Sb.Block(""))
+        using (Sb.Block("try"))
         {
             CallbackGenerationHelper.EmitOnEntryCall(
                 Sb,
@@ -2375,8 +2358,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             WriteLogStatement("Debug",
                 $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{toState}\");");
         }
-        Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
-        using (Sb.Block(""))
+        using (Sb.Block("catch (Exception ex) when (ex is not System.OperationCanceledException)"))
         {
             EmitExceptionHandlerCall(fromState, toState, trigger, "TransitionStage.OnEntry", true);
         }
@@ -2409,8 +2391,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         }
 
         // Wrap in try/catch with exception policy
-        Sb.AppendLine("try");
-        using (Sb.Block(""))
+        using (Sb.Block("try"))
         {
             CallbackGenerationHelper.EmitActionCall(
                 Sb,
@@ -2425,8 +2406,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             WriteLogStatement("Debug",
                 $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
         }
-        Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
-        using (Sb.Block(""))
+        using (Sb.Block("catch (Exception ex) when (ex is not System.OperationCanceledException)"))
         {
             EmitExceptionHandlerCallForAction(fromState, toState, transition.Trigger);
         }

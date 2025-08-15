@@ -37,8 +37,7 @@ namespace Generator.Helpers
         {
             if (wrapInTryCatch)
             {
-                sb.AppendLine("try");
-                using (sb.Block(""))
+                using (sb.Block("try"))
                 {
                     GenerateCallbackBody(sb, callbackMethod, type, expectsPayload, hasParameterlessOverload,
                         isCallbackAsync, isCallerAsync, expectedPayloadType, payloadVar,
@@ -49,8 +48,7 @@ namespace Generator.Helpers
                 // Handle cancellation separately if configured
                 if (!treatCancellationAsFailure && cancellationTokenVar != null)
                 {
-                    sb.AppendLine("catch (System.OperationCanceledException)");
-                    using (sb.Block(""))
+                    using (sb.Block("catch (System.OperationCanceledException)"))
                     {
                         sb.AppendLine("success = false;");
                         // TODO: Add optional CallbackCanceled log
@@ -58,8 +56,7 @@ namespace Generator.Helpers
                     }
                 }
 
-                sb.AppendLine("catch (System.Exception ex)");
-                using (sb.Block(""))
+                using (sb.Block("catch (System.Exception ex)"))
                 {
                     sb.AppendLine("success = false;");
                     sb.AppendLine("goto END_TRY_FIRE;");
