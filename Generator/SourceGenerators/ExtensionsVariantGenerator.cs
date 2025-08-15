@@ -1,4 +1,5 @@
 ﻿
+using Generator.Helpers;
 using Generator.Model;
 using System.Linq;
 using static Generator.Strings;
@@ -180,7 +181,21 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
                 Model.States.TryGetValue(transition.FromState, out var fromStateDef) &&
                 !string.IsNullOrEmpty(fromStateDef.OnExitMethod))
             {
-                WriteOnExitCall(fromStateDef, transition.ExpectedPayloadType);
+                // Use CallbackGenerationHelper for consistent OnExit handling
+                CallbackGenerationHelper.EmitOnExitCall(
+                    Sb,
+                    fromStateDef,
+                    transition.ExpectedPayloadType,
+                    null, // no default payload type
+                    PayloadVar,
+                    IsAsyncMachine,
+                    wrapInTryCatch: false, // Already in try block
+                    Model.ContinueOnCapturedContext,
+                    isSinglePayload: false,
+                    isMultiPayload: false,
+                    cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+                    treatCancellationAsFailure: false
+                );
                 WriteLogStatement(
                     "Debug",
                     $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
@@ -189,25 +204,21 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
             // ---------- Action ----------
             if (!string.IsNullOrEmpty(transition.ActionMethod))
             {
-                if (string.IsNullOrEmpty(transition.ExpectedPayloadType))
-                {
-                    Sb.AppendLine($"{transition.ActionMethod}();");
-                }
-                else
-                {
-                    var payloadType = TypeHelper.FormatTypeForUsage(transition.ExpectedPayloadType);
-                    Sb.AppendLine($"if ({PayloadVar} is {payloadType} p)");
-                    using (Sb.Indent())
-                    {
-                        Sb.AppendLine($"{transition.ActionMethod}(p);");
-                    }
-                    Sb.AppendLine("else");
-                    using (Sb.Indent())
-                    {
-                        Sb.AppendLine("return false;");
-                    }
-                }
-
+                // Use CallbackGenerationHelper for consistent Action handling
+                CallbackGenerationHelper.EmitActionCall(
+                    Sb,
+                    transition,
+                    PayloadVar,
+                    IsAsyncMachine,
+                    wrapInTryCatch: false, // Already in try block
+                    Model.ContinueOnCapturedContext,
+                    cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+                    treatCancellationAsFailure: false
+                );
+                
+                // Note: For Actions that expect payload but don't get the right type,
+                // the helper will handle the conditional logic internally
+                
                 WriteLogStatement(
                     "Debug",
                     $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", " +
@@ -220,7 +231,21 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
                 Model.States.TryGetValue(transition.ToState, out var toStateDef) &&
                 !string.IsNullOrEmpty(toStateDef.OnEntryMethod))
             {
-                WriteOnEntryCall(toStateDef, transition.ExpectedPayloadType);
+                // Use CallbackGenerationHelper for consistent OnEntry handling
+                CallbackGenerationHelper.EmitOnEntryCall(
+                    Sb,
+                    toStateDef,
+                    transition.ExpectedPayloadType,
+                    null, // no default payload type
+                    PayloadVar,
+                    IsAsyncMachine,
+                    wrapInTryCatch: false, // Already in try block
+                    Model.ContinueOnCapturedContext,
+                    isSinglePayload: false,
+                    isMultiPayload: false,
+                    cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+                    treatCancellationAsFailure: false
+                );
                 WriteLogStatement(
                     "Debug",
                     $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
@@ -276,26 +301,19 @@ internal sealed class ExtensionsVariantGenerator(StateMachineModel model) : Stat
     {
         if (string.IsNullOrEmpty(transition.GuardMethod)) return;
 
-        // Emit guard evaluation with direct return on failure
-        Sb.AppendLine($"bool {GuardResultVar};");
-        using (Sb.Block("try"))
-        {
-            Sb.AppendLine($"{GuardResultVar} = {transition.GuardMethod}();");
-        }
-        using (Sb.Block("catch (Exception ex) when (ex is not System.OperationCanceledException)"))
-        {
-            // Treat exception in guard as false (guard failed)
-            WriteLogStatement("Warning",
-                $"GuardFailed(_logger, _instanceId, \"{transition.GuardMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
-            WriteLogStatement("Warning",
-                $"TransitionFailed(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\");");
-            
-            // Hook: After failed transition
-            WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-            
-            // Direct return failure  
-            Sb.AppendLine("return false;");
-        }
+        // Use GuardGenerationHelper for consistent guard handling
+        GuardGenerationHelper.EmitGuardCheck(
+            Sb,
+            transition,
+            GuardResultVar,
+            payloadVar: "null", // Extensions variant doesn't use payload in guards
+            IsAsyncMachine,
+            wrapInTryCatch: true,
+            Model.ContinueOnCapturedContext,
+            handleResultAfterTry: true,
+            cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+            treatCancellationAsFailure: false
+        );
         
         // Hook: After guard evaluated
         WriteAfterGuardEvaluatedHook(transition, GuardResultVar, stateTypeForUsage, triggerTypeForUsage);

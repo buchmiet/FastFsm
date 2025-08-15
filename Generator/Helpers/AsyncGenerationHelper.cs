@@ -54,21 +54,6 @@ namespace Generator.Helpers
         }
 
         /// <summary>
-        /// Generuje pełną sygnaturę metody z obsługą async.
-        /// </summary>
-        public static string GetMethodSignature(
-            string methodName,
-            string returnType,
-            string parameters,
-            bool isAsync,
-            string visibility = "public")
-        {
-            var asyncKeyword = GetMethodModifiers(isAsync);
-            var asyncReturnType = GetReturnType(returnType, isAsync);
-            return $"{visibility} {asyncKeyword}{asyncReturnType} {methodName}({parameters})";
-        }
-
-        /// <summary>
         /// Generuje wywołanie metody z obsługą await i ConfigureAwait.
         /// </summary>
         public static void EmitMethodInvocation(
@@ -89,27 +74,6 @@ namespace Generator.Helpers
             else
             {
                 sb.AppendLine($"{methodName}({argsStr});");
-            }
-        }
-
-        /// <summary>
-        /// Generuje return statement z obsługą await.
-        /// </summary>
-        public static void EmitReturn(
-            IndentedStringBuilder.IndentedStringBuilder sb,
-            string expression,
-            bool isAsync,
-            bool methodReturnsTask,
-            bool continueOnCapturedContext)
-        {
-            if (isAsync && methodReturnsTask)
-            {
-                var configureAwait = GetConfigureAwait(true, continueOnCapturedContext);
-                sb.AppendLine($"return await {expression}{configureAwait};");
-            }
-            else
-            {
-                sb.AppendLine($"return {expression};");
             }
         }
 
