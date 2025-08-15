@@ -563,6 +563,24 @@ bool CanFire(TTrigger trigger)
 IReadOnlyList<TTrigger> GetPermittedTriggers()
 ```
 
+### Extension Hooks
+
+When extension support is enabled (extensible machines), the following hooks are invoked around a transition in an order consistent with UML run-to-completion semantics:
+
+- Before: `OnBeforeTransition(ctx)` — after a transition path is selected (from, trigger, to), before any effects.
+- Guard start: `OnGuardEvaluation(ctx, guardName)` — immediately before the guard is evaluated.
+- Guard result: `OnGuardEvaluated(ctx, guardName, result)` — immediately after evaluation.
+- Exit: state `OnExit` of the source state (if defined).
+- Action: transition action (if defined).
+- State change: `CurrentState` is set to the target state.
+- Entry: state `OnEntry` of the target state (if defined).
+- After: `OnAfterTransition(ctx, success)` — success=true when the whole sequence completes; otherwise success=false.
+
+Notes:
+- Guard hooks are only fired during `TryFire`/`Fire` (not during `CanFire` or `GetPermittedTriggers`).
+- If a guard returns false: `OnBeforeTransition` → `OnGuardEvaluation` → `OnGuardEvaluated(false)` → `OnAfterTransition(false)`.
+- If an exception occurs during Exit/Action/Entry: `OnAfterTransition(false)` is invoked; no additional rollback is guaranteed.
+
 -----
 
 ## Advanced Features

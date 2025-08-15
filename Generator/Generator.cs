@@ -459,13 +459,8 @@ public class StateMachineGenerator : IIncrementalGenerator
                 model.HierarchyEnabled,
                 model.Variant));
             
-            StateMachineCodeGenerator generator = model.Variant switch
-            {
-                GenerationVariant.Full => new FullVariantGenerator(model),
-                GenerationVariant.WithPayload => new PayloadVariantGenerator(model),
-                GenerationVariant.WithExtensions => new ExtensionsVariantGenerator(model),
-                _ => new CoreVariantGenerator(model)
-            };
+            // Use unified generator instead of variant-specific ones
+            StateMachineCodeGenerator generator = new UnifiedStateMachineGenerator(model);
             
             var source = generator.Generate();
             
@@ -831,14 +826,8 @@ public class StateMachineGenerator : IIncrementalGenerator
                     model!.GenerateDependencyInjection = BuildProperties.GetGenerateDI(
                         optionsProvider.GlobalOptions);
 
-                    // 1) Główny generator
-                    StateMachineCodeGenerator generator = model.Variant switch
-                    {
-                        GenerationVariant.Full => new FullVariantGenerator(model),
-                        GenerationVariant.WithPayload => new PayloadVariantGenerator(model),
-                        GenerationVariant.WithExtensions => new ExtensionsVariantGenerator(model),
-                        _ => new CoreVariantGenerator(model)
-                    };
+                    // 1) Główny generator — Unified obsługuje wszystkie warianty
+                    StateMachineCodeGenerator generator = new UnifiedStateMachineGenerator(model);
 
                     string source;
                     try
