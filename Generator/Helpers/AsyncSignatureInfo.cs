@@ -17,7 +17,7 @@ public struct AsyncSignatureInfo
     public bool IsVoidEquivalent { get; set; }
 
     /// <summary>
-    /// Czy sygnatura jest równoważna `bool` (bool, ValueTask<bool>).
+    /// Czy sygnatura jest równoważna `bool` (bool, ValueTask&lt;bool&gt;).
     /// Używane dla Guard.
     /// </summary>
     public bool IsBoolEquivalent { get; set; }
@@ -28,7 +28,7 @@ public struct AsyncSignatureInfo
     public bool IsInvalidAsyncVoid { get; set; }
 
     /// <summary>
-    /// Czy wykryto niepoprawną sygnaturę `Task<bool>` dla guarda.
+    /// Czy wykryto niepoprawną sygnaturę `Task&lt;bool&gt;` dla guarda.
     /// </summary>
     public bool IsInvalidGuardTask { get; set; }
 }

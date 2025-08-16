@@ -25,14 +25,14 @@ namespace Generator.Helpers
             bool hasParameterlessOverload,
             bool isCallbackAsync,
             bool isCallerAsync,
-            string expectedPayloadType,
+            string? expectedPayloadType,
             string payloadVar,
             bool wrapInTryCatch,
             bool continueOnCapturedContext = false,
             bool isMultiPayload = false,
             bool passRawObjectForMultiPayload = false,
             CallbackSignatureInfo? signatureInfo = null,
-            string cancellationTokenVar = null,
+            string? cancellationTokenVar = null,
             bool treatCancellationAsFailure = false)
         {
             if (wrapInTryCatch)
@@ -79,13 +79,13 @@ namespace Generator.Helpers
             bool hasParameterlessOverload,
             bool isCallbackAsync,
             bool isCallerAsync,
-            string expectedPayloadType,
+            string? expectedPayloadType,
             string payloadVar,
             bool continueOnCapturedContext,
             bool isMultiPayload,
             bool passRawObjectForMultiPayload,
             CallbackSignatureInfo? signatureInfo,
-            string cancellationTokenVar)
+            string? cancellationTokenVar)
         {
             // Use signature info if available, otherwise fall back to legacy flags
             if (signatureInfo.HasValue)
@@ -109,7 +109,7 @@ namespace Generator.Helpers
             CallbackType type,
             CallbackSignatureInfo sig,
             string payloadVar,
-            string cancellationTokenVar,
+            string? cancellationTokenVar,
             bool isCallbackAsync,
             bool isCallerAsync,
             bool continueOnCapturedContext,
@@ -222,7 +222,7 @@ namespace Generator.Helpers
             string callbackMethod,
             CallbackSignatureInfo sig,
             string payloadVar,
-            string cancellationTokenVar,
+            string? cancellationTokenVar,
             bool isCallbackAsync,
             bool isCallerAsync,
             bool continueOnCapturedContext)
@@ -393,15 +393,15 @@ namespace Generator.Helpers
         public static void EmitOnEntryCall(
             IndentedStringBuilder.IndentedStringBuilder sb,
             StateModel state,
-            string expectedPayloadType,
-            string defaultPayloadType,
+            string? expectedPayloadType,
+            string? defaultPayloadType,
             string payloadVar,
             bool isCallerAsync,
             bool wrapInTryCatch,
             bool continueOnCapturedContext = false,
             bool isSinglePayload = false,
             bool isMultiPayload = false,
-            string cancellationTokenVar = null,
+            string? cancellationTokenVar = null,
             bool treatCancellationAsFailure = false)
         {
             if (string.IsNullOrEmpty(state.OnEntryMethod)) return;
@@ -440,15 +440,15 @@ namespace Generator.Helpers
         public static void EmitOnExitCall(
             IndentedStringBuilder.IndentedStringBuilder sb,
             StateModel state,
-            string expectedPayloadType,
-            string defaultPayloadType,
+            string? expectedPayloadType,
+            string? defaultPayloadType,
             string payloadVar,
             bool isCallerAsync,
             bool wrapInTryCatch,
             bool continueOnCapturedContext = false,
             bool isSinglePayload = false,
             bool isMultiPayload = false,
-            string cancellationTokenVar = null,
+            string? cancellationTokenVar = null,
             bool treatCancellationAsFailure = false)
         {
             if (string.IsNullOrEmpty(state.OnExitMethod)) return;
@@ -488,7 +488,7 @@ namespace Generator.Helpers
             bool isCallerAsync,
             bool wrapInTryCatch,
             bool continueOnCapturedContext = false,
-            string cancellationTokenVar = null,
+            string? cancellationTokenVar = null,
             bool treatCancellationAsFailure = false)
         {
             if (string.IsNullOrEmpty(transition.ActionMethod)) return;

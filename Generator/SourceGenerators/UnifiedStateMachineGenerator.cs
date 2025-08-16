@@ -915,6 +915,31 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                     Sb.AppendLine("    }");
                     Sb.AppendLine();
                 }
+
+                // Sync wrappers for async machines: throw on sync CanFire(payload) to preserve API parity
+                if (!HasMultiPayload)
+                {
+                    var single = Model.DefaultPayloadType;
+                    if (!string.IsNullOrEmpty(single))
+                    {
+                        var payloadType = GetTypeNameForUsage(single!);
+                        WriteMethodAttribute();
+                        Sb.AppendLine($"    public bool CanFire({triggerType} trigger, {payloadType} payload)");
+                        Sb.AppendLine("    {");
+                        Sb.AppendLine("        throw new SyncCallOnAsyncMachineException();");
+                        Sb.AppendLine("    }");
+                        Sb.AppendLine();
+                    }
+                }
+                else
+                {
+                    WriteMethodAttribute();
+                    Sb.AppendLine($"    public bool CanFire<TPayload>({triggerType} trigger, TPayload payload)");
+                    Sb.AppendLine("    {");
+                    Sb.AppendLine("        throw new SyncCallOnAsyncMachineException();");
+                    Sb.AppendLine("    }");
+                    Sb.AppendLine();
+                }
             }
             else
             {
@@ -972,56 +997,118 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         Sb.AppendLine("    {");
         Sb.AppendLine("        cancellationToken.ThrowIfCancellationRequested();");
         Sb.AppendLine();
-        
-        Sb.AppendLine($"        switch ({CurrentStateField})");
-        Sb.AppendLine("        {");
-        var allHandledFromStates = Model.Transitions.Select(t => t.FromState).Distinct().OrderBy(s => s);
-        foreach (var stateName in allHandledFromStates)
+
+        if (Model.HierarchyEnabled)
         {
-            Sb.AppendLine($"            case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}:");
+            Sb.AppendLine($"        int check = (int){CurrentStateField};");
+            Sb.AppendLine("        while (check >= 0)");
+            Sb.AppendLine("        {");
+            Sb.AppendLine($"            var state = ({stateTypeForUsage})check;");
+            Sb.AppendLine("            switch (state)");
             Sb.AppendLine("            {");
-            Sb.AppendLine("                switch (trigger)");
-            Sb.AppendLine("                {");
-            var transitionsFromThisState = Model.Transitions.Where(t => t.FromState == stateName);
-            foreach (var transition in transitionsFromThisState)
+            var grouped = Model.Transitions.GroupBy(t => t.FromState).OrderBy(g => g.Key);
+            foreach (var group in grouped)
             {
-                Sb.AppendLine($"                    case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}:");
+                Sb.AppendLine($"                case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(group.Key)}:");
+                Sb.AppendLine("                {");
+                Sb.AppendLine("                    switch (trigger)");
                 Sb.AppendLine("                    {");
-                if (!string.IsNullOrEmpty(transition.GuardMethod))
+                foreach (var transition in group)
                 {
-                    if (transition.GuardIsAsync)
+                    Sb.AppendLine($"                        case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}:");
+                    Sb.AppendLine("                        {");
+                    if (!string.IsNullOrEmpty(transition.GuardMethod))
                     {
-                        GuardGenerationHelper.EmitGuardCheck(
-                            Sb,
-                            transition,
-                            "guardResult",
-                            "null",
-                            IsAsyncMachine,
-                            wrapInTryCatch: true,
-                            Model.ContinueOnCapturedContext,
-                            handleResultAfterTry: true,
-                            cancellationTokenVar: "cancellationToken",
-                            treatCancellationAsFailure: Model.GenerationConfig.TreatCancellationAsFailure
-                        );
+                        if (transition.GuardIsAsync)
+                        {
+                            GuardGenerationHelper.EmitGuardCheck(
+                                Sb,
+                                transition,
+                                "guardResult",
+                                "null",
+                                IsAsyncMachine,
+                                wrapInTryCatch: true,
+                                Model.ContinueOnCapturedContext,
+                                handleResultAfterTry: true,
+                                cancellationTokenVar: "cancellationToken",
+                                treatCancellationAsFailure: Model.GenerationConfig.TreatCancellationAsFailure
+                            );
+                        }
+                        else
+                        {
+                            WriteGuardCall(transition, "guardResult", "null", throwOnException: false);
+                        }
+                        Sb.AppendLine("                            return guardResult;");
                     }
                     else
                     {
-                        WriteGuardCall(transition, "guardResult", "null", throwOnException: false);
+                        Sb.AppendLine("                            return true;");
                     }
-                    Sb.AppendLine("                        return guardResult;");
+                    Sb.AppendLine("                        }");
                 }
-                else
-                {
-                    Sb.AppendLine("                        return true;");
-                }
+                Sb.AppendLine("                        default: break;");
                 Sb.AppendLine("                    }");
+                Sb.AppendLine("                    break;");
+                Sb.AppendLine("                }");
             }
-            Sb.AppendLine("                    default: return false;");
-            Sb.AppendLine("                }");
+            Sb.AppendLine("                default: break;");
             Sb.AppendLine("            }");
+            Sb.AppendLine("            check = (uint)check < (uint)s_parent.Length ? s_parent[check] : -1;");
+            Sb.AppendLine("        }");
+            Sb.AppendLine("        return false;");
         }
-        Sb.AppendLine("            default: return false;");
-        Sb.AppendLine("        }");
+        else
+        {
+            Sb.AppendLine($"        switch ({CurrentStateField})");
+            Sb.AppendLine("        {");
+            var allHandledFromStates = Model.Transitions.Select(t => t.FromState).Distinct().OrderBy(s => s);
+            foreach (var stateName in allHandledFromStates)
+            {
+                Sb.AppendLine($"            case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}:");
+                Sb.AppendLine("            {");
+                Sb.AppendLine("                switch (trigger)");
+                Sb.AppendLine("                {");
+                var transitionsFromThisState = Model.Transitions.Where(t => t.FromState == stateName);
+                foreach (var transition in transitionsFromThisState)
+                {
+                    Sb.AppendLine($"                    case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}:");
+                    Sb.AppendLine("                    {");
+                    if (!string.IsNullOrEmpty(transition.GuardMethod))
+                    {
+                        if (transition.GuardIsAsync)
+                        {
+                            GuardGenerationHelper.EmitGuardCheck(
+                                Sb,
+                                transition,
+                                "guardResult",
+                                "null",
+                                IsAsyncMachine,
+                                wrapInTryCatch: true,
+                                Model.ContinueOnCapturedContext,
+                                handleResultAfterTry: true,
+                                cancellationTokenVar: "cancellationToken",
+                                treatCancellationAsFailure: Model.GenerationConfig.TreatCancellationAsFailure
+                            );
+                        }
+                        else
+                        {
+                            WriteGuardCall(transition, "guardResult", "null", throwOnException: false);
+                        }
+                        Sb.AppendLine("                        return guardResult;");
+                    }
+                    else
+                    {
+                        Sb.AppendLine("                        return true;");
+                    }
+                    Sb.AppendLine("                    }");
+                }
+                Sb.AppendLine("                    default: return false;");
+                Sb.AppendLine("                }");
+                Sb.AppendLine("            }");
+            }
+            Sb.AppendLine("            default: return false;");
+            Sb.AppendLine("        }");
+        }
         Sb.AppendLine("    }");
         Sb.AppendLine();
     }
@@ -1054,51 +1141,29 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         Sb.AppendLine("    {");
         Sb.AppendLine("        cancellationToken.ThrowIfCancellationRequested();");
         Sb.AppendLine();
-        
-        Sb.AppendLine($"        switch ({CurrentStateField})");
-        Sb.AppendLine("        {");
-        
-        var transitionsByFromState = Model.Transitions
-            .GroupBy(t => t.FromState)
-            .OrderBy(g => g.Key);
-
-        foreach (var stateGroup in transitionsByFromState)
+        if (Model.HierarchyEnabled)
         {
-            var stateName = stateGroup.Key;
-            Sb.AppendLine($"            case {stateType}.{TypeHelper.EscapeIdentifier(stateName)}:");
+            Sb.AppendLine($"        var permitted = new List<{triggerType}>();");
+            Sb.AppendLine($"        int check = (int){CurrentStateField};");
+            Sb.AppendLine("        while (check >= 0)");
+            Sb.AppendLine("        {");
+            Sb.AppendLine($"            var state = ({stateType})check;");
+            Sb.AppendLine("            switch (state)");
             Sb.AppendLine("            {");
-            
-            // Check if any transition has a guard
-            var hasAsyncGuards = stateGroup.Any(t => !string.IsNullOrEmpty(t.GuardMethod) && t.GuardIsAsync);
-
-            if (!hasAsyncGuards && stateGroup.All(t => string.IsNullOrEmpty(t.GuardMethod)))
+            var transitionsByFromState = Model.Transitions
+                .GroupBy(t => t.FromState)
+                .OrderBy(g => g.Key);
+            foreach (var stateGroup in transitionsByFromState)
             {
-                // No guards - return static array
-                var triggers = stateGroup.Select(t => t.Trigger).Distinct().ToList();
-                if (triggers.Any())
-                {
-                    var triggerList = string.Join(", ", triggers.Select(t => $"{triggerType}.{TypeHelper.EscapeIdentifier(t)}"));
-                    Sb.AppendLine($"                return new {triggerType}[] {{ {triggerList} }};");
-                }
-                else
-                {
-                    Sb.AppendLine($"                return {ArrayEmptyMethod}<{triggerType}>();");
-                }
-            }
-            else
-            {
-                // Has guards - build list dynamically
-                Sb.AppendLine($"                var permitted = new List<{triggerType}>();");
-
+                var stateName = stateGroup.Key;
+                Sb.AppendLine($"                case {stateType}.{TypeHelper.EscapeIdentifier(stateName)}:");
+                Sb.AppendLine("                {");
                 foreach (var transition in stateGroup)
                 {
-                    Sb.AppendLine("                {");
-                    
                     if (!string.IsNullOrEmpty(transition.GuardMethod))
                     {
                         if (transition.GuardIsAsync)
                         {
-                            // Use guard helper for async guards
                             GuardGenerationHelper.EmitGuardCheck(
                                 Sb,
                                 transition,
@@ -1111,7 +1176,6 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                                 cancellationTokenVar: "cancellationToken",
                                 treatCancellationAsFailure: Model.GenerationConfig.TreatCancellationAsFailure
                             );
-
                             Sb.AppendLine("                    if (canFire)");
                             Sb.AppendLine("                    {");
                             Sb.AppendLine($"                        permitted.Add({triggerType}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
@@ -1130,19 +1194,107 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                     {
                         Sb.AppendLine($"                    permitted.Add({triggerType}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
                     }
-                    
-                    Sb.AppendLine("                }");
                 }
+                Sb.AppendLine("                    break;");
+                Sb.AppendLine("                }");
+            }
+            Sb.AppendLine("                default: break;");
+            Sb.AppendLine("            }");
+            Sb.AppendLine("            check = (uint)check < (uint)s_parent.Length ? s_parent[check] : -1;");
+            Sb.AppendLine("        }");
+            Sb.AppendLine($"        return permitted.Count == 0 ? {ArrayEmptyMethod}<{triggerType}>() : permitted.ToArray();");
+        }
+        else
+        {
+            Sb.AppendLine($"        switch ({CurrentStateField})");
+            Sb.AppendLine("        {");
+            
+            var transitionsByFromState = Model.Transitions
+                .GroupBy(t => t.FromState)
+                .OrderBy(g => g.Key);
 
-                Sb.AppendLine("                return permitted;");
+            foreach (var stateGroup in transitionsByFromState)
+            {
+                var stateName = stateGroup.Key;
+                Sb.AppendLine($"            case {stateType}.{TypeHelper.EscapeIdentifier(stateName)}:");
+                Sb.AppendLine("            {");
+                
+                // Check if any transition has a guard
+                var hasAsyncGuards = stateGroup.Any(t => !string.IsNullOrEmpty(t.GuardMethod) && t.GuardIsAsync);
+
+                if (!hasAsyncGuards && stateGroup.All(t => string.IsNullOrEmpty(t.GuardMethod)))
+                {
+                    // No guards - return static array
+                    var triggers = stateGroup.Select(t => t.Trigger).Distinct().ToList();
+                    if (triggers.Any())
+                    {
+                        var triggerList = string.Join(", ", triggers.Select(t => $"{triggerType}.{TypeHelper.EscapeIdentifier(t)}"));
+                        Sb.AppendLine($"                return new {triggerType}[] {{ {triggerList} }};");
+                    }
+                    else
+                    {
+                        Sb.AppendLine($"                return {ArrayEmptyMethod}<{triggerType}>();");
+                    }
+                }
+                else
+                {
+                    // Has guards - build list dynamically
+                    Sb.AppendLine($"                var permitted = new List<{triggerType}>();");
+
+                    foreach (var transition in stateGroup)
+                    {
+                        Sb.AppendLine("                {");
+                        
+                        if (!string.IsNullOrEmpty(transition.GuardMethod))
+                        {
+                            if (transition.GuardIsAsync)
+                            {
+                                // Use guard helper for async guards
+                                GuardGenerationHelper.EmitGuardCheck(
+                                    Sb,
+                                    transition,
+                                    "canFire",
+                                    "null",
+                                    IsAsyncMachine,
+                                    wrapInTryCatch: true,
+                                    Model.ContinueOnCapturedContext,
+                                    handleResultAfterTry: true,
+                                    cancellationTokenVar: "cancellationToken",
+                                    treatCancellationAsFailure: Model.GenerationConfig.TreatCancellationAsFailure
+                                );
+
+                                Sb.AppendLine("                    if (canFire)");
+                                Sb.AppendLine("                    {");
+                                Sb.AppendLine($"                        permitted.Add({triggerType}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+                                Sb.AppendLine("                    }");
+                            }
+                            else
+                            {
+                                Sb.AppendLine($"                    var canFire = {transition.GuardMethod}();");
+                                Sb.AppendLine("                    if (canFire)");
+                                Sb.AppendLine("                    {");
+                                Sb.AppendLine($"                        permitted.Add({triggerType}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+                                Sb.AppendLine("                    }");
+                            }
+                        }
+                        else
+                        {
+                            Sb.AppendLine($"                    permitted.Add({triggerType}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+                        }
+                        
+                        Sb.AppendLine("                }");
+                    }
+
+                    Sb.AppendLine("                return permitted;");
+                }
+                
+                Sb.AppendLine("            }");
             }
             
-            Sb.AppendLine("            }");
+            Sb.AppendLine("            default:");
+            Sb.AppendLine($"                return {ArrayEmptyMethod}<{triggerType}>();");
+            Sb.AppendLine("        }");
         }
-        
-        Sb.AppendLine("            default:");
-        Sb.AppendLine($"                return {ArrayEmptyMethod}<{triggerType}>();");
-        Sb.AppendLine("        }");
         Sb.AppendLine("    }");
         Sb.AppendLine();
     }
@@ -1950,7 +2102,38 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
             Sb.AppendLine("    }");
             Sb.AppendLine();
         }
-        // Note: Async version with resolver could be added in the future if needed
+        else
+        {
+            // Async version with resolver
+            Sb.WriteSummary("Asynchronously gets the list of triggers that can be fired in the current state with payload resolution (runtime evaluation including guards)");
+            Sb.AppendLine("    /// <param name=\"payloadResolver\">Function to resolve payload for triggers that require it. Called only for triggers with guards expecting parameters.</param>");
+            Sb.AppendLine("    /// <param name=\"cancellationToken\">A token to observe for cancellation requests</param>");
+            Sb.AppendLine($"    public async ValueTask<{ReadOnlyListType}<{triggerType}>> GetPermittedTriggersAsync(Func<{triggerType}, object?> payloadResolver, CancellationToken cancellationToken = default)");
+            Sb.AppendLine("    {");
+            Sb.AppendLine("        EnsureStarted();");
+            Sb.AppendLine("        if (payloadResolver == null) throw new ArgumentNullException(nameof(payloadResolver));");
+            Sb.AppendLine("        cancellationToken.ThrowIfCancellationRequested();");
+            Sb.AppendLine($"        var permitted = new List<{triggerType}>();");
+            Sb.AppendLine();
+
+            // Evaluate all distinct triggers defined in the model using CanFireWithPayloadAsync
+            var distinctTriggers = Model.Transitions.Select(t => t.Trigger).Distinct().OrderBy(t => t).ToList();
+            foreach (var trig in distinctTriggers)
+            {
+                Sb.AppendLine("        {");
+                Sb.AppendLine($"            var __trig = {triggerType}.{TypeHelper.EscapeIdentifier(trig)};");
+                Sb.AppendLine("            var __payload = payloadResolver(__trig);");
+                Sb.AppendLine($"            if (await CanFireWithPayloadAsync(__trig, __payload, cancellationToken){GetConfigureAwait()})");
+                Sb.AppendLine("            {");
+                Sb.AppendLine("                permitted.Add(__trig);");
+                Sb.AppendLine("            }");
+                Sb.AppendLine("        }");
+            }
+
+            Sb.AppendLine($"        return permitted.Count == 0 ? {ArrayEmptyMethod}<{triggerType}>() : permitted.ToArray();");
+            Sb.AppendLine("    }");
+            Sb.AppendLine();
+        }
     }
 
     // Sync direct-return transition logic (no success var, no labels)

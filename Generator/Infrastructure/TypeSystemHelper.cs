@@ -565,7 +565,7 @@ public class TypeSystemHelper
 
     /// <summary>
     /// Przetwarza przyjazny (C#) zapis generyka, np.
-    ///     "Namespace.Event<string, List<int>>"
+    ///     "Namespace.Event&lt;string, List&lt;int&gt;&gt;"
     /// i zwraca sformatowaną nazwę gotową do wstawienia w kod.
     /// </summary>
     private string ProcessFriendlyGenericType(string friendlyTypeName,
@@ -748,7 +748,7 @@ public class TypeSystemHelper
 
         return basePath + "<" + string.Join(", ", argNames) + ">";
     }
-    // <summary>
+    /// <summary>
     /// Builds a fully qualified type name from any type symbol.
     /// Handles INamedTypeSymbol, arrays, pointers, and other type kinds.
     /// </summary>

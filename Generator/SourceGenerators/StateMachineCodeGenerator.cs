@@ -803,7 +803,14 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine("int bestDeclOrder = int.MaxValue;");
         Sb.AppendLine("bool bestIsInternal = false;");
         Sb.AppendLine("int bestDestIndex = -1;");
-        Sb.AppendLine("System.Action? bestAction = null;");
+        if (IsAsyncMachine)
+        {
+            Sb.AppendLine("System.Func<System.Threading.Tasks.ValueTask>? bestActionAsync = null;");
+        }
+        else
+        {
+            Sb.AppendLine("System.Action? bestAction = null;");
+        }
         Sb.AppendLine();
         
         Sb.AppendLine("int declOrder = 0;");
@@ -878,9 +885,19 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         using (Sb.Block("if (bestIsInternal)"))
         {
             Sb.AppendLine("// Internal transition: execute action without state change");
-            using (Sb.Block("if (bestAction != null)"))
+            if (IsAsyncMachine)
             {
-                Sb.AppendLine("try { bestAction(); } catch { return false; }");
+                using (Sb.Block("if (bestActionAsync != null)"))
+                {
+                    Sb.AppendLine($"try {{ await bestActionAsync(){GetConfigureAwait()}; }} catch {{ return false; }}");
+                }
+            }
+            else
+            {
+                using (Sb.Block("if (bestAction != null)"))
+                {
+                    Sb.AppendLine("try { bestAction(); } catch { return false; }");
+                }
             }
             Sb.AppendLine("return true; // state unchanged, no history recording");
         }
@@ -892,9 +909,19 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             Sb.AppendLine($"_currentState = ({stateTypeForUsage})GetCompositeEntryTarget((int)_currentState);");
             
             // Execute action if present
-            using (Sb.Block("if (bestAction != null)"))
+            if (IsAsyncMachine)
             {
-                Sb.AppendLine("try { bestAction(); } catch { /* action failed but transition succeeded */ }");
+                using (Sb.Block("if (bestActionAsync != null)"))
+                {
+                    Sb.AppendLine($"try {{ await bestActionAsync(){GetConfigureAwait()}; }} catch {{ /* action failed but transition succeeded */ }}");
+                }
+            }
+            else
+            {
+                using (Sb.Block("if (bestAction != null)"))
+                {
+                    Sb.AppendLine("try { bestAction(); } catch { /* action failed but transition succeeded */ }");
+                }
             }
             
             Sb.AppendLine("return true;");
@@ -982,26 +1009,62 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             // Store action to execute later
             if (!string.IsNullOrEmpty(transition.ActionMethod))
             {
-                if (transition.ActionExpectsPayload && Model.GenerationConfig.HasPayload)
+                if (IsAsyncMachine)
                 {
-                    var payloadType = transition.ExpectedPayloadType ?? Model.DefaultPayloadType;
-                    if (!string.IsNullOrEmpty(payloadType))
+                    if (transition.ActionExpectsPayload && Model.GenerationConfig.HasPayload)
                     {
-                        Sb.AppendLine($"bestAction = () => {{ if (payload is {GetTypeNameForUsage(payloadType)} p) {transition.ActionMethod}(p); }};");
+                        var payloadType = transition.ExpectedPayloadType ?? Model.DefaultPayloadType;
+                        if (!string.IsNullOrEmpty(payloadType))
+                        {
+                            Sb.AppendLine($"bestActionAsync = async () => {{ if (payload is {GetTypeNameForUsage(payloadType)} p) await {transition.ActionMethod}(p){GetConfigureAwait()}; }};");
+                        }
+                        else
+                        {
+                            Sb.AppendLine($"bestActionAsync = async () => {{ await {transition.ActionMethod}(payload){GetConfigureAwait()}; }};");
+                        }
                     }
                     else
                     {
-                        Sb.AppendLine($"bestAction = () => {transition.ActionMethod}(payload);");
+                        if (transition.ActionIsAsync)
+                        {
+                            Sb.AppendLine($"bestActionAsync = async () => {{ await {transition.ActionMethod}(){GetConfigureAwait()}; }};");
+                        }
+                        else
+                        {
+                            Sb.AppendLine($"bestActionAsync = () => {{ {transition.ActionMethod}(); return default; }};");
+                        }
                     }
                 }
                 else
                 {
-                    Sb.AppendLine($"bestAction = () => {transition.ActionMethod}();");
+                    if (transition.ActionExpectsPayload && Model.GenerationConfig.HasPayload)
+                    {
+                        var payloadType = transition.ExpectedPayloadType ?? Model.DefaultPayloadType;
+                        if (!string.IsNullOrEmpty(payloadType))
+                        {
+                            Sb.AppendLine($"bestAction = () => {{ if (payload is {GetTypeNameForUsage(payloadType)} p) {transition.ActionMethod}(p); }};");
+                        }
+                        else
+                        {
+                            Sb.AppendLine($"bestAction = () => {transition.ActionMethod}(payload);");
+                        }
+                    }
+                    else
+                    {
+                        Sb.AppendLine($"bestAction = () => {transition.ActionMethod}();");
+                    }
                 }
             }
             else
             {
-                Sb.AppendLine("bestAction = null;");
+                if (IsAsyncMachine)
+                {
+                    Sb.AppendLine("bestActionAsync = null;");
+                }
+                else
+                {
+                    Sb.AppendLine("bestAction = null;");
+                }
             }
         }
         Sb.AppendLine("declOrder++;");
