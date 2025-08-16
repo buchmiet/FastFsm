@@ -29,7 +29,7 @@ namespace Generator.Helpers
             bool wrapInTryCatch,
             bool continueOnCapturedContext = false,
             bool handleResultAfterTry = false,
-            string cancellationTokenVar = null,
+            string? cancellationTokenVar = null,
             bool treatCancellationAsFailure = false)
         {
             // If no guard method, always true
@@ -113,7 +113,7 @@ namespace Generator.Helpers
             OverloadType overloadType,
             string resultVar,
             string payloadVar,
-            string cancellationTokenVar,
+            string? cancellationTokenVar,
             string awaitPrefix,
             string configureAwait,
             bool declareVariable)

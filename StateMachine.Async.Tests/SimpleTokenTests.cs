@@ -161,6 +161,7 @@ public class SimplePayloadTests
         // Arrange
         var machine = new PayloadMachine(PayloadStates.Off);
         var payload = new TogglePayload { Id = 42 };
+        await machine.StartAsync();
 
         // Act – payload is propagated to guard & action overloads
         var result = await machine.TryFireAsync(PayloadTriggers.ToggleOn, payload);

@@ -889,22 +889,32 @@ public partial class OrderProcessor
 
 ## Architecture Overview
 
-FastFSM uses a multi-stage compilation approach:
+FastFSM uses a multi-stage, feature‑gated compilation approach:
 
 1.  **Declaration** - You define states and transitions using attributes
 2.  **Analysis** - Source generator analyzes your declarations at compile time
 3.  **Generation** - Optimized implementation is generated as part of your class
 4.  **Compilation** - Everything compiles to efficient IL code
 
-The generator creates different variants based on features used:
+Instead of switching between separate “variant” classes, a single generator orchestrator emits only the code required by the features you use. Concretely:
 
-  - **Pure** - Just transitions (fastest)
-  - **Basic** - Adds OnEntry/OnExit
-  - **WithPayload** - Typed data support
-  - **WithExtensions** - Plugin support
-  - **Full** - All features
+- A single orchestrator drives generation: `Generator/SourceGenerators/UnifiedStateMachineGenerator.cs`.
+- Feature detection is done from your declarations (attributes and method signatures). Depending on usage, the generator conditionally emits:
+  - Payload support (single or multi‑payload) with typed/generic `TryFire/Fire/CanFire` and a compile‑time `_payloadMap` to validate trigger→payload types upfront.
+  - Extensions support with strict hook ordering (Before → GuardEvaluation → GuardEvaluated → Exit → Action → State change → Entry → After).
+  - Async support with `ValueTask` and correct `ConfigureAwait`, plus sync wrappers that throw when called on async machines to keep the API safe.
+  - HSM support (Parent/IsInitial/History) with hierarchy arrays (`s_parent`, `s_initialChild`, history tracking) and helper APIs (`IsIn`, `GetActivePath`, DEBUG `DumpActivePath`).
 
-You automatically get the most efficient variant for your needs.
+What the generator emits at a glance (accurate to the current code):
+
+- Flat FSMs: A nested `switch (CurrentState) { switch (trigger) { … } }` that directly inlines guard checks, state changes, and callbacks. Order for non‑extension machines: Guard → (OnExit) → State change → (OnEntry) → Action → success. With extensions: Action is executed before OnEntry and hooks wrap the entire sequence.
+- HSM FSMs: An inline “winner selection” loop walks up the parent chain from the current leaf. For each candidate transition it tracks (Priority, depth from current, declaration order) and picks the best per rules: higher Priority > closer to current (child beats parent) > earlier declaration. For async machines the winning action is stored as `Func<ValueTask>` and is awaited.
+- CanFire / GetPermittedTriggers:
+  - Flat: direct evaluation of guards per (state, trigger).
+  - HSM: union of triggers available from the current leaf and all ancestors (child inherits from parent). Async guards are evaluated with try/catch; cancellation can be surfaced or treated as failure per configuration.
+  - With payload: resolver overloads are available (`GetPermittedTriggersAsync(Func<TTrigger, object?>, CancellationToken)` for async and `GetPermittedTriggers(Func<TTrigger, object?>)` for sync) to provide per‑trigger payloads when evaluating guards.
+
+This “feature‑gated” generation keeps the final code minimal and fast, while matching behaviour exactly to the features actually used in your machine declarations.
 
 -----
 
