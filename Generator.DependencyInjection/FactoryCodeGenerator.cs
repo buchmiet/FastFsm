@@ -122,26 +122,12 @@ namespace Generator.DependencyInjection
                         instanceParams.Add("logger");
                     }
 
-                    switch (_model.Variant)
+                    if (_model.HasExtensions)
                     {
-                        case GenerationVariant.WithExtensions:
-                        case GenerationVariant.Full:
-                            _sb.AppendLine("// Get all registered extensions from DI");
-                            _sb.AppendLine($"var extensions = {ServiceProviderField}.GetServices<{StateMachineContractsNamespace}.IStateMachineExtension>();");
-                            _sb.AppendLine();
-                            // Logger jest już na liście, jeśli trzeba. Dodajemy rozszerzenia przed nim.
-                            instanceParams.Insert(2, "extensions");
-                            break;
-
-                        case GenerationVariant.Pure:
-                        case GenerationVariant.Basic:
-                        case GenerationVariant.WithPayload:
-                            // Nic więcej nie trzeba robić
-                            break;
-
-                        default:
-                            _sb.AppendLine($"throw new NotSupportedException(\"Variant {_model.Variant} not supported\");");
-                            return;
+                        _sb.AppendLine("// Get all registered extensions from DI");
+                        _sb.AppendLine($"var extensions = {ServiceProviderField}.GetServices<{StateMachineContractsNamespace}.IStateMachineExtension>();");
+                        _sb.AppendLine();
+                        instanceParams.Insert(2, "extensions");
                     }
 
                     _sb.AppendLine($"return {ActivatorUtilitiesClass}.CreateInstance<{className}>({string.Join(", ", instanceParams)});");
@@ -179,7 +165,7 @@ namespace Generator.DependencyInjection
                     WriteMainRegistrationMethod(className, fullFactoryName, fullInterfaceName, fullStateType, fullTriggerType);
                     WriteInitialStateFactoryOverload(className, fullStateType);
 
-                    if (_model.IsSinglePayloadVariant)
+                    if (_model.IsSinglePayload)
                     {
                         WriteSinglePayloadRegistrationMethod(className, fullStateType);
                     }
@@ -292,7 +278,7 @@ namespace Generator.DependencyInjection
 
             private void WriteSinglePayloadRegistrationMethod(string className, string fullStateType)
             {
-                if (!_model.IsSinglePayloadVariant) return;
+                if (!_model.IsSinglePayload) return;
 
                 var simpleName = _model.PayloadType!.SimpleName;
 

@@ -21,7 +21,6 @@ public class PayloadValidationDiagnosticTests(ITestOutputHelper output) : Genera
                 public enum Trigger { X }
                 
                 [StateMachine(typeof(State), typeof(Trigger))]
-                [GenerationMode(GenerationMode.WithPayload, Force = true)]
                 public partial class Machine {
                     // Forced WithPayload variant but no PayloadType attribute
                     [Transition(State.A, Trigger.X, State.B)]
@@ -53,7 +52,6 @@ public class PayloadValidationDiagnosticTests(ITestOutputHelper output) : Genera
                 public enum Trigger { X }
                 
                 [StateMachine(typeof(State), typeof(Trigger))]
-                [GenerationMode(GenerationMode.Full, Force = true)]
                 public partial class Machine {
                     // Forced Full variant but no PayloadType attribute
                     [Transition(State.A, Trigger.X, State.B)]
@@ -79,7 +77,6 @@ public class PayloadValidationDiagnosticTests(ITestOutputHelper output) : Genera
                 public class MyPayload { }
                 
                 [StateMachine(typeof(State), typeof(Trigger), DefaultPayloadType = typeof(MyPayload))]
-                [GenerationMode(GenerationMode.WithPayload, Force = true)]
                 public partial class Machine {
                     [Transition(State.A, Trigger.X, State.B)]
                     private void Config() { }
@@ -105,7 +102,6 @@ public class PayloadValidationDiagnosticTests(ITestOutputHelper output) : Genera
                 public class PayloadB { }
                 
                 [StateMachine(typeof(State), typeof(Trigger))]
-                [GenerationMode(GenerationMode.WithPayload, Force = true)]
                 [PayloadType(typeof(PayloadA), Triggers = new[] { Trigger.X })]
                 [PayloadType(typeof(PayloadB), Triggers = new[] { Trigger.Y })]
                 public partial class Machine {
@@ -141,7 +137,6 @@ public class PayloadValidationDiagnosticTests(ITestOutputHelper output) : Genera
                 public class PayloadB { }
                 
                 [StateMachine(typeof(State), typeof(Trigger))]
-                [GenerationMode(GenerationMode.Full, Force = true)]
                 [PayloadType(typeof(PayloadA), Triggers = new[] { Trigger.X })]
                 [PayloadType(typeof(PayloadB), Triggers = new[] { Trigger.Y })]
                 public partial class Machine {
@@ -168,7 +163,6 @@ public class PayloadValidationDiagnosticTests(ITestOutputHelper output) : Genera
                 public enum Trigger { X }
                 
                 [StateMachine(typeof(State), typeof(Trigger))]
-                [GenerationMode(GenerationMode.Pure, Force = true)]
                 public partial class Machine {
                     // Pure variant can't have callbacks
                     [State(State.A, OnEntry = nameof(EnterA))]
@@ -204,7 +198,6 @@ public class PayloadValidationDiagnosticTests(ITestOutputHelper output) : Genera
                 public class MyPayload { }
                 
                 [StateMachine(typeof(State), typeof(Trigger), DefaultPayloadType = typeof(MyPayload))]
-                [GenerationMode(GenerationMode.Pure, Force = true)]
                 public partial class Machine {
                     // Pure variant can't have payloads
                     [Transition(State.A, Trigger.X, State.B)]
@@ -231,7 +224,6 @@ public class PayloadValidationDiagnosticTests(ITestOutputHelper output) : Genera
                 public class MyPayload { }
                 
                 [StateMachine(typeof(State), typeof(Trigger))]
-                [GenerationMode(GenerationMode.Basic, Force = true)]
                 [PayloadType(typeof(MyPayload))]
                 public partial class Machine {
                     // Basic variant can't have payloads
@@ -259,7 +251,6 @@ public class PayloadValidationDiagnosticTests(ITestOutputHelper output) : Genera
                 public class MyPayload { }
                 
                 [StateMachine(typeof(State), typeof(Trigger), DefaultPayloadType = typeof(MyPayload))]
-                [GenerationMode(GenerationMode.WithExtensions, Force = true)]
                 public partial class Machine {
                     // WithExtensions variant can't have payloads
                     [Transition(State.A, Trigger.X, State.B)]
@@ -288,7 +279,6 @@ public class PayloadValidationDiagnosticTests(ITestOutputHelper output) : Genera
                 [StateMachine(typeof(State), typeof(Trigger), 
                     DefaultPayloadType = typeof(MyPayload),
                     GenerateExtensibleVersion = true)]
-                [GenerationMode(GenerationMode.WithPayload, Force = true)]
                 public partial class Machine {
                     // WithPayload variant can't have extensions
                     [Transition(State.A, Trigger.X, State.B)]
@@ -317,7 +307,6 @@ public class PayloadValidationDiagnosticTests(ITestOutputHelper output) : Genera
                 [StateMachine(typeof(State), typeof(Trigger), 
                     DefaultPayloadType = typeof(MyPayload),
                     GenerateExtensibleVersion = true)]
-                [GenerationMode(GenerationMode.Full, Force = true)]
                 public partial class Machine {
                     // Full variant can have everything
                     [State(State.A, OnEntry = nameof(EnterA))]
@@ -345,7 +334,6 @@ public class PayloadValidationDiagnosticTests(ITestOutputHelper output) : Genera
                 public enum Trigger { X }
                 
                 [StateMachine(typeof(State), typeof(Trigger))]
-                [GenerationMode(GenerationMode.WithPayload, Force = true)]
                 public partial class Machine {
                     // Missing payload AND has callbacks (two problems)
                     [State(State.A, OnEntry = nameof(EnterA))]

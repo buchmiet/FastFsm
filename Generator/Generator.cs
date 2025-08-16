@@ -401,9 +401,18 @@ public class StateMachineGenerator : IIncrementalGenerator
                 return;
             }
             
-            // Determine variant
-            var variantSelector = new VariantSelector();
-            variantSelector.DetermineVariant(model, candidate.Symbol);
+            // Determine feature configuration (no external variant forcing)
+            model.GenerationConfig.HasOnEntryExit = model.States.Values.Any(s =>
+                !string.IsNullOrEmpty(s.OnEntryMethod) || !string.IsNullOrEmpty(s.OnExitMethod));
+            // Extensions flag from [StateMachine(GenerateExtensibleVersion = true)]
+            var smAttr = candidate.Symbol.GetAttributes()
+                .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == StateMachineAttributeFullName);
+            if (smAttr != null)
+            {
+                var extArg = smAttr.NamedArguments.FirstOrDefault(na => na.Key == nameof(Abstractions.Attributes.StateMachineAttribute.GenerateExtensibleVersion));
+                model.GenerationConfig.HasExtensions = extArg.Key != null && (bool)extArg.Value.Value!;
+            }
+            // No internal variants — unified generator gates purely on feature flags
             
             // Extract metrics for diagnostics
             int totalStates = model.States?.Count ?? 0;
@@ -413,12 +422,12 @@ public class StateMachineGenerator : IIncrementalGenerator
             int payloadTypesCount = model.TriggerPayloadTypes?.Count ?? 0;
             bool hasPayload = payloadTypesCount > 0 || !string.IsNullOrEmpty(model.DefaultPayloadType);
             
-            // Report variant decision
+            // Report features summary (without variants)
             context.ReportDiagnostic(Diagnostic.Create(
                 FSM991_Variant,
                 candidate.ClassDeclaration.GetLocation(),
                 fullName,
-                model.Variant,
+                $"features: payload={(model.GenerationConfig.HasPayload ? 1:0)}, ext={(model.GenerationConfig.HasExtensions ? 1:0)}, callbacks={(model.GenerationConfig.HasOnEntryExit ? 1:0)}",
                 internalCount > 0 && externalCount == 0,
                 hasPayload));
             
@@ -450,33 +459,35 @@ public class StateMachineGenerator : IIncrementalGenerator
                 new DiagnosticDescriptor(
                     "FSM990_HSM_FLAG",
                     "HSM Flag Tracking",
-                    "[3-GenEntry] {0}: HierarchyEnabled={1}, Variant={2}",
+                    "[3-GenEntry] {0}: HierarchyEnabled={1}, Features payload={2} ext={3} callbacks={4}",
                     "FSM.Generator",
                     DiagnosticSeverity.Info,
                     isEnabledByDefault: true),
                 Location.None,
                 model.ClassName,
                 model.HierarchyEnabled,
-                model.Variant));
+                model.GenerationConfig.HasPayload,
+                model.GenerationConfig.HasExtensions,
+                model.GenerationConfig.HasOnEntryExit));
             
-            // Use unified generator instead of variant-specific ones
-            StateMachineCodeGenerator generator = new UnifiedStateMachineGenerator(model);
+            // Use flattened unified generator
+            var generator = new Generator.SourceGenerators.UnifiedStateMachineGenerator(model);
             
             var source = generator.Generate();
             
             // Check if generated source is valid
             if (string.IsNullOrWhiteSpace(source) || source.Length == 0)
             {
-                context.ReportDiagnostic(Diagnostic.Create(
-                    FSM993_EmptyCode,
-                    candidate.ClassDeclaration.GetLocation(),
-                    fullName,
-                    model.Variant,
-                    totalStates,
-                    internalCount,
-                    externalCount,
-                    payloadTypesCount,
-                    model.UsedEnumOnlyFallback));
+            context.ReportDiagnostic(Diagnostic.Create(
+                FSM993_EmptyCode,
+                candidate.ClassDeclaration.GetLocation(),
+                fullName,
+                "<no-variant>",
+                totalStates,
+                internalCount,
+                externalCount,
+                payloadTypesCount,
+                model.UsedEnumOnlyFallback));
                 
                 // Do NOT call AddSource for empty code
                 return;
@@ -706,13 +717,11 @@ public class StateMachineGenerator : IIncrementalGenerator
             if (classes.IsDefaultOrEmpty)
                 return;
 
-            // Parser i selector wariantów
+            // Parser (variant selection handled inside parser/generator logic)
             StateMachineParser parser;
-            VariantSelector variantSelector;
             try
             {
                 parser = new StateMachineParser(compilation, context);
-                variantSelector = new VariantSelector();
             }
             catch
             {
@@ -818,7 +827,17 @@ public class StateMachineGenerator : IIncrementalGenerator
                     var semanticModel = compilation.GetSemanticModel(classDeclaration.SyntaxTree);
                     // We already have classSymbol from the tuple
 
-                    variantSelector.DetermineVariant(model!, classSymbol);
+                    // determine feature config for model
+                    model!.GenerationConfig.HasOnEntryExit = model.States.Values.Any(s =>
+                        !string.IsNullOrEmpty(s.OnEntryMethod) || !string.IsNullOrEmpty(s.OnExitMethod));
+                    var smAttr2 = classSymbol.GetAttributes()
+                        .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == StateMachineAttributeFullName);
+                    if (smAttr2 != null)
+                    {
+                        var extArg2 = smAttr2.NamedArguments.FirstOrDefault(na => na.Key == nameof(Abstractions.Attributes.StateMachineAttribute.GenerateExtensibleVersion));
+                        model.GenerationConfig.HasExtensions = extArg2.Key != null && (bool)extArg2.Value.Value!;
+                    }
+                    // No internal variants — unified generator gates purely on feature flags
 
                     model!.GenerateLogging = BuildProperties.GetGenerateLogging(
                         optionsProvider.GlobalOptions);
@@ -826,8 +845,8 @@ public class StateMachineGenerator : IIncrementalGenerator
                     model!.GenerateDependencyInjection = BuildProperties.GetGenerateDI(
                         optionsProvider.GlobalOptions);
 
-                    // 1) Główny generator — Unified obsługuje wszystkie warianty
-                    StateMachineCodeGenerator generator = new UnifiedStateMachineGenerator(model);
+                    // 1) Główny generator — flattened unified generator obsługuje wszystkie warianty
+                    var generator = new Generator.SourceGenerators.UnifiedStateMachineGenerator(model);
 
                     string source;
                     try
@@ -849,7 +868,7 @@ public class StateMachineGenerator : IIncrementalGenerator
                         FSM998_CandidateFound,
                         classDeclaration.GetLocation(),
                         fullName,
-                        $"Generated source length: {source?.Length ?? 0} chars for variant={model.Variant}"));
+                        $"Generated source length: {source?.Length ?? 0} chars (features: payload={(model.GenerationConfig.HasPayload ? 1:0)}, ext={(model.GenerationConfig.HasExtensions ? 1:0)}, callbacks={(model.GenerationConfig.HasOnEntryExit ? 1:0)})"));
                     
                     // Check if generated source is empty or too small
                     if (string.IsNullOrWhiteSpace(source) || source.Length < 100)
@@ -858,7 +877,7 @@ public class StateMachineGenerator : IIncrementalGenerator
                             FSM997_SkippedCandidate,
                             classDeclaration.GetLocation(),
                             fullName,
-                            $"SKIP: Generated source is empty or too small. REASON=Generator produced invalid output, Size={source?.Length ?? 0} chars, Summary: variant={model.Variant}, internalOnly={isInternalOnly}, hasExternal={externalCount > 0}, hasInternal={internalCount > 0}, states={model.States?.Count ?? 0}, transitions={model.Transitions?.Count ?? 0}"));
+                            $"SKIP: Generated source is empty or too small. REASON=Generator produced invalid output, Size={source?.Length ?? 0} chars, Summary: internalOnly={isInternalOnly}, hasExternal={externalCount > 0}, hasInternal={internalCount > 0}, states={model.States?.Count ?? 0}, transitions={model.Transitions?.Count ?? 0}"));
                         continue;
                     }
 

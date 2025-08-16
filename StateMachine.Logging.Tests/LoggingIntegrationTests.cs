@@ -237,7 +237,6 @@ namespace StateMachine.Logging.Tests
     public enum TestInitialTrigger { Go, Stop }
 
     [StateMachine(typeof(TestInitialState), typeof(TestInitialTrigger))]
-    [GenerationMode(GenerationMode.Basic, Force = true)]
     public partial class InitialOnEntryStateMachineActions
     {
         [State(TestInitialState.Ready, OnEntry = nameof(OnReadyEntry))]
@@ -249,11 +248,11 @@ namespace StateMachine.Logging.Tests
     public enum OrderStatePayload { New, Processing, Paid, Shipped, Delivered, Cancelled }
     public enum OrderTriggerPayload { Process, Pay, Ship, Deliver, Cancel, Refund }
 
-    [StateMachine(typeof(OrderStatePayload), typeof(OrderTriggerPayload))]
+    [StateMachine(typeof(OrderStatePayload), typeof(OrderTriggerPayload), GenerateExtensibleVersion = true)]
     [PayloadType(OrderTriggerPayload.Process, typeof(OrderPayload))]
     [PayloadType(OrderTriggerPayload.Pay, typeof(PaymentPayload))]
     [PayloadType(OrderTriggerPayload.Ship, typeof(ShippingPayload))]
-    [GenerationMode(GenerationMode.Full, Force = true)]
+    
     public partial class FullMultiPayloadMachine
     {
         // Konfiguracja stanu New z metodą OnEntry

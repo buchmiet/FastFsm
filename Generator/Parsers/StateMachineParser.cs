@@ -382,124 +382,41 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         BuildHierarchy(currentModel, ref criticalErrorOccurred, report);
         report?.Invoke($"Hierarchy built. HierarchyEnabled: {currentModel.HierarchyEnabled}");
 
-        // === SEKCJA 9: Określenie wariantu generacji ===
-        report?.Invoke("Section 9: Determining generation variant");
-        var variantSelector = new VariantSelector();
-        report?.Invoke("Calling DetermineVariant");
-        variantSelector.DetermineVariant(currentModel, classSymbol);
-        report?.Invoke($"Variant determined: {currentModel.GenerationConfig.Variant}");
+        // === SEKCJA 9: Określenie konfiguracji cech i wariantu (wewnętrznie) ===
+        report?.Invoke("Section 9: Determining feature configuration");
+        // HasOnEntry/Exit
+        currentModel.GenerationConfig.HasOnEntryExit = currentModel.States.Values.Any(s =>
+            !string.IsNullOrEmpty(s.OnEntryMethod) || !string.IsNullOrEmpty(s.OnExitMethod));
+        // HasExtensions (GenerateExtensibleVersion flag on StateMachine)
+        var stateMachineAttrForExt = classSymbol.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == StateMachineAttributeFullName);
+        if (stateMachineAttrForExt != null)
+        {
+            var extensibleArg = stateMachineAttrForExt.NamedArguments.FirstOrDefault(na => na.Key == nameof(Abstractions.Attributes.StateMachineAttribute.GenerateExtensibleVersion));
+            currentModel.GenerationConfig.HasExtensions = extensibleArg.Key != null && (bool)extensibleArg.Value.Value!;
+        }
+        // Log feature flags summary
+        var cfg = currentModel.GenerationConfig;
+        report?.Invoke($"Feature config: HasPayload={cfg.HasPayload}, HasExt={cfg.HasExtensions}, HasCallbacks={cfg.HasOnEntryExit}");
         
         // FSM990_HSM_FLAG: Log after variant selection
         context.ReportDiagnostic(Diagnostic.Create(
             new DiagnosticDescriptor(
                 "FSM990_HSM_FLAG",
                 "HSM Flag Tracking",
-                "[2-AfterVariant] {0}: HierarchyEnabled={1}, Variant={2}",
+                "[2-AfterConfig] {0}: HierarchyEnabled={1}, Features payload={2} ext={3} callbacks={4}",
                 "FSM.Generator",
                 DiagnosticSeverity.Info,
                 isEnabledByDefault: true),
             classDeclaration.GetLocation(),
             currentModel.ClassName,
             currentModel.HierarchyEnabled,
-            currentModel.GenerationConfig.Variant));
+            currentModel.GenerationConfig.HasPayload,
+            currentModel.GenerationConfig.HasExtensions,
+            currentModel.GenerationConfig.HasOnEntryExit));
 
-        // === SEKCJA 10: Walidacje po ustaleniu wariantu ===
-        report?.Invoke("Section 10: Post-variant validations");
-        
-        // Validate FSM007-009: Payload configuration with forced variants
-        if (currentModel.GenerationConfig.IsForced)
-        {
-            report?.Invoke($"Validating forced variant: {currentModel.GenerationConfig.Variant}");
-            
-            // FSM007: MissingPayloadType - forced payload variant needs payload type
-            var missingPayloadCtx = new MissingPayloadTypeContext(
-                variant: currentModel.GenerationConfig.Variant.ToString(),
-                hasDefaultPayloadType: !string.IsNullOrEmpty(currentModel.DefaultPayloadType),
-                hasTriggerPayloadTypes: currentModel.TriggerPayloadTypes.Any(),
-                isForced: true);
-            
-            var missingPayloadResults = _missingPayloadTypeRule.Validate(missingPayloadCtx);
-            ProcessRuleResults(missingPayloadResults, classDeclaration.GetLocation(), ref criticalErrorOccurred);
-            
-            // FSM008: ConflictingPayloadConfiguration - WithPayload variant can't have trigger-specific payloads
-            if (currentModel.GenerationConfig.Variant == GenerationVariant.WithPayload)
-            {
-                var conflictingPayloadCtx = new ConflictingPayloadContext(
-                    isWithPayloadVariant: true,
-                    triggerSpecificPayloadCount: currentModel.TriggerPayloadTypes.Count);
-                
-                var conflictingPayloadResults = _conflictingPayloadRule.Validate(conflictingPayloadCtx);
-                ProcessRuleResults(conflictingPayloadResults, classDeclaration.GetLocation(), ref criticalErrorOccurred);
-            }
-            
-            // FSM009: InvalidForcedVariantConfiguration - forced variant conflicts with actual usage
-            string? conflictType = null;
-            bool hasConflict = false;
-            
-            if (currentModel.GenerationConfig.Variant == GenerationVariant.Pure)
-            {
-                // Pure variant can't have callbacks, payloads, or extensions
-                if (currentModel.GenerationConfig.HasOnEntryExit)
-                {
-                    conflictType = "OnEntryExit";
-                    hasConflict = true;
-                }
-                else if (currentModel.GenerationConfig.HasPayload || currentModel.TriggerPayloadTypes.Any())
-                {
-                    conflictType = "PayloadTypes";
-                    hasConflict = true;
-                }
-                else if (currentModel.GenerationConfig.HasExtensions)
-                {
-                    conflictType = "Extensions";
-                    hasConflict = true;
-                }
-            }
-            else if (currentModel.GenerationConfig.Variant == GenerationVariant.Basic)
-            {
-                // Basic variant can have callbacks but not payloads or extensions
-                if (currentModel.GenerationConfig.HasPayload || currentModel.TriggerPayloadTypes.Any())
-                {
-                    conflictType = "PayloadTypes";
-                    hasConflict = true;
-                }
-                else if (currentModel.GenerationConfig.HasExtensions)
-                {
-                    conflictType = "Extensions";
-                    hasConflict = true;
-                }
-            }
-            else if (currentModel.GenerationConfig.Variant == GenerationVariant.WithPayload)
-            {
-                // WithPayload variant can't have extensions
-                if (currentModel.GenerationConfig.HasExtensions)
-                {
-                    conflictType = "Extensions";
-                    hasConflict = true;
-                }
-            }
-            else if (currentModel.GenerationConfig.Variant == GenerationVariant.WithExtensions)
-            {
-                // WithExtensions variant can't have payloads
-                if (currentModel.GenerationConfig.HasPayload || currentModel.TriggerPayloadTypes.Any())
-                {
-                    conflictType = "PayloadTypes";
-                    hasConflict = true;
-                }
-            }
-            // Full variant can have everything, so no conflicts
-            
-            if (hasConflict)
-            {
-                var invalidVariantCtx = new InvalidVariantConfigContext(
-                    variantName: currentModel.GenerationConfig.Variant.ToString(),
-                    conflictType: conflictType!,
-                    hasConflict: true);
-                
-                var invalidVariantResults = _invalidVariantConfigRule.Validate(invalidVariantCtx);
-                ProcessRuleResults(invalidVariantResults, classDeclaration.GetLocation(), ref criticalErrorOccurred);
-            }
-        }
+        // === SEKCJA 10: Walidacje konfiguracji cech (bez wymuszania wariantów) ===
+        report?.Invoke("Section 10: Feature configuration validations");
 
         if (criticalErrorOccurred)
         {
@@ -579,12 +496,12 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
         if (isAsyncOce)
             report?.Invoke($"[DEBUG AOE] Final state - IsAsync: {currentModel.GenerationConfig.IsAsync}, ExceptionHandler: {currentModel.ExceptionHandler != null}");
 
-        // FSM990_HSM_FLAG: Log at parser output
+        // FSM990_HSM_FLAG: Log at parser output (feature flags summary)
         context.ReportDiagnostic(Diagnostic.Create(
             new DiagnosticDescriptor(
                 "FSM990_HSM_FLAG",
                 "HSM Flag Tracking",
-                "[1-Parser] {0}: HierarchyEnabled={1}, UsedEnumOnlyFallback={2}, HasPayload={3}, Variant={4}",
+                "[1-Parser] {0}: HierarchyEnabled={1}, UsedEnumOnlyFallback={2}, HasPayload={3}, HasExtensions={4}, HasCallbacks={5}",
                 "FSM.Generator",
                 DiagnosticSeverity.Info,
                 isEnabledByDefault: true),
@@ -593,7 +510,8 @@ public class StateMachineParser(Compilation compilation, SourceProductionContext
             currentModel.HierarchyEnabled,
             currentModel.UsedEnumOnlyFallback,
             currentModel.GenerationConfig.HasPayload,
-            currentModel.GenerationConfig.Variant));
+            currentModel.GenerationConfig.HasExtensions,
+            currentModel.GenerationConfig.HasOnEntryExit));
         
         model = currentModel;
         report?.Invoke("=== SUCCESS: TryParse completed successfully ===");

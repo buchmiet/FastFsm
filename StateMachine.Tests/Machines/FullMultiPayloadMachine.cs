@@ -1,18 +1,17 @@
 ﻿// StateMachine.Tests/Machines/FullMultiPayloadMachine.cs
 
 using StateMachine.Contracts;
-using StateMachine.Tests.FullVariant;
+using StateMachine.Tests.Features.Integration;
 using System.Collections.Generic;
 using Abstractions.Attributes;
 
 namespace StateMachine.Tests.Machines
 {
    
-    [StateMachine(typeof(OrderState), typeof(OrderTrigger))]
-    [PayloadType(OrderTrigger.Process, typeof(FullVariantExtendedTests.OrderPayload))]
-    [PayloadType(OrderTrigger.Pay, typeof(FullVariantExtendedTests.PaymentPayload))]
-    [PayloadType(OrderTrigger.Ship, typeof(FullVariantExtendedTests.ShippingPayload))]
-    [GenerationMode(GenerationMode.Full, Force = true)]
+    [StateMachine(typeof(OrderState), typeof(OrderTrigger), GenerateExtensibleVersion = true)]
+    [PayloadType(OrderTrigger.Process, typeof(AllFeaturesExtendedTests.OrderPayload))]
+    [PayloadType(OrderTrigger.Pay, typeof(AllFeaturesExtendedTests.PaymentPayload))]
+    [PayloadType(OrderTrigger.Ship, typeof(AllFeaturesExtendedTests.ShippingPayload))]
     public partial class FullMultiPayloadMachine
     {
 
@@ -21,8 +20,8 @@ namespace StateMachine.Tests.Machines
         [Transition(OrderState.Paid, OrderTrigger.Ship, OrderState.Shipped, Action = nameof(HandleShipping))]
         private void Configure() { }
 
-        private void HandleOrder(FullVariantExtendedTests.OrderPayload order) { }
-        private void HandlePayment(FullVariantExtendedTests.PaymentPayload payment) { }
-        private void HandleShipping(FullVariantExtendedTests.ShippingPayload shipping) { }
+        private void HandleOrder(AllFeaturesExtendedTests.OrderPayload order) { }
+        private void HandlePayment(AllFeaturesExtendedTests.PaymentPayload payment) { }
+        private void HandleShipping(AllFeaturesExtendedTests.ShippingPayload shipping) { }
     }
 }

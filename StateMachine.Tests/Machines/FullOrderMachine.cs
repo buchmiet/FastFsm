@@ -1,13 +1,12 @@
 ﻿using System.Collections.Generic;
 using Abstractions.Attributes;
-using StateMachine.Tests.FullVariant;
+using StateMachine.Tests.Features.Integration;
 
 namespace StateMachine.Tests.Machines
 {
     // Full variant machine with single payload type and extensions
-    [StateMachine(typeof(OrderState), typeof(OrderTrigger))]
-    [PayloadType(typeof(FullVariantExtendedTests.OrderPayload))]
-    [GenerationMode(GenerationMode.Full, Force = true)]
+    [StateMachine(typeof(OrderState), typeof(OrderTrigger), GenerateExtensibleVersion = true)]
+    [PayloadType(typeof(AllFeaturesExtendedTests.OrderPayload))]
 
 
 
@@ -30,24 +29,24 @@ namespace StateMachine.Tests.Machines
             Guard = nameof(CanShip))]
         private void Configure() { }
 
-        private bool CanProcess(FullVariantExtendedTests.OrderPayload order) => order.Amount > 0;
+        private bool CanProcess(AllFeaturesExtendedTests.OrderPayload order) => order.Amount > 0;
 
-        private void ProcessOrder(FullVariantExtendedTests.OrderPayload order)
+        private void ProcessOrder(AllFeaturesExtendedTests.OrderPayload order)
         {
             ProcessedOrderIds.Add(order.OrderId);
             TotalProcessed += order.Amount;
         }
 
-        private void RecordPayment(FullVariantExtendedTests.OrderPayload order)
+        private void RecordPayment(AllFeaturesExtendedTests.OrderPayload order)
         {
             // Payment processing logic
         }
 
-        private bool CanShip(FullVariantExtendedTests.OrderPayload order) => !string.IsNullOrEmpty(order.TrackingNumber);
+        private bool CanShip(AllFeaturesExtendedTests.OrderPayload order) => !string.IsNullOrEmpty(order.TrackingNumber);
 
         private void OnEnterNew() { }
-        private void OnEnterProcessing(FullVariantExtendedTests.OrderPayload order) { }
-        private void OnEnterPaid(FullVariantExtendedTests.OrderPayload order) { }
+        private void OnEnterProcessing(AllFeaturesExtendedTests.OrderPayload order) { }
+        private void OnEnterPaid(AllFeaturesExtendedTests.OrderPayload order) { }
     }
     public enum OrderState { New, Processing, Paid, Shipped, Delivered, Cancelled }
     public enum OrderTrigger { Process, Pay, Ship, Deliver, Cancel, Refund }

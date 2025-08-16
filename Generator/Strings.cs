@@ -37,7 +37,7 @@ internal static class Strings
     public const string InternalTransitionAttributeFullName = $"{AbstractionsNamespace}.InternalTransitionAttribute";
     public const string StateAttributeFullName = $"{AbstractionsNamespace}.StateAttribute";
     public const string PayloadTypeAttributeFullName = $"{AbstractionsNamespace}.PayloadTypeAttribute";
-    public const string GenerationModeAttributeFullName = $"{AbstractionsNamespace}.GenerationModeAttribute";
+    // Variants removed in 0.8 — GenerationModeAttribute no longer exists
 
     // ──────────────────────────────────────────────────────────────
     //  Callback-types / nazwy parametrów w atrybutach

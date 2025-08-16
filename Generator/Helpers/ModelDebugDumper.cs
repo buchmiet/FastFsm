@@ -74,7 +74,7 @@ public static class ModelDebugDumper
             sb.AppendLine();
             
             // Variant and features from GenerationConfig
-            sb.AppendLine($"// Variant: {model.Variant}");
+            sb.AppendLine($"// Features: payload={(model.GenerationConfig.HasPayload ? 1:0)}, ext={(model.GenerationConfig.HasExtensions ? 1:0)}, callbacks={(model.GenerationConfig.HasOnEntryExit ? 1:0)}");
             sb.AppendLine($"// IsAsync: {model.GenerationConfig.IsAsync}");
             sb.AppendLine($"// HasPayload: {model.GenerationConfig.HasPayload}");
             sb.AppendLine($"// HasExtensions: {model.GenerationConfig.HasExtensions}");

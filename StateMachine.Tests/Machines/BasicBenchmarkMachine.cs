@@ -1,5 +1,5 @@
 ﻿using Abstractions.Attributes;
-using static StateMachine.Tests.Performance.BenchmarkTests;
+using static StateMachine.Tests.Features.Performance.BenchmarkTests;
 
 namespace StateMachine.Tests.Machines
 {

@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using Abstractions.Attributes;
-using static StateMachine.Tests.BasicVariant.StateCallbackTests;
+using static StateMachine.Tests.Features.Core.StateCallbackTests;
 
 namespace StateMachine.Tests.Machines
 {

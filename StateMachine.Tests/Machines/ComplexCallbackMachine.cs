@@ -1,36 +1,37 @@
 ﻿using System;
 using System.Collections.Generic;
 using Abstractions.Attributes;
-using static StateMachine.Tests.BasicVariant.StateCallbackTests;
+using StateMachine.Tests.Features.Core;
+
 
 namespace StateMachine.Tests.Machines
 {
-    [StateMachine(typeof(ComplexCallbackState), typeof(ComplexCallbackTrigger))]
+    [StateMachine(typeof(StateCallbackTests.ComplexCallbackState), typeof(StateCallbackTests.ComplexCallbackTrigger))]
     public partial class ComplexCallbackMachine
     {
         public List<string> EventSequence { get; } = [];
         public bool ResourcesCleaned { get; private set; }
         public DateTime? CompletionTime { get; private set; }
 
-        [State(ComplexCallbackState.Idle,
+        [State(StateCallbackTests.ComplexCallbackState.Idle,
             OnEntry = nameof(OnEnterIdle),
             OnExit = nameof(OnExitIdle))]
-        [State(ComplexCallbackState.Ready,
+        [State(StateCallbackTests.ComplexCallbackState.Ready,
             OnEntry = nameof(OnEnterReady),
             OnExit = nameof(OnExitReady))]
-        [State(ComplexCallbackState.Processing,
+        [State(StateCallbackTests.ComplexCallbackState.Processing,
             OnEntry = nameof(OnEnterProcessing),
             OnExit = nameof(OnExitProcessing))]
-        [State(ComplexCallbackState.Done,
+        [State(StateCallbackTests.ComplexCallbackState.Done,
             OnEntry = nameof(OnEnterDone))]
         private void ConfigureStates() { }
 
-        [Transition(ComplexCallbackState.Idle, ComplexCallbackTrigger.Start,
-            ComplexCallbackState.Ready)]
-        [Transition(ComplexCallbackState.Ready, ComplexCallbackTrigger.Process,
-            ComplexCallbackState.Processing)]
-        [Transition(ComplexCallbackState.Processing, ComplexCallbackTrigger.Complete,
-            ComplexCallbackState.Done)]
+        [Transition(StateCallbackTests.ComplexCallbackState.Idle, StateCallbackTests.ComplexCallbackTrigger.Start,
+            StateCallbackTests.ComplexCallbackState.Ready)]
+        [Transition(StateCallbackTests.ComplexCallbackState.Ready, StateCallbackTests.ComplexCallbackTrigger.Process,
+            StateCallbackTests.ComplexCallbackState.Processing)]
+        [Transition(StateCallbackTests.ComplexCallbackState.Processing, StateCallbackTests.ComplexCallbackTrigger.Complete,
+            StateCallbackTests.ComplexCallbackState.Done)]
         private void Configure() { }
 
         private void OnEnterIdle() => EventSequence.Add("Entry-Idle");

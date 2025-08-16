@@ -139,7 +139,6 @@ namespace StateMachine.Logging.Tests
     public enum ProcessTrigger { Start, Complete }
 
     [StateMachine(typeof(ProcessState), typeof(ProcessTrigger))]
-    [GenerationMode(GenerationMode.Basic, Force = true)]
     public partial class GuardedStateMachine
     {
         public bool CanProcess { get; set; } = true;
@@ -155,7 +154,6 @@ namespace StateMachine.Logging.Tests
     public enum WorkflowTrigger { Submit, Approve }
 
     [StateMachine(typeof(WorkflowState), typeof(WorkflowTrigger), GenerateExtensibleVersion = true)]
-    [GenerationMode(GenerationMode.WithExtensions, Force = true)]
     public partial class ExtensibleMachine
     {
         [Transition(WorkflowState.Draft, WorkflowTrigger.Submit, WorkflowState.Submitted)]
