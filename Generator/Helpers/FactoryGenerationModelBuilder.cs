@@ -33,7 +33,7 @@ public class FactoryGenerationModelBuilder
 
         // Przetwarzanie typu Payload (jeśli istnieje)
         TypeGenerationInfo? payloadTypeInfo = null;
-        var isSinglePayload = model.GenerationConfig.Variant is GenerationVariant.WithPayload or GenerationVariant.Full
+        var isSinglePayload = (model.GenerationConfig.HasPayload || model.DefaultPayloadType != null || model.TriggerPayloadTypes.Any())
                               && !model.TriggerPayloadTypes.Any()
                               && model.DefaultPayloadType != null;
 
@@ -80,8 +80,8 @@ public class FactoryGenerationModelBuilder
             ClassName = model.ClassName,
             UserNamespace = model.Namespace,
             ShouldGenerateLogging = model.GenerateLogging,
-            Variant = model.GenerationConfig.Variant,
-            IsSinglePayloadVariant = isSinglePayload,
+            HasExtensions = model.GenerationConfig.HasExtensions,
+            IsSinglePayload = isSinglePayload,
             AllRequiredNamespaces = allNamespaces.OrderBy(ns => ns).ToList()
         };
     }

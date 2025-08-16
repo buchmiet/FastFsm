@@ -217,7 +217,6 @@ namespace StateMachine.Logging.Tests
     public enum InternalTrigger { Start, Refresh, Stop }
 
     [StateMachine(typeof(InternalState), typeof(InternalTrigger))]
-    [GenerationMode(GenerationMode.Basic, Force = true)]
     public partial class InternalTransitionMachine
     {
         public int RefreshCount { get; private set; }

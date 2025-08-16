@@ -1,20 +1,21 @@
 ﻿using System;
 using Abstractions.Attributes;
-using static StateMachine.Tests.BasicVariant.StateCallbackTests;
+using StateMachine.Tests.Features.Core;
+
 
 namespace StateMachine.Tests.Machines
 {
-    [StateMachine(typeof(ExceptionState), typeof(ExceptionTrigger))]
+    [StateMachine(typeof(StateCallbackTests.ExceptionState), typeof(StateCallbackTests.ExceptionTrigger))]
     public partial class ExceptionCallbackMachine
     {
         public bool ThrowInOnExit { get; set; }
         public bool ThrowInOnEntry { get; set; }
 
-        [State(ExceptionState.A, OnExit = nameof(OnExitA))]
-        [State(ExceptionState.B, OnEntry = nameof(OnEntryB))]
+        [State(StateCallbackTests.ExceptionState.A, OnExit = nameof(OnExitA))]
+        [State(StateCallbackTests.ExceptionState.B, OnEntry = nameof(OnEntryB))]
         private void ConfigureStates() { }
 
-        [Transition(ExceptionState.A, ExceptionTrigger.Go, ExceptionState.B)]
+        [Transition(StateCallbackTests.ExceptionState.A, StateCallbackTests.ExceptionTrigger.Go, StateCallbackTests.ExceptionState.B)]
         private void Configure() { }
 
         private void OnExitA()

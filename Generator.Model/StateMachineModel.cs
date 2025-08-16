@@ -14,7 +14,6 @@ public class StateMachineModel
     public List<TransitionModel> Transitions { get; set; } = [];
     public Dictionary<string, StateModel> States { get; set; } = new(); // Key is EnumMemberName
     public GenerationConfig GenerationConfig { get; set; } = new();
-    public GenerationVariant Variant => GenerationConfig.Variant;
     public string? DefaultPayloadType { get; set; } // Fully qualified name of default payload type
     public Dictionary<string, string> TriggerPayloadTypes { get; set; } = new(); 
 

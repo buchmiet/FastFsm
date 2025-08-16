@@ -19,10 +19,9 @@ namespace Generator.Model.Dtos
         public string ClassName { get; set; }
         public string? UserNamespace { get; set; }
         public bool ShouldGenerateLogging { get; set; }
-        public GenerationVariant Variant { get; set; } // Wymaga przeniesienia enum GenerationVariant
-
-        // Pre-kalkulowane flagi
-        public bool IsSinglePayloadVariant { get; set; }
+        public bool HasExtensions { get; set; }
+        // Pre-calculated flags
+        public bool IsSinglePayload { get; set; }
 
         /// <summary>
         /// Zbiorcza, unikalna lista wszystkich przestrzeni nazw potrzebnych w generowanym pliku.

@@ -1,5 +1,5 @@
 ﻿using Abstractions.Attributes;
-using static StateMachine.Tests.EdgeCases.EmptyMachineTests;
+using static StateMachine.Tests.Features.EdgeCases.EmptyMachineTests;
 
 namespace StateMachine.Tests.Machines
 {

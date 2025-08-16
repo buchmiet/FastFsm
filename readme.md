@@ -920,6 +920,16 @@ This “feature‑gated” generation keeps the final code minimal and fast, whi
 
 ## Migration Guide
 
+### 0.8: Variants removed → Feature-gated generation
+
+Starting with 0.8, the old “variant” architecture (Pure/Core/Payload/Extensions/Full) has been removed and replaced by a single, unified generator that emits code based on the features you actually use.
+
+- The previous “Pure” variant is now referred to as Core (baseline, no optional features).
+- Feature enablement is implicit: using HSM attributes (Parent/IsInitial/History), extensions, or payload annotations automatically turns on only those capabilities.
+- Tests and docs are organized by feature areas (Core, Payload, HSM, Extensions, Lifecycle, Performance) instead of variants.
+
+Existing user code typically needs no changes; the removal is internal to the generator and the public attributes/APIs remain stable. If you previously depended on “variant” naming, prefer “Core” for the baseline configuration.
+
 ### Upgrading from v0.5 to v0.6
 
 Version 0.6 introduces breaking changes to improve safety and provide a more explicit API. The key is the new machine lifecycle.

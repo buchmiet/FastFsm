@@ -4,7 +4,6 @@ namespace StateMachine.Logging.Tests
 {
     // Pure variant state machine for testing
     [StateMachine(typeof(TestState), typeof(TestTrigger))]
-    [GenerationMode(GenerationMode.Pure, Force = true)]
     public partial class PureStateMachine
     {
         [Transition(TestState.Initial, TestTrigger.Start, TestState.Processing)]
@@ -14,7 +13,6 @@ namespace StateMachine.Logging.Tests
 
     // Basic variant with OnEntry/OnExit
     [StateMachine(typeof(TestState), typeof(TestTrigger))]
-    [GenerationMode(GenerationMode.Basic, Force = true)]
     public partial class BasicStateMachine
     {
         public int OnEntryCallCount { get; private set; }
@@ -36,7 +34,6 @@ namespace StateMachine.Logging.Tests
 
     // WithPayload variant
     [StateMachine(typeof(TestState), typeof(TestTrigger), DefaultPayloadType = typeof(TestPayload))]
-    [GenerationMode(GenerationMode.WithPayload, Force = true)]
     public partial class PayloadStateMachine
     {
         public TestPayload? LastPayload { get; private set; }
@@ -88,7 +85,6 @@ namespace StateMachine.Logging.Tests
 
     // WithExtensions variant
     [StateMachine(typeof(TestState), typeof(TestTrigger), GenerateExtensibleVersion = true)]
-    [GenerationMode(GenerationMode.WithExtensions, Force = true)]
     public partial class ExtensionsStateMachine
     {
         public bool GuardResult { get; set; } = true;
@@ -110,7 +106,6 @@ namespace StateMachine.Logging.Tests
     // Full variant (Payload + Extensions)
     [StateMachine(typeof(TestState), typeof(TestTrigger),
         GenerateExtensibleVersion = true, DefaultPayloadType = typeof(TestPayload))]
-    [GenerationMode(GenerationMode.Full, Force = true)]
     public partial class FullStateMachine
     {
         public TestPayload? LastPayload { get; private set; }
@@ -152,7 +147,6 @@ namespace StateMachine.Logging.Tests
 
     // Multi-payload variant for testing payload validation
     [StateMachine(typeof(TestState), typeof(TestTrigger))]
-    [GenerationMode(GenerationMode.Full, Force = true)]
     [PayloadType(TestTrigger.Start, typeof(TestPayload))]
     [PayloadType(TestTrigger.Process, typeof(string))]
     public partial class MultiPayloadStateMachine

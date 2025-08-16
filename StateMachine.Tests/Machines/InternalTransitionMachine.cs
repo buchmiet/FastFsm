@@ -1,25 +1,26 @@
 ﻿using System.Collections.Generic;
 using Abstractions.Attributes;
-using static StateMachine.Tests.BasicVariant.StateCallbackTests;
+using StateMachine.Tests.Features.Core;
+
 
 namespace StateMachine.Tests.Machines
 {
-    [StateMachine(typeof(InternalState), typeof(InternalTrigger))]
+    [StateMachine(typeof(StateCallbackTests.InternalState), typeof(StateCallbackTests.InternalTrigger))]
     public partial class InternalTransitionMachine
     {
         public List<string> EventLog { get; } = [];
 
-        [State(InternalState.Active,
+        [State(StateCallbackTests.InternalState.Active,
             OnEntry = nameof(OnEntryActive),
             OnExit = nameof(OnExitActive))]
-        [State(InternalState.Inactive,
+        [State(StateCallbackTests.InternalState.Inactive,
             OnEntry = nameof(OnEntryInactive))]
         private void ConfigureStates() { }
 
-        [InternalTransition(InternalState.Active, InternalTrigger.Update,
+        [InternalTransition(StateCallbackTests.InternalState.Active, StateCallbackTests.InternalTrigger.Update,
             Action = nameof(HandleUpdate))]
-        [Transition(InternalState.Active, InternalTrigger.Deactivate,
-            InternalState.Inactive)]
+        [Transition(StateCallbackTests.InternalState.Active, StateCallbackTests.InternalTrigger.Deactivate,
+            StateCallbackTests.InternalState.Inactive)]
         private void Configure() { }
 
         private void OnEntryActive() => EventLog.Add("OnEntry-Active");

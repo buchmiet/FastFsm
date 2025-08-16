@@ -9,7 +9,6 @@ namespace StateMachine.Tests.Machines
 {
     // WithPayload variant
     [StateMachine(typeof(TestState), typeof(TestTrigger), DefaultPayloadType = typeof(TestPayload))]
-    [GenerationMode(GenerationMode.WithPayload, Force = true)]
     public partial class PayloadStateMachine
     {
         public TestPayload? LastPayload { get; private set; }

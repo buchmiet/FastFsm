@@ -1,5 +1,5 @@
 ﻿using Abstractions.Attributes;
-using static StateMachine.Tests.EdgeCases.NameCollisionTests;
+using static StateMachine.Tests.Features.EdgeCases.NameCollisionTests;
 
 namespace StateMachine.Tests.Machines
 {
