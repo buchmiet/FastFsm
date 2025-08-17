@@ -34,20 +34,13 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
     // Extensions feature writer (used when HasExtensions)
     private readonly ExtensionsFeatureWriter _ext = new();
 
-    // Unified approach: no delegation to variant-specific generators
-    private readonly StateMachineCodeGenerator? _fallbackGenerator;
-
     public UnifiedStateMachineGenerator(StateMachineModel model) : base(model)
 {
-        // Phase 5: Handle all variants directly (Pure/Basic/WithPayload/WithExtensions/Full)
-        _fallbackGenerator = null;
+        // Unified generator handles all variants directly (Pure/Basic/WithPayload/WithExtensions/Full)
 }
 
     public override string Generate()
 {
-        // No fallback — Unified generator handles all variants
-
-        // Otherwise, generate directly
         WriteHeader();
         WriteNamespaceAndClass();
         return Sb.ToString();
@@ -587,7 +580,7 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         // Use payload-aware or core transition logic based on feature flags
         if (HasPayload)
     {
-            WriteTryFireStructure(stateType, triggerType, (transition, stateType, triggerType) =>
+            WriteTryFireStructureDispatcher(stateType, triggerType, (transition, stateType, triggerType) =>
         {
                 _smCtxCreated = false;  // Reset flag for each transition
                 WriteTransitionLogicPayloadAsync(transition, stateType, triggerType);
@@ -595,7 +588,7 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         }
         else
     {
-            WriteTryFireStructure(stateType, triggerType, (transition, stateType, triggerType) =>
+            WriteTryFireStructureDispatcher(stateType, triggerType, (transition, stateType, triggerType) =>
         {
                 _smCtxCreated = false;  // Reset flag for each transition
                 WriteTransitionLogic(transition, stateType, triggerType);
@@ -662,7 +655,7 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
             ? (Action<TransitionModel, string, string>)WriteTransitionLogicPayloadSyncDirect
             : (Action<TransitionModel, string, string>)WriteTransitionLogicSyncCore;
 
-        WriteTryFireStructure(stateType, triggerType, (transition, stateType, triggerType) =>
+        WriteTryFireStructureDispatcher(stateType, triggerType, (transition, stateType, triggerType) =>
     {
             _smCtxCreated = false;  // Reset flag for each transition
             writer(transition, stateType, triggerType);
@@ -789,7 +782,7 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         Sb.AppendLine("return true;");
 }
 
-    private new void WriteTryFireStructure(string stateType, string triggerType, Action<TransitionModel, string, string> writeTransitionLogic)
+    private void WriteTryFireStructureDispatcher(string stateType, string triggerType, Action<TransitionModel, string, string> writeTransitionLogic)
 {
         // For Extensions variant, we need special handling for no-transition case
         if (ExtensionsOn)
@@ -979,7 +972,7 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         }
         else
     {
-            base.WriteCanFireMethod(stateTypeForUsage, triggerTypeForUsage);
+            WriteCanFireMethodSyncCore(stateTypeForUsage, triggerTypeForUsage);
         }
 }
 
@@ -1109,6 +1102,107 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         Sb.AppendLine("    }");
         Sb.AppendLine();
 }
+
+    private void WriteCanFireMethodSyncCore(string stateTypeForUsage, string triggerTypeForUsage)
+    {
+        Sb.WriteSummary("Checks if the specified trigger can be fired in the current state (runtime evaluation including guards)");
+        Sb.AppendLine("/// <param name=\"trigger\">The trigger to check</param>");
+        Sb.AppendLine("/// <returns>True if the trigger can be fired, false otherwise</returns>");
+        WriteMethodAttribute();
+        using (Sb.Block($"protected override bool CanFireInternal({triggerTypeForUsage} trigger)"))
+        {
+            if (Model.HierarchyEnabled)
+            {
+                // HSM: Walk up the parent chain
+                Sb.AppendLine($"int currentIndex = (int){CurrentStateField};");
+                Sb.AppendLine("int check = currentIndex;");
+                using (Sb.Block("while (check >= 0)"))
+                {
+                    Sb.AppendLine($"var enumState = ({stateTypeForUsage})check;");
+                    using (Sb.Block("switch (enumState)"))
+                    {
+                        var allHandledFromStates = Model.Transitions.Select(t => t.FromState).Distinct().OrderBy(s => s);
+
+                        foreach (var stateName in allHandledFromStates)
+                        {
+                            Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}:");
+                            using (Sb.Indent())
+                            {
+                                using (Sb.Block("switch (trigger)"))
+                                {
+                                    var transitionsFromThisState = Model.Transitions
+                                        .Where(t => t.FromState == stateName);
+
+                                    foreach (var transition in transitionsFromThisState)
+                                    {
+                                        Sb.AppendLine($"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}:");
+                                        using (Sb.Indent())
+                                        {
+                                            if (!string.IsNullOrEmpty(transition.GuardMethod))
+                                            {
+                                                WriteGuardCall(transition, "guardResult", "null", throwOnException: false);
+                                                Sb.AppendLine("return guardResult;");
+                                            }
+                                            else
+                                            {
+                                                Sb.AppendLine("return true;");
+                                            }
+                                        }
+                                    }
+                                    Sb.AppendLine("default: break;");
+                                }
+                                Sb.AppendLine("break;");
+                            }
+                        }
+                        Sb.AppendLine("default: break;");
+                    }
+                    Sb.AppendLine("check = (uint)check < (uint)s_parent.Length ? s_parent[check] : -1;");
+                }
+                Sb.AppendLine("return false;");
+            }
+            else
+            {
+                // Flat FSM: Original implementation
+                using (Sb.Block($"switch ({CurrentStateField})"))
+                {
+                    var allHandledFromStates = Model.Transitions.Select(t => t.FromState).Distinct().OrderBy(s => s);
+
+                    foreach (var stateName in allHandledFromStates)
+                    {
+                        Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}:");
+                        using (Sb.Indent())
+                        {
+                            using (Sb.Block("switch (trigger)"))
+                            {
+                                var transitionsFromThisState = Model.Transitions
+                                    .Where(t => t.FromState == stateName);
+
+                                foreach (var transition in transitionsFromThisState)
+                                {
+                                    Sb.AppendLine($"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}:");
+                                    using (Sb.Indent())
+                                    {
+                                        if (!string.IsNullOrEmpty(transition.GuardMethod))
+                                        {
+                                            WriteGuardCall(transition, "guardResult", "null", throwOnException: false);
+                                            Sb.AppendLine("return guardResult;");
+                                        }
+                                        else
+                                        {
+                                            Sb.AppendLine("return true;");
+                                        }
+                                    }
+                                }
+                                Sb.AppendLine("default: return false;");
+                            }
+                        }
+                    }
+                    Sb.AppendLine("default: return false;");
+                }
+            }
+        }
+        Sb.AppendLine();
+    }
 
     private void WriteGetPermittedTriggersMethods(string stateType, string triggerType)
 {
