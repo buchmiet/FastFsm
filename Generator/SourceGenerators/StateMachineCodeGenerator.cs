@@ -845,7 +845,17 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine("int bestDeclOrder = int.MaxValue;");
         Sb.AppendLine("bool bestIsInternal = false;");
         Sb.AppendLine("int bestDestIndex = -1;");
-        Sb.AppendLine("ActionId bestActionId = ActionId.None;");
+        
+        if (IsAsyncMachine)
+        {
+            Sb.AppendLine("ActionId bestActionId = ActionId.None;");
+            Sb.AppendLine("AsyncActionId bestAsyncActionId = AsyncActionId.None;");
+        }
+        else
+        {
+            Sb.AppendLine("ActionId bestActionId = ActionId.None;");
+        }
+        
         if (Model.GenerationConfig.HasPayload)
         {
             Sb.AppendLine("object? bestPayload = null;");
@@ -924,7 +934,16 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         using (Sb.Block("if (bestIsInternal)"))
         {
             Sb.AppendLine("// Internal transition: execute action without state change");
-            GenerateActionSwitch("bestActionId", isInternal: true);
+            if (IsAsyncMachine && HasAsyncActions())
+            {
+                // For async machines with async actions, handle both sync and async actions
+                GenerateActionSwitch("bestActionId", isInternal: true);
+                GenerateAsyncActionSwitch("bestAsyncActionId", isInternal: true);
+            }
+            else
+            {
+                GenerateActionSwitch("bestActionId", isInternal: true);
+            }
             Sb.AppendLine("return true; // state unchanged, no history recording");
         }
         using (Sb.Block("else"))
@@ -935,7 +954,16 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             Sb.AppendLine($"_currentState = ({stateTypeForUsage})GetCompositeEntryTarget((int)_currentState);");
             
             // Execute action if present
-            GenerateActionSwitch("bestActionId", isInternal: false);
+            if (IsAsyncMachine && HasAsyncActions())
+            {
+                // For async machines with async actions, handle both sync and async actions
+                GenerateActionSwitch("bestActionId", isInternal: false);
+                GenerateAsyncActionSwitch("bestAsyncActionId", isInternal: false);
+            }
+            else
+            {
+                GenerateActionSwitch("bestActionId", isInternal: false);
+            }
             
             Sb.AppendLine("return true;");
         }
@@ -1023,7 +1051,16 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             if (!string.IsNullOrEmpty(transition.ActionMethod))
             {
                 var actionId = GetActionIdName(transition);
-                Sb.AppendLine($"bestActionId = ActionId.{actionId};");
+                
+                // Check if this is an async action and we're in an async machine
+                if (IsAsyncMachine && transition.ActionIsAsync)
+                {
+                    Sb.AppendLine($"bestAsyncActionId = AsyncActionId.{actionId};");
+                }
+                else
+                {
+                    Sb.AppendLine($"bestActionId = ActionId.{actionId};");
+                }
                 
                 // Store payload if needed
                 if (Model.GenerationConfig.HasPayload && transition.ActionExpectsPayload)
@@ -1033,7 +1070,14 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             }
             else
             {
-                Sb.AppendLine("bestActionId = ActionId.None;");
+                if (IsAsyncMachine)
+                {
+                    Sb.AppendLine("bestAsyncActionId = AsyncActionId.None;");
+                }
+                else
+                {
+                    Sb.AppendLine("bestActionId = ActionId.None;");
+                }
             }
         }
         Sb.AppendLine("declOrder++;");
@@ -2240,11 +2284,16 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     /// <summary>
     /// Generates the ActionId enum for zero-allocation action dispatch
     /// </summary>
+    protected bool HasAsyncActions()
+    {
+        return Model.Transitions.Any(t => !string.IsNullOrEmpty(t.ActionMethod) && t.ActionIsAsync);
+    }
+    
     protected void GenerateActionIdEnum()
     {
-        // Collect all unique action methods
+        // Collect all unique action methods for sync
         var actionNames = Model.Transitions
-            .Where(t => !string.IsNullOrEmpty(t.ActionMethod))
+            .Where(t => !string.IsNullOrEmpty(t.ActionMethod) && !t.ActionIsAsync)
             .Select(t => GetActionIdName(t))
             .Distinct()
             .OrderBy(n => n)
@@ -2258,6 +2307,36 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             foreach (var name in actionNames)
             {
                 Sb.AppendLine($"{name},");
+            }
+        }
+        Sb.AppendLine();
+    }
+    
+    /// <summary>
+    /// Generates the AsyncActionId enum for zero-allocation async action dispatch
+    /// </summary>
+    protected void GenerateAsyncActionIdEnum()
+    {
+        // Collect all unique async action methods
+        var asyncActionNames = Model.Transitions
+            .Where(t => !string.IsNullOrEmpty(t.ActionMethod) && t.ActionIsAsync)
+            .Select(t => GetActionIdName(t))
+            .Distinct()
+            .OrderBy(n => n)
+            .ToList();
+        
+        // Only generate if there are async actions
+        if (asyncActionNames.Count == 0) return;
+        
+        Sb.AppendLine("// Async action dispatch enum (zero-allocation)");
+        using (Sb.Block("private enum AsyncActionId : ushort"))
+        {
+            Sb.AppendLine("None = 0,");
+            ushort id = 1;
+            foreach (var name in asyncActionNames)
+            {
+                Sb.AppendLine($"{name} = {id},");
+                id++;
             }
         }
         Sb.AppendLine();
@@ -2287,13 +2366,13 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     }
     
     /// <summary>
-    /// Generates the action execution switch statement
+    /// Generates the action execution switch statement for sync actions
     /// </summary>
     protected void GenerateActionSwitch(string actionIdVar, bool isInternal)
     {
-        // Group transitions by action method
+        // Group transitions by action method - only sync actions
         var groups = Model.Transitions
-            .Where(t => !string.IsNullOrEmpty(t.ActionMethod))
+            .Where(t => !string.IsNullOrEmpty(t.ActionMethod) && !t.ActionIsAsync)
             .GroupBy(t => t.ActionMethod)
             .OrderBy(g => g.Key)
             .ToList();
@@ -2308,59 +2387,110 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                 var methodName = group.Key;
                 var actionIdName = GetActionIdName(group.First());
                 
-                // Check if any transition in this group expects payload or is async
+                // Check if any transition in this group expects payload
                 bool anyPayload = group.Any(t => t.ActionExpectsPayload && Model.GenerationConfig.HasPayload);
-                bool anyAsync = group.Any(t => t.ActionIsAsync);
                 
                 using (Sb.Block($"case ActionId.{actionIdName}:"))
                 {
                     using (Sb.Block("try"))
                     {
-                        if (IsAsyncMachine)
+                        if (anyPayload)
                         {
-                            if (anyPayload)
+                            var payloadType = group.FirstOrDefault(t => !string.IsNullOrEmpty(t.ExpectedPayloadType))?.ExpectedPayloadType
+                                            ?? Model.DefaultPayloadType;
+                            
+                            if (!string.IsNullOrEmpty(payloadType))
                             {
-                                // Get the most specific payload type from the group
-                                var payloadType = group.FirstOrDefault(t => !string.IsNullOrEmpty(t.ExpectedPayloadType))?.ExpectedPayloadType
-                                                ?? Model.DefaultPayloadType;
-                                
-                                if (!string.IsNullOrEmpty(payloadType))
-                                {
-                                    Sb.AppendLine($"if (bestPayload is {GetTypeNameForUsage(payloadType)} p)");
-                                    Sb.AppendLine($"    {(anyAsync ? "await " : "")}{methodName}(p){(anyAsync ? GetConfigureAwait() : "")};");
-                                }
-                                else
-                                {
-                                    Sb.AppendLine($"{(anyAsync ? "await " : "")}{methodName}(bestPayload){(anyAsync ? GetConfigureAwait() : "")};");
-                                }
+                                Sb.AppendLine($"if (bestPayload is {GetTypeNameForUsage(payloadType)} p)");
+                                Sb.AppendLine($"    {methodName}(p);");
                             }
                             else
                             {
-                                Sb.AppendLine($"{(anyAsync ? "await " : "")}{methodName}(){(anyAsync ? GetConfigureAwait() : "")};");
+                                Sb.AppendLine($"{methodName}(bestPayload);");
                             }
                         }
                         else
                         {
-                            // Sync machine
-                            if (anyPayload)
+                            Sb.AppendLine($"{methodName}();");
+                        }
+                    }
+                    using (Sb.Block("catch"))
+                    {
+                        if (isInternal)
+                        {
+                            Sb.AppendLine("return false;");
+                        }
+                        else
+                        {
+                            Sb.AppendLine("/* action failed but transition succeeded */");
+                        }
+                    }
+                    Sb.AppendLine("break;");
+                }
+            }
+            
+            Sb.AppendLine("default: break;");
+        }
+    }
+    
+    /// <summary>
+    /// Generates the async action execution switch statement with ValueTask fast-path
+    /// </summary>
+    protected void GenerateAsyncActionSwitch(string actionIdVar, bool isInternal)
+    {
+        // Group transitions by action method - only async actions
+        var groups = Model.Transitions
+            .Where(t => !string.IsNullOrEmpty(t.ActionMethod) && t.ActionIsAsync)
+            .GroupBy(t => t.ActionMethod)
+            .OrderBy(g => g.Key)
+            .ToList();
+        
+        // Always generate switch, even if empty
+        using (Sb.Block($"switch ({actionIdVar})"))
+        {
+            Sb.AppendLine("case AsyncActionId.None: break;");
+            
+            foreach (var group in groups)
+            {
+                var methodName = group.Key;
+                var actionIdName = GetActionIdName(group.First());
+                
+                // Check if any transition in this group expects payload
+                bool anyPayload = group.Any(t => t.ActionExpectsPayload && Model.GenerationConfig.HasPayload);
+                
+                using (Sb.Block($"case AsyncActionId.{actionIdName}:"))
+                {
+                    using (Sb.Block("try"))
+                    {
+                        if (anyPayload)
+                        {
+                            var payloadType = group.FirstOrDefault(t => !string.IsNullOrEmpty(t.ExpectedPayloadType))?.ExpectedPayloadType
+                                            ?? Model.DefaultPayloadType;
+                            
+                            if (!string.IsNullOrEmpty(payloadType))
                             {
-                                var payloadType = group.FirstOrDefault(t => !string.IsNullOrEmpty(t.ExpectedPayloadType))?.ExpectedPayloadType
-                                                ?? Model.DefaultPayloadType;
-                                
-                                if (!string.IsNullOrEmpty(payloadType))
+                                using (Sb.Block($"if (bestPayload is {GetTypeNameForUsage(payloadType)} p)"))
                                 {
-                                    Sb.AppendLine($"if (bestPayload is {GetTypeNameForUsage(payloadType)} p)");
-                                    Sb.AppendLine($"    {methodName}(p);");
-                                }
-                                else
-                                {
-                                    Sb.AppendLine($"{methodName}(bestPayload);");
+                                    // ValueTask fast-path
+                                    Sb.AppendLine($"var vt = {methodName}(p);");
+                                    Sb.AppendLine("if (!vt.IsCompletedSuccessfully)");
+                                    Sb.AppendLine($"    await vt{GetConfigureAwait()};");
                                 }
                             }
                             else
                             {
-                                Sb.AppendLine($"{methodName}();");
+                                // ValueTask fast-path
+                                Sb.AppendLine($"var vt = {methodName}(bestPayload);");
+                                Sb.AppendLine("if (!vt.IsCompletedSuccessfully)");
+                                Sb.AppendLine($"    await vt{GetConfigureAwait()};");
                             }
+                        }
+                        else
+                        {
+                            // ValueTask fast-path
+                            Sb.AppendLine($"var vt = {methodName}();");
+                            Sb.AppendLine("if (!vt.IsCompletedSuccessfully)");
+                            Sb.AppendLine($"    await vt{GetConfigureAwait()};");
                         }
                     }
                     using (Sb.Block("catch"))
