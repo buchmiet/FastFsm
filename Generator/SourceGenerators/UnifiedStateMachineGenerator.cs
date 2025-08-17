@@ -165,6 +165,7 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         // HSM arrays
         if (IsHierarchical)
     {
+            GenerateActionIdEnum(); // Generate ActionId enum for zero-allocation dispatch
             WriteHierarchyArrays(GetTypeNameForUsage(Model.StateType));
             WriteHierarchyRuntimeFieldsAndHelpers(GetTypeNameForUsage(Model.StateType));
         }
@@ -313,7 +314,7 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
 }
 
 
-    protected override void WriteOnInitialEntryMethod(string stateTypeForUsage)
+    protected  void WriteOnInitialEntryMethod(string stateTypeForUsage)
 {
         var statesWithParameterlessOnEntry = Model.States.Values
             .Where(s => !string.IsNullOrEmpty(s.OnEntryMethod) && s.OnEntryHasParameterlessOverload)
@@ -452,50 +453,52 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         {
                 var payloadType = GetTypeNameForUsage(Model.DefaultPayloadType!);
                 WriteMethodAttribute();
-                Sb.AppendLine($"public async Task FireAsync({triggerType} trigger, {payloadType} payload, CancellationToken cancellationToken = default)");
-                Sb.AppendLine("    {");
-                Sb.AppendLine("        EnsureStarted();");
-                Sb.AppendLine("        cancellationToken.ThrowIfCancellationRequested();");
-                Sb.AppendLine($"        if (!await TryFireAsync(trigger, payload, cancellationToken){GetConfigureAwait()})");
-                Sb.AppendLine("        {");
-                Sb.AppendLine($"            throw new InvalidOperationException($\"No valid transition from state '{{CurrentState}}' on trigger '{{trigger}}' with payload of type '{payloadType}'\");");
-                Sb.AppendLine("        }");
-                Sb.AppendLine("    }");
-                Sb.AppendLine();
-            }
+                using (Sb.Block(
+                           $"public async Task FireAsync({triggerType} trigger, {payloadType} payload, CancellationToken cancellationToken = default)"))
+                {
+                    Sb.AppendLine("EnsureStarted();");
+                    Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
+                    using (Sb.Block($"if (!await TryFireAsync(trigger, payload, cancellationToken){GetConfigureAwait()})"))
+                    {
+                        Sb.AppendLine(
+                            $"throw new InvalidOperationException($\"No valid transition from state '{{CurrentState}}' on trigger '{{trigger}}' with payload of type '{payloadType}'\");");
+                    }
+                    Sb.AppendLine();
+                }
+        }
             else
         {
                 WriteMethodAttribute();
-                Sb.AppendLine($"public async Task FireAsync<TPayload>({triggerType} trigger, TPayload payload, CancellationToken cancellationToken = default)");
-                Sb.AppendLine("    {");
-                Sb.AppendLine("        EnsureStarted();");
-                Sb.AppendLine("        cancellationToken.ThrowIfCancellationRequested();");
-                Sb.AppendLine($"        if (!await TryFireAsync(trigger, payload, cancellationToken){GetConfigureAwait()})");
-                Sb.AppendLine("        {");
-                Sb.AppendLine("            throw new InvalidOperationException($\"No valid transition from state '{CurrentState}' on trigger '{trigger}' with payload of type '{typeof(TPayload).Name}'\");");
-                Sb.AppendLine("        }");
-                Sb.AppendLine("    }");
+                using (Sb.Block($"public async Task FireAsync<TPayload>({triggerType} trigger, TPayload payload, CancellationToken cancellationToken = default)"))
+                {
+                    Sb.AppendLine("EnsureStarted();");
+                    Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
+                    Sb.AppendLine($"if (!await TryFireAsync(trigger, payload, cancellationToken){GetConfigureAwait()})");
+                    using (Sb.Block(""))
+                    {
+                        Sb.AppendLine("throw new InvalidOperationException($\"No valid transition from state '{CurrentState}' on trigger '{trigger}' with payload of type '{typeof(TPayload).Name}'\");");
+                    }
+                }
                 Sb.AppendLine();
             }
-
             // Sync Fire methods that throw for async machines
             if (!HasMultiPayload)
         {
                 var payloadType = GetTypeNameForUsage(Model.DefaultPayloadType!);
                 WriteMethodAttribute();
-                Sb.AppendLine($"public void Fire({triggerType} trigger, {payloadType} payload)");
-                Sb.AppendLine("    {");
-                Sb.AppendLine("        throw new SyncCallOnAsyncMachineException();");
-                Sb.AppendLine("    }");
+                using (Sb.Block($"public void Fire({triggerType} trigger, {payloadType} payload)"))
+                {
+                    Sb.AppendLine("throw new SyncCallOnAsyncMachineException();");
+                }
                 Sb.AppendLine();
             }
             else
         {
                 WriteMethodAttribute();
-                Sb.AppendLine($"    public void Fire<TPayload>({triggerType} trigger, TPayload payload)");
-                Sb.AppendLine("    {");
-                Sb.AppendLine("        throw new SyncCallOnAsyncMachineException();");
-                Sb.AppendLine("    }");
+                using (Sb.Block($"public void Fire<TPayload>({triggerType} trigger, TPayload payload)"))
+                {
+                    Sb.AppendLine("throw new SyncCallOnAsyncMachineException();");
+                }
                 Sb.AppendLine();
             }
         }
@@ -506,14 +509,14 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         {
                 var payloadType = GetTypeNameForUsage(Model.DefaultPayloadType!);
                 WriteMethodAttribute();
-                Sb.AppendLine($"public void Fire({triggerType} trigger, {payloadType} payload)");
-                Sb.AppendLine("    {");
-                Sb.AppendLine("        EnsureStarted();");
-                Sb.AppendLine("        if (!TryFire(trigger, payload))");
-                Sb.AppendLine("        {");
-                Sb.AppendLine($"            throw new InvalidOperationException($\"No valid transition from state '{{CurrentState}}' on trigger '{{trigger}}' with payload of type '{payloadType}'\");");
-                Sb.AppendLine("        }");
-                Sb.AppendLine("    }");
+                using (Sb.Block($"public void Fire({triggerType} trigger, {payloadType} payload)"))
+                {
+                    Sb.AppendLine("EnsureStarted();");
+                    using (Sb.Block("if (!TryFire(trigger, payload))"))
+                    {
+                        Sb.AppendLine($"throw new InvalidOperationException($\"No valid transition from state '{{CurrentState}}' on trigger '{{trigger}}' with payload of type '{payloadType}'\");");
+                    }
+                }
                 Sb.AppendLine();
             }
             else

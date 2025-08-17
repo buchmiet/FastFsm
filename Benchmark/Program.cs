@@ -3,4 +3,8 @@ using BenchmarkDotNet.Running;
 
 
 
-BenchmarkRunner.Run<StateMachineBenchmarks>();
+// Run standard benchmarks
+// BenchmarkRunner.Run<StateMachineBenchmarks>();
+
+// Run HSM benchmarks
+BenchmarkRunner.Run<HsmBenchmarks>();
