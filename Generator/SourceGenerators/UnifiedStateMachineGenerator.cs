@@ -166,6 +166,7 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         if (IsHierarchical)
     {
             GenerateActionIdEnum(); // Generate ActionId enum for zero-allocation dispatch
+            GenerateAsyncActionIdEnum(); // Generate AsyncActionId enum for async actions
             WriteHierarchyArrays(GetTypeNameForUsage(Model.StateType));
             WriteHierarchyRuntimeFieldsAndHelpers(GetTypeNameForUsage(Model.StateType));
         }
