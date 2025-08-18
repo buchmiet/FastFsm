@@ -648,9 +648,72 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             Model.States.TryGetValue(transition.FromState, out var fromStateDef) &&
             !string.IsNullOrEmpty(fromStateDef.OnExitMethod))
         {
-            Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
-            using (Sb.Block("try"))
+            if (IsAsyncMachine)
             {
+                // Async semantics: always convert OnExit exceptions into failed transition (return false)
+                using (Sb.Block("try"))
+                {
+                    CallbackGenerationHelper.EmitOnExitCall(
+                        Sb,
+                        fromStateDef,
+                        transition.ExpectedPayloadType,
+                        null,
+                        "null",
+                        IsAsyncMachine,
+                        wrapInTryCatch: false,
+                        Model.ContinueOnCapturedContext,
+                        isSinglePayload: false,
+                        isMultiPayload: false,
+                        cancellationTokenVar: "cancellationToken",
+                        treatCancellationAsFailure: true
+                    );
+                    WriteLogStatement("Debug",
+                        $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
+                }
+                using (Sb.Block("catch (System.OperationCanceledException)"))
+                {
+                    WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                    Sb.AppendLine("return false;");
+                }
+                using (Sb.Block("catch (System.Exception)"))
+                {
+                    WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                    Sb.AppendLine("return false;");
+                }
+            }
+            else
+            {
+                Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
+                using (Sb.Block("try"))
+                {
+                    CallbackGenerationHelper.EmitOnExitCall(
+                        Sb,
+                        fromStateDef,
+                        transition.ExpectedPayloadType,
+                        null,
+                        "null",
+                        IsAsyncMachine,
+                        wrapInTryCatch: false,
+                        Model.ContinueOnCapturedContext,
+                        isSinglePayload: false,
+                        isMultiPayload: false,
+                        cancellationTokenVar: null,
+                        treatCancellationAsFailure: false
+                    );
+                    WriteLogStatement("Debug",
+                        $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
+                }
+                using (Sb.Block("catch (System.OperationCanceledException)"))
+                {
+                    WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                    Sb.AppendLine("return false;");
+                }
+                using (Sb.Block("catch (System.Exception)"))
+                {
+                    WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                    Sb.AppendLine("return false;");
+                }
+                Sb.AppendLine("#else");
                 CallbackGenerationHelper.EmitOnExitCall(
                     Sb,
                     fromStateDef,
@@ -667,35 +730,8 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                 );
                 WriteLogStatement("Debug",
                     $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
+                Sb.AppendLine("#endif");
             }
-            using (Sb.Block("catch (System.OperationCanceledException)"))
-            {
-                WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-                Sb.AppendLine("return false;");
-            }
-            using (Sb.Block("catch (System.Exception)"))
-            {
-                WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-                Sb.AppendLine("return false;");
-            }
-            Sb.AppendLine("#else");
-            CallbackGenerationHelper.EmitOnExitCall(
-                Sb,
-                fromStateDef,
-                transition.ExpectedPayloadType,
-                null,
-                "null",
-                IsAsyncMachine,
-                wrapInTryCatch: false,
-                Model.ContinueOnCapturedContext,
-                isSinglePayload: false,
-                isMultiPayload: false,
-                cancellationTokenVar: null,
-                treatCancellationAsFailure: false
-            );
-            WriteLogStatement("Debug",
-                $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
-            Sb.AppendLine("#endif");
         }
 
         // Store the previous state for potential rollback (only if we have exception handler and action)
@@ -1348,7 +1384,6 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         // Standard usings
         AddUsing(NamespaceSystem);
         AddUsing(NamespaceSystemCollectionsGeneric);
-        AddUsing(NamespaceSystemLinq);
         AddUsing(NamespaceSystemRuntimeCompilerServices);
         AddUsing(NamespaceStateMachineContracts);
         AddUsing(NamespaceStateMachineRuntime);
@@ -1372,6 +1407,12 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         if (Model.ExceptionHandler != null)
         {
             AddUsing(NamespaceStateMachineExceptions);
+        }
+        
+        // Conditionally add LINQ only when generated code needs it (async/HSM/Extensions)
+        if (IsAsyncMachine || Model.HierarchyEnabled || IsExtensionsVariant())
+        {
+            AddUsing(NamespaceSystemLinq);
         }
         // Type-specific namespaces
         var allNamespaces = new HashSet<string>();
@@ -1980,10 +2021,27 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     {
         if (Model.ExceptionHandler == null)
         {
-            // No exception handler - use existing logic
+            // No exception handler - wrap with FASTFSM_SAFE_ACTIONS to optionally swallow exceptions
+            Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
+            using (Sb.Block("try"))
+            {
+                WriteOnEntryCall(toStateDef, expectedPayloadType);
+                WriteLogStatement("Debug",
+                    $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{toState}\");");
+            }
+            using (Sb.Block("catch (System.OperationCanceledException)"))
+            {
+                Sb.AppendLine("return false;");
+            }
+            using (Sb.Block("catch (System.Exception)"))
+            {
+                Sb.AppendLine("return false;");
+            }
+            Sb.AppendLine("#else");
             WriteOnEntryCall(toStateDef, expectedPayloadType);
             WriteLogStatement("Debug",
                 $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{toState}\");");
+            Sb.AppendLine("#endif");
             return;
         }
 
@@ -2010,13 +2068,27 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     {
         if (Model.ExceptionHandler == null)
         {
-            // No exception handler - use existing logic
-            Sb.AppendLine("#if DEBUG || FASTFSM_DEBUG_GENERATED_COMMENTS");
-            Sb.AppendLine($"// FSM_DEBUG: No exception handler found for {Model.ClassName}");
-            Sb.AppendLine("#endif");
+            // No exception handler - wrap with FASTFSM_SAFE_ACTIONS to optionally swallow exceptions
+            Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
+            using (Sb.Block("try"))
+            {
+                WriteActionCall(transition);
+                WriteLogStatement("Debug",
+                    $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+            }
+            using (Sb.Block("catch (System.OperationCanceledException)"))
+            {
+                Sb.AppendLine("return false;");
+            }
+            using (Sb.Block("catch (System.Exception)"))
+            {
+                Sb.AppendLine("return false;");
+            }
+            Sb.AppendLine("#else");
             WriteActionCall(transition);
             WriteLogStatement("Debug",
                 $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+            Sb.AppendLine("#endif");
             return;
         }
 
@@ -2048,7 +2120,36 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     {
         if (Model.ExceptionHandler == null)
         {
-            // No exception handler - use existing logic
+            // No exception handler - wrap with FASTFSM_SAFE_ACTIONS to optionally swallow exceptions
+            Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
+            using (Sb.Block("try"))
+            {
+                CallbackGenerationHelper.EmitOnEntryCall(
+                    Sb,
+                    toStateDef,
+                    expectedPayloadType,
+                    defaultPayloadType,
+                    PayloadVar,
+                    IsAsyncMachine,
+                    wrapInTryCatch: false,
+                    Model.ContinueOnCapturedContext,
+                    isSinglePayload,
+                    isMultiPayload,
+                    cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+                    treatCancellationAsFailure: IsAsyncMachine
+                );
+                WriteLogStatement("Debug",
+                    $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{toState}\");");
+            }
+            using (Sb.Block("catch (System.OperationCanceledException)"))
+            {
+                Sb.AppendLine("return false;");
+            }
+            using (Sb.Block("catch (System.Exception)"))
+            {
+                Sb.AppendLine("return false;");
+            }
+            Sb.AppendLine("#else");
             CallbackGenerationHelper.EmitOnEntryCall(
                 Sb,
                 toStateDef,
@@ -2065,6 +2166,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             );
             WriteLogStatement("Debug",
                 $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{toState}\");");
+            Sb.AppendLine("#endif");
             return;
         }
 
@@ -2104,7 +2206,32 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     {
         if (Model.ExceptionHandler == null)
         {
-            // No exception handler - use existing logic
+            // No exception handler - wrap with FASTFSM_SAFE_ACTIONS to optionally swallow exceptions
+            Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
+            using (Sb.Block("try"))
+            {
+                CallbackGenerationHelper.EmitActionCall(
+                    Sb,
+                    transition,
+                    PayloadVar,
+                    IsAsyncMachine,
+                    wrapInTryCatch: false,
+                    Model.ContinueOnCapturedContext,
+                    cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+                    treatCancellationAsFailure: IsAsyncMachine
+                );
+                WriteLogStatement("Debug",
+                    $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+            }
+            using (Sb.Block("catch (System.OperationCanceledException)"))
+            {
+                Sb.AppendLine("return false;");
+            }
+            using (Sb.Block("catch (System.Exception)"))
+            {
+                Sb.AppendLine("return false;");
+            }
+            Sb.AppendLine("#else");
             CallbackGenerationHelper.EmitActionCall(
                 Sb,
                 transition,
@@ -2117,6 +2244,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             );
             WriteLogStatement("Debug",
                 $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+            Sb.AppendLine("#endif");
             return;
         }
 

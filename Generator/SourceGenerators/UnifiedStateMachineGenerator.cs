@@ -1634,9 +1634,10 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         if (!transition.IsInternal && hasOnEntryExit &&
             Model.States.TryGetValue(transition.FromState, out var fromStateDef) &&
             !string.IsNullOrEmpty(fromStateDef.OnExitMethod))
-    {
-            if (IsAsyncMachine)
         {
+            if (IsAsyncMachine)
+            {
+                // Async semantics: Always swallow exceptions from OnExit by returning false.
                 Sb.AppendLine("try");
                 Sb.AppendLine("{");
                 WriteOnExitCall(fromStateDef, null);
@@ -1651,10 +1652,18 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                 Sb.AppendLine("}");
             }
             else
-        {
+            {
+                Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
+                Sb.AppendLine("try { ");
                 WriteOnExitCall(fromStateDef, null);
                 WriteLogStatement("Debug",
                     $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
+                Sb.AppendLine("} catch (System.OperationCanceledException) { return false; } catch (System.Exception) { return false; }");
+                Sb.AppendLine("#else");
+                WriteOnExitCall(fromStateDef, null);
+                WriteLogStatement("Debug",
+                    $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
+                Sb.AppendLine("#endif");
             }
         }
 
@@ -1947,13 +1956,13 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
             Sb.AppendLine("                        }");
         }
 
-        // OnExit with try/catch → false on failure
+        // OnExit with FASTFSM_SAFE_ACTIONS → false on failure
         if (!transition.IsInternal && ShouldGenerateOnEntryExit() &&
             Model.States.TryGetValue(transition.FromState, out var fromStateDef) &&
             !string.IsNullOrEmpty(fromStateDef.OnExitMethod))
-    {
-            Sb.AppendLine("                        try");
-            Sb.AppendLine("                        {");
+        {
+            Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
+            Sb.AppendLine("                        try {");
             CallbackGenerationHelper.EmitOnExitCall(
                 Sb,
                 fromStateDef!,
@@ -1968,13 +1977,23 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                 cancellationTokenVar: null,
                 treatCancellationAsFailure: false
             );
-            Sb.AppendLine("                        }");
-            Sb.AppendLine("                        catch");
-            Sb.AppendLine("                        {");
-            // Hook: After failed transition (OnExit exception)
-            WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-            Sb.AppendLine("                            return false;");
-            Sb.AppendLine("                        }");
+            Sb.AppendLine("                        } catch (System.OperationCanceledException) { return false; } catch (System.Exception) { return false; }");
+            Sb.AppendLine("#else");
+            CallbackGenerationHelper.EmitOnExitCall(
+                Sb,
+                fromStateDef!,
+                transition.ExpectedPayloadType,
+                Model.DefaultPayloadType,
+                PayloadVar,
+                isCallerAsync: false,
+                wrapInTryCatch: false,
+                continueOnCapturedContext: Model.ContinueOnCapturedContext,
+                isSinglePayload: !HasMultiPayload,
+                isMultiPayload: HasMultiPayload,
+                cancellationTokenVar: null,
+                treatCancellationAsFailure: false
+            );
+            Sb.AppendLine("#endif");
         }
 
         // State change BEFORE action
@@ -2401,12 +2420,18 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
             Sb.AppendLine("                            return false;");
         }
 
-        // OnExit (no exceptions policy in sync path; keep simple)
+        // OnExit (FASTFSM_SAFE_ACTIONS wrapper in sync path)
         if (!transition.IsInternal && ShouldGenerateOnEntryExit() &&
             Model.States.TryGetValue(transition.FromState, out var fromStateDef) &&
             !string.IsNullOrEmpty(fromStateDef.OnExitMethod))
-    {
+        {
+            Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
+            Sb.AppendLine("                        try { ");
+            Sb.AppendLine($"                            {fromStateDef.OnExitMethod}();");
+            Sb.AppendLine("                        } catch (System.OperationCanceledException) { return false; } catch (System.Exception) { return false; }");
+            Sb.AppendLine("#else");
             Sb.AppendLine($"                        {fromStateDef.OnExitMethod}();");
+            Sb.AppendLine("#endif");
         }
 
         // State change BEFORE action (policy relies on stateAlreadyChanged)
