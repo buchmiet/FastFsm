@@ -834,6 +834,89 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         Sb.AppendLine();
 }
 
+    // --- FAST PATH DETECTOR & EMITTER ---------------------------------------------
+
+    private bool IsPureBasicFastPath()
+    {
+        // Musi być: flat (brak HSM), sync, bez payloadu, bez extensions i bez OnEntry/OnExit
+        if (IsHierarchical) return false;
+        if (HasPayload || HasMultiPayload) return false;
+        if (ExtensionsOn) return false;
+        if (HasOnEntryExit) return false;
+        if (Model.GenerationConfig.IsAsync) return false;
+
+        var transitions = Model.Transitions;
+        if (transitions == null || transitions.Count == 0) return false;
+
+        // Brak guardów i akcji, brak internal transitions
+        if (transitions.Any(t =>
+            !string.IsNullOrEmpty(t.GuardMethod) ||
+            !string.IsNullOrEmpty(t.ActionMethod) ||
+            t.IsInternal))
+            return false;
+
+        // Wszystkie przejścia muszą mieć dokładnie jeden trigger – ten sam
+        var distinctTriggers = transitions.Select(t => t.Trigger).Distinct().ToList();
+        if (distinctTriggers.Count != 1) return false;
+
+        // Każdy stan musi mieć co najwyżej jedno przejście (Basic sekwencja)
+        var multiplePerState = transitions
+            .GroupBy(t => t.FromState)
+            .Any(g => g.Count() > 1);
+        if (multiplePerState) return false;
+
+        // Sprawdzamy, że to rzeczywiście „łańcuch" (From -> To) bez dziur
+        // Nie wymuszamy cyklu, ale dopuszczamy go (A->B, B->C, C->A)
+        var fromSet = new HashSet<string>(transitions.Select(t => t.FromState));
+        var toSet   = new HashSet<string>(transitions.Select(t => t.ToState));
+        if (fromSet.Count < 2) return false; // co najmniej 2 stany, inaczej zysk marginalny
+
+        return true;
+    }
+
+    private string GetSingleTriggerForFastPath(string triggerTypeForUsage)
+    {
+        var trig = Model.Transitions.Select(t => t.Trigger).Distinct().Single();
+        return $"{triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(trig)}";
+    }
+
+    private List<(string fromState, string toState)> GetOrderedStateMapping()
+    {
+        // Uporządkuj deterministycznie po ordinalu stanu źródłowego, aby switch był stabilny
+        // (Model.States zawiera definicje z OrdinalValue)
+        var ord = Model.States; // Dictionary<string, StateDef> (Name -> Def z OrdinalValue)
+        var list = Model.Transitions
+            .Select(t => (from: t.FromState, to: t.ToState))
+            .OrderBy(x => ord.TryGetValue(x.from, out var def) ? def.OrdinalValue : int.MaxValue)
+            .ToList();
+        return list;
+    }
+
+    private void EmitTryFireInternalFastPath(string stateTypeForUsage, string triggerTypeForUsage)
+    {
+        var triggerLit = GetSingleTriggerForFastPath(triggerTypeForUsage);
+        var mapping = GetOrderedStateMapping();
+
+        // Generujemy: if (trigger != <TRIGGER>) return false; + switch(_currentState){ case FROM: _currentState = TO; return true; ... }
+        Sb.AppendLine("#if DEBUG || FASTFSM_DEBUG_GENERATED_COMMENTS");
+        Sb.AppendLine($"// FAST-PATH: single-trigger flat basic machine for {Model.ClassName}");
+        Sb.AppendLine("#endif");
+
+        Sb.AppendLine($"if (trigger != {triggerLit}) return false;");
+
+        Sb.AppendLine($"switch ({CurrentStateField})");
+        using (Sb.Block(""))
+        {
+            foreach (var (fromState, toState) in mapping)
+            {
+                var fromEsc = TypeHelper.EscapeIdentifier(fromState);
+                var toEsc   = TypeHelper.EscapeIdentifier(toState);
+                Sb.AppendLine($"case {stateTypeForUsage}.{fromEsc}: {CurrentStateField} = {stateTypeForUsage}.{toEsc}; return true;");
+            }
+            Sb.AppendLine("default: return false;");
+        }
+    }
+
     private void WriteTryFireMethodSync(string stateType, string triggerType)
 {
         WriteMethodAttribute();
@@ -846,6 +929,16 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
             return;
         }
 
+        // >>> FAST-PATH: prosty wariant Basic A->B->C->A, jeden trigger, brak payload/guardów/akcji/onEntry/onExit/extensions/hsm
+        if (IsPureBasicFastPath())
+        {
+            EmitTryFireInternalFastPath(stateType, triggerType);
+            Sb.AppendLine(); // odstęp
+            Sb.AppendLine("// (fast-path) end");
+            return; // ważne: kończymy generowanie TryFireInternal tutaj
+        }
+
+        // --- dotychczasowa ścieżka ---
         // For sync: choose writer depending on features
         if (HasPayload && HasMultiPayload)
     {
