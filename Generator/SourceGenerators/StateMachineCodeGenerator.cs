@@ -1041,12 +1041,97 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         }
         using (Sb.Block("else"))
         {
-            Sb.AppendLine("// External transition: record history and resolve composite destination");
-            Sb.AppendLine("RecordHistoryForCurrentPath();");
-            Sb.AppendLine($"_currentState = ({stateTypeForUsage})bestDestIndex;");
-            Sb.AppendLine($"_currentState = ({stateTypeForUsage})GetCompositeEntryTarget((int)_currentState);");
+            Sb.AppendLine("// External transition: execute exit/enter chains with LCA");
+            Sb.AppendLine();
             
-            // Execute action if present
+            // Calculate LCA
+            Sb.AppendLine("// Find LCA (Least Common Ancestor)");
+            Sb.AppendLine("int srcLeaf = (int)_currentState;");
+            Sb.AppendLine("int destLeaf = bestDestIndex;");
+            Sb.AppendLine();
+            Sb.AppendLine("// Calculate LCA using s_parent and s_depth");
+            Sb.AppendLine("int lca = -1;");
+            Sb.AppendLine("if (srcLeaf == destLeaf) { lca = srcLeaf; }");
+            Sb.AppendLine("else {");
+            Sb.AppendLine("    int src = srcLeaf;");
+            Sb.AppendLine("    int dst = destLeaf;");
+            Sb.AppendLine("    // Bring both to same depth");
+            Sb.AppendLine("    while (s_depth[src] > s_depth[dst]) { src = s_parent[src]; }");
+            Sb.AppendLine("    while (s_depth[dst] > s_depth[src]) { dst = s_parent[dst]; }");
+            Sb.AppendLine("    // Walk up together until common ancestor");
+            Sb.AppendLine("    while (src != dst) { src = s_parent[src]; dst = s_parent[dst]; }");
+            Sb.AppendLine("    lca = src;");
+            Sb.AppendLine("}");
+            Sb.AppendLine();
+            
+            // Record history before state change
+            Sb.AppendLine("RecordHistoryForCurrentPath();");
+            Sb.AppendLine();
+            
+            // Generate exit chain
+            if (Model.GenerationConfig.HasOnEntryExit)
+            {
+                Sb.AppendLine("// EXIT chain: from current leaf up to (but not including) LCA");
+                Sb.AppendLine("for (int s = srcLeaf; s != lca && s >= 0; s = s_parent[s]) {");
+                Sb.AppendLine($"    var exitState = ({stateTypeForUsage})s;");
+                Sb.AppendLine("    switch (exitState) {");
+                foreach (var state in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnExitMethod)))
+                {
+                    Sb.AppendLine($"        case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(state.Name)}:");
+                    Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
+                    Sb.AppendLine($"            try {{ {state.OnExitMethod}(); }}");
+                    Sb.AppendLine($"            catch (System.OperationCanceledException oce) {{ OnActionException(\"Exit:{state.Name}\", oce); return false; }}");
+                    Sb.AppendLine($"            catch (System.Exception ex) {{ OnActionException(\"Exit:{state.Name}\", ex); return false; }}");
+                    Sb.AppendLine("#else");
+                    Sb.AppendLine($"            {state.OnExitMethod}();");
+                    Sb.AppendLine("#endif");
+                    Sb.AppendLine("            break;");
+                }
+                Sb.AppendLine("        default: break;");
+                Sb.AppendLine("    }");
+                Sb.AppendLine("}");
+                Sb.AppendLine();
+            }
+            
+            // Change state and resolve composite
+            Sb.AppendLine("// Assign state and resolve composite target");
+            Sb.AppendLine($"_currentState = ({stateTypeForUsage})destLeaf;");
+            Sb.AppendLine($"_currentState = ({stateTypeForUsage})GetCompositeEntryTarget((int)_currentState);");
+            Sb.AppendLine();
+            
+            // Generate enter chain
+            if (Model.GenerationConfig.HasOnEntryExit)
+            {
+                Sb.AppendLine("// ENTER chain: from LCA child down to final leaf");
+                Sb.AppendLine("// Build entry path (stackalloc for zero-alloc)");
+                Sb.AppendLine("int entryCount = 0;");
+                Sb.AppendLine($"Span<int> entryPath = stackalloc int[s_depth[(int)_currentState] + 1];");
+                Sb.AppendLine("for (int s = (int)_currentState; s >= 0 && s != lca; s = (s < s_parent.Length) ? s_parent[s] : -1) {");
+                Sb.AppendLine("    entryPath[entryCount++] = s;");
+                Sb.AppendLine("}");
+                Sb.AppendLine("// Execute entry callbacks in top-down order");
+                Sb.AppendLine("for (int i = entryCount - 1; i >= 0; i--) {");
+                Sb.AppendLine($"    var entryState = ({stateTypeForUsage})entryPath[i];");
+                Sb.AppendLine("    switch (entryState) {");
+                foreach (var state in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
+                {
+                    Sb.AppendLine($"        case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(state.Name)}:");
+                    Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
+                    Sb.AppendLine($"            try {{ {state.OnEntryMethod}(); }}");
+                    Sb.AppendLine($"            catch (System.OperationCanceledException oce) {{ OnActionException(\"Enter:{state.Name}\", oce); return false; }}");
+                    Sb.AppendLine($"            catch (System.Exception ex) {{ OnActionException(\"Enter:{state.Name}\", ex); return false; }}");
+                    Sb.AppendLine("#else");
+                    Sb.AppendLine($"            {state.OnEntryMethod}();");
+                    Sb.AppendLine("#endif");
+                    Sb.AppendLine("            break;");
+                }
+                Sb.AppendLine("        default: break;");
+                Sb.AppendLine("    }");
+                Sb.AppendLine("}");
+                Sb.AppendLine();
+            }
+            
+            // Execute transition action if present
             if (IsAsyncMachine && HasAsyncActions())
             {
                 // For async machines with async actions, handle both sync and async actions
@@ -1073,6 +1158,8 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             // Guard check if present
             if (!string.IsNullOrEmpty(transition.GuardMethod))
             {
+                // For now, inline the guard evaluation to avoid dependency on helpers that may not exist
+                // This maintains backward compatibility while still being functional
                 Sb.AppendLine("bool guardResult = false;");
                 
                 // Handle payload-based guards
@@ -1084,17 +1171,30 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                         Sb.AppendLine($"if (payload is {GetTypeNameForUsage(payloadType)} p)");
                         using (Sb.Block(""))
                         {
+                            // Use FASTFSM_SAFE_GUARDS for consistent guard evaluation
+                            Sb.AppendLine("#if FASTFSM_SAFE_GUARDS");
                             Sb.AppendLine($"try {{ guardResult = {transition.GuardMethod}(p); }} catch {{ guardResult = false; }}");
+                            Sb.AppendLine("#else");
+                            Sb.AppendLine($"guardResult = {transition.GuardMethod}(p);");
+                            Sb.AppendLine("#endif");
                         }
                     }
                     else
                     {
+                        Sb.AppendLine("#if FASTFSM_SAFE_GUARDS");
                         Sb.AppendLine($"try {{ guardResult = {transition.GuardMethod}(payload); }} catch {{ guardResult = false; }}");
+                        Sb.AppendLine("#else");
+                        Sb.AppendLine($"guardResult = {transition.GuardMethod}(payload);");
+                        Sb.AppendLine("#endif");
                     }
                 }
                 else
                 {
+                    Sb.AppendLine("#if FASTFSM_SAFE_GUARDS");
                     Sb.AppendLine($"try {{ guardResult = {transition.GuardMethod}(); }} catch {{ guardResult = false; }}");
+                    Sb.AppendLine("#else");
+                    Sb.AppendLine($"guardResult = {transition.GuardMethod}();");
+                    Sb.AppendLine("#endif");
                 }
                 
                 Sb.AppendLine("if (!guardResult) { declOrder++; } // skip this candidate");
