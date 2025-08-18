@@ -415,62 +415,71 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         }
 
         using (Sb.Block("protected override async ValueTask OnInitialEntryAsync(System.Threading.CancellationToken cancellationToken = default)"))
-    {
-        if (Model.HierarchyEnabled)
-    {
-            Sb.AppendLine("// Build entry chain from root to current leaf");
-            Sb.AppendLine($"var entryChain = new List<{stateTypeForUsage}>();");
-            Sb.AppendLine($"int currentIdx = (int){CurrentStateField};");
-            Sb.AppendLine();
-            using (Sb.Block("while (currentIdx >= 0)"))
         {
-                Sb.AppendLine($"entryChain.Add(({stateTypeForUsage})currentIdx);");
-                Sb.AppendLine("if ((uint)currentIdx >= (uint)s_parent.Length) break;");
-                Sb.AppendLine("currentIdx = s_parent[currentIdx];");
-            }
-            Sb.AppendLine();
-            Sb.AppendLine("entryChain.Reverse();");
-            Sb.AppendLine();
-            using (Sb.Block("foreach (var state in entryChain)"))
-            using (Sb.Block("switch (state)"))
-        {
-            foreach (var stateEntry in statesWithParameterlessOnEntry)
-        {
-                Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
-                using (Sb.Block(""))
+            if (Model.HierarchyEnabled)
             {
-                #if FASTFSM_SAFE_ACTIONS
+                // Build path from root to leaf using ArrayPool (no Span across await)
+                Sb.AppendLine("// Count depth for pooled buffer");
+                Sb.AppendLine($"int leafIdx = (int){CurrentStateField};");
+                Sb.AppendLine("int depth = 0;");
+                Sb.AppendLine("for (int i = leafIdx; i >= 0; i = s_parent[i]) depth++;");
+                Sb.AppendLine();
+                Sb.AppendLine("// Rent path buffer and fill from leaf to root");
+                Sb.AppendLine("var pool = System.Buffers.ArrayPool<int>.Shared;");
+                Sb.AppendLine("int[] path = pool.Rent(depth);");
+                Sb.AppendLine("try");
+                using (Sb.Block(""))
+                {
+                    Sb.AppendLine("int k = depth - 1;");
+                    Sb.AppendLine("for (int i = leafIdx; i >= 0; i = s_parent[i]) path[k--] = i;");
+                    Sb.AppendLine();
+                    Sb.AppendLine("// Execute OnEntry from root to leaf");
+                    using (Sb.Block("for (int i = 0; i < depth; i++)"))
+                    using (Sb.Block($"switch (({stateTypeForUsage})path[i])"))
+                {
+                    foreach (var stateEntry in statesWithParameterlessOnEntry)
+                    {
+                        Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
+                        using (Sb.Block(""))
+                        {
+#if FASTFSM_SAFE_ACTIONS
                 try
                 {
-                #endif
-                CallbackGenerationHelper.EmitOnEntryCall(
-                    Sb,
-                    stateEntry,
-                    expectedPayloadType: null,
-                    defaultPayloadType: null,
-                    payloadVar: "null",
-                    isCallerAsync: true,
-                    wrapInTryCatch: false,
-                    continueOnCapturedContext: Model.ContinueOnCapturedContext,
-                    isSinglePayload: false,
-                    isMultiPayload: false,
-                    cancellationTokenVar: "cancellationToken",
-                    treatCancellationAsFailure: false);
-                #if FASTFSM_SAFE_ACTIONS
+#endif
+                            CallbackGenerationHelper.EmitOnEntryCall(
+                                Sb,
+                                stateEntry,
+                                expectedPayloadType: null,
+                                defaultPayloadType: null,
+                                payloadVar: "null",
+                                isCallerAsync: true,
+                                wrapInTryCatch: false,
+                                continueOnCapturedContext: Model.ContinueOnCapturedContext,
+                                isSinglePayload: false,
+                                isMultiPayload: false,
+                                cancellationTokenVar: "cancellationToken",
+                                treatCancellationAsFailure: false);
+#if FASTFSM_SAFE_ACTIONS
                 }
                 catch (System.OperationCanceledException) { }
                 catch (System.Exception) { }
-                #endif
-                    Sb.AppendLine("break;");
+#endif
+                            Sb.AppendLine("break;");
+                        }
+                    }
+                        Sb.AppendLine("default: break;");
+                    }
+                }
+                Sb.AppendLine("finally");
+                using (Sb.Block(""))
+                {
+                    Sb.AppendLine("pool.Return(path, clearArray: false);");
                 }
             }
-                Sb.AppendLine("default: break;");
-            }
-        }
-        else
-    {
-            using (Sb.Block($"switch ({CurrentStateField})"))
-        {
+            else
+            {
+                using (Sb.Block($"switch ({CurrentStateField})"))
+                {
             foreach (var stateEntry in statesWithParameterlessOnEntry)
         {
                 Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
@@ -523,17 +532,20 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
     {
         if (Model.HierarchyEnabled)
     {
-            Sb.AppendLine("var entryChain = new List<" + stateTypeForUsage + ">();");
-            Sb.AppendLine($"int currentIdx = (int){CurrentStateField};");
-            using (Sb.Block("while (currentIdx >= 0)"))
-        {
-                Sb.AppendLine($"entryChain.Add(({stateTypeForUsage})currentIdx);");
-                Sb.AppendLine("if ((uint)currentIdx >= (uint)s_parent.Length) break;");
-                Sb.AppendLine("currentIdx = s_parent[currentIdx];");
-            }
-            Sb.AppendLine("entryChain.Reverse();");
-            using (Sb.Block("foreach (var state in entryChain)"))
-            using (Sb.Block("switch (state)"))
+            // Zero-alloc version using stackalloc
+            Sb.AppendLine("// Count depth for stackalloc");
+            Sb.AppendLine($"int leafIdx = (int){CurrentStateField};");
+            Sb.AppendLine("int depth = 0;");
+            Sb.AppendLine("for (int i = leafIdx; i >= 0; i = s_parent[i]) depth++;");
+            Sb.AppendLine();
+            Sb.AppendLine("// Build path from root to leaf without allocations");
+            Sb.AppendLine("Span<int> path = depth <= 128 ? stackalloc int[depth] : new int[depth];");
+            Sb.AppendLine("int k = depth - 1;");
+            Sb.AppendLine("for (int i = leafIdx; i >= 0; i = s_parent[i]) path[k--] = i;");
+            Sb.AppendLine();
+            Sb.AppendLine("// Execute OnEntry from root to leaf");
+            using (Sb.Block("for (int i = 0; i < path.Length; i++)"))
+            using (Sb.Block($"switch (({stateTypeForUsage})path[i])"))
         {
             foreach (var stateEntry in statesWithParameterlessOnEntry)
         {
@@ -917,6 +929,141 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         }
     }
 
+    // --- HSM FAST PATH DETECTOR & EMITTER ---------------------------------------------
+
+    private bool IsHsmGuardlessEqualPriorityFastPath()
+    {
+        if (!IsHierarchical) return false;
+        if (Model.GenerationConfig.IsAsync) return false;
+        if (HasPayload || HasMultiPayload) return false;
+        if (ExtensionsOn) return false;
+        // Note: We allow OnEntry/OnExit since fast-path is about winner selection, not execution
+
+        var transitions = Model.Transitions;
+        if (transitions == null || transitions.Count == 0) return false;
+
+        // No guards and no explicit priorities (assuming default priority is 0)
+        if (transitions.Any(t => !string.IsNullOrEmpty(t.GuardMethod) || t.Priority != 0)) return false;
+
+        // For safety - if any state has >1 transition on same trigger, use general path
+        var multi = transitions
+            .GroupBy(t => (t.FromState, t.Trigger))
+            .Any(g => g.Count() > 1);
+        if (multi) return false;
+
+        return true;
+    }
+
+    private void EmitHsmTryFireFastPath(string stateType, string triggerType)
+    {
+        // Assumption: no guards, equal-priority, max 1 transition per (state, trigger).
+        // Emit: walk from current state up parents; first matched case(trigger) → execute plan and return true.
+
+        Sb.AppendLine("#if DEBUG || FASTFSM_DEBUG_GENERATED_COMMENTS");
+        Sb.AppendLine("// HSM FAST-PATH: first-match wins (no guards, equal priority)");
+        Sb.AppendLine("#endif");
+
+        using (Sb.Block($"int __idx = (int){CurrentStateField};"))
+        {
+            Sb.AppendLine("while (__idx >= 0)");
+            using (Sb.Block(""))
+            {
+                Sb.AppendLine($"switch (({stateType})__idx)");
+                using (Sb.Block(""))
+                {
+                    // Per-state - generate branches for triggers with simple matching
+                    // Group transitions by FromState
+                    var byState = Model.Transitions
+                        .GroupBy(t => t.FromState)
+                        .OrderBy(g => Model.States[g.Key].OrdinalValue);
+
+                    foreach (var g in byState)
+                    {
+                        var fromEsc = TypeHelper.EscapeIdentifier(g.Key);
+                        Sb.AppendLine($"case {stateType}.{fromEsc}:");
+                        using (Sb.Block(""))
+                        {
+                            // For each trigger in this state
+                            var byTrigger = g.GroupBy(t => t.Trigger);
+                            foreach (var tg in byTrigger)
+                            {
+                                var trigEsc = TypeHelper.EscapeIdentifier(tg.Key);
+                                var t = tg.First(); // guarantee: 1 per (state, trigger)
+
+                                Sb.AppendLine($"if (trigger == {triggerType}.{trigEsc})");
+                                using (Sb.Block(""))
+                                {
+                                    // Generate transition steps directly
+                                    WritePlanStepsForTransitionFastPath(t, stateType, triggerType);
+                                    Sb.AppendLine("return true;");
+                                }
+                            }
+
+                            Sb.AppendLine("break;");
+                        }
+                    }
+
+                    Sb.AppendLine("default: break;");
+                }
+
+                // Move to parent
+                Sb.AppendLine($"__idx = s_parent[__idx];");
+            }
+        }
+
+        Sb.AppendLine("return false;");
+    }
+
+    private void WritePlanStepsForTransitionFastPath(TransitionModel transition, string stateType, string triggerType)
+    {
+        // Simplified version - execute transition steps directly
+        // This is a fast-path so we know: no guards, no priorities conflicts
+        
+        var hasOnEntryExit = ShouldGenerateOnEntryExit();
+        var toEsc = TypeHelper.EscapeIdentifier(transition.ToState);
+
+        // Record history if needed (for HSM)
+        if (IsHierarchical && !transition.IsInternal)
+        {
+            Sb.AppendLine("RecordHistoryForCurrentPath();");
+        }
+
+        // OnExit (if applicable)
+        if (!transition.IsInternal && hasOnEntryExit &&
+            Model.States.TryGetValue(transition.FromState, out var fromStateDef) &&
+            !string.IsNullOrEmpty(fromStateDef.OnExitMethod))
+        {
+            WriteOnExitCall(fromStateDef, transition.ExpectedPayloadType);
+        }
+
+        // Action (if present)
+        if (!string.IsNullOrEmpty(transition.ActionMethod))
+        {
+            WriteActionCall(transition);
+        }
+
+        // State assignment
+        if (!transition.IsInternal)
+        {
+            if (IsHierarchical)
+            {
+                WriteStateChangeWithCompositeHandling(transition.ToState, stateType);
+            }
+            else
+            {
+                Sb.AppendLine($"{CurrentStateField} = {stateType}.{toEsc};");
+            }
+        }
+
+        // OnEntry (if applicable)
+        if (!transition.IsInternal && hasOnEntryExit &&
+            Model.States.TryGetValue(transition.ToState, out var toStateDef) &&
+            !string.IsNullOrEmpty(toStateDef.OnEntryMethod))
+        {
+            WriteOnEntryCall(toStateDef, transition.ExpectedPayloadType);
+        }
+    }
+
     private void WriteTryFireMethodSync(string stateType, string triggerType)
 {
         WriteMethodAttribute();
@@ -936,6 +1083,13 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
             Sb.AppendLine(); // odstęp
             Sb.AppendLine("// (fast-path) end");
             return; // ważne: kończymy generowanie TryFireInternal tutaj
+        }
+
+        // >>> HSM FAST-PATH: hierarchical without guards and equal priority
+        if (IsHsmGuardlessEqualPriorityFastPath())
+        {
+            EmitHsmTryFireFastPath(stateType, triggerType);
+            return; // important: end TryFireInternal generation here
         }
 
         // --- dotychczasowa ścieżka ---
