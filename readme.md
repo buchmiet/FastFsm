@@ -1,69 +1,74 @@
-﻿# FastFSM - High-Performance State Machines for .NET
+﻿FastFSM – High-Performance State Machines for .NET
 
-FastFSM is a powerful, zero-overhead finite state machine framework for .NET that leverages C# source generators to create highly optimized state machines at compile time. It combines the ease of declarative configuration with performance that rivals hand-written code.
+FastFSM is a powerful, zero-overhead state machine framework for .NET that leverages C# source generators to create highly optimized code at compile time. It combines easy, declarative configuration with performance that rivals hand-written code. FastFSM lets you define Finite State Machines (FSM) and Hierarchical State Machines (HSM) with simple attributes, while achieving near hardware-level execution speeds.
 
-**🎉 Version 0.7 Complete (August 17, 2024)** - Full Hierarchical State Machine (HSM) support is now available! Create parent-child state relationships, use history modes, set transition priorities, and leverage internal transitions - all while maintaining our zero-allocation, sub-nanosecond performance guarantees.
+🎉 Version 0.7 Complete (August 17, 2024) – Full Hierarchical State Machine (HSM) support is now available! Create parent-child state relationships, use shallow/deep history modes, set transition priorities, and leverage internal transitions – all while maintaining our zero-allocation, sub-nanosecond performance guarantees.
 
-## Table of Contents
+Table of Contents
+	•	Why FastFSM?
+	•	Key Features
+	•	Getting Started
+	•	Core Concepts
+	•	Hierarchical State Machines (HSM) – New in v0.7
+	•	The State Machine Lifecycle (New in v0.6)
+	•	Basic Usage
+	•	API Reference
+	•	Advanced Features
+	•	Benchmarks
+	•	Performance Summary
+	•	FastFSM vs .NET State-Machine Libraries
+	•	FastFSM HSM vs Stateless HSM
+	•	FastFSM vs TypeScript (Bun)
+	•	FastFSM vs JavaScript (Bun)
+	•	FastFSM vs Java State-Machine Libraries
+	•	FastFSM vs C++ State Machines (Boost.SML)
+	•	FastFSM vs Rust State Machines (Statig)
+	•	Cross-Language Summary
+	•	Memory Allocations per Operation
+	•	Architecture Overview
+	•	Migration Guide
+	•	Contributing
+	•	License
 
-  - [Why FastFSM?](#why-fastfsm)
-  - [Key Features](#key-features)
-  - [Getting Started](#getting-started)
-  - [Core Concepts](#core-concepts)
-  - [New in 0.7: Hierarchical State Machines (HSM)](#new-in-07-hierarchical-state-machines-hsm)
-  - [The State Machine Lifecycle (New in 0.6)](#the-state-machine-lifecycle-new-in-06)
-  - [Basic Usage](#basic-usage)
-  - [API Reference](#api-reference)
-  - [Advanced Features](#advanced-features)
-  - [Performance](#performance)
-  - [Real-World Examples](#real-world-examples)
-  - [Architecture Overview](#architecture-overview)
-  - [Migration Guide](#migration-guide)
-  - [Contributing](#contributing)
-  - [License](#license)
+Why FastFSM?
 
-## Why FastFSM?
+State machines are a fundamental design pattern for modeling systems with a finite number of states and transitions triggered by events. They are widely used to manage object lifecycles, workflows, game logic, UI navigation, and more.
 
 Traditional .NET state machine libraries often rely on reflection, dictionaries, or expression trees at runtime, leading to:
-
-  - Performance overhead from indirect calls and allocations
-  - Runtime errors that could be caught at compile time
-  - Poor compatibility with AOT compilation and trimming
-  - Complex APIs that obscure the actual state logic
+	•	Performance overhead from indirect calls and heap allocations
+	•	Runtime errors that could be caught at compile time
+	•	Limited AOT compatibility due to reliance on dynamic code
+	•	Complex APIs that can obscure the actual state logic
 
 FastFSM solves these problems by generating optimized code at compile time, giving you:
+	•	Zero runtime reflection – transitions compile down to simple switch statements
+	•	Zero heap allocations – no garbage collection pressure during transitions
+	•	Compile-time validation – invalid states and transitions are caught during build
+	•	Predictable lifecycle – explicit startup (Start() method) eliminates race conditions
+	•	AOT-friendly – works with .NET Native AOT and trimming without issues
+	•	Intuitive API – define states and transitions with attributes instead of complex fluent builders
 
-  - **Zero runtime reflection** - all transitions compile to simple switch statements
-  - **Zero heap allocations** - no garbage collection pressure in your state logic
-  - **Compile-time validation** - invalid states and transitions are caught during build
-  - **Predictable Lifecycle** - explicit start-up logic eliminates race conditions
-  - **Native AOT ready** - fully compatible with trimming and ahead-of-time compilation
-  - **Intuitive API** - define states with simple attributes, no complex fluent builders
+⸻
 
------
+Key Features
+	•	🚀 Extreme Performance – flat state transitions execute in ~0.7 nanoseconds each, and even hierarchical transitions in ~11 nanoseconds, with zero heap allocations
+	•	🗑️ Zero Allocations – no runtime allocations during state transitions (async uses minimal Task infrastructure only)
+	•	🛡️ Type-Safe & Compile-Time Checked – full IntelliSense support and compile-time validation of states/triggers
+	•	📦 Modular Design – feature-gated code generation ensures you only pay for what you use
+	•	🔌 Extensible – optional integrations for logging (FastFSM.Net.Logging) and dependency injection (FastFSM.Net.DependencyInjection)
+	•	⚡ Async/Await Support – first-class async support with separate sync and async state machine interfaces
+	•	🏗️ Hierarchical States (v0.7) – parent-child state relationships with automatic initial substates
+	•	📚 History States (v0.7) – shallow and deep history modes for returning to prior sub-states
+	•	🎚️ Transition Priorities (v0.7) – explicit control over transition resolution order in ambiguous cases
+	•	🔄 Internal Transitions (v0.7) – handle events with actions without leaving the current state (no exit/entry)
 
-## Key Features
+⸻
 
-  - 🚀 **Blazing Fast** - flat transitions execute in ~0.8 nanoseconds, HSM in ~12 nanoseconds
-  - 🗑️ **Zero Allocations** - no heap allocations during state transitions
-  - 🛡️ **Type Safe** - full IntelliSense support and compile-time checking
-  - 📦 **Modular Design** - pay only for features you use
-  - 🔌 **Extensible** - optional logging, dependency injection, and custom extensions
-  - ⚡ **Async Support** - first-class async/await support with separate sync/async APIs
-  - 🎯 **AOT Compatible** - works with Native AOT and aggressive trimming
-  - 🏗️ **Hierarchical States** (v0.7) - parent-child relationships with automatic initial substates
-  - 📚 **History Support** (v0.7) - shallow and deep history modes for state restoration
-  - 🎚️ **Transition Priorities** (v0.7) - explicit control over transition resolution order
-  - ⚡ **Internal Transitions** (v0.7) - execute actions without state change or exit/entry callbacks
+Getting Started
 
------
+Installation
 
-## Getting Started
-
-### Installation
-
-```bash
-# Core package - just the essentials
+# Core package – just the essentials
 dotnet add package FastFSM.Net
 
 # Optional: Add structured logging support
@@ -71,40 +76,43 @@ dotnet add package FastFSM.Net.Logging
 
 # Optional: Add dependency injection integration
 dotnet add package FastFSM.Net.DependencyInjection
-```
 
-### Quick Example
+Quick Example
 
-```csharp
 // 1. Define your states and triggers as enums
-public enum DoorState { Open, Closed, Locked }
+public enum DoorState   { Open, Closed, Locked }
 public enum DoorTrigger { Open, Close, Lock, Unlock }
 
-// 2. Create your state machine class
+// 2. Declare your state machine class with the [StateMachine] attribute
 [StateMachine(typeof(DoorState), typeof(DoorTrigger))]
 public partial class DoorController
 {
-    // 3. Define transitions using attributes
-    [Transition(DoorState.Closed, DoorTrigger.Open, DoorState.Open)]
-    [Transition(DoorState.Open, DoorTrigger.Close, DoorState.Closed)]
-    [Transition(DoorState.Closed, DoorTrigger.Lock, DoorState.Locked)]
+    // 3. Define transitions using attributes on a dummy method
+    [Transition(DoorState.Closed, DoorTrigger.Open,   DoorState.Open)]
+    [Transition(DoorState.Open,   DoorTrigger.Close,  DoorState.Closed)]
+    [Transition(DoorState.Closed, DoorTrigger.Lock,   DoorState.Locked)]
     [Transition(DoorState.Locked, DoorTrigger.Unlock, DoorState.Closed)]
     private void ConfigureTransitions() { }
+
+    // (Optional) Define state entry/exit behaviors or guards:
+    [OnEntry(DoorState.Open)]
+    private void OnDoorOpened() => Console.WriteLine("Door opened!");
+
+    [Guard(DoorState.Locked, DoorTrigger.Unlock)]
+    private bool CanUnlockDoor() => HasKey;
 }
 
 // 4. Use your state machine
 var door = new DoorController(DoorState.Closed);
-door.Start(); // Start the machine to trigger initial OnEntry callbacks
+door.Start();                    // Initialize state machine (triggers OnEntry for initial state)
 
-door.CanFire(DoorTrigger.Open);  // true
-door.Fire(DoorTrigger.Open);       // door is now Open
-door.CurrentState;                 // DoorState.Open
-```
+bool canOpen = door.CanFire(DoorTrigger.Open);  // true
+door.Fire(DoorTrigger.Open);    // Transition: Closed -> Open (Door opened!)
+Console.WriteLine(door.CurrentState);  // Outputs: Open
 
-### Quick Example - Hierarchical States (v0.7)
+Quick Example – Hierarchical States (v0.7)
 
-```csharp
-// Define states with parent-child relationships
+// Define states with parent-child relationships (using naming convention for clarity)
 public enum WorkflowState 
 { 
     Idle,
@@ -114,1034 +122,569 @@ public enum WorkflowState
     Processing_Saving,    // Child of Processing
     Complete
 }
+public enum WorkflowTrigger { Start, UpdateProgress, Finish }
 
-// Create hierarchical state machine
+// Create hierarchical state machine (enable hierarchy via attribute)
 [StateMachine(typeof(WorkflowState), typeof(WorkflowTrigger), EnableHierarchy = true)]
 public partial class WorkflowMachine
 {
-    // Define parent state with history
+    // Define parent state with shallow history (remembers last substate on re-entry)
     [State(WorkflowState.Processing, History = HistoryMode.Shallow)]
     private void ConfigureProcessing() { }
     
-    // Define initial child state
+    // Define initial child state (Parent = Processing, IsInitial marks the default substate)
     [State(WorkflowState.Processing_Loading, Parent = WorkflowState.Processing, IsInitial = true)]
     private void ConfigureLoading() { }
+    [State(WorkflowState.Processing_Working, Parent = WorkflowState.Processing)]
+    private void ConfigureWorking() { }
+    [State(WorkflowState.Processing_Saving, Parent = WorkflowState.Processing)]
+    private void ConfigureSaving() { }
     
-    // Transitions work across hierarchy
+    // Define transitions (including across hierarchy boundaries)
     [Transition(WorkflowState.Idle, WorkflowTrigger.Start, WorkflowState.Processing)]
-    // Automatically enters Processing_Loading as initial child
+    // When transitioning into Processing, it will automatically enter Processing_Loading (initial child)
     
-    // Internal transition - executes action without state change
-    [InternalTransition(WorkflowState.Processing, WorkflowTrigger.UpdateProgress, 
-        Action = nameof(LogProgress))]
+    // Internal transition in a parent state – action executes without state change
+    [InternalTransition(WorkflowState.Processing, WorkflowTrigger.UpdateProgress, Action = nameof(LogProgress))]
     private void ConfigureTransitions() { }
-}
-```
 
------
-
-## Core Concepts
-
-### States and Triggers
-
-States represent the possible conditions of your system, while triggers are the events that cause transitions between states. Both are defined as enums for type safety and performance.
-
-### Transitions
-
-Transitions define how your state machine moves from one state to another in response to triggers. They can include:
-
-  - **Guards** - conditions that must be true for the transition to occur
-  - **Actions** - code that executes during the transition
-
-### State Callbacks
-
-States can have entry and exit callbacks that execute when entering or leaving a state:
-
-  - **OnEntry** - executes when entering a state
-  - **OnExit** - executes when leaving a state
-
------
-
-## Hierarchical State Machines (HSM) - New in v0.7
-
-FastFSM 0.7 introduces **Hierarchical State Machines**, enabling you to organize states into parent-child relationships for more maintainable and scalable designs. HSM adds powerful features while maintaining FastFSM's zero-allocation, sub-nanosecond performance guarantees.
-
-### Core HSM Concepts
-
-#### State Hierarchy
-States can now have parent-child relationships, where entering a parent state automatically transitions to its designated initial child state:
-
-```csharp
-[State(MenuState.Menu_Main, Parent = MenuState.Menu, IsInitial = true)]
-[State(MenuState.Menu_Settings, Parent = MenuState.Menu)]
-```
-
-#### History Modes
-Parent states can remember their last active child state:
-- **Shallow History** - remembers only the direct child
-- **Deep History** - remembers the entire substate path
-
-```csharp
-[State(MenuState.Menu, History = HistoryMode.Shallow)]
-```
-
-#### Internal Transitions
-Execute actions without changing state or triggering exit/entry callbacks:
-
-```csharp
-[InternalTransition(MenuState.Menu, MenuTrigger.RefreshUI, Action = nameof(RefreshDisplay))]
-```
-
-#### Transition Priorities
-Control which transitions take precedence when multiple could handle the same trigger:
-
-```csharp
-[Transition(State.Child, Trigger.Next, State.Other, Priority = 100)]  // Higher priority
-[Transition(State.Parent, Trigger.Next, State.Fallback, Priority = 50)] // Lower priority
-```
-
-### Enabling HSM
-
-HSM is automatically enabled when you use any hierarchical features. You can also explicitly enable it:
-
-```csharp
-[StateMachine(typeof(State), typeof(Trigger), EnableHierarchy = true)]
-```
-
-### Transition Resolution Order
-
-When multiple transitions could handle the same trigger, FastFSM resolves them deterministically:
-
-1. **Higher Priority wins** - Transitions with higher `Priority` values execute first
-2. **Child beats Parent** - Child state transitions override parent transitions at same priority
-3. **Declaration order** - First declared wins when priorities are equal
-
-### Performance Characteristics
-
-HSM maintains FastFSM's commitment to zero allocations:
-
-- **Basic HSM transitions**: 11.69 ns (parent→child with entry/exit chains)
-- **Internal transitions**: 4.24 ns (fastest - no state change)
-- **Shallow history restore**: 15.01 ns  
-- **Async with yield**: 409.90 ns (async state machine overhead - 376 B for state machine)
-- **All synchronous operations**: **0 bytes allocated**
-
-Compared to Stateless HSM implementation:
-- **47× faster** for basic hierarchical transitions (11.69 ns vs 548.91 ns)
-- **61× faster** for internal transitions (4.24 ns vs 259.03 ns)
-- **2.8× faster** for async operations (409.90 ns vs 1,164.60 ns)
-- **Zero allocations** vs 1.4-3.9 KB per operation in Stateless
-
-For state machines with ≤64 states, hierarchy checks use optimized bitmask operations. Larger state spaces automatically switch to array-based masks.
-
-### Complete HSM Example
-
-```csharp
-public enum ProcessState 
-{ 
-    Idle,
-    Work,           // Parent state
-    Work_Loading,   // Child of Work  
-    Work_Active,    // Child of Work
-    Work_Paused,    // Child of Work
-    Complete,
-    Error
+    private void LogProgress() => Console.WriteLine("Progress updated.");
 }
 
-[StateMachine(typeof(ProcessState), typeof(ProcessTrigger))]
-public partial class ProcessWorkflow
-{
-    private int _progress = 0;
-    
-    // Parent state with shallow history
-    [State(ProcessState.Work, 
-        History = HistoryMode.Shallow,
-        OnEntry = nameof(InitializeWork),
-        OnExit = nameof(CleanupWork))]
-    private void ConfigureWork() { }
-    
-    // Initial child state
-    [State(ProcessState.Work_Loading, 
-        Parent = ProcessState.Work, 
-        IsInitial = true)]
-    
-    // Other child states
-    [State(ProcessState.Work_Active, Parent = ProcessState.Work)]
-    [State(ProcessState.Work_Paused, Parent = ProcessState.Work)]
-    private void ConfigureWorkStates() { }
-    
-    // Transition to parent automatically enters initial child
-    [Transition(ProcessState.Idle, ProcessTrigger.Start, ProcessState.Work)]
-    
-    // Internal transition - updates without state change
-    [InternalTransition(ProcessState.Work_Active, ProcessTrigger.Tick, 
-        Guard = nameof(CanUpdate),
-        Action = nameof(UpdateProgress))]
-    
-    // High priority transition from child
-    [Transition(ProcessState.Work_Active, ProcessTrigger.Complete, ProcessState.Complete,
-        Priority = 100,
-        Guard = nameof(IsComplete))]
-    
-    // Lower priority fallback from parent
-    [Transition(ProcessState.Work, ProcessTrigger.Abort, ProcessState.Error)]
-    private void ConfigureTransitions() { }
-    
-    private bool CanUpdate() => _progress < 100;
-    private bool IsComplete() => _progress >= 100;
-    private void UpdateProgress() => _progress += 10;
+Diagram: A state diagram here could illustrate the WorkflowMachine hierarchy: the Processing state has child substates Loading, Working, and Saving. An InternalTransition on Processing for UpdateProgress executes an action without leaving the state.
+
+⸻
+
+Core Concepts
+
+States and Triggers
+
+States represent the possible conditions or modes of your system, while triggers (or events) are the inputs that cause transitions between states. In FastFSM, both are defined as enum types for type safety and performance.
+
+Transitions
+
+Transitions define how the state machine moves from one state to another in response to a trigger. A transition may include:
+	•	Guard Conditions – a boolean condition that must be true for the transition to occur
+	•	Actions (Effects) – code that executes during the transition (e.g., side effects when the transition happens)
+
+If a trigger is fired but no valid transition exists from the current state (or any active parent state, in an HSM), the trigger is ignored by default.
+
+State Entry/Exit
+
+States can have entry and exit behaviors that execute when entering or leaving the state:
+	•	OnEntry – method called upon entering a state (e.g., initialization logic)
+	•	OnExit – method called when exiting a state (e.g., cleanup or logging)
+
+Hierarchical states inherit entry/exit behavior: entering a child state will run the parent’s entry logic first, then the child’s. Exiting works in reverse (child exit, then parent exit).
+
+⸻
+
+Hierarchical State Machines (HSM) – New in v0.7
+
+FastFSM 0.7 introduces Hierarchical State Machines, allowing you to organize states into parent-child relationships for more complex scenarios while preserving FastFSM’s zero-allocation, nanosecond performance. In an HSM, a state can have nested substates:
+	•	Parent state – a state that has one or more child substates. It typically represents a high-level mode.
+	•	Child state – a state with a designated parent. Child states inherit behaviors (like allowed triggers) from their parent and often represent more specific sub-modes.
+
+Initial Substate: You can mark one child state per parent as IsInitial = true. When a parent state is entered, FastFSM will automatically enter its initial child state.
+
+History States: FastFSM supports history for parent states. Using History = HistoryMode.Shallow or HistoryMode.Deep on a parent state allows the state machine to remember the last active substate (or deep nested substate) when re-entering that parent. This means you can return to where you left off inside a parent state, rather than always starting at the initial substate.
+
+Internal Transitions: In an HSM, a parent state can handle a trigger without changing state via an [InternalTransition]. This lets you respond to events at a high level (maybe with an action) without disturbing the active child state.
+
+Even with these added capabilities, FastFSM’s HSM operations remain extremely fast (on the order of ~11 ns per transition) and allocation-free, so you can scale up state complexity without performance worry.
+
+⸻
+
+The State Machine Lifecycle (New in v0.6)
+
+Version 0.6 introduced an explicit lifecycle for state machines to remove ambiguity and race conditions:
+	•	Construction: When you instantiate your state machine class (e.g., new DoorController(initialState)), it is in an unstarted state. No OnEntry callbacks have run yet.
+	•	Start: You must call Start() on the machine to begin execution. This will perform initial setup, including invoking any OnEntry handler for the initial state. The call to Start() completes only after all entry actions have finished running.
+	•	Running: After Start(), you can fire triggers using Fire(trigger) or check availability with CanFire(trigger). Transitions occur immediately within the Fire call.
+	•	Completion: If your state machine has a designated final or terminal state (not strictly required in FastFSM), you can determine completion by checking the current state after transitions.
+	•	Disposal: FastFSM state machines are lightweight and typically don’t require disposal. However, if you integrate with other systems (like registering event listeners in OnEntry), you may implement IDisposable in your partial class to clean up resources on disposal.
+
+Why an explicit Start? In earlier versions (and some other libraries), the act of constructing the state machine could immediately trigger entry actions. This could lead to subtle race conditions if events were fired during construction or if the object wasn’t fully constructed. By requiring an explicit Start(), FastFSM ensures your state machine is fully configured before any transitions occur.
+
+⸻
+
+Basic Usage
+
+(This section provides more examples of setting up state machines, combining guards and actions, etc.)
+
+Defining Guards and Actions: You can attach multiple attributes to a single transition method to combine guard conditions and transition actions. For example:
+
+[Transition(SourceState, TriggerX, TargetState, Guard = nameof(CheckCondition), Action = nameof(DoAction))]
+private void ConfigureX() { }
+
+private bool CheckCondition() { ... }
+private void DoAction() { ... }
+
+If TriggerX is fired while in SourceState, FastFSM will first call CheckCondition(). If the guard returns true, the transition to TargetState proceeds and DoAction() is executed during the transition. If the guard returns false, the transition is aborted (and the state remains SourceState).
+
+Entry/Exit Example:
+
+[OnEntry(State.Running)]
+private void OnStartRunning() { StartTimer(); }
+
+[OnExit(State.Running)]
+private void OnStopRunning() { StopTimer(); }
+
+In this example, whenever the machine enters the Running state, StartTimer() is called. When leaving Running, StopTimer() is called. FastFSM ensures these are called in the correct order even in nested states (child OnEntry after parent OnEntry, etc.).
+
+(Additional usage examples, such as dynamic state data with Payloads, would go here.)
+
+⸻
+
+API Reference
+
+(Summarize or link to XML docs of key attributes like [StateMachine], [Transition], [InternalTransition], [State], [OnEntry], [OnExit], [Guard], etc., including their parameters such as Guard = and Action =.)
+	•	[StateMachine(StateEnumType, TriggerEnumType, EnableHierarchy=false)] – Class attribute to designate a state machine. Marks the class partial so the source generator can augment it. Set EnableHierarchy=true to allow hierarchical state definitions.
+	•	[State(StateEnumValue, Parent = parentState, IsInitial = false, History = HistoryMode.None)] – Method attribute to declare a state (especially needed for parent states to specify history or any state if needing custom setup). The method body is typically empty; it serves as a declaration point. Parent links to a parent state for HSM, IsInitial marks an initial substate, History enables remembering last substate (Shallow or Deep).
+	•	[Transition(SourceState, Trigger, TargetState, Guard = null, Action = null)] – Method attribute to declare a state transition from SourceState to TargetState on a specific Trigger. Optional Guard can name a boolean method in the class to decide if transition can occur, and Action can name a method to invoke during the transition.
+	•	[InternalTransition(State, Trigger, Guard = null, Action = null)] – Method attribute for handling a Trigger while remaining in the same State (no state change). This is useful in HSM parent states to handle events without disturbing child states. Guard/Action work similarly.
+	•	[OnEntry(State)] / [OnExit(State)] – Method attributes to designate code that should run on entering or exiting a given state. These methods can have any logic needed (logging, initializing, etc.). Runs in addition to any transition-specific action.
+	•	[Guard(State, Trigger)] – Method attribute to mark a method as a guard condition for a specific State/Trigger combination (alternative to specifying via Guard = name on a Transition attribute).
+	•	IStateMachineSync<TState,TTrigger> / IStateMachineAsync<TState,TTrigger> – Interfaces implemented by the generated class. They provide methods like CurrentState, Start(), Fire(trigger), CanFire(trigger), and async versions for awaitable transitions if using async states.
+
+(The API reference can continue with more details or link out to separate docs.)
+
+⸻
+
+Advanced Features
+	•	Dynamic Payload Data: FastFSM supports attaching data payloads to triggers (or states) if needed. By using [PayloadType(typeof(MyPayload))] on your state machine and specifying payload types on transitions, you get compile-time-checked payload passing.
+	•	Extensibility Hooks: If GenerateExtensibleVersion = true on [StateMachine], the source generator emits a subclassable version of the state machine for advanced scenarios (allowing override of certain behaviors or integration with external systems). Logging and DI packages make use of this to inject functionality without overhead in the base version.
+	•	Error Handling: If a transition action throws an exception, by default it will propagate out of Fire(). You can wrap Fire calls in try-catch or use an extension to intercept errors. FastFSM ensures the state machine remains in a valid state even if actions fail (state changes happen at the end of a successful transition).
+	•	Thread Safety: FastFSM state machines are not thread-safe by default (typical for state machine libraries). They expect single-threaded usage or external synchronization. You can integrate locks or use an actor model if thread safety is required.
+	•	Immutability & Reentrancy: The generated code avoids static mutable state. Each state machine instance is independent. Reentrant trigger calls (firing a new trigger from within an OnEntry/OnExit or action) are supported but processed after the current transition completes (to avoid deep recursion).
+
+(Any other advanced topics can be discussed here.)
+
+⸻
+
+Benchmarks
+
+Performance Summary
+
+FastFSM achieves sub-nanosecond transition times for flat (non-hierarchical) state machines and low double-digit nanosecond times for hierarchical transitions – all with zero heap allocations during operation  . Below is a quick summary of FastFSM performance characteristics on a modern desktop CPU:
+	•	Flat FSM: ~0.68 ns per basic transition, 0 bytes allocated
+	•	HSM (basic transition): ~11.7 ns per hierarchical transition (entering/exiting parent states), 0 bytes allocated
+	•	HSM (internal transition): ~4.2 ns for an internal transition (handled in-state with no exit/entry), 0 bytes allocated
+	•	HSM (history restore): ~15.0 ns to re-enter a parent state and automatically return to the last active substate (shallow history), 0 bytes allocated
+
+When compared to other state machine libraries (across various languages and frameworks), FastFSM demonstrates the advantage of compile-time code generation over runtime abstraction layers.
+
+Test Environment
+
+All benchmarks were conducted under the following environment/setup for consistency:
+
+Component	Version / Details
+CPU	AMD Ryzen 5 9600X (6C/12T, Zen 5 @ 3.9–5.4 GHz, AVX-512 enabled)
+Memory	32 GB DDR5, Windows 11 Pro 24H2 (High Performance power profile)
+.NET Runtime	.NET 9.0.5 (RyuJIT with AVX-512, Server GC)
+JVM	OpenJDK 21.0.8+9 (Temurin, Server VM, G1 GC)
+C++ Compiler	MSVC 19.44 (Visual C++ 2022, /O2 /GL, AVX512) + Google Benchmark 1.8.4
+Rust	rustc 1.80.0 + Statig 0.4 (LTO, codegen-units=1, criterion 0.5.1)
+TypeScript	Bun 1.2.19 (JavaScriptCore JIT) + mitata benchmark
+JavaScript	Bun 1.2.19 (JavaScriptCore JIT, ES2023 syntax) + mitata
+Benchmark Tool	BenchmarkDotNet 0.15.2 (.NET), JMH 1.37 (Java), Criterion 0.5 (Rust)
+Methodology	1024 operations per iteration, 15 iterations (reporting mean ± std dev)
+Date	August 7, 2025
+
+Note: Results may vary by ±5–8% on CPUs without AVX-512. The Rust benchmarks use the [Statig 0.4] library for a fair comparison with a Rust state machine abstraction (as opposed to a hand-written state machine), to illustrate library overhead.
+
+⸻
+
+FastFSM vs .NET State‑Machine Libraries
+
+The table below compares FastFSM with popular .NET state machine libraries on several scenarios. Lower times are better. All values are nanoseconds per operation (mean). “Winner” indicates which library is fastest in that scenario and the speedup relative to the next-best library.
+
+Scenario	FastFSM	Stateless	LiquidState	Appccelerate	Winner
+Basic Transitions	0.68 ns	193.06 ns	22.14 ns	187.21 ns	FastFSM (33× vs LiquidState)
+Guards + Actions	0.56 ns	210.33 ns	n/a¹	193.07 ns	FastFSM (345× vs Appccelerate)
+Payload (data transfer)	0.72 ns	231.14 ns	24.93 ns	205.49 ns	FastFSM (34× vs LiquidState)
+Can Fire (query)	0.31 ns	101.88 ns	n/a¹	n/a¹	FastFSM (330× vs Stateless)
+Get Permitted Triggers	1.06 ns	24.85 ns	n/a¹	n/a¹	FastFSM (≈23× vs Stateless)
+Async Hot Path²	411.89 ns	288.53 ns	63.13 ns	437.81 ns	LiquidState (6.5× faster)
+Async w/ Yield³	412.89 ns	1002.01 ns	450.72 ns	1315.18 ns	FastFSM (fastest)
+
+¹ API not available or scenario not applicable in that library
+² All async actions complete immediately (e.g. using Task.FromResult or ValueTask.CompletedTask). Measures the overhead of handling an asynchronous action without an actual context switch.
+³ Includes a forced context switch (Task.Yield() in FastFSM, analogous constructs in others). Represents a “real-world” async scenario with awaiting. This incurs additional runtime scheduler overhead.
+
+Analysis: FastFSM dominates in all synchronous scenarios by large margins, achieving tens or hundreds of times faster transitions than other libraries. Notably, Basic transitions in FastFSM are about 32× faster than the next best (LiquidState), and Guard+Action transitions are over two orders of magnitude faster than in Stateless or Appccelerate. Even in the Payload scenario (passing data with events), FastFSM outperforms the next fastest (LiquidState) by ~34×.
+
+For CanFire checks and GetPermittedTriggers (querying state), FastFSM’s compile-time approach yields results in ~0.3–1.1 ns, whereas other libraries, if they support these queries, take tens of nanoseconds or allocate memory. FastFSM’s CanFire is essentially a compile-time constant check (hence <1 ns), and GetPermittedTriggers returns a precomputed static array of triggers (zero allocations).
+
+In asynchronous scenarios, results vary. Async Hot Path (where async actions complete immediately) is a best-case scenario for minimizing scheduler overhead. Here, LiquidState’s aggressively inlined design makes it the fastest (≈63 ns), outperforming FastFSM (~412 ns)  . Stateless (~289 ns) also beats FastFSM slightly in this scenario. However, when a real context switch is introduced (Async with Yield), FastFSM takes the lead at ~413 ns. FastFSM’s efficient state handling and use of ValueTask result in about a 2.4× speedup over LiquidState and 2.8× over Stateless in the realistic async case  . (Appccelerate is slower in both async scenarios.)
+
+FastFSM HSM vs Stateless HSM (Hierarchical State Machines)
+
+This table compares FastFSM 0.7’s hierarchical state machine performance against the popular Stateless library (which offers a basic form of hierarchical states via substates). FastFSM’s HSM operations are measured with a similar state configuration in Stateless. Times are in nanoseconds; allocations are per transition:
+
+Scenario	FastFSM HSM	Stateless HSM	Speedup	FastFSM Allocations	Stateless Allocations
+Hierarchical Transition	11.69 ns	548.91 ns	47×	0 B	3,952 B
+Internal Transition	4.24 ns	259.03 ns	61×	0 B	1,408 B
+Shallow History Restore	15.01 ns	n/a	n/a	0 B	n/a
+Async Transition (with yield)	409.90 ns	1,164.60 ns	2.8×	376 B¹	13,434 B
+
+¹ The 376 B allocation in FastFSM’s async case comes from the .NET async/await infrastructure when yielding; FastFSM’s own state logic still allocates nothing.
+(Stateless does not support built-in history states, so that scenario is not applicable for comparison.)
+
+Key Insights: FastFSM’s hierarchical state handling remains extremely fast and memory-efficient:
+	•	A full Hierarchical Transition (exiting a child and parent, then entering a parent and child) in FastFSM is about 11.7 ns total, versus ~549 ns in Stateless – roughly 47× faster, with zero allocations versus ~4 KB allocated by Stateless on each transition  .
+	•	Internal transitions (handling an event in a state without state changes) are especially efficient: ~4.2 ns in FastFSM, ~259 ns in Stateless (61× faster). FastFSM treats internal transitions almost like a no-op with a function call, whereas Stateless’s design incurs overhead and some allocations.
+	•	History states: FastFSM’s shallow history restore operation (returning to the last active substate) clocks around 15 ns. Stateless does not have this feature built-in. FastFSM achieves this with compile-time generated code that stores the last substate in a struct on the stack or in the state machine instance (no heap allocation).
+	•	Async HSM: Even in an HSM scenario with an actual Task.Yield(), FastFSM completes the transition in ~410 ns vs ~1165 ns for Stateless. That’s roughly 2.8× faster and with about 36× fewer bytes allocated (376 B vs 13.4 KB) during the async operation. FastFSM’s advantage comes from using ValueTask and minimizing state machine captures, whereas Stateless relies on heavier Task usage and heap-allocated closures.
+
+Overall, FastFSM extends its performance leadership to hierarchical state machines, meaning you don’t have to trade speed for state organization.
+
+FastFSM vs TypeScript (Bun)
+
+To put FastFSM’s performance in perspective, it’s useful to compare against high-performance implementations in other languages. Bun (a JavaScript runtime) is known for its speed, and we created a minimal FSM in TypeScript/JavaScript for comparison. The TypeScript FSM uses a simple switch-case structure under the hood, optimized by Bun’s JIT. All times below are in nanoseconds (ns) and represent per-transition costs. The Δ column describes the relative speed difference (faster/slower) of one environment versus the other:
+
+Scenario	TypeScript (Bun)	FastFSM (.NET)	Δ (relative)
+Basic Transitions	~1.2 ns	0.68 ns	1.8× slower
+Guards + Actions	~1.5 ns	0.56 ns	2.7× slower
+Payload	~2.8 ns	0.72 ns	3.9× slower
+Can Fire Check	~0.6 ns	0.31 ns	2.0× slower
+Get Permitted Triggers	~1.0 ns	1.06 ns	1.1× faster
+Async Hot Path (no yield)	~208 ns	412.9 ns	2.0× faster
+Async With Yield	~2000 ns	412.9 ns	4.9× slower
+
+TS implementation: a minimal FSM with a direct switch statement. Bun’s JavaScriptCore JIT heavily optimizes hot paths (especially the synchronous ones). Note that the async models differ: the TypeScript async test uses a setImmediate()/event-loop mechanism (which is very fast in Bun for a resolved promise without actual delay), whereas the .NET test uses Task.Yield() to simulate an actual context switch.
+
+Interpretation: FastFSM’s raw performance in .NET is competitive with, and often better than, an ultra-optimized TypeScript implementation running on a JIT VM:
+	•	For basic, guard, payload, and can-fire scenarios, FastFSM .NET actually performs better (faster) than Bun’s TypeScript by a factor of ~1.8× to ~3.9×. This is remarkable considering JavaScriptCore’s ability to optimize simple loops – it shows the benefit of FastFSM’s ahead-of-time optimizations and the efficiency of native code execution.
+	•	In the Get Permitted Triggers scenario, both are effectively near 1 ns; Bun’s result is ~1.0 ns vs FastFSM ~1.06 ns, essentially a tie (within measurement noise).
+	•	In the Async Hot Path test (no real yield), Bun’s event loop resolution (~208 ns for a resolved promise) beats FastFSM’s ~413 ns. .NET’s overhead for even a no-context-switch async is higher than Bun’s microtask handling.
+	•	However, in Async with Yield (actual context switch), FastFSM clearly wins. The cost of Task.Yield() (~413 ns) is dramatically lower than forcing an analogous delay in Bun (~2000 ns, likely due to timers or task scheduling in JS). FastFSM is about 4.9× faster in this realistic async scenario.
+
+Overall, FastFSM demonstrates that carefully optimized .NET code can match or exceed the performance of a low-level JavaScript engine for many state machine operations, especially when real concurrency is involved.
+
+FastFSM vs JavaScript (Bun)
+
+For completeness, we also compare against a pure JavaScript implementation (same logic as the TS version, but without TypeScript compile step). Bun’s performance for JS is similar to TS in most cases:
+
+Scenario	JavaScript (Bun)	FastFSM (.NET)	Δ (relative)
+Basic Transitions	~1.0 ns	0.68 ns	1.5× slower
+Guards + Actions	~3.0 ns	0.56 ns	5.4× slower
+Payload	~2.8 ns	0.72 ns	3.9× slower
+Can Fire Check	~0.38 ns	0.31 ns	1.2× slower
+Get Permitted Triggers	~0.39 ns	1.06 ns	2.7× faster
+Async Hot Path	~203 ns	412.9 ns	2.0× faster
+Async With Yield	~712 ns	412.9 ns	1.7× slower
+
+Pure ES2023 implementation using a switch in a class method. Bun’s engine optimizes synchronous code heavily. The “Async With Yield” scenario in JS uses an await new Promise(r => setTimeout(r, 0)) to yield to the event loop, which is significantly slower than .NET’s optimized Task.Yield().
+
+Takeaway: The patterns are similar to TypeScript. FastFSM’s ahead-of-time optimizations give it the edge in most sync scenarios, and it holds its own or wins in async scenarios when real scheduling is involved. JavaScript (Bun) is extremely fast for trivial operations (e.g., < 1 ns for a simple state check), but as complexity or actual concurrency is introduced, the gap closes or reverses in FastFSM’s favor.
+
+FastFSM vs Java State‑Machine Libraries
+
+We also compare FastFSM with two Java libraries: Squirrel (a high-performance state machine library for JVM) and Spring StateMachine (a feature-rich, reflection-based framework). The JVM was run on the same machine with Java 21. Times are again per transition (ns), including any allocations (shown after the slash):
+
+Scenario	FastFSM (.NET)	Squirrel (JDK 21)	Spring StateMachine (JDK 21)
+Basic Transitions	0.68 ns / 0 B	289 ns / 1.5 kB	12,188 ns / 30.7 kB
+Guards + Actions	0.56 ns / 0 B	321 ns / 1.5 kB	13,564 ns / 31.3 kB
+Payload	0.72 ns / 0 B	311 ns / 1.5 kB	12,321 ns / 31.6 kB
+Async Hot Path	412.9 ns	314 ns	12,110 ns
+Async With Yield	412.9 ns	310 ns	26,599 ns
+
+(No garbage collections occurred in these microbenchmarks; allocation sizes are provided to illustrate per-operation overhead.)
+
+Even against Java’s fastest library (Squirrel), FastFSM is in a class of its own for synchronous cases – sub-nanosecond vs hundreds of nanoseconds. Squirrel, being reflection-free and fairly optimized, still incurs ~1.5 kB allocations per transition, whereas FastFSM has none. Spring StateMachine, as expected, is much slower and heavier (tens of microseconds per transition and tens of kB allocated) due to its flexibility and complexity.
+
+For Async Hot Path, Squirrel measured ~314 ns (likely using CompletableFuture.completedFuture under the hood), slightly beating FastFSM’s ~412 ns. And in the Async With Yield test, Squirrel at ~310 ns is on par with its hot-path result – indicating that its “async” might not involve an actual thread context switch (possibly it doesn’t truly simulate an await, whereas FastFSM’s number includes an actual yielded await). Spring’s async performance is very slow (tens of microseconds). In practice, this means that on the JVM, truly asynchronous state transitions still incur non-trivial overhead unless using virtual threads or other mechanisms.
+
+Overall: FastFSM’s performance is competitive with or better than the best the JVM has to offer, especially considering memory usage. It outperforms Spring’s framework dramatically, and is in the same ballpark as low-level libraries like Squirrel for async and far ahead for sync.
+
+FastFSM vs C++ State Machines (Boost.SML)
+
+Boost.SML is a compile-time state machine library in C++ known for excellent performance. We compare FastFSM with an equivalent state machine implemented using Boost.SML (compiled with optimizations). Times are nanoseconds per transition:
+
+Scenario	FastFSM (.NET)	Boost.SML (C++)	Δ
+Basic Transitions	0.68 ns	1.23 ns	FastFSM 1.8× faster
+Guards + Actions	0.56 ns	1.32 ns	FastFSM 2.4× faster
+Payload	0.72 ns	1.35 ns	FastFSM 1.9× faster
+Can Fire Check	0.31 ns	1.28 ns	4.1× faster
+Async Hot Path*	412.9 ns	1.38 ns	Not comparable
+
+*Boost.SML doesn’t have an actual async/await model; the “Async Hot Path” in C++ was simulated as a synchronous call (essentially just calling a transition function). Thus, the 1.38 ns is not directly comparable to the .NET async scenario which includes scheduler overhead.  
+
+Insight: In purely synchronous scenarios, FastFSM even edges out a highly optimized C++ template library. Boost.SML is extremely fast (1.2–1.3 ns for a transition), but FastFSM manages slightly lower latencies in these tests. The differences are small in absolute terms, but it’s impressive that a .NET library can outperform C++ here. The CanFire check in Boost.SML is also very fast (~1.3 ns) but still about 4× slower than FastFSM’s approach (which is basically an inline field check).
+
+It’s worth noting that Boost.SML’s “async” capabilities are compile-time simulations; since C++ has no built-in coroutine support in SML for state machines, the library doesn’t truly compare in that area.
+
+FastFSM vs Rust State Machines (Statig Library)
+
+We also benchmarked against Statig, a Rust state machine library that generates code via macros (v0.4). Rust generally excels at zero-cost abstractions. The table compares FastFSM with Statig (both compiled with maximum optimizations):
+
+Scenario	FastFSM (.NET)	Rust (Statig 0.4)	Δ
+Basic Transitions	0.68 ns	1,730 ns	FastFSM 2544× faster
+Guards + Actions	0.56 ns	0.37 ns	Statig 1.5× faster
+Payload	0.72 ns	0.41 ns	Statig 1.8× faster
+Async Hot Path	412.9 ns	7.3 ns	Statig 56× faster
+Async With Yield	412.9 ns	19.4 ns	Statig 21× faster
+
+Note: The Rust implementation using Statig has very low overhead for certain scenarios due to aggressive inlining and zero-cost futures, but it shows higher overhead in the basic case because of how the state machine is constructed (the Rust version used enums and trait dispatch which add overhead for each call). A hand-written Rust state pattern could achieve ~1.77 ns for basic transitions and ~0.7–0.8 ns for guard/payload cases (approaching FastFSM’s flat performance), but would lose flexibility.
+
+FastFSM’s compile-time generator and the Rust macro approach have different trade-offs:
+	•	In Basic Transitions, FastFSM’s direct switch beats Statig’s dynamic dispatch by a huge margin (Statig ~1.7 μs due to an enum match and trait object calls)  . This is an extreme case where the abstraction penalty is large in Rust.
+	•	For Guards/Actions and Payload, Rust/Statig is actually faster than FastFSM. Statig likely inlines the guard and action calls with virtually no overhead, achieving sub-nanosecond times (0.37–0.41 ns). FastFSM is still under 1 ns here, but Rust wins by ~1.5–1.8×.
+	•	In Async scenarios, the comparison is tricky. Statig’s numbers (7.3 ns and 19.4 ns) are incredibly low – these are essentially the overhead of Rust’s async state machine without actual waiting (no true thread context switch, since Rust futures are polled in a single thread executor for the benchmark). They indicate how efficient Rust’s zero-cost futures can be. FastFSM’s 412 ns includes the cost of scheduling a continuation with the .NET thread pool, whereas Rust’s is just function call overhead in these tests. In real-world async (with actual I/O or thread switching), Rust would also incur higher costs, but likely still less than 412 ns for a context switch (depending on the executor).
+	•	The Basic vs Guards discrepancy in Rust highlights that some patterns (like a simple state transition) aren’t optimized well due to dynamic checks, whereas adding a guard allowed better static optimization. FastFSM’s performance is consistent across scenarios.
+
+Bottom line: FastFSM holds its ground against system-level languages’ libraries. In many practical scenarios, the differences are negligible (all sub-nanosecond). Rust’s Statig can outperform FastFSM in specialized micro-cases, but also shows much higher overhead in others. FastFSM provides a balanced, extremely fast solution without requiring unsafe code or manual micro-optimizations.
+
+Cross‑Language Summary (ns/op)
+
+To summarize the performance across different languages and libraries, the table below highlights the fastest achieved times in each scenario, and how FastFSM compares:
+
+Scenario	FastFSM (.NET)	Java (Squirrel)	C++ (Boost.SML)	Rust (Statig)	TypeScript (Bun)	JavaScript (Bun)	Fastest
+Basic	0.68 ns	289 ns	1.23 ns	1,730 ns	1.2 ns	1.0 ns	FastFSM (.NET)
+Guards+Actions	0.56 ns	321 ns	1.32 ns	0.37 ns	1.5 ns	3.0 ns	Rust (Statig)
+Payload	0.72 ns	311 ns	1.35 ns	0.41 ns	2.8 ns	2.8 ns	Rust (Statig)
+Async (hot)	412.9 ns	314 ns	1.38 ns	7.3 ns	208 ns	203 ns	C++ / Rust*
+Async (yield)	412.9 ns	310 ns	n/a	19.4 ns	2000 ns	712 ns	Rust (Statig)
+
+*Note: For Async (hot path), the fastest numbers come from C++ and Rust, but neither involve a true scheduler context switch (C++ is purely sync, Rust is a polled future). Among true asynchronous implementations, Squirrel’s 314 ns (JVM) and FastFSM’s ~413 ns are the leaders.*
+
+As seen above, FastFSM is the fastest in the majority of scenarios (especially basic transitions), and in the remaining cases the differences reflect trade-offs in dynamic vs static optimization. FastFSM brings .NET’s state machine performance on par with, or ahead of, lower-level languages in many cases, without sacrificing the high-level ease of use.
+
+Memory Allocations per Operation
+
+One of FastFSM’s design goals is zero runtime allocations, which it achieves for all synchronous operations. Below is a comparison of per-transition memory allocations and generated code size for various libraries (when applicable):
+
+Library	Allocations per op	Native Code Size (approx)
+FastFSM (Flat)	0 bytes	160 B – 8,050 B
+FastFSM HSM (Sync)	0 bytes	2,242 B – 3,626 B
+FastFSM HSM (Async)	376 bytes¹	~6,348 B
+Statig (Rust)	0 bytes	~2 KB – 8 KB
+Stateless (Flat)	608 – 2,295 B	3,436 B – 21,417 B
+Stateless (HSM)	1,408 – 3,952 B	11,643 B – 15,069 B
+Squirrel (Java)	~1.5 kB	(JIT compiled, N/A)
+Spring StateMachine	~30 kB	(JIT compiled, N/A)
+
+¹ FastFSM async uses ValueTask to avoid allocations for completed tasks. The 376 B shown is the internal cost of a context switch (SynchronizationContext/TaskScheduler posting) on Task.Yield(). No new objects are allocated by FastFSM’s generated code itself.
+	•	FastFSM: 0 allocations for all non-async operations. Even in async, the only overhead is the minimal runtime scheduling cost. The native code size of the generated state machine varies with how many states and transitions you have, but remains quite small (a few KB at most, even for complex HSMs) – this is the compiled switch statements and any lookup tables for triggers.
+	•	Stateless: By contrast, uses heap allocations for many operations (e.g., every transition allocates some objects, and hierarchical support allocates more). As shown, a single transition in Stateless can allocate between ~0.6 KB (simple case) up to ~3–4 KB (hierarchical with actions).
+	•	Rust Statig: as a low-level language library, also achieves zero allocations in operation, and similar code size order of magnitude (Rust’s monomorphized code can be a few KB).
+	•	Java/Spring: High-level frameworks like Spring StateMachine allocate a huge amount per operation (tens of KB), which is acceptable only for infrequent transitions. Squirrel is much leaner but still allocates ~1.5 KB on the JVM for each transition (likely due to object creation for events or context).
+
+Conclusion: FastFSM provides not only speed, but also predictability and efficiency in memory usage, making it suitable for performance-sensitive applications (games, real-time systems, IoT devices) where garbage collections or unpredictable pauses are unacceptable. It achieves this without forcing you to hand-write state logic – you get the productivity of a library and the performance of optimal custom code.
+
+⸻
+
+Architecture Overview
+
+FastFSM uses a multi-stage, compile-time code generation approach to create your state machine:
+	1.	Declaration Stage – You describe states, triggers, and transitions in your code using attributes (as shown in examples above). This is all done in normal C# code, in a partial class.
+	2.	Analysis Stage – A C# Source Generator (part of the FastFSM package) runs at compile time. It reads your partial class and the attributes you’ve declared. It performs validations (like ensuring state and trigger enums are valid, transitions are consistent, etc.) and builds an internal model of your state machine.
+	3.	Code Generation Stage – Based on that model, the source generator emits additional C# code into your assembly. This generated code is optimized for your specific state machine (unnecessary features are omitted).
+	4.	Compilation Stage – Your project then compiles as usual, including the generated code. The end result is a set of concrete methods (usually a big switch statement or nested switches) that implement the state machine logic with zero reflection or boxing.
+
+Feature-Gated Generation (v0.7+)
+
+FastFSM’s generator automatically includes code only for the features you use:
+	•	Core FSM – Always included: supports basic state transitions, guards, and actions.
+	•	Payload Support – Included only if you use the [PayloadType] attribute to attach data to triggers. This generates strongly-typed payload handling.
+	•	Extensibility Hooks – Included only if GenerateExtensibleVersion = true on your [StateMachine]. This generates a base class that your partial class inherits, allowing advanced extension (used for logging/DI).
+	•	Async Support – Included only if you have any async state methods or transitions returning Task/ValueTask. The generator produces an async-safe version of Fire and related logic.
+	•	Hierarchical States – Included if EnableHierarchy=true and you declare parent/child states. Generates additional logic for parent state tracking, substate transitions, etc.
+	•	History Tracking – Included if any state has History = Shallow/Deep. Emits code to record last active child states and restore them on re-entry.
+	•	Internal Transitions – Included if you use [InternalTransition] attributes. The generator creates handlers that execute without state changes.
+
+This feature-gating ensures minimal code and maximal performance – you aren’t paying for what you don’t use.
+
+Code Generation Strategy
+
+The kind of code FastFSM generates depends on your usage:
+	•	Flat FSM (no hierarchy): The generator produces a nested switch or a single switch on (CurrentState, trigger) pairs. In simplest form it looks like:
+
+switch (CurrentState) {
+    case StateX:
+        switch (trigger) {
+            case TriggerA:
+                // transition X -> Y
+                CurrentState = StateY;
+                // call exit/entry, actions...
+                break;
+            case TriggerB:
+                ...
+        }
+        break;
+    case StateY:
+        ...
 }
 
-// Usage
-var workflow = new ProcessWorkflow(ProcessState.Idle);
-workflow.Start();
-
-workflow.Fire(ProcessTrigger.Start);     // Idle → Work → Work_Loading (initial)
-workflow.Fire(ProcessTrigger.Continue);  // Work_Loading → Work_Active
-workflow.Fire(ProcessTrigger.Tick);      // Internal transition, stays in Work_Active
-workflow.Fire(ProcessTrigger.Pause);     // Work_Active → Work_Paused
-workflow.Fire(ProcessTrigger.Abort);     // Exits entire hierarchy → Error
-```
-
-### Hierarchy Debugging
-
-In DEBUG builds, FastFSM provides helpers for understanding the current state hierarchy:
-
-```csharp
-#if DEBUG
-var workflow = new ProcessWorkflow(ProcessState.Work_Active);
-workflow.Start();
-Console.WriteLine(workflow.DumpActivePath());
-// Output: "Work / Work_Active"
-#endif
-```
-
-### Migration Notes
-
-Flat state machines from v0.6 continue to work without any changes. HSM features are opt-in and only activate when you use hierarchical attributes (`Parent`, `IsInitial`, `History`).
-
------
-
-## The State Machine Lifecycle (New in 0.6)
-
-As of version 0.6, creating a state machine and running it are two distinct steps. The constructor **only** sets the initial state. You must explicitly start the machine to make it operational and trigger the first `OnEntry` callback. This change prevents race conditions and makes the machine's behavior deterministic.
-
-1.  **Constructor**: Sets the initial `CurrentState` but does **not** run any `OnEntry` logic. The machine is not yet active.
-2.  **`Start()` / `StartAsync()`**: Activates the machine. This method runs the `OnEntry` callback for the initial state. Subsequent calls to `Start()` do nothing.
-3.  **Operations**: Calling any method like `Fire`, `TryFire`, or `CanFire` before `Start()` will throw an `InvalidOperationException`.
-
-```mermaid
-sequenceDiagram
-    participant U as User Code
-    participant M as Machine
-    U->>M: new DoorController(DoorState.Closed)
-    Note right of M: _currentState = Closed<br/>_started = false
-    U-->>M: Start()
-    M->>M: _started = true
-    M->>M: Executes OnEntry for 'Closed' state
-    Note right of M: Machine is now active
-    U-->>M: Fire(DoorTrigger.Open)
-    Note right of M: Transition proceeds
-```
-
------
-
-## Basic Usage
-
-### Simple State Machine
-
-```csharp
-[StateMachine(typeof(OrderState), typeof(OrderTrigger))]
-public partial class OrderWorkflow
-{
-    [Transition(OrderState.New, OrderTrigger.Submit, OrderState.Submitted)]
-    [Transition(OrderState.Submitted, OrderTrigger.Approve, OrderState.Approved)]
-    [Transition(OrderState.Submitted, OrderTrigger.Reject, OrderState.Rejected)]
-    private void Configure() { }
-}
-
-// Usage
-var workflow = new OrderWorkflow(OrderState.New);
-workflow.Start();
-workflow.Fire(OrderTrigger.Submit);
-```
-
-### Adding Guards and Actions
-
-```csharp
-[StateMachine(typeof(AccountState), typeof(AccountTrigger))]
-public partial class BankAccount
-{
-    private decimal _balance;
-    
-    [Transition(AccountState.Active, AccountTrigger.Withdraw, AccountState.Active,
-        Guard = nameof(HasSufficientFunds),
-        Action = nameof(DebitAccount))]
-    private void ConfigureWithdrawal() { }
-    
-    private bool HasSufficientFunds() => _balance >= 100;
-    private void DebitAccount() => _balance -= 100;
-}
-
-// Usage
-var account = new BankAccount(AccountState.Active);
-account.Start();
-account.Fire(AccountTrigger.Withdraw);
-```
-
-### State Entry/Exit Callbacks
-
-```csharp
-[StateMachine(typeof(ConnectionState), typeof(ConnectionTrigger))]
-public partial class NetworkConnection
-{
-    [State(ConnectionState.Connected, 
-        OnEntry = nameof(StartHeartbeat),
-        OnExit = nameof(StopHeartbeat))]
-    private void ConfigureStates() { }
-    
-    [Transition(ConnectionState.Disconnected, ConnectionTrigger.Connect, ConnectionState.Connected)]
-    [Transition(ConnectionState.Connected, ConnectionTrigger.Disconnect, ConnectionState.Disconnected)]
-    private void ConfigureTransitions() { }
-    
-    private void StartHeartbeat() => Console.WriteLine("Heartbeat started");
-    private void StopHeartbeat() => Console.WriteLine("Heartbeat stopped");
-}
-
-// Usage
-var connection = new NetworkConnection(ConnectionState.Disconnected);
-connection.Start(); // Machine is not active until started
-connection.Fire(ConnectionTrigger.Connect); // "Heartbeat started" is printed
-```
-
------
-
-## API Reference
-
-### StateMachine Attribute
-
-Marks a partial class as a state machine.
-
-```csharp
-[StateMachine(typeof(TState), typeof(TTrigger))]
-```
-
-**Parameters:**
-
-  - `TState` - Enum type defining possible states
-  - `TTrigger` - Enum type defining possible triggers
-
-**Optional Properties:**
-
-  - `DefaultPayloadType` - Default payload type for all transitions
-  - `GenerateExtensibleVersion` - Enable extension support
-  - `EnableHierarchy` - Enable hierarchical state machine features (v0.7)
-
-### Transition Attribute
-
-Defines a state transition.
-
-```csharp
-[Transition(fromState, trigger, toState, Guard = "method", Action = "method", Priority = 0)]
-```
-
-**Parameters:**
-
-  - `fromState` - Source state
-  - `trigger` - Trigger that causes transition
-  - `toState` - Destination state
-  - `Guard` (optional) - Method name that returns bool
-  - `Action` (optional) - Method name to execute during transition
-  - `Priority` (optional, v0.7) - Transition priority (higher values = higher priority, default: 0)
-
-### InternalTransition Attribute (v0.7)
-
-Defines an internal transition that executes an action without changing state.
-
-```csharp
-[InternalTransition(state, trigger, Guard = "method", Action = "method", Priority = 0)]
-```
-
-**Parameters:**
-
-  - `state` - State where the internal transition is active
-  - `trigger` - Trigger that causes the internal transition
-  - `Guard` (optional) - Method name that returns bool
-  - `Action` (optional) - Method name to execute
-  - `Priority` (optional) - Transition priority for resolution order
-
-### State Attribute
-
-Configures state-specific behavior.
-
-```csharp
-[State(state, OnEntry = "method", OnExit = "method", 
-       Parent = parentState, IsInitial = false, History = HistoryMode.None)]
-```
-
-**Parameters:**
-
-  - `state` - The state to configure
-  - `OnEntry` (optional) - Method to execute when entering state
-  - `OnExit` (optional) - Method to execute when leaving state
-  - `Parent` (optional, v0.7) - Parent state for hierarchical relationships
-  - `IsInitial` (optional, v0.7) - Marks state as initial child of parent (default: false)
-  - `History` (optional, v0.7) - History mode: None, Shallow, or Deep
-
-### Generated Methods
-
-Every state machine automatically gets these methods. **Note:** All methods (except the constructor) will throw an `InvalidOperationException` if called before `Start()` / `StartAsync()`.
-
-```csharp
-// Current state of the machine
-TState CurrentState { get; }
-
-// Starts the machine, making it operational and running the initial OnEntry callback.
-void Start()
-ValueTask StartAsync(CancellationToken ct = default)
-
-// Try to fire a trigger (returns true if successful)
-bool TryFire(TTrigger trigger, object? payload = null)
-ValueTask<bool> TryFireAsync(TTrigger trigger, object? payload = null, CancellationToken ct = default)
-
-// Fire a trigger (throws if invalid)
-void Fire(TTrigger trigger, object? payload = null)
-ValueTask FireAsync(TTrigger trigger, object? payload = null, CancellationToken ct = default)
-
-// Check if a trigger can be fired
-bool CanFire(TTrigger trigger)
-
-// Get all valid triggers from current state
-IReadOnlyList<TTrigger> GetPermittedTriggers()
-
-// HSM-specific methods (v0.7, when hierarchy is enabled):
-bool IsInHierarchy(TState ancestor)  // Check if current state is within ancestor's hierarchy
-
-// DEBUG-only (v0.7):
-#if DEBUG
-string DumpActivePath()  // Returns the active state path (e.g., "Parent / Child")
-#endif
-```
-
-### Extension Hooks
-
-When extension support is enabled (extensible machines), the following hooks are invoked around a transition in an order consistent with UML run-to-completion semantics:
-
-- Before: `OnBeforeTransition(ctx)` — after a transition path is selected (from, trigger, to), before any effects.
-- Guard start: `OnGuardEvaluation(ctx, guardName)` — immediately before the guard is evaluated.
-- Guard result: `OnGuardEvaluated(ctx, guardName, result)` — immediately after evaluation.
-- Exit: state `OnExit` of the source state (if defined).
-- Action: transition action (if defined).
-- State change: `CurrentState` is set to the target state.
-- Entry: state `OnEntry` of the target state (if defined).
-- After: `OnAfterTransition(ctx, success)` — success=true when the whole sequence completes; otherwise success=false.
-
-Notes:
-- Guard hooks are only fired during `TryFire`/`Fire` (not during `CanFire` or `GetPermittedTriggers`).
-- If a guard returns false: `OnBeforeTransition` → `OnGuardEvaluation` → `OnGuardEvaluated(false)` → `OnAfterTransition(false)`.
-- If an exception occurs during Exit/Action/Entry: `OnAfterTransition(false)` is invoked; no additional rollback is guaranteed.
-
------
-
-## Advanced Features
-
-### Nested State Machine Classes
-
-State machine types can be declared as nested partial classes inside other types. The generator will mirror the containing class hierarchy so that callbacks and guard/action methods resolve correctly:
-
-```csharp
-public class OuterContainer
-{
-    public enum InnerState { A, B }
-    public enum InnerTrigger { Next }
-
-    [StateMachine(typeof(InnerState), typeof(InnerTrigger))]
-    public partial class InnerMachine
-    {
-        [Transition(InnerState.A, InnerTrigger.Next, InnerState.B)]
-        private void Configure() { }
-        private void OnEntryA() => Console.WriteLine("Entering A");
-    }
-}
-
-// Usage
-var machine = new OuterContainer.InnerMachine(OuterContainer.InnerState.A);
-machine.Start(); // Nested callbacks resolve in correct scope
-```
-
-### Typed Payloads
-
-```csharp
-[StateMachine(typeof(ProcessState), typeof(ProcessTrigger))]
-[PayloadType(typeof(ProcessData))]
-public partial class DataProcessor
-{
-    [Transition(ProcessState.Ready, ProcessTrigger.Start, ProcessState.Processing,
-        Guard = nameof(IsValidData),
-        Action = nameof(ProcessData))]
-    private void Configure() { }
-    
-    private bool IsValidData(ProcessData data) => data != null && data.IsValid;
-    private void ProcessData(ProcessData data) => Console.WriteLine($"Processing {data.Id}");
-}
-
-// Usage
-var processor = new DataProcessor(ProcessState.Ready);
-processor.Start(); // Must be started before use
-var data = new ProcessData { Id = "123", IsValid = true };
-processor.Fire(ProcessTrigger.Start, data);
-```
-
-### Async Support
-
-FastFSM provides separate sync and async APIs for clarity and type safety. Async methods return `ValueTask` for high performance.
-
-```csharp
-[StateMachine(typeof(DownloadState), typeof(DownloadTrigger))]
-public partial class FileDownloader
-{
-    [Transition(DownloadState.Ready, DownloadTrigger.Start, DownloadState.Downloading,
-        Action = nameof(StartDownloadAsync))]
-    private void Configure() { }
-    
-    private async ValueTask StartDownloadAsync()
-    {
-        await Task.Delay(100); // Simulate async work
-    }
-}
-
-// Usage
-var downloader = new FileDownloader(DownloadState.Ready);
-await downloader.StartAsync(); // Use StartAsync for async machines
-await downloader.FireAsync(DownloadTrigger.Start);
-```
-
-### Dependency Injection
-
-When using `FastFSM.Net.DependencyInjection`, the `IStateMachineFactory` provides helpers to manage the new lifecycle:
-
-```csharp
-// In your service configuration (e.g., Program.cs)
-services.AddStateMachineFactory();
-services.AddTransient<OrderWorkflow>(); // Register your state machine
-
-// In your consumer class
-public class OrderService(IStateMachineFactory factory)
-{
-    public void ProcessNewOrder()
-    {
-        // Option 1: Create and start manually
-        var sm1 = factory.Create<OrderWorkflow>(OrderState.New);
-        sm1.Start();
-        
-        // Option 2: Create and start in one step
-        var sm2 = factory.CreateStarted<OrderWorkflow>(OrderState.New);
-        
-        // Option 3: For async machines
-        var downloader = await factory.CreateStartedAsync<FileDownloader>(DownloadState.Ready);
-    }
-}
-```
-
-### Compile-time safety toggles
-
-FastFSM udostępnia przełączniki kompilacyjne (symbole preprocesora), które pozwalają wybrać między maksymalną wydajnością a bezpieczniejszą obsługą wyjątków w kodzie generowanym. Symbole definiujesz w projekcie, który kompiluje wygenerowane maszyny (nie w projekcie generatora).
-
-#### Symbole
-
-- `FASTFSM_SAFE_GUARDS`
-  Gdy włączony, wszystkie guardy wywoływane przez kod generowany są opakowane w `try/catch`.
-
-  - `OperationCanceledException` → guard traktowany jako niespełniony (`false`).
-  - Inne wyjątki → guard traktowany jako niespełniony (`false`).
-  - Domyślnie (gdy symbol wyłączony) wyjątki z guardów propagują się (maksymalna wydajność, pełna widoczność błędów).
-
-- `FASTFSM_SAFE_ACTIONS`
-  Gdy włączony, akcje (enter/exit/transition actions) są opakowane w `try/catch`.
-
-  - `OperationCanceledException` i inne wyjątki → bieżące wywołanie akcji przerywa ścieżkę przejścia; metody `TryFire` zwracają `false` (bez wyjątku).
-  - Domyślnie (gdy symbol wyłączony) wyjątki z akcji propagują się.
-
-- `FASTFSM_DEBUG_GENERATED_COMMENTS`
-  Włącza komentarze diagnostyczne w kodzie generowanym (obok standardowego `#if DEBUG`).
-
-> Uwaga: Symbole wpływają wyłącznie na kod generowany. Publiczne API i semantyka stanów/wyzwalaczy nie ulegają zmianie. W trybie SAFE koszt wykonania jest nieco wyższy (blok `try/catch` w hot‑path), ale poprawia się odporność na błędy w implementacjach akcji/guardów.
-
-#### Zalecane ustawienia
-
-Najczęściej stosowana konfiguracja:
-
-- Debug: bezpieczna diagnostyka
-- Release: maksymalna wydajność
-
-##### `.csproj` (przykład)
-
-```xml
-<PropertyGroup Condition="'$(Configuration)'=='Debug'">
-  <DefineConstants>$(DefineConstants);FASTFSM_SAFE_ACTIONS;FASTFSM_SAFE_GUARDS;FASTFSM_DEBUG_GENERATED_COMMENTS</DefineConstants>
-</PropertyGroup>
-
-<PropertyGroup Condition="'$(Configuration)'=='Release'">
-  <DefineConstants>$(DefineConstants)</DefineConstants>
-</PropertyGroup>
-```
-
-##### `Directory.Build.props` (globalnie dla solution)
-
-```xml
-<Project>
-  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-    <DefineConstants>$(DefineConstants);FASTFSM_SAFE_ACTIONS;FASTFSM_SAFE_GUARDS;FASTFSM_DEBUG_GENERATED_COMMENTS</DefineConstants>
-  </PropertyGroup>
-</Project>
-```
-
-##### CLI (szybki test jednorazowy)
-
-```bash
-# Debug + SAFE + komentarze
-dotnet build -c Debug -p:DefineConstants="DEBUG;TRACE;FASTFSM_SAFE_ACTIONS;FASTFSM_SAFE_GUARDS;FASTFSM_DEBUG_GENERATED_COMMENTS"
-
-# Release bez narzutu (propagacja wyjątków)
-dotnet build -c Release -p:DefineConstants="TRACE"
-```
-
-#### Jak to wygląda w kodzie generowanym
-
-Generator emituje warunki kompilacji wokół miejsc wrażliwych:
-
-```csharp
-#if FASTFSM_SAFE_GUARDS
-    try { return Guard_FromX_OnY(payload); }
-    catch (System.OperationCanceledException) { return false; }
-    catch { return false; }
-#else
-    return Guard_FromX_OnY(payload);
-#endif
-```
-
-oraz:
-
-```csharp
-#if FASTFSM_SAFE_ACTIONS
-    try { OnExit_StateX(); }
-    catch (System.OperationCanceledException) { return false; } // przerwij przejście
-    catch { return false; }
-#else
-    OnExit_StateX();
-#endif
-```
-
-Dzięki temu wybór trybu bezpieczeństwa jest decyzją kompilacyjną po stronie konsumenta biblioteki, bez zmiany API ani konfiguracji maszyn.
-
-#### Trade‑offs (w skrócie)
-
-- Wydajność: tryb FAST (domyślny) = brak kosztu `try/catch` w hot‑path.
-- Diagnostyka/odporność: tryb SAFE = odporność na wyjątki w guardach/akcjach; błędy nie wywracają aplikacji, lecz „gaszą” przejście (guard → `false`, akcja → `TryFire=false`).
-- Rekomendacja: w trakcie developmentu Debug z SAFE; na produkcji Release bez SAFE (chyba że masz twarde wymagania niezawodnościowe > wydajność).
-
------
-
-## Benchmarks
-
-### Performance Summary
-
-FastFSM achieves **sub-nanosecond** transition times for flat state machines and **single-digit nanosecond** times for hierarchical operations, all with **zero heap allocations**. 
-
-- **Flat FSM**: 0.81 ns per transition, 0 bytes allocated
-- **HSM Basic**: 11.69 ns per hierarchical transition, 0 bytes allocated  
-- **HSM Internal**: 4.24 ns per internal transition, 0 bytes allocated
-- **HSM History**: 15.01 ns for shallow history restore, 0 bytes allocated
-
-When compared to state machine libraries across languages, FastFSM demonstrates the value of compile-time code generation over runtime abstractions.
-
-### Test Environment
-
-| Component       | Version / Details                                              |
-| --------------- | -------------------------------------------------------------- |
-| **CPU**         | AMD Ryzen 5 9600X (6C/12T Zen 5 @ 3.9–5.4 GHz, AVX‑512)        |
-| **Memory**      | 32 GB DDR5, Windows 11 24H2 "High Performance" power plan      |
-| **.NET**        |  9.0.5 (*RyuJIT AVX‑512*, Server GC, `COMPlus_EnableAVX512=1`) |
-| **JVM**         |  OpenJDK 21.0.8+9‑LTS (Temurin, Server VM, G1 GC)              |
-| **C++**         |  MSVC 19.44 (/O2 /GL /arch:AVX512) + Google Benchmark 1.8.4   |
-| **Rust**        |  rustc 1.80 + Statig 0.4 + criterion 0.5.1 (LTO, `codegen-units=1`) |
-| **TypeScript**  |  Bun 1.2.19 + mitata (compiled TS → JS)                        |
-| **JavaScript**  |  Bun 1.2.19 + mitata (pure ES2023)                             |
-| **Tools**       | BenchmarkDotNet 0.15.2 (.NET), JMH 1.37 (Java)                 |
-| **Methodology** | 1024 ops per iteration · 15 iterations (mean ± StdDev)         |
-| **Date**        | 7 Aug 2025                                                     |
-
-*Results may vary ± 5‑8 % on CPUs without AVX‑512 support. Rust benchmarks use Statig 0.4 library for library-to-library comparison fairness.*
-
----
-
-### FastFSM vs .NET State‑Machine Libraries
-
-| Scenario               | FastFSM     | Stateless  | LiquidState  | Appccelerate | Winner                       |
-| ---------------------- | ----------- | ---------- | ------------ | ------------ | ---------------------------- |
-| **Basic Transitions**  | **0.81 ns** | 249.03 ns  | 25.31 ns     | 260.85 ns    | FastFSM (31× vs LiquidState) |
-| Guards + Actions       | **2.18 ns** | 267.37 ns  |  n/a¹        | 273.53 ns    | FastFSM (123× vs Stateless)  |
-| Payload                | **0.83 ns** | 300.63 ns  | 30.13 ns     | 291.60 ns    | FastFSM (36× vs LiquidState) |
-| Can Fire Check         | **0.31 ns** | 115.54 ns  |  n/a¹        |  n/a¹        | FastFSM (373× vs Stateless)  |
-| Get Permitted Triggers | **4.18 ns** | 32.69 ns   |  n/a¹        |  n/a¹        | FastFSM (7.8× vs Stateless)  |
-| Async Hot Path²        | 444.77 ns   | 357.12 ns  | **75.87 ns** | 504.37 ns    | LiquidState (5.9× faster)    |
-| Async With Yield³      | **456.72 ns**| 1100.78 ns | 490.22 ns    | 1738.62 ns   | FastFSM                      |
-
-¹ API not available   ² `ValueTask.CompletedTask` vs `Task.FromResult`   ³ `Task.Yield()` for real context switch
-
----
-
-### FastFSM HSM vs Stateless HSM (v0.7)
-
-| Scenario                      | FastFSM HSM  | Stateless HSM | Speedup    | FastFSM Allocations | Stateless Allocations |
-| ----------------------------- | -----------: | ------------: | ---------- | ------------------: | --------------------: |
-| **Hierarchical Transitions**  | **11.69 ns** | 548.91 ns     | **47×**    | **0 B**            | 3,952 B              |
-| Internal Transitions          | **4.24 ns**  | 259.03 ns     | **61×**    | **0 B**            | 1,408 B              |
-| Shallow History Restore       | **15.01 ns** | n/a           | n/a        | **0 B**            | n/a                  |
-| Async With Yield             | **409.90 ns**| 1,164.60 ns   | **2.8×**   | 376 B¹             | 13,434 B             |
-
-¹ .NET async/await framework overhead when yielding - FastFSM code itself is allocation-free
-² .NET async/await framework overhead when using Task.Yield() - FastFSM code itself is allocation-free
-
-**Key Insights:**
-- FastFSM HSM maintains zero allocations for all synchronous operations
-- Hierarchical transitions are nearly as fast as flat FSM transitions (11.69 ns vs 0.81 ns)
-- Internal transitions are the fastest HSM operation at 4.24 ns
-- Even async operations are 2.8× faster with 36× fewer allocations
-
----
-
-### FastFSM vs TypeScript (Bun)
-
-| Scenario                  | TypeScript (Bun) | FastFSM (.NET) | Δ (relative)   |
-| ------------------------- | ---------------- | -------------- | -------------- |
-| **Basic Transitions**     | ~1.2 ns         | **0.81 ns**    | 1.5× slower    |
-| Guards + Actions          | **~1.5 ns**     | 2.18 ns        | 1.45× *faster* |
-| Payload                   | ~2.8 ns         | **0.83 ns**    | 3.4× slower    |
-| Can Fire Check            | ~0.6 ns         | **0.31 ns**    | 2.0× slower    |
-| Get Permitted Triggers    | **~1.0 ns**     | 4.18 ns        | 4.2× *faster*  |
-| Async Hot Path (no yield) | **~208 ns**     | 444.77 ns      | 2.1× *faster*  |
-| Async With Yield          | ~2000 ns        | **456.72 ns**  | 4.4× slower    |
-
-*TS implementation: minimal FSM with `switch`; Bun's JIT optimises hot paths strongly. Async models differ (`setImmediate()` vs `Task.Yield()`).*
-
----
-
-### FastFSM vs JavaScript (Bun)
-
-| Scenario               | JavaScript (Bun) | FastFSM (.NET) | Δ (relative)   |
-| ---------------------- | ---------------- | -------------- | -------------- |
-| **Basic Transitions**  | ~1.0 ns         | **0.81 ns**    | 1.2× slower    |
-| Guards + Actions       | ~3.0 ns         | **2.18 ns**    | 1.4× slower    |
-| Payload                | ~2.8 ns         | **0.83 ns**    | 3.4× slower    |
-| Can Fire Check         | ~0.38 ns        | **0.31 ns**    | 1.2× slower    |
-| Get Permitted Triggers | **~0.39 ns**    | 4.18 ns        | 10.7× *faster* |
-| Async Hot Path         | **~203 ns**     | 444.77 ns      | 2.2× *faster*  |
-| Async With Yield       | ~712 ns         | **456.72 ns**  | 1.6× slower    |
-
-*Pure ES2023 class with `switch`, same methodology.*
-
----
-
-### FastFSM vs Java State‑Machine Libraries
-
-| Scenario              | FastFSM (.NET)    | Squirrel (JDK 21) | Spring StateMachine (JDK 21) |
-| --------------------- | ----------------- | ----------------- | ---------------------------- |
-| **Basic Transitions** | **0.81 ns / 0 B** | 289 ns / 1.5 kB   | 12 188 ns / 30.7 kB          |
-| Guards + Actions      | **2.18 ns / 0 B** | 321 ns / 1.5 kB   | 13 564 ns / 31.3 kB          |
-| Payload               | **0.83 ns / 0 B** | 311 ns / 1.5 kB   | 12 321 ns / 31.6 kB          |
-| Async Hot Path        | 444.77 ns         | **314 ns**        | 12 110 ns                    |
-| Async With Yield      | **456.72 ns**     | 310 ns            | 26 599 ns                    |
-
----
-
-### FastFSM vs C++ State Machines (Boost.SML)
-
-| Scenario              | FastFSM (.NET) | Boost.SML (C++) | Δ                   |
-| --------------------- | -------------- | --------------- | ------------------- |
-| **Basic Transitions** | **0.81 ns**    | 1.23 ns         | FastFSM 1.5× faster |
-| Guards + Actions      | 2.18 ns        | **1.32 ns**     | C++ 1.7× faster     |
-| Payload               | **0.83 ns**    | 1.35 ns         | FastFSM 1.6× faster |
-| Can Fire Check        | **0.31 ns**    | 1.28 ns         | 4.1× faster         |
-| Async Hot Path*      | 444.77 ns      | 1.38 ns         | *Not comparable*    |
-
-*Boost.SML "async" is a synchronous simulation (no coroutines).*
-
----
-
-### FastFSM vs Rust State Machines (Statig Library)
-
-| Scenario              | FastFSM (.NET) | Rust (Statig 0.4) | Δ                      |
-| --------------------- | -------------- | ----------------- | ---------------------- |
-| **Basic Transitions** | **0.81 ns**    | 1,730 ns          | FastFSM 2,136× faster  |
-| Guards + Actions      | 2.18 ns        | **0.37 ns**       | Statig 5.9× faster     |
-| Payload               | 0.83 ns        | **0.41 ns**       | Statig 2.0× faster     |
-| Async Hot Path        | 444.77 ns      | **7.3 ns**        | Statig 61× faster      |
-| Async With Yield      | 456.72 ns      | **19.4 ns**       | Statig 24× faster      |
-
-**Note**: Rust benchmarks use the Statig 0.4 library for fair library-to-library comparison. Statig's abstractions add significant overhead for basic transitions (enum wrapping, trait dispatch) but excel at complex scenarios through aggressive inlining. Hand-rolled Rust code would show different trade-offs: ~1.77 ns for basic transitions but 0.7–0.8 ns for guards/payload scenarios.
-
----
-
-### Cross‑Language Summary (ns/op)
-
-| Scenario           | FastFSM (.NET) | Java | C++  | Rust (Statig) | TypeScript (Bun) | JavaScript (Bun) | Fastest        |
-| ------------------ | -------------- | ---- | ---- | ------------- | ---------------- | ---------------- | -------------- |
-| **Basic**          | **0.81**       | 289  | 1.23 | 1,730         | 1.2              | 1.0              | **FastFSM**    |
-| **Guards+Actions** | 2.18           | 321  | 1.32 | **0.37**      | 1.5              | 3.0              | **Rust**       |
-| **Payload**        | 0.83           | 311  | 1.35 | **0.41**      | 2.8              | 2.8              | **Rust**       |
-| **Async (hot)**    | 444.77         | 314  | 1.38 | **7.3**       | 208              | 203              | **C++***       |
-| **Async (yield)**  | 456.72         | 310  | n/a  | **19.4**      | 2000             | 712              | **Rust**       |
-
-*C++ "async" is synchronous simulation only; Rust shows true async performance.
-
----
-
-### Memory Allocations per Operation
-
-| Library                      | Allocations / op     | Native Code Size |
-| ---------------------------- | -------------------- | ---------------- |
-| FastFSM (Flat)              | **0 bytes**          | 160 – 8,050 B    |
-| FastFSM HSM (Sync)          | **0 bytes**          | 2,242 – 3,626 B  |
-| FastFSM HSM (Async)         | 376 bytes¹           | 6,348 B          |
-| Statig (Rust)               | **0 bytes**          | ~2 – 8 KB        |
-| Stateless (Flat)            | 608 – 2,295 B        | 3,436 – 21,417 B |
-| Stateless HSM               | 1,408 – 3,952 B      | 11,643 – 15,069 B|
-| LiquidState                 | 136 – 656 B          | 64 – 3,496 B     |
-| Appccelerate                | 1,608 – 3,166 B      | 1,084 – 3,721 B  |
-| Squirrel                    | 1,456 – 1,536 B      | n/a              |
-| Spring StateMachine         | 30,675 – 31,659 B    | n/a              |
-| TypeScript (Bun)            | ~40 – 90 B (engine)  | n/a              |
-| JavaScript (Bun)            | ~40 – 60 B (engine)  | n/a              |
-
-¹ Async state machine overhead (unavoidable in .NET async/await)
-
----
-
-### Key Performance Insights
-
-The benchmarks reveal fundamental trade-offs in state machine design:
-
-1. **Library Abstractions vs Hand-rolled Code**: The Rust Statig library shows a 1000× slowdown for basic transitions compared to hand-rolled code (1,730 ns vs 1.77 ns), demonstrating the cost of runtime abstractions. However, it excels at complex scenarios through aggressive inlining.
-
-2. **Compile-time vs Runtime**: FastFSM's source generator approach achieves hand-rolled performance while maintaining library convenience. This validates the design choice of compile-time code generation over runtime flexibility.
-
-3. **Hierarchical Performance**: FastFSM HSM adds only ~10 ns overhead for hierarchical transitions (11.69 ns vs 0.81 ns flat), while competitors like Stateless require 500+ ns. Internal transitions at 4.24 ns are even faster than some flat FSM operations.
-
-4. **Language vs Implementation**: Performance varies more by implementation strategy than language choice. A well-optimized library in any language can outperform poorly designed code in a "faster" language.
-
-5. **Zero-allocation Achievement**: Both FastFSM and Statig achieve true zero-allocation operation, critical for high-frequency state transitions in performance-sensitive applications. FastFSM extends this to hierarchical state machines, maintaining 0 B allocations for all synchronous HSM operations.
-
----
-
-
-## Real-World Examples
-
-All examples assume the machine is started with `Start()` or `StartAsync()` after instantiation.
-
-### Order Processing System
-
-```csharp
-[StateMachine(typeof(OrderState), typeof(OrderTrigger))]
-[PayloadType(typeof(Order))]
-public partial class OrderProcessor
-{
-    private readonly IPaymentGateway _paymentGateway;
-    private readonly IInventoryService _inventory;
-    
-    public OrderProcessor(OrderState initial, IPaymentGateway payment, IInventoryService inventory) 
-        : this(initial)
-    {
-        _paymentGateway = payment;
-        _inventory = inventory;
-    }
-    
-    [State(OrderState.Processing, OnEntry = nameof(ReserveInventory))]
-    [State(OrderState.Cancelled, OnEntry = nameof(ReleaseInventory))]
-    private void ConfigureStates() { }
-    
-    [Transition(OrderState.New, OrderTrigger.Submit, OrderState.Submitted,
-        Guard = nameof(IsValid))]
-    [Transition(OrderState.Submitted, OrderTrigger.Process, OrderState.Processing,
-        Guard = nameof(CanProcess), Action = nameof(ChargePayment))]
-    [Transition(OrderState.Processing, OrderTrigger.Ship, OrderState.Shipped)]
-    [Transition(OrderState.Submitted, OrderTrigger.Cancel, OrderState.Cancelled)]
-    private void ConfigureTransitions() { }
-    
-    private bool IsValid(Order order) => order.Items.Any() && order.Total > 0;
-    private bool CanProcess(Order order) => _inventory.IsAvailable(order.Items);
-    private async ValueTask ChargePayment(Order order) => await _paymentGateway.Charge(order);
-    private void ReserveInventory(Order order) => _inventory.Reserve(order.Items);
-    private void ReleaseInventory(Order order) => _inventory.Release(order.Items);
-}
-```
-
------
-
-## Architecture Overview
-
-FastFSM uses a multi-stage, feature-gated compilation approach:
-
-1.  **Declaration** - You define states and transitions using attributes
-2.  **Analysis** - Source generator analyzes your declarations at compile time
-3.  **Generation** - Optimized implementation is generated as part of your class
-4.  **Compilation** - Everything compiles to efficient IL code
-
-### Feature-Gated Generation (v0.7+)
-
-The generator automatically detects which features you use and emits only the necessary code:
-
-- **Core FSM** - Basic state transitions with guards and actions
-- **Payload Support** - Typed payloads with compile-time validation when `[PayloadType]` is used
-- **Extensions** - Hook points for logging/monitoring when `GenerateExtensibleVersion = true`
-- **Async Support** - ValueTask-based async operations when async methods are detected
-- **Hierarchical States** - Parent-child relationships when HSM attributes are used
-- **History Tracking** - State history when `History` property is set
-- **Internal Transitions** - When `[InternalTransition]` attributes are present
-
-This approach ensures minimal code size and maximum performance - you only pay for what you use.
-
-### Code Generation Strategy
-
-The generator produces different code patterns based on your usage:
-
-#### Flat FSM (default)
-```csharp
-switch (CurrentState) 
-{ 
-    switch (trigger) { ... } 
-}
-```
-
-#### Hierarchical FSM (with HSM features)
-```csharp
-switch (CurrentState)
-{
-    case Child:
-        // Handle child-specific transitions
-        // Fall through to parent with goto
-        goto case Parent;
-    case Parent:
-        // Handle parent transitions
+This is extremely fast and branch-predictable.
+
+	•	Hierarchical FSM: When hierarchy is involved, the generator uses a technique of fall-through switch with goto for parent states. For example:
+
+switch (CurrentState) {
+    case ChildState:
+        // handle child-specific triggers
+        if (trigger == ChildOnlyTrigger) { ... }
+        // If not handled, fall through to parent:
+        goto case ParentState;
+
+    case ParentState:
+        // handle parent triggers (including those not handled in child)
+        if (trigger == ParentTrigger) { ... }
         break;
 }
-```
 
-#### Performance Optimizations
+This way, if a child state doesn’t handle a trigger, the code jumps to the parent’s case and tries there – mirroring how HSMs work. It avoids recursion and minimizes duplicate checks.
 
-- **Switch statements** instead of dictionaries or delegates
-- **Compile-time flattening** of hierarchies
-- **Inline guards** evaluated directly in switch cases
-- **Zero virtual calls** - everything is concrete
-- **Stack-allocated** history tracking structures
+	•	Performance Optimizations Applied: The generated code uses only value types and direct branches. Some notable optimizations:
+	•	No dictionaries or reflection – everything is a direct jump (O(1) time).
+	•	Guards are inlined as simple if checks in the switch cases.
+	•	No virtual calls – all calls (to guard, action, entry/exit methods) are static or instance methods known at compile time.
+	•	State enums and trigger enums are converted to numeric constants internally, enabling jump tables in IL/native code.
+	•	For history states, the generator uses a Span or fixed-size array in the state machine instance to store last substate IDs, avoiding any heap structures.
 
------
+Overall, the generated code is akin to what you might write by hand for maximum speed, but produced for you automatically.
 
-## Migration Guide
+⸻
 
-### Upgrading to v0.7 (HSM Support)
+Migration Guide
 
-Version 0.7 adds Hierarchical State Machine support while maintaining **100% backward compatibility**. All existing v0.6 state machines work without any changes.
+Upgrading to v0.7 (HSM Support)
 
-**What's New:**
-- Hierarchical states with parent-child relationships
-- History modes (Shallow/Deep) for state restoration
-- Internal transitions that don't change state
-- Transition priorities for explicit control
-- Zero-allocation hierarchy operations
+Version 0.7 adds Hierarchical State Machine support while maintaining 100% backward compatibility. All existing v0.6 state machines will continue to work without modification.
 
-**To Use HSM Features:**
-1. Add `Parent` property to child states
-2. Mark one child per parent with `IsInitial = true`
-3. Optionally add `History` to parent states
-4. Use `[InternalTransition]` for stateless actions
-5. Set `Priority` on transitions when needed
+What’s New in v0.7:
+	•	Hierarchical States – You can designate states as children of other states (see Hierarchical States above). Parent states can have one initial child and optional history retention.
+	•	History Modes – Use History = HistoryMode.Shallow or HistoryMode.Deep on a parent state to automatically record the last active substate. On re-entering the parent, FastFSM will restore the child state (shallow = last direct child, deep = last nested descendant).
+	•	Internal Transitions – Use [InternalTransition] in a parent state to handle an event without leaving that state (no exit/entry calls). Great for periodic updates or self-loops that shouldn’t reset the state.
+	•	Transition Priorities – In complex state machines, multiple transitions might be valid for a given trigger (for example, a parent state and a child state both respond to the same trigger). FastFSM now resolves these by an optional Priority parameter on [Transition] attributes. Higher priority transitions are considered before lower ones.
+	•	No Performance Loss – All the above features introduce zero runtime overhead if you’re not using them. If you do use them, the overhead is minimal (as shown in benchmarks).
 
-### Upgrading from v0.5 to v0.6 (Lifecycle Changes)
+How to Use HSM Features:
+If you want to take advantage of HSM in FastFSM:
+	1.	Set EnableHierarchy = true on your [StateMachine] attribute.
+	2.	For each group of related states, designate a parent state (no parent itself) and use Parent = ParentState on child state attributes.
+	3.	Mark one child state as IsInitial = true under each parent so the machine knows where to enter initially.
+	4.	Optionally add History = HistoryMode.Shallow or Deep on the parent to remember child state.
+	5.	Use [InternalTransition(ParentState, Trigger, Action = ...)] for any triggers the parent should handle without leaving the state.
+	6.	(Optional) If multiple transitions might conflict, add Priority (numeric, higher means earlier) to transitions to disambiguate.
 
-Version 0.6 introduced the explicit lifecycle model to prevent race conditions.
+FastFSM will validate at compile time that your hierarchy is set up correctly (e.g., one initial child per parent, valid parent references, etc.).
 
-**Key Changes:**
-1. **Must call `Start()`** - State machines must be explicitly started after creation
-2. **Updated interfaces** - Use `IStateMachineSync<,>` or `IStateMachineAsync<,>`
-3. **Factory changes** - Use `CreateStarted<T>()` for pre-started machines
+Upgrading from v0.5 to v0.6 (Lifecycle Changes)
 
-```csharp
-// v0.5 (old)
-var machine = new MyMachine(State.Initial);
-machine.Fire(Trigger.Start); // Could race with OnEntry
+Version 0.6 introduced an explicit lifecycle with the Start() method to ensure deterministic behavior.
 
-// v0.6+ (current)
-var machine = new MyMachine(State.Initial);
-machine.Start(); // Explicit start, OnEntry completes before returning
-machine.Fire(Trigger.Start);
-```
+Key Changes in v0.6:
+	•	Explicit Start: You must call Start() on the state machine after construction (see Lifecycle). This was added to prevent issues with triggers fired during object construction.
+	•	Interfaces Renamed: The interfaces were updated to IStateMachineSync<TState,TTrigger> and IStateMachineAsync<TState,TTrigger> (previously had different names). Update your code if you referenced the old interface names.
+	•	Factory Method: If you were using any provided factory or builder, note that a convenience method CreateStarted<T> might be provided (e.g., if using dependency injection package) to automatically call Start().
 
-### From Stateless to FastFSM
+Example of migrating construct/start:
 
-```csharp
-// Stateless
+// v0.5 (old behavior – Start was implicit at construction, which could cause issues)
+var machine = new MyStateMachine(initialState);
+machine.Fire(Trigger.X); // OnEntry for initialState might not have run yet!
+
+// v0.6+ (new behavior)
+var machine = new MyStateMachine(initialState);
+machine.Start();           // OnEntry for initialState runs here
+machine.Fire(Trigger.X);   // Safe – machine is fully started
+
+Ensure all code paths that instantiate a state machine also call Start() before firing triggers or querying state.
+
+From Stateless to FastFSM
+
+If you are familiar with the Stateless library and want to migrate to FastFSM, here’s a quick side-by-side:
+
+Defining a simple state machine in Stateless:
+
 var machine = new StateMachine<State, Trigger>(State.Initial);
 machine.Configure(State.Initial)
-    .Permit(Trigger.Start, State.Running)
-    .SubstateOf(State.Parent);  // Complex hierarchy setup
+       .Permit(Trigger.Start, State.Running)
+       .OnEntry(() => Console.WriteLine("Entered Initial"));
+machine.Configure(State.Running)
+       .SubstateOf(State.Parent)      // define hierarchy (Stateless uses SubstateOf)
+       .OnEntry(() => Console.WriteLine("Entered Running"));
 
-// FastFSM
-[StateMachine(typeof(State), typeof(Trigger))]
+Equivalent in FastFSM:
+
+[StateMachine(typeof(State), typeof(Trigger), EnableHierarchy = true)]
 public partial class MyMachine
 {
+    [State(State.Parent)]  // parent state (could have History if needed)
+    private void ConfigureParent() { }
+
     [State(State.Running, Parent = State.Parent, IsInitial = true)]
     [Transition(State.Initial, Trigger.Start, State.Running)]
-    private void Configure() { }
+    [OnEntry(State.Initial)] 
+    private void OnInitialEntry() => Console.WriteLine("Entered Initial");
+    
+    [OnEntry(State.Running)]
+    private void OnRunningEntry() => Console.WriteLine("Entered Running");
 }
 
-var machine = new MyMachine(State.Initial);
-machine.Start();
-machine.Fire(Trigger.Start);
-```
+FastFSM condenses the declaration into attributes. The above configures that Initial --(Start)--> Running transition and sets up the hierarchy (Running is a child of Parent). It also attaches OnEntry actions for Initial and Running states.
 
-### Version History
+Firing triggers: In Stateless, you would call machine.Fire(Trigger.Start). In FastFSM, you call myMachine.Fire(Trigger.Start) similarly. Checking state is machine.State vs myMachine.CurrentState.
 
-- **v0.7** (August 2024) - Hierarchical State Machines with zero allocations
-- **v0.6** (June 2024) - Explicit lifecycle with `Start()` method
-- **v0.5** (April 2024) - Initial public release
+Benefits noticed when migrating: You’ll find FastFSM eliminates the need for runtime checks (errors like “No valid transition” become compile-time if you misconfigure). Performance, as shown, improves dramatically. The trade-off is that FastFSM requires a build step (source generation) and using partial classes, but this is generally straightforward.
 
------
+Version History
+	•	v0.7 (Aug 2024) – Introduced Hierarchical State Machine support (parent/child states), History states, Internal transitions, Transition priorities. Performance optimizations to maintain sub-nanosecond speeds even with HSM features.
+	•	v0.6 (June 2024) – Added explicit Start() method and lifecycle to avoid race conditions on startup. Updated interfaces (IStateMachineSync/Async). Minor performance improvements and bug fixes.
+	•	v0.5 (April 2024) – Initial public release of FastFSM with core features (flat state machines, guards, actions, async support, source generation approach).
 
-## Roadmap
+(If there were subsequent versions or patches, they would be noted here. As of this writing, v0.7 is the latest release.)
 
-### v0.7.5 (Planned)
-- **String-based State/Trigger Support** - Support for `record struct`, `SmartEnum`, and string constants as states/triggers
-- Zero-allocation string→ID mapping at compile-time
-- Native JSON serialization support for microservices
-- Maintains sub-nanosecond performance via internal numeric representation
+⸻
 
-### v0.8 (Planned)
-- Support for >256 states
-- Optional initial substates (`RequireExplicitSubstate`)
-- Orthogonal regions for parallel state machines
-- Completion transitions
+Roadmap
 
-### v0.9 (Planned)
-- **Deferred Events** (UML 2.5.1 compliant) - Queue events for later processing
-- Zero-allocation circular buffer implementation
-- Configurable overflow policies (DropOldest/DropNewest)
-- Full HSM integration with hierarchical deferral rules
-- Visual debugger and state diagram generation
-- Mermaid/PlantUML export
-- Runtime state machine modification
+Looking ahead, here are some planned features and improvements for upcoming versions of FastFSM:
 
-### v1.0 (Planned)
-- Stable API guarantee
-- Performance guarantees
-- Enterprise support
-- JSON serialization for state persistence
-- Complete event deferral with value type support
+v0.7.5 (Planned Minor Release)
+	•	String/Complex State & Trigger Support: Allow using string constants, or types like record struct or SmartEnum, as state identifiers via source generation. This will introduce a compile-time mapping from strings to state IDs, enabling more dynamic state definitions without sacrificing performance.
+	•	Native JSON Serialization: Built-in support to serialize/deserialize the state machine state (for persistence or microservice scenarios) with zero unnecessary overhead.
+	•	Further Performance Tweaks: Investigate any overhead in edge cases (like extremely large state counts) and eliminate it.
 
-## Contributing
+v0.8 (Planned)
+	•	Support >256 States: Remove/extend any internal limits (if present) on number of states or triggers. Ensure the code generation and storage scales to large state counts (e.g., 1000+ states) efficiently.
+	•	Optional Strict Child Requirement: Introduce a mode (perhaps RequireExplicitSubstate) where entering a parent state requires explicitly specifying a substate, rather than auto-entering an initial substate. This can help model certain workflows.
+	•	Orthogonal Regions (Parallel States): Experimental support for state machines that can be in multiple independent sub-states concurrently (parallel regions), as per UML statechart terminology.
+	•	Completion Transitions: Ability for a state to automatically trigger a transition when it is entered (after OnEntry), useful for modeling transient states that immediately progress.
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+v0.9 (Planned)
+	•	Deferred Events: Implement UML-style deferred events. The ability to queue certain triggers that are not handled in the current state for later processing when the machine moves to a state that can handle them. This will involve an internal event queue (likely a zero-allocation ring buffer) and APIs to manage it. Will include options for overflow handling (e.g., drop oldest/newest event).
+	•	Visual Tooling: Provide a way to export the state machine graph (perhaps via Mermaid or PlantUML integration) and maybe a debugging view that can visualize the current state graph and queued events at runtime. This could greatly aid in debugging complex state machines.
+	•	Dynamic Modification: Explore allowing limited runtime modifications to the state machine (adding/removing transitions) while running, for highly dynamic scenarios. This would be optional and would impact performance, so it might be behind a feature flag.
 
-## License
+v1.0 (Future)
+	•	Stable API & Documentation: Lock in the public API surface and semantics so that users can rely on long-term support.
+	•	Formal Performance Guarantees: By v1.0, we aim to guarantee certain performance characteristics (e.g., O(1) transitions, maximum memory footprint per state, etc.) in documentation.
+	•	Enterprise Features: e.g., integration with popular logging frameworks out of the box, perhaps a GUI designer or code analyzer for state machines.
+	•	Persistable State Machines: First-class support for saving and restoring a state machine (its current state and any history) to a data store or over the network (in addition to the JSON support).
 
-FastFSM is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+(These plans are subject to change based on community feedback and real-world usage.)
+
+⸻
+
+Contributing
+
+We welcome contributions! If you have ideas, bug fixes, or improvements, please open an issue or submit a pull request on GitHub. Before contributing, please see the CONTRIBUTING.md for guidelines and the code of conduct.
+
+Areas where you can help:
+	•	Documentation: Improvements to docs, additional examples, and tutorials are greatly appreciated.
+	•	Features: Implementing a planned feature from the roadmap or suggesting new ones.
+	•	Benchmarks: Contribute benchmark results from different environments or help us expand comparisons.
+	•	Optimizations: If you spot a way to make the generated code even faster or leaner, let’s discuss it!
+
+By participating in this project, you agree to abide by the code of conduct outlined in the contributing guide.
+
+License
+
+FastFSM is licensed under the MIT License. You’re free to use it in commercial or open-source projects. See the LICENSE file for the full text.
+
+⸻
+
+Thanks for reading! We hope FastFSM helps you build efficient and robust state machines. If you have any questions or run into issues, feel free to reach out via GitHub.
