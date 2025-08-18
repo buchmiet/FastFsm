@@ -268,32 +268,48 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
             int m = guarded.Count;
             int tableSize = Math.Max(1, 1 << m);
 
-            // Build the jagged array initializer inline
-            var rows = new List<string>();
-            for (int mask = 0; mask < tableSize; mask++)
+            if (m == 0)
             {
-                var entries = new List<string>();
-                entries.AddRange(unguarded);
-                for (int i = 0; i < m; i++)
+                // Single static array for states without guards
+                if (unguarded.Count == 0)
                 {
-                    if (((mask >> i) & 1) != 0)
-                    {
-                        var tr = guarded[i];
-                        entries.Add($"{triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(tr.Trigger)}");
-                    }
-                }
-                entries = entries.Distinct().ToList();
-                if (entries.Count == 0)
-                {
-                    rows.Add($"System.Array.Empty<{triggerTypeForUsage}>()");
+                    Sb.AppendLine($"private static readonly {triggerTypeForUsage}[] s_perm__{stateFieldSuffix} = System.Array.Empty<{triggerTypeForUsage}>();");
                 }
                 else
                 {
-                    rows.Add($"new {triggerTypeForUsage}[] {{ {string.Join(", ", entries)} }}");
+                    Sb.AppendLine($"private static readonly {triggerTypeForUsage}[] s_perm__{stateFieldSuffix} = new {triggerTypeForUsage}[] {{ {string.Join(", ", unguarded)} }};");
                 }
+                Sb.AppendLine();
             }
-            Sb.AppendLine($"private static readonly {triggerTypeForUsage}[][] s_perm__{stateFieldSuffix} = new {triggerTypeForUsage}[][] {{ {string.Join(", ", rows)} }};");
-            Sb.AppendLine();
+            else
+            {
+                // Build the jagged array initializer inline
+                var rows = new List<string>();
+                for (int mask = 0; mask < tableSize; mask++)
+                {
+                    var entries = new List<string>();
+                    entries.AddRange(unguarded);
+                    for (int i = 0; i < m; i++)
+                    {
+                        if (((mask >> i) & 1) != 0)
+                        {
+                            var tr = guarded[i];
+                            entries.Add($"{triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(tr.Trigger)}");
+                        }
+                    }
+                    entries = entries.Distinct().ToList();
+                    if (entries.Count == 0)
+                    {
+                        rows.Add($"System.Array.Empty<{triggerTypeForUsage}>()");
+                    }
+                    else
+                    {
+                        rows.Add($"new {triggerTypeForUsage}[] {{ {string.Join(", ", entries)} }}");
+                    }
+                }
+                Sb.AppendLine($"private static readonly {triggerTypeForUsage}[][] s_perm__{stateFieldSuffix} = new {triggerTypeForUsage}[][] {{ {string.Join(", ", rows)} }};");
+                Sb.AppendLine();
+            }
         }
     }
 
@@ -413,6 +429,10 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                 Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
                 using (Sb.Block(""))
             {
+                #if FASTFSM_SAFE_ACTIONS
+                try
+                {
+                #endif
                 CallbackGenerationHelper.EmitOnEntryCall(
                     Sb,
                     stateEntry,
@@ -426,6 +446,11 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                     isMultiPayload: false,
                     cancellationTokenVar: "cancellationToken",
                     treatCancellationAsFailure: false);
+                #if FASTFSM_SAFE_ACTIONS
+                }
+                catch (System.OperationCanceledException) { }
+                catch (System.Exception) { }
+                #endif
                     Sb.AppendLine("break;");
                 }
             }
@@ -441,6 +466,10 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                 Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
                 using (Sb.Block(""))
             {
+                #if FASTFSM_SAFE_ACTIONS
+                try
+                {
+                #endif
                 CallbackGenerationHelper.EmitOnEntryCall(
                     Sb,
                     stateEntry,
@@ -454,6 +483,11 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                     isMultiPayload: false,
                     cancellationTokenVar: "cancellationToken",
                     treatCancellationAsFailure: false);
+                #if FASTFSM_SAFE_ACTIONS
+                }
+                catch (System.OperationCanceledException) { }
+                catch (System.Exception) { }
+                #endif
                     Sb.AppendLine("break;");
                 }
             }
@@ -496,7 +530,13 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                 Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
                 using (Sb.Indent())
             {
+                    Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
+                    Sb.AppendLine("try { ");
                     Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                    Sb.AppendLine("} catch (System.OperationCanceledException) { } catch (System.Exception) { }");
+                    Sb.AppendLine("#else");
+                    Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                    Sb.AppendLine("#endif");
                     Sb.AppendLine("break;");
                 }
             }
@@ -512,7 +552,13 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                 Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
                 using (Sb.Indent())
             {
+                    Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
+                    Sb.AppendLine("try { ");
                     Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                    Sb.AppendLine("} catch (System.OperationCanceledException) { } catch (System.Exception) { }");
+                    Sb.AppendLine("#else");
+                    Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                    Sb.AppendLine("#endif");
                     Sb.AppendLine("break;");
                 }
             }
@@ -2280,72 +2326,24 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                     Sb.AppendLine($"            case {stateType}.{TypeHelper.EscapeIdentifier(stateName)}:");
                     Sb.AppendLine("            {");
 
-                    var hasGuards = stateGroup.Any(t => !string.IsNullOrEmpty(t.GuardMethod));
-
-                    if (hasGuards)
+                    var guarded = stateGroup.Where(t => !string.IsNullOrEmpty(t.GuardMethod)).ToList();
+                    var stateFieldSuffix = MakeSafeMemberSuffix(stateName);
+                    if (guarded.Count == 0)
                 {
-                        Sb.AppendLine($"                var permitted = new List<{triggerType}>();");
-
-                        foreach (var transition in stateGroup)
-                    {
-                            if (!string.IsNullOrEmpty(transition.GuardMethod))
-                        {
-                                if (transition.GuardExpectsPayload)
-                            {
-                                    Sb.AppendLine($"                var payload_{transition.Trigger} = payloadResolver({triggerType}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
-                                    GuardGenerationHelper.EmitGuardCheck(
-                                        Sb,
-                                        transition,
-                                        "canFire",
-                                        $"payload_{transition.Trigger}",
-                                        isAsync: false,
-                                        wrapInTryCatch: true,
-                                        Model.ContinueOnCapturedContext,
-                                        handleResultAfterTry: true
-                                    );
-                                }
-                                else
-                            {
-                                    GuardGenerationHelper.EmitGuardCheck(
-                                        Sb,
-                                        transition,
-                                        "canFire",
-                                        "null",
-                                        isAsync: false,
-                                        wrapInTryCatch: true,
-                                        Model.ContinueOnCapturedContext,
-                                        handleResultAfterTry: true
-                                    );
-                                }
-
-                                Sb.AppendLine("                if (canFire)");
-                                Sb.AppendLine("                {");
-                                Sb.AppendLine($"                    permitted.Add({triggerType}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
-                                Sb.AppendLine("                }");
-                            }
-                            else
-                        {
-                                Sb.AppendLine($"                permitted.Add({triggerType}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
-                            }
-                        }
-
-                        Sb.AppendLine("                return permitted.Count == 0 ? ");
-                        Sb.AppendLine($"                    {ArrayEmptyMethod}<{triggerType}>() :");
-                        Sb.AppendLine("                    permitted.ToArray();");
+                        Sb.AppendLine($"                return s_perm__{stateFieldSuffix};");
                     }
                     else
                 {
-                        // No guards - return static array
-                        var triggers = stateGroup.Select(t => t.Trigger).Distinct().ToList();
-                        if (triggers.Any())
-                    {
-                            var triggerList = string.Join(", ", triggers.Select(t => $"{triggerType}.{TypeHelper.EscapeIdentifier(t)}"));
-                            Sb.AppendLine($"                return new {triggerType}[] {{ {triggerList} }};");
+                        Sb.AppendLine("                int mask = 0;");
+                        for (int i = 0; i < guarded.Count; i++)
+                        {
+                            var tr = guarded[i];
+                            var from = TypeHelper.EscapeIdentifier(tr.FromState);
+                            var trig = TypeHelper.EscapeIdentifier(tr.Trigger);
+                            Sb.AppendLine($"                var p_{i} = payloadResolver({triggerType}.{trig});");
+                            Sb.AppendLine($"                if (EvaluateGuard__{from}__{trig}(p_{i})) mask |= {1 << i};");
                         }
-                        else
-                    {
-                            Sb.AppendLine($"                return {ArrayEmptyMethod}<{triggerType}>();");
-                        }
+                        Sb.AppendLine($"                return s_perm__{stateFieldSuffix}[mask];");
                     }
 
                     Sb.AppendLine("            }");

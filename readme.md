@@ -643,6 +643,103 @@ public class OrderService(IStateMachineFactory factory)
 }
 ```
 
+### Compile-time safety toggles
+
+FastFSM udostępnia przełączniki kompilacyjne (symbole preprocesora), które pozwalają wybrać między maksymalną wydajnością a bezpieczniejszą obsługą wyjątków w kodzie generowanym. Symbole definiujesz w projekcie, który kompiluje wygenerowane maszyny (nie w projekcie generatora).
+
+#### Symbole
+
+- `FASTFSM_SAFE_GUARDS`
+  Gdy włączony, wszystkie guardy wywoływane przez kod generowany są opakowane w `try/catch`.
+
+  - `OperationCanceledException` → guard traktowany jako niespełniony (`false`).
+  - Inne wyjątki → guard traktowany jako niespełniony (`false`).
+  - Domyślnie (gdy symbol wyłączony) wyjątki z guardów propagują się (maksymalna wydajność, pełna widoczność błędów).
+
+- `FASTFSM_SAFE_ACTIONS`
+  Gdy włączony, akcje (enter/exit/transition actions) są opakowane w `try/catch`.
+
+  - `OperationCanceledException` i inne wyjątki → bieżące wywołanie akcji przerywa ścieżkę przejścia; metody `TryFire` zwracają `false` (bez wyjątku).
+  - Domyślnie (gdy symbol wyłączony) wyjątki z akcji propagują się.
+
+- `FASTFSM_DEBUG_GENERATED_COMMENTS`
+  Włącza komentarze diagnostyczne w kodzie generowanym (obok standardowego `#if DEBUG`).
+
+> Uwaga: Symbole wpływają wyłącznie na kod generowany. Publiczne API i semantyka stanów/wyzwalaczy nie ulegają zmianie. W trybie SAFE koszt wykonania jest nieco wyższy (blok `try/catch` w hot‑path), ale poprawia się odporność na błędy w implementacjach akcji/guardów.
+
+#### Zalecane ustawienia
+
+Najczęściej stosowana konfiguracja:
+
+- Debug: bezpieczna diagnostyka
+- Release: maksymalna wydajność
+
+##### `.csproj` (przykład)
+
+```xml
+<PropertyGroup Condition="'$(Configuration)'=='Debug'">
+  <DefineConstants>$(DefineConstants);FASTFSM_SAFE_ACTIONS;FASTFSM_SAFE_GUARDS;FASTFSM_DEBUG_GENERATED_COMMENTS</DefineConstants>
+</PropertyGroup>
+
+<PropertyGroup Condition="'$(Configuration)'=='Release'">
+  <DefineConstants>$(DefineConstants)</DefineConstants>
+</PropertyGroup>
+```
+
+##### `Directory.Build.props` (globalnie dla solution)
+
+```xml
+<Project>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DefineConstants>$(DefineConstants);FASTFSM_SAFE_ACTIONS;FASTFSM_SAFE_GUARDS;FASTFSM_DEBUG_GENERATED_COMMENTS</DefineConstants>
+  </PropertyGroup>
+</Project>
+```
+
+##### CLI (szybki test jednorazowy)
+
+```bash
+# Debug + SAFE + komentarze
+dotnet build -c Debug -p:DefineConstants="DEBUG;TRACE;FASTFSM_SAFE_ACTIONS;FASTFSM_SAFE_GUARDS;FASTFSM_DEBUG_GENERATED_COMMENTS"
+
+# Release bez narzutu (propagacja wyjątków)
+dotnet build -c Release -p:DefineConstants="TRACE"
+```
+
+#### Jak to wygląda w kodzie generowanym
+
+Generator emituje warunki kompilacji wokół miejsc wrażliwych:
+
+```csharp
+#if FASTFSM_SAFE_GUARDS
+    try { return Guard_FromX_OnY(payload); }
+    catch (System.OperationCanceledException) { return false; }
+    catch { return false; }
+#else
+    return Guard_FromX_OnY(payload);
+#endif
+```
+
+oraz:
+
+```csharp
+#if FASTFSM_SAFE_ACTIONS
+    try { OnExit_StateX(); }
+    catch (System.OperationCanceledException) { return false; } // przerwij przejście
+    catch { return false; }
+#else
+    OnExit_StateX();
+#endif
+```
+
+Dzięki temu wybór trybu bezpieczeństwa jest decyzją kompilacyjną po stronie konsumenta biblioteki, bez zmiany API ani konfiguracji maszyn.
+
+#### Trade‑offs (w skrócie)
+
+- Wydajność: tryb FAST (domyślny) = brak kosztu `try/catch` w hot‑path.
+- Diagnostyka/odporność: tryb SAFE = odporność na wyjątki w guardach/akcjach; błędy nie wywracają aplikacji, lecz „gaszą” przejście (guard → `false`, akcja → `TryFire=false`).
+- Rekomendacja: w trakcie developmentu Debug z SAFE; na produkcji Release bez SAFE (chyba że masz twarde wymagania niezawodnościowe > wydajność).
+
 -----
 
 ## Benchmarks
