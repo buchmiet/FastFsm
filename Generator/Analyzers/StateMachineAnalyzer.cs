@@ -64,16 +64,58 @@ public class StateMachineAnalyzer : DiagnosticAnalyzer
             namedTypeSymbol.GetMembers().OfType<IMethodSymbol>().Any(m =>
                 m.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() is string n2 && fsmRelatedAttrs.Contains(n2)));
 
+        // Additional machine-like heuristics: inherits StateMachineBase<,> / AsyncStateMachineBase<,>
+        // or implements IStateMachine*/IExtensibleStateMachine* from StateMachine.Contracts
+        bool IsMachineLikeByInheritance()
+        {
+            static bool IsRuntimeBase(INamedTypeSymbol t)
+            {
+                var name = t.ConstructedFrom?.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)
+                           ?? t.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+                return name is "StateMachine.Runtime.StateMachineBase<TState, TTrigger>"
+                             or "StateMachine.Runtime.StateMachineBase`2"
+                             or "StateMachine.Runtime.AsyncStateMachineBase<TState, TTrigger>"
+                             or "StateMachine.Runtime.AsyncStateMachineBase`2";
+            }
+            for (var bt = namedTypeSymbol.BaseType; bt != null; bt = bt.BaseType)
+            {
+                if (IsRuntimeBase(bt)) return true;
+            }
+            return false;
+        }
+
+        bool IsMachineLikeByInterfaces()
+        {
+            foreach (var itf in namedTypeSymbol.AllInterfaces)
+            {
+                var n = itf.ConstructedFrom?.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)
+                        ?? itf.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+                if (n is "StateMachine.Contracts.IStateMachineSync<TState, TTrigger>"
+                       or "StateMachine.Contracts.IStateMachineSync`2"
+                       or "StateMachine.Contracts.IStateMachineAsync<TState, TTrigger>"
+                       or "StateMachine.Contracts.IStateMachineAsync`2"
+                       or "StateMachine.Contracts.IExtensibleStateMachineSync<TState, TTrigger>"
+                       or "StateMachine.Contracts.IExtensibleStateMachineSync`2"
+                       or "StateMachine.Contracts.IExtensibleStateMachineAsync<TState, TTrigger>"
+                       or "StateMachine.Contracts.IExtensibleStateMachineAsync`2")
+                    return true;
+            }
+            return false;
+        }
+
+        bool isClass = namedTypeSymbol.TypeKind == TypeKind.Class;
+        bool machineLike = hasFsmRelatedAttributes || IsMachineLikeByInheritance() || IsMachineLikeByInterfaces();
+
         bool isPartial = namedTypeSymbol.DeclaringSyntaxReferences
             .Select(sr => sr.GetSyntax(symbolContext.CancellationToken))
             .OfType<ClassDeclarationSyntax>()
             .Any(cds => cds.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)));
 
-        if (hasFsmRelatedAttributes)
+        if (isClass && machineLike && fsmAttribute == null)
         {
             var missingAttrCtx = new MissingStateMachineAttributeValidationContext(
-                fsmAttribute != null,
-                fsmAttribute?.ConstructorArguments.Length ?? 0,
+                false,
+                0,
                 namedTypeSymbol.Name,
                 isPartial);
             ProcessRuleResults(_missingStateMachineAttributeRule.Validate(missingAttrCtx), classLocation, symbolContext);

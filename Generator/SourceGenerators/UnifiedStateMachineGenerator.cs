@@ -355,7 +355,7 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
 
         using (Sb.Block($"public {className}({string.Join(", ", paramList)}) : {baseCall}"))
     {
-            if (Model.HierarchyEnabled)
+        if (Model.HierarchyEnabled)
         {
                 Sb.AppendLine("// Initialize history tracking array with -1 (no history)");
                 Sb.AppendLine("_lastActiveChild = new int[s_initialChild.Length];");
@@ -2123,12 +2123,13 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                     Sb.AppendLine($"                        case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}:");
                     Sb.AppendLine("                        {");
                     if (!string.IsNullOrEmpty(transition.GuardMethod))
-                {
-                        WriteGuardCall(transition, "canFire", PayloadVar, throwOnException: false);
-                        Sb.AppendLine("                            return canFire;");
+                    {
+                        var from = TypeHelper.EscapeIdentifier(transition.FromState);
+                        var trig = TypeHelper.EscapeIdentifier(transition.Trigger);
+                        Sb.AppendLine($"                            return EvaluateGuard__{from}__{trig}({PayloadVar});");
                     }
                     else
-                {
+                    {
                         Sb.AppendLine("                            return true;");
                     }
                     Sb.AppendLine("                        }");
@@ -2144,7 +2145,7 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
             Sb.AppendLine("        return false;");
         }
         else
-    {
+        {
             Sb.AppendLine($"        switch ({CurrentStateField})");
             Sb.AppendLine("        {");
             var transitionsByFromState = Model.Transitions.GroupBy(t => t.FromState).OrderBy(g => g.Key);
@@ -2160,12 +2161,13 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                     Sb.AppendLine($"                    case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}:");
                     Sb.AppendLine("                    {");
                     if (!string.IsNullOrEmpty(transition.GuardMethod))
-                {
-                        WriteGuardCall(transition, "canFire", PayloadVar, throwOnException: false);
-                        Sb.AppendLine("                        return canFire;");
+                    {
+                        var from = TypeHelper.EscapeIdentifier(transition.FromState);
+                        var trig = TypeHelper.EscapeIdentifier(transition.Trigger);
+                        Sb.AppendLine($"                        return EvaluateGuard__{from}__{trig}({PayloadVar});");
                     }
                     else
-                {
+                    {
                         Sb.AppendLine("                        return true;");
                     }
                     Sb.AppendLine("                    }");
