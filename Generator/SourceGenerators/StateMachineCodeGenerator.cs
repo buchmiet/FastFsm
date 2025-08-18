@@ -1687,11 +1687,16 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                                         }
                                         else
                                         {
-                                            // All transitions are guarded - need runtime check
-                                            bool first = true;
-                                            foreach (var transition in transitionsForTrigger)
+                                            // All transitions are guarded - need runtime check.
+                                            // Span-based API cannot supply payloads; skip guards that require payload.
+                                            var guardedNoPayload = transitionsForTrigger
+                                                .Where(t => !string.IsNullOrEmpty(t.GuardMethod) && !t.GuardExpectsPayload)
+                                                .ToList();
+
+                                            if (guardedNoPayload.Count > 0)
                                             {
-                                                if (!string.IsNullOrEmpty(transition.GuardMethod))
+                                                bool first = true;
+                                                foreach (var transition in guardedNoPayload)
                                                 {
                                                     Sb.AppendLine($"{(first ? "if" : "else if")} ({transition.GuardMethod}())");
                                                     using (Sb.Block(""))
@@ -1703,6 +1708,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                                                     first = false;
                                                 }
                                             }
+                                            // else: all guards require payload – cannot evaluate here; skip emitting this trigger
                                         }
                                     }
                                 }
