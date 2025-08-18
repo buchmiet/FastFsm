@@ -2386,10 +2386,8 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             .Distinct()
             .OrderBy(n => n)
             .ToList();
-        
-        // Only generate if there are async actions
-        if (asyncActionNames.Count == 0) return;
-        
+
+        // Always generate enum (with None only if no async actions) to satisfy references in async machines
         Sb.AppendLine("// Async action dispatch enum (zero-allocation)");
         using (Sb.Block("private enum AsyncActionId : ushort"))
         {
