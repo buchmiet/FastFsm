@@ -1141,32 +1141,89 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             if (Model.GenerationConfig.HasOnEntryExit)
             {
                 Sb.AppendLine("// ENTER chain: from LCA child down to final leaf");
-                Sb.AppendLine("// Build entry path (stackalloc for zero-alloc)");
-                Sb.AppendLine("int entryCount = 0;");
-                Sb.AppendLine($"Span<int> entryPath = stackalloc int[s_depth[(int)_currentState] + 1];");
-                Sb.AppendLine("for (int s = (int)_currentState; s >= 0 && s != lca; s = (s < s_parent.Length) ? s_parent[s] : -1) {");
-                Sb.AppendLine("    entryPath[entryCount++] = s;");
-                Sb.AppendLine("}");
-                Sb.AppendLine("// Execute entry callbacks in top-down order");
-                Sb.AppendLine("for (int i = entryCount - 1; i >= 0; i--) {");
-                Sb.AppendLine($"    var entryState = ({stateTypeForUsage})entryPath[i];");
-                Sb.AppendLine("    switch (entryState) {");
-                foreach (var state in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
+                if (IsAsyncMachine)
                 {
-                    Sb.AppendLine($"        case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(state.Name)}:");
-                    Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
-                    Sb.AppendLine($"            try {{ {state.OnEntryMethod}(); }}");
-                    Sb.AppendLine($"            catch (System.OperationCanceledException oce) {{ OnActionException(\"Enter:{state.Name}\", oce); return false; }}");
-                    Sb.AppendLine($"            catch (System.Exception ex) {{ OnActionException(\"Enter:{state.Name}\", ex); return false; }}");
-                    Sb.AppendLine("#else");
-                    Sb.AppendLine($"            {state.OnEntryMethod}();");
-                    Sb.AppendLine("#endif");
-                    Sb.AppendLine("            break;");
+                    // Async path: use ArrayPool and await OnEntry if async
+                    Sb.AppendLine("// Build entry path using ArrayPool to avoid Span across await");
+                    Sb.AppendLine("int entryCount = 0;");
+                    Sb.AppendLine("var pool = System.Buffers.ArrayPool<int>.Shared;");
+                    Sb.AppendLine("int[] entryPath = pool.Rent(s_depth[(int)_currentState] + 1);");
+                    Sb.AppendLine("try {");
+                    Sb.AppendLine("    for (int s = (int)_currentState; s >= 0 && s != lca; s = (s < s_parent.Length) ? s_parent[s] : -1) {");
+                    Sb.AppendLine("        entryPath[entryCount++] = s;");
+                    Sb.AppendLine("    }");
+                    Sb.AppendLine("    // Execute entry callbacks in top-down order");
+                    Sb.AppendLine("    for (int i = entryCount - 1; i >= 0; i--) {");
+                    Sb.AppendLine($"        var entryState = ({stateTypeForUsage})entryPath[i];");
+                    Sb.AppendLine("        switch (entryState) {");
+                    foreach (var state in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
+                    {
+                        Sb.AppendLine($"            case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(state.Name)}:");
+                        Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
+                        Sb.AppendLine("                try {");
+                        if (state.OnEntryIsAsync)
+                        {
+                            Sb.AppendLine($"                    var vt = {state.OnEntryMethod}();");
+                            Sb.AppendLine("                    if (!vt.IsCompletedSuccessfully)");
+                            Sb.AppendLine($"                        await vt{GetConfigureAwait()};");
+                        }
+                        else
+                        {
+                            Sb.AppendLine($"                    {state.OnEntryMethod}();");
+                        }
+                        Sb.AppendLine($"                }} catch (System.OperationCanceledException oce) {{ OnActionException(\"Enter:{state.Name}\", oce); return false; }}");
+                        Sb.AppendLine($"                  catch (System.Exception ex) {{ OnActionException(\"Enter:{state.Name}\", ex); return false; }}");
+                        Sb.AppendLine("#else");
+                        if (state.OnEntryIsAsync)
+                        {
+                            Sb.AppendLine($"                var vt = {state.OnEntryMethod}();");
+                            Sb.AppendLine("                if (!vt.IsCompletedSuccessfully)");
+                            Sb.AppendLine($"                    await vt{GetConfigureAwait()};");
+                        }
+                        else
+                        {
+                            Sb.AppendLine($"                {state.OnEntryMethod}();");
+                        }
+                        Sb.AppendLine("#endif");
+                        Sb.AppendLine("                break;");
+                    }
+                    Sb.AppendLine("            default: break;");
+                    Sb.AppendLine("        }");
+                    Sb.AppendLine("    }");
+                    Sb.AppendLine("} finally {");
+                    Sb.AppendLine("    pool.Return(entryPath, clearArray: false);");
+                    Sb.AppendLine("}");
                 }
-                Sb.AppendLine("        default: break;");
-                Sb.AppendLine("    }");
-                Sb.AppendLine("}");
-                Sb.AppendLine();
+                else
+                {
+                    // Sync path: keep zero-alloc stackalloc
+                    Sb.AppendLine("// Build entry path (stackalloc for zero-alloc)");
+                    Sb.AppendLine("int entryCount = 0;");
+                    Sb.AppendLine($"Span<int> entryPath = stackalloc int[s_depth[(int)_currentState] + 1];");
+                    Sb.AppendLine("for (int s = (int)_currentState; s >= 0 && s != lca; s = (s < s_parent.Length) ? s_parent[s] : -1) {");
+                    Sb.AppendLine("    entryPath[entryCount++] = s;");
+                    Sb.AppendLine("}");
+                    Sb.AppendLine("// Execute entry callbacks in top-down order");
+                    Sb.AppendLine("for (int i = entryCount - 1; i >= 0; i--) {");
+                    Sb.AppendLine($"    var entryState = ({stateTypeForUsage})entryPath[i];");
+                    Sb.AppendLine("    switch (entryState) {");
+                    foreach (var state in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
+                    {
+                        Sb.AppendLine($"        case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(state.Name)}:");
+                        Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
+                        Sb.AppendLine($"            try {{ {state.OnEntryMethod}(); }}");
+                        Sb.AppendLine($"            catch (System.OperationCanceledException oce) {{ OnActionException(\"Enter:{state.Name}\", oce); return false; }}");
+                        Sb.AppendLine($"            catch (System.Exception ex) {{ OnActionException(\"Enter:{state.Name}\", ex); return false; }}");
+                        Sb.AppendLine("#else");
+                        Sb.AppendLine($"            {state.OnEntryMethod}();");
+                        Sb.AppendLine("#endif");
+                        Sb.AppendLine("            break;");
+                    }
+                    Sb.AppendLine("        default: break;");
+                    Sb.AppendLine("    }");
+                    Sb.AppendLine("}");
+                    Sb.AppendLine();
+                }
             }
             
             // Execute transition action if present
