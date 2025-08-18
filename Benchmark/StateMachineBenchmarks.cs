@@ -1,6 +1,7 @@
 ﻿using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Engines;
+using System.Runtime.CompilerServices;
 
 // FastFSM
 using Abstractions.Attributes;
@@ -31,7 +32,7 @@ public class PayloadData
 }
 
 // ===== FastFSM implementations =====
-[StateMachine(typeof(State), typeof(Trigger))]
+[Abstractions.Attributes.StateMachine(typeof(State), typeof(Trigger))]
 public partial class FastFsmBasic
 {
     [Transition(State.A, Trigger.Next, State.B)]
@@ -40,7 +41,7 @@ public partial class FastFsmBasic
     private void Configure() { }
 }
 
-[StateMachine(typeof(State), typeof(Trigger))]
+[Abstractions.Attributes.StateMachine(typeof(State), typeof(Trigger))]
 public partial class FastFsmWithGuardsActions
 {
     private int _counter;
@@ -55,7 +56,7 @@ public partial class FastFsmWithGuardsActions
     private void IncrementCounter() => _counter++;
 }
 
-[StateMachine(typeof(State), typeof(Trigger))]
+[Abstractions.Attributes.StateMachine(typeof(State), typeof(Trigger))]
 [PayloadType(typeof(PayloadData))]
 public partial class FastFsmWithPayload
 {
@@ -69,7 +70,7 @@ public partial class FastFsmWithPayload
     private void ProcessPayload(PayloadData data) => _sum += data.Value;
 }
 
-[StateMachine(typeof(State), typeof(Trigger))]
+[Abstractions.Attributes.StateMachine(typeof(State), typeof(Trigger))]
 public partial class FastFsmAsyncActions
 {
     private int _asyncCounter;
@@ -104,6 +105,9 @@ public partial class FastFsmAsyncActions
 public class StateMachineBenchmarks
 {
     private const int Ops = 1024; // liczba operacji na jedno wywołanie benchmarku
+    private static int __bh;
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void BH(int v) => System.Threading.Volatile.Write(ref __bh, v);
 
     // ---------- Stateless ----------
     private Stateless.StateMachine<State, Trigger> _statelessBasic = null!;
@@ -371,8 +375,13 @@ public class StateMachineBenchmarks
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Basic")]
     public void FastFsm_Basic()
     {
-        for (int i = 0; i < Ops; i++) _fastFsmBasic.TryFire(Trigger.Next);
-        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmBasic.CurrentState);
+        int acc = 0;
+        for (int i = 0; i < Ops; i++)
+        {
+            _fastFsmBasic.TryFire(Trigger.Next);
+            acc ^= (int)_fastFsmBasic.CurrentState;
+        }
+        BH(acc);
     }
 
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Basic")]
@@ -400,8 +409,13 @@ public class StateMachineBenchmarks
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("GuardsActions")]
     public void FastFsm_GuardsActions()
     {
-        for (int i = 0; i < Ops; i++) _fastFsmGuardsActions.TryFire(Trigger.Next);
-        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmGuardsActions.CurrentState);
+        int acc = 0;
+        for (int i = 0; i < Ops; i++)
+        {
+            _fastFsmGuardsActions.TryFire(Trigger.Next);
+            acc ^= (int)_fastFsmGuardsActions.CurrentState;
+        }
+        BH(acc);
     }
 
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("GuardsActions")]
@@ -422,8 +436,13 @@ public class StateMachineBenchmarks
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Payload")]
     public void FastFsm_Payload()
     {
-        for (int i = 0; i < Ops; i++) _fastFsmPayload.TryFire(Trigger.Next, _payloadData);
-        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmPayload.CurrentState);
+        int acc = 0;
+        for (int i = 0; i < Ops; i++)
+        {
+            _fastFsmPayload.TryFire(Trigger.Next, _payloadData);
+            acc ^= (int)_fastFsmPayload.CurrentState;
+        }
+        BH(acc);
     }
 
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Payload")]
@@ -451,8 +470,13 @@ public class StateMachineBenchmarks
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-Yield")]
     public async ValueTask FastFsm_AsyncActions()
     {
-        for (int i = 0; i < Ops; i++) await _fastFsmAsyncActions.TryFireAsync(Trigger.Next);
-        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmAsyncActions.CurrentState);
+        int acc = 0;
+        for (int i = 0; i < Ops; i++)
+        {
+            await _fastFsmAsyncActions.TryFireAsync(Trigger.Next);
+            acc ^= (int)_fastFsmAsyncActions.CurrentState;
+        }
+        BH(acc);
     }
 
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-Yield")]
@@ -474,8 +498,13 @@ public class StateMachineBenchmarks
     public async ValueTask FastFsm_AsyncActions_HotPath()
     {
         // Re-mapuj w generatorze akcję do FastFsmAsyncActions.ProcessAsyncCompleted, aby użyć CompletedTask
-        for (int i = 0; i < Ops; i++) await _fastFsmAsyncActions.TryFireAsync(Trigger.Next);
-        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmAsyncActions.CurrentState);
+        int acc = 0;
+        for (int i = 0; i < Ops; i++)
+        {
+            await _fastFsmAsyncActions.TryFireAsync(Trigger.Next);
+            acc ^= (int)_fastFsmAsyncActions.CurrentState;
+        }
+        BH(acc);
     }
 
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-HotPath")]
@@ -510,8 +539,13 @@ public class StateMachineBenchmarks
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Helper")]
     public void FastFsm_CanFire()
     {
-        for (int i = 0; i < Ops; i++) _ = _fastFsmBasic.CanFire(Trigger.Next);
-        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmBasic.CurrentState);
+        int acc = 0;
+        for (int i = 0; i < Ops; i++)
+        {
+            _ = _fastFsmBasic.CanFire(Trigger.Next);
+            acc ^= (int)_fastFsmBasic.CurrentState;
+        }
+        BH(acc);
     }
 
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Helper")]
@@ -524,7 +558,12 @@ public class StateMachineBenchmarks
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Helper")]
     public void FastFsm_GetPermittedTriggers()
     {
-        for (int i = 0; i < Ops; i++) _ = _fastFsmBasic.GetPermittedTriggers();
-        DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastFsmBasic);
+        int acc = 0;
+        for (int i = 0; i < Ops; i++)
+        {
+            _ = _fastFsmBasic.GetPermittedTriggers();
+            acc ^= (int)_fastFsmBasic.CurrentState;
+        }
+        BH(acc);
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 using Abstractions.Attributes;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
@@ -13,7 +14,7 @@ public enum HsmTrigger { EnterParent, LeaveParent, Toggle, Tick }
 
 // ===== 2A) FastFSM – HSM Implementations =====
 
-[StateMachine(typeof(HsmState), typeof(HsmTrigger), EnableHierarchy = true)]
+[Abstractions.Attributes.StateMachine(typeof(HsmState), typeof(HsmTrigger), EnableHierarchy = true)]
 public partial class FastFsmHsmBasic
 {
     [State(HsmState.Parent, OnEntry = nameof(OnParentEntry), OnExit = nameof(OnParentExit))]
@@ -40,7 +41,7 @@ public partial class FastFsmHsmBasic
     private void OnTick() { /* nop */ }
 }
 
-[StateMachine(typeof(HsmState), typeof(HsmTrigger), EnableHierarchy = true)]
+[Abstractions.Attributes.StateMachine(typeof(HsmState), typeof(HsmTrigger), EnableHierarchy = true)]
 public partial class FastFsmHsmAsync
 {
     [State(HsmState.Parent)]
@@ -63,7 +64,7 @@ public partial class FastFsmHsmAsync
 }
 
 // Shallow history na rodzicu
-[StateMachine(typeof(HsmState), typeof(HsmTrigger), EnableHierarchy = true)]
+[Abstractions.Attributes.StateMachine(typeof(HsmState), typeof(HsmTrigger), EnableHierarchy = true)]
 public partial class FastFsmHsmHistoryShallow
 {
     [State(HsmState.Parent, History = HistoryMode.Shallow)]
@@ -150,6 +151,9 @@ public sealed class StatelessHsmAsync
 public class HsmBenchmarks
 {
     private const int Ops = 1024;
+    private static int __bh;
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void BH(int v) => System.Threading.Volatile.Write(ref __bh, v);
 
     // FastFSM
     private FastFsmHsmBasic _fastBasic = null!;
@@ -182,12 +186,14 @@ public class HsmBenchmarks
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("HSM-Basic")]
     public void FastFSM_Hsm_Basic_EnterLeave()
     {
+        int acc = 0;
         for (int i = 0; i < Ops; i++)
         {
             _fastBasic.TryFire(HsmTrigger.EnterParent); // Outside -> Parent -> Child1 (auto)
             _fastBasic.TryFire(HsmTrigger.LeaveParent); // Parent -> Outside
+            acc ^= (int)_fastBasic.CurrentState;
         }
-        BenchmarkDotNet.Engines.DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastBasic.CurrentState);
+        BH(acc);
     }
 
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("HSM-Basic")]
@@ -225,9 +231,13 @@ public class HsmBenchmarks
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("HSM-Internal")]
     public void FastFSM_Hsm_Internal()
     {
+        int acc = 0;
         for (int i = 0; i < Ops; i++)
+        {
             _fastBasic.TryFire(HsmTrigger.Tick);
-        BenchmarkDotNet.Engines.DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastBasic.CurrentState);
+            acc ^= (int)_fastBasic.CurrentState;
+        }
+        BH(acc);
     }
 
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("HSM-Internal")]
@@ -262,9 +272,13 @@ public class HsmBenchmarks
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("HSM-Async-Yield")]
     public async ValueTask FastFSM_Hsm_AsyncYield()
     {
+        int acc = 0;
         for (int i = 0; i < Ops; i++)
+        {
             await _fastAsync.TryFireAsync(HsmTrigger.Toggle); // Child1 -> Child2 (OnExit async)
-        BenchmarkDotNet.Engines.DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastAsync.CurrentState);
+            acc ^= (int)_fastAsync.CurrentState;
+        }
+        BH(acc);
     }
 
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("HSM-Async-Yield")]
@@ -280,13 +294,15 @@ public class HsmBenchmarks
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("HSM-History-Shallow", "FastFSM-only")]
     public void FastFSM_Hsm_History_Shallow()
     {
+        int acc = 0;
         for (int i = 0; i < Ops; i++)
         {
             _fastHist.TryFire(HsmTrigger.EnterParent); // -> Child1
             _fastHist.TryFire(HsmTrigger.Toggle);      // Child1 -> Child2
             _fastHist.TryFire(HsmTrigger.LeaveParent); // zapisz shallow history = Child2
             _fastHist.TryFire(HsmTrigger.EnterParent); // restore Child2
+            acc ^= (int)_fastHist.CurrentState;
         }
-        BenchmarkDotNet.Engines.DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_fastHist.CurrentState);
+        BH(acc);
     }
 }
