@@ -52,7 +52,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     /// <summary>
     /// Writes static hierarchy arrays if HSM is enabled
     /// </summary>
-    protected virtual void WriteHierarchyArrays(string stateTypeForUsage)
+    protected virtual void WriteHierarchyArrays(string stateTypeForUsage, string triggerTypeForUsage)
     {
         // FSM990_HSM_FLAG: Log before writing HSM blocks
         Sb.AppendLine("#if DEBUG || FASTFSM_DEBUG_GENERATED_COMMENTS");
@@ -124,7 +124,54 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.Append(string.Join(", ", historyValues));
         Sb.AppendLine(" };");
         
+        // Generate precomputed permission arrays for HSM (zero-alloc)
+        GenerateHsmPermittedTriggerArrays(triggerTypeForUsage);
+        
         Sb.AppendLine();
+    }
+    
+    /// <summary>
+    /// Generates precomputed permission arrays for HSM zero-alloc GetPermittedTriggers
+    /// </summary>
+    private void GenerateHsmPermittedTriggerArrays(string triggerTypeForUsage)
+    {
+        var uniqueTriggers = Model.Transitions.Select(t => t.Trigger).Distinct().OrderBy(t => t).ToList();
+        
+        if (uniqueTriggers.Count == 0)
+        {
+            Sb.AppendLine($"        private static readonly {triggerTypeForUsage}[][] s_perm__Mask = new {triggerTypeForUsage}[][] {{ System.Array.Empty<{triggerTypeForUsage}>() }};");
+            return;
+        }
+        
+        // Generate all possible mask combinations (2^n where n is number of unique triggers)
+        int maxMask = 1 << uniqueTriggers.Count;
+        
+        Sb.AppendLine($"        // Precomputed permission arrays for all possible guard mask combinations");
+        Sb.AppendLine($"        private static readonly {triggerTypeForUsage}[][] s_perm__Mask = new {triggerTypeForUsage}[][]");
+        Sb.AppendLine("        {");
+        
+        for (int mask = 0; mask < maxMask; mask++)
+        {
+            var triggers = new List<string>();
+            for (int i = 0; i < uniqueTriggers.Count; i++)
+            {
+                if ((mask & (1 << i)) != 0)
+                {
+                    triggers.Add($"{triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(uniqueTriggers[i])}");
+                }
+            }
+            
+            if (triggers.Count == 0)
+            {
+                Sb.AppendLine($"            System.Array.Empty<{triggerTypeForUsage}>(), // mask={mask}");
+            }
+            else
+            {
+                Sb.AppendLine($"            new {triggerTypeForUsage}[] {{ {string.Join(", ", triggers)} }}, // mask={mask}");
+            }
+        }
+        
+        Sb.AppendLine("        };");
     }
     
     /// <summary>
@@ -340,15 +387,6 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         }
         Sb.AppendLine();
         
-        // UpdateLastActiveChild: called before changing state away from a composite
-        Sb.WriteSummary("Records the last active child for the given composite parent.");
-        using (Sb.Block("private void UpdateLastActiveChild(int parentIndex)"))
-        {
-            Sb.AppendLine("if ((uint)parentIndex < (uint)_lastActiveChild.Length)");
-            using (Sb.Indent())
-                Sb.AppendLine("_lastActiveChild[parentIndex] = (int)_currentState;");
-        }
-        Sb.AppendLine();
 
         // GetCompositeEntryTarget: resolve initial/history for a composite index → leaf index
         Sb.WriteSummary("Resolves the actual leaf to enter for a composite state, using Initial/History semantics.");
@@ -1158,44 +1196,10 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             // Guard check if present
             if (!string.IsNullOrEmpty(transition.GuardMethod))
             {
-                // For now, inline the guard evaluation to avoid dependency on helpers that may not exist
-                // This maintains backward compatibility while still being functional
-                Sb.AppendLine("bool guardResult = false;");
-                
-                // Handle payload-based guards
-                if (transition.GuardExpectsPayload && Model.GenerationConfig.HasPayload)
-                {
-                    var payloadType = transition.ExpectedPayloadType ?? Model.DefaultPayloadType;
-                    if (!string.IsNullOrEmpty(payloadType))
-                    {
-                        Sb.AppendLine($"if (payload is {GetTypeNameForUsage(payloadType)} p)");
-                        using (Sb.Block(""))
-                        {
-                            // Use FASTFSM_SAFE_GUARDS for consistent guard evaluation
-                            Sb.AppendLine("#if FASTFSM_SAFE_GUARDS");
-                            Sb.AppendLine($"try {{ guardResult = {transition.GuardMethod}(p); }} catch {{ guardResult = false; }}");
-                            Sb.AppendLine("#else");
-                            Sb.AppendLine($"guardResult = {transition.GuardMethod}(p);");
-                            Sb.AppendLine("#endif");
-                        }
-                    }
-                    else
-                    {
-                        Sb.AppendLine("#if FASTFSM_SAFE_GUARDS");
-                        Sb.AppendLine($"try {{ guardResult = {transition.GuardMethod}(payload); }} catch {{ guardResult = false; }}");
-                        Sb.AppendLine("#else");
-                        Sb.AppendLine($"guardResult = {transition.GuardMethod}(payload);");
-                        Sb.AppendLine("#endif");
-                    }
-                }
-                else
-                {
-                    Sb.AppendLine("#if FASTFSM_SAFE_GUARDS");
-                    Sb.AppendLine($"try {{ guardResult = {transition.GuardMethod}(); }} catch {{ guardResult = false; }}");
-                    Sb.AppendLine("#else");
-                    Sb.AppendLine($"guardResult = {transition.GuardMethod}();");
-                    Sb.AppendLine("#endif");
-                }
+                // Use EvaluateGuard helper for DRY and consistent SAFE policy
+                var from = TypeHelper.EscapeIdentifier(transition.FromState);
+                var trig = TypeHelper.EscapeIdentifier(transition.Trigger);
+                Sb.AppendLine($"var guardResult = EvaluateGuard__{from}__{trig}(payload);");
                 
                 Sb.AppendLine("if (!guardResult) { declOrder++; } // skip this candidate");
                 Sb.AppendLine("else");
@@ -1700,8 +1704,12 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         {
             if (Model.HierarchyEnabled)
             {
-                // HSM: Walk up the parent chain and collect all possible triggers
-                Sb.AppendLine($"var permitted = new HashSet<{triggerTypeForUsage}>();");
+                // HSM: Walk up parent chain, OR bitmasks, return cached array (zero-alloc)
+                // Get unique triggers for bit mapping
+                var uniqueTriggers = Model.Transitions.Select(t => t.Trigger).Distinct().OrderBy(t => t).ToList();
+                
+                Sb.AppendLine("// Walk up parent chain and OR trigger bits");
+                Sb.AppendLine("int mask = 0;");
                 Sb.AppendLine($"int currentIndex = (int){CurrentStateField};");
                 Sb.AppendLine("int check = currentIndex;");
                 
@@ -1722,17 +1730,16 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                             {
                                 foreach (var transition in stateGroup)
                                 {
+                                    var triggerBit = uniqueTriggers.IndexOf(transition.Trigger);
                                     if (!string.IsNullOrEmpty(transition.GuardMethod))
                                     {
-                                        WriteGuardCall(transition, "canFire", "null", throwOnException: false);
-                                        using (Sb.Block("if (canFire)"))
-                                        {
-                                            Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
-                                        }
+                                        var from = TypeHelper.EscapeIdentifier(transition.FromState);
+                                        var trig = TypeHelper.EscapeIdentifier(transition.Trigger);
+                                        Sb.AppendLine($"if (EvaluateGuard__{from}__{trig}(null)) mask |= (1 << {triggerBit});");
                                     }
                                     else
                                     {
-                                        Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+                                        Sb.AppendLine($"mask |= (1 << {triggerBit}); // {transition.Trigger} (no guard)");
                                     }
                                 }
                                 Sb.AppendLine("break;");
@@ -1743,12 +1750,8 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                     Sb.AppendLine("check = (uint)check < (uint)s_parent.Length ? s_parent[check] : -1;");
                 }
                 
-                Sb.AppendLine("return permitted.Count == 0 ? ");
-                using (Sb.Indent())
-                {
-                    Sb.AppendLine($"{ArrayEmptyMethod}<{triggerTypeForUsage}>() :");
-                    Sb.AppendLine("permitted.ToArray();");
-                }
+                Sb.AppendLine("// Return precomputed array based on mask");
+                Sb.AppendLine("return s_perm__Mask[mask];");
             }
             else
             {
@@ -1861,17 +1864,20 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                                         else
                                         {
                                             // All transitions are guarded - need runtime check.
-                                            // Span-based API cannot supply payloads; skip guards that require payload.
-                                            var guardedNoPayload = transitionsForTrigger
-                                                .Where(t => !string.IsNullOrEmpty(t.GuardMethod) && !t.GuardExpectsPayload)
+                                            // For Span-based API, we pass null for payload guards
+                                            var guardedTransitions = transitionsForTrigger
+                                                .Where(t => !string.IsNullOrEmpty(t.GuardMethod))
                                                 .ToList();
 
-                                            if (guardedNoPayload.Count > 0)
+                                            if (guardedTransitions.Count > 0)
                                             {
                                                 bool first = true;
-                                                foreach (var transition in guardedNoPayload)
+                                                foreach (var transition in guardedTransitions)
                                                 {
-                                                    Sb.AppendLine($"{(first ? "if" : "else if")} ({transition.GuardMethod}())");
+                                                    var from = TypeHelper.EscapeIdentifier(transition.FromState);
+                                                    var trig = TypeHelper.EscapeIdentifier(transition.Trigger);
+                                                    // Use EvaluateGuard which handles both payload and non-payload guards
+                                                    Sb.AppendLine($"{(first ? "if" : "else if")} (EvaluateGuard__{from}__{trig}(null))");
                                                     using (Sb.Block(""))
                                                     {
                                                         Sb.AppendLine($"if (writeIndex >= destination.Length) return -1;");
@@ -1881,7 +1887,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                                                     first = false;
                                                 }
                                             }
-                                            // else: all guards require payload – cannot evaluate here; skip emitting this trigger
+                                            // If no guards can be evaluated, skip this trigger
                                         }
                                     }
                                 }
