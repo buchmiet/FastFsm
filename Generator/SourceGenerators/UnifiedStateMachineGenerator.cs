@@ -138,8 +138,8 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
             WriteStructuralApiMethods(stateType, triggerType);
             WriteHierarchyMethods(stateType, triggerType);
 
-            // Emit per-transition guard helpers for sync machines
-            if (!IsAsyncMachine)
+            // Emit per-transition guard helpers for sync machines or HSM (which needs them for TryFireInternal)
+            if (!IsAsyncMachine || IsHierarchical)
             {
                 WriteGuardHelperMethods(stateType, triggerType);
             }
@@ -155,14 +155,14 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
     }
 
     // Generates private helper methods EvaluateGuard__<FROM>__<TRIGGER>(object? payload)
-    // and Guard__<FROM>__<TRIGGER>(object? payload) for sync machines.
+    // and Guard__<FROM>__<TRIGGER>(object? payload) for sync machines and HSM (both sync and async).
     private void WriteGuardHelperMethods(string stateTypeForUsage, string triggerTypeForUsage)
     {
         var transitionsWithGuards = Model.Transitions.Where(t => !string.IsNullOrEmpty(t.GuardMethod)).ToList();
         if (transitionsWithGuards.Count == 0) return;
 
         Sb.AppendLine();
-        Sb.AppendLine("// Guard evaluation helpers (sync)");
+        Sb.AppendLine("// Guard evaluation helpers");
         foreach (var tr in transitionsWithGuards)
         {
             var from = TypeHelper.EscapeIdentifier(tr.FromState);
@@ -246,7 +246,7 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
     {
             GenerateActionIdEnum(); // Generate ActionId enum for zero-allocation dispatch
             GenerateAsyncActionIdEnum(); // Generate AsyncActionId enum for async actions
-            WriteHierarchyArrays(GetTypeNameForUsage(Model.StateType));
+            WriteHierarchyArrays(GetTypeNameForUsage(Model.StateType), GetTypeNameForUsage(Model.TriggerType));
             WriteHierarchyRuntimeFieldsAndHelpers(GetTypeNameForUsage(Model.StateType));
         }
 
@@ -2264,8 +2264,11 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
 
             if (IsHierarchical)
         {
-                // HSM: Walk up the parent chain
-                Sb.AppendLine($"        var permitted = new HashSet<{triggerType}>();");
+                // HSM: Walk up parent chain, OR bitmasks, return cached array (zero-alloc)
+                var uniqueTriggers = Model.Transitions.Select(t => t.Trigger).Distinct().OrderBy(t => t).ToList();
+                
+                Sb.AppendLine("        // Walk up parent chain and OR trigger bits based on guards with payload");
+                Sb.AppendLine("        int mask = 0;");
                 Sb.AppendLine($"        int currentIndex = (int){CurrentStateField};");
                 Sb.AppendLine("        int check = currentIndex;");
                 Sb.AppendLine();
@@ -2287,46 +2290,27 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
 
                     foreach (var transition in stateGroup)
                 {
+                        var triggerBit = uniqueTriggers.IndexOf(transition.Trigger);
                         if (!string.IsNullOrEmpty(transition.GuardMethod))
                     {
+                            var from = TypeHelper.EscapeIdentifier(transition.FromState);
+                            var trig = TypeHelper.EscapeIdentifier(transition.Trigger);
+                            
                             if (transition.GuardExpectsPayload)
                         {
                                 // Guard needs payload - use resolver
-                                Sb.AppendLine($"                    var payload_{transition.Trigger} = payloadResolver({triggerType}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
-                                GuardGenerationHelper.EmitGuardCheck(
-                                    Sb,
-                                    transition,
-                                    "canFire",
-                                    $"payload_{transition.Trigger}",
-                                    isAsync: false,
-                                    wrapInTryCatch: true,
-                                    Model.ContinueOnCapturedContext,
-                                    handleResultAfterTry: true
-                                );
+                                Sb.AppendLine($"                    var payload_{trig} = payloadResolver({triggerType}.{trig});");
+                                Sb.AppendLine($"                    if (EvaluateGuard__{from}__{trig}(payload_{trig})) mask |= (1 << {triggerBit});");
                             }
                             else
                         {
                                 // Guard doesn't need payload
-                                GuardGenerationHelper.EmitGuardCheck(
-                                    Sb,
-                                    transition,
-                                    "canFire",
-                                    "null",
-                                    isAsync: false,
-                                    wrapInTryCatch: true,
-                                    Model.ContinueOnCapturedContext,
-                                    handleResultAfterTry: true
-                                );
+                                Sb.AppendLine($"                    if (EvaluateGuard__{from}__{trig}(null)) mask |= (1 << {triggerBit});");
                             }
-
-                            Sb.AppendLine("                    if (canFire)");
-                            Sb.AppendLine("                    {");
-                            Sb.AppendLine($"                        permitted.Add({triggerType}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
-                            Sb.AppendLine("                    }");
                         }
                         else
                     {
-                            Sb.AppendLine($"                    permitted.Add({triggerType}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
+                            Sb.AppendLine($"                    mask |= (1 << {triggerBit}); // {transition.Trigger} (no guard)");
                         }
                     }
                     Sb.AppendLine("                    break;");
@@ -2337,9 +2321,8 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                 Sb.AppendLine("            check = (uint)check < (uint)s_parent.Length ? s_parent[check] : -1;");
                 Sb.AppendLine("        }");
                 Sb.AppendLine();
-                Sb.AppendLine("        return permitted.Count == 0 ? ");
-                Sb.AppendLine($"            {ArrayEmptyMethod}<{triggerType}>() :");
-                Sb.AppendLine("            permitted.ToArray();");
+                Sb.AppendLine("        // Return precomputed array based on mask");
+                Sb.AppendLine("        return s_perm__Mask[mask];");
             }
             else
         {
