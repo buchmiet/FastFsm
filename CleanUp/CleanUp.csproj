@@ -10,6 +10,10 @@
     <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\GeneratedFiles</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DefineConstants>$(DefineConstants);FASTFSM_SAFE_ACTIONS;FASTFSM_SAFE_GUARDS;FASTFSM_DEBUG_GENERATED_COMMENTS</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\StateMachine\StateMachine.csproj" />
     <ProjectReference Include="..\Abstractions\Abstractions.csproj" />
