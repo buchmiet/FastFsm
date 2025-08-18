@@ -12,10 +12,10 @@ WarmupCount=3
 ```
 | Method                         | Mean         | Error      | StdDev     | Code Size | Gen0   | Gen1   | Gen2   | Allocated |
 |------------------------------- |-------------:|-----------:|-----------:|----------:|-------:|-------:|-------:|----------:|
-| FastFSM_Hsm_AsyncYield         |   409.903 ns |  8.7405 ns |  7.7482 ns |   6,348 B | 0.0124 |      - |      - |     376 B |
-| Stateless_Hsm_AsyncYield       | 1,164.604 ns | 59.3832 ns | 55.5471 ns |   1,445 B | 0.1068 | 0.0019 | 0.0019 |   13434 B |
-| FastFSM_Hsm_Basic_EnterLeave   |    11.689 ns |  0.3780 ns |  0.3536 ns |   2,242 B |      - |      - |      - |         - |
-| Stateless_Hsm_Basic_EnterLeave |   548.906 ns | 15.2348 ns | 14.2507 ns |  11,643 B | 0.1307 |      - |      - |    3952 B |
-| FastFSM_Hsm_History_Shallow    |    15.005 ns |  0.5167 ns |  0.4315 ns |   3,626 B |      - |      - |      - |         - |
-| FastFSM_Hsm_Internal           |     4.241 ns |  0.1074 ns |  0.0952 ns |   2,750 B |      - |      - |      - |         - |
-| Stateless_Hsm_Internal         |   259.033 ns | 24.6690 ns | 23.0754 ns |  15,069 B | 0.0467 |      - |      - |    1408 B |
+| FastFSM_Hsm_AsyncYield         |   436.271 ns | 12.3546 ns | 11.5565 ns |   6,348 B | 0.0134 | 0.0010 | 0.0010 |         - |
+| Stateless_Hsm_AsyncYield       | 1,157.745 ns | 41.3971 ns | 38.7229 ns |   1,445 B | 0.1259 | 0.0019 | 0.0019 |         - |
+| FastFSM_Hsm_Basic_EnterLeave   |    17.343 ns |  0.1885 ns |  0.1763 ns |   2,706 B |      - |      - |      - |         - |
+| Stateless_Hsm_Basic_EnterLeave |   535.308 ns |  4.9084 ns |  3.8321 ns |  11,847 B | 0.1431 |      - |      - |    3952 B |
+| FastFSM_Hsm_History_Shallow    |    18.224 ns |  0.2552 ns |  0.2387 ns |   4,573 B |      - |      - |      - |         - |
+| FastFSM_Hsm_Internal           |     4.470 ns |  0.0752 ns |  0.0704 ns |   3,044 B |      - |      - |      - |         - |
+| Stateless_Hsm_Internal         |   236.297 ns |  2.7920 ns |  2.6116 ns |  15,037 B | 0.0563 |      - |      - |    1408 B |
