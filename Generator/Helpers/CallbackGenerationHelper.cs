@@ -56,7 +56,7 @@ namespace Generator.Helpers
                     }
                 }
 
-                using (sb.Block("catch (System.Exception ex)"))
+                using (sb.Block("catch (System.Exception)"))
                 {
                     sb.AppendLine("success = false;");
                     sb.AppendLine("goto END_TRY_FIRE;");

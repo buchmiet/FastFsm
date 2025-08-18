@@ -93,7 +93,7 @@ namespace Generator.Helpers
                     }
                 }
 
-                using (sb.Block("catch (System.Exception ex)"))
+                using (sb.Block("catch (System.Exception)"))
                 {
                     sb.AppendLine($"{resultVar} = false;");
                     // TODO: Add optional GuardFailed log

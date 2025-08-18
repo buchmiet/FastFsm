@@ -55,7 +55,9 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
     protected virtual void WriteHierarchyArrays(string stateTypeForUsage)
     {
         // FSM990_HSM_FLAG: Log before writing HSM blocks
+        Sb.AppendLine("#if DEBUG || FASTFSM_DEBUG_GENERATED_COMMENTS");
         Sb.AppendLine($"// FSM990_HSM_FLAG [4-WriteHSM] {Model.ClassName}: HierarchyEnabled={Model.HierarchyEnabled}");
+        Sb.AppendLine("#endif");
         
         if (!Model.HierarchyEnabled) return;
         
@@ -625,22 +627,10 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         if (!string.IsNullOrEmpty(transition.GuardMethod))
         {
             WriteGuardEvaluationHook(transition, stateTypeForUsage, triggerTypeForUsage);
-            
-            // Use GuardGenerationHelper for consistent guard handling
-            GuardGenerationHelper.EmitGuardCheck(
-                Sb,
-                transition,
-                "guardOk",
-                payloadVar: "null", // WriteTransitionLogicForFlatNonPayload doesn't use payload
-                IsAsyncMachine,
-                wrapInTryCatch: true,
-                Model.ContinueOnCapturedContext,
-                handleResultAfterTry: true,
-                cancellationTokenVar: null, // Not async variant
-                treatCancellationAsFailure: false
-            );
-            
-            // Check guard result
+            var from = TypeHelper.EscapeIdentifier(transition.FromState);
+            var trig = TypeHelper.EscapeIdentifier(transition.Trigger);
+            Sb.AppendLine($"var guardOk = EvaluateGuard__{from}__{trig}(null);");
+            // Check guard result and run hooks
             WriteAfterGuardEvaluatedHook(transition, "guardOk", stateTypeForUsage, triggerTypeForUsage);
             using (Sb.Block("if (!guardOk)"))
             {
@@ -688,12 +678,16 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         // Store the previous state for potential rollback (only if we have exception handler and action)
         if (Model.ExceptionHandler != null && !string.IsNullOrEmpty(transition.ActionMethod))
         {
+            Sb.AppendLine("#if DEBUG || FASTFSM_DEBUG_GENERATED_COMMENTS");
             Sb.AppendLine($"// FSM_DEBUG: Handler found: {Model.ExceptionHandler.MethodName}");
+            Sb.AppendLine("#endif");
             Sb.AppendLine($"var prevState = {CurrentStateField};");
         }
         else if (!string.IsNullOrEmpty(transition.ActionMethod))
         {
+            Sb.AppendLine("#if DEBUG || FASTFSM_DEBUG_GENERATED_COMMENTS");
             Sb.AppendLine($"// FSM_DEBUG: No handler for {Model.ClassName}, action={transition.ActionMethod}");
+            Sb.AppendLine("#endif");
         }
         
         // State change
@@ -1554,7 +1548,7 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
             }
             else
             {
-                // Flat FSM: Original implementation
+                // Flat FSM: Zero-alloc via precomputed arrays and guard mask
                 using (Sb.Block($"switch ({CurrentStateField})"))
                 {
                     var transitionsByFromState = Model.Transitions
@@ -1564,53 +1558,28 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                     foreach (var stateGroup in transitionsByFromState)
                     {
                         var stateName = stateGroup.Key;
-                        Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}:");
+                        var escapedState = TypeHelper.EscapeIdentifier(stateName);
+                        var stateFieldSuffix = UnifiedStateMachineGenerator_MemberSuffixWrapper(stateName);
+                        Sb.AppendLine($"case {stateTypeForUsage}.{escapedState}:");
                         using (Sb.Block(""))
                         {
-                            // Check if any transition has a guard
-                            var hasGuards = stateGroup.Any(t => !string.IsNullOrEmpty(t.GuardMethod));
-
-                            if (!hasGuards)
+                            var guarded = stateGroup.Where(t => !string.IsNullOrEmpty(t.GuardMethod)).ToList();
+                            if (guarded.Count == 0)
                             {
-                                // No guards - return static array
-                                var triggers = stateGroup.Select(t => t.Trigger).Distinct().ToList();
-                                if (triggers.Any())
-                                {
-                                    var triggerList = string.Join(", ", triggers.Select(t => $"{triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(t)}"));
-                                    Sb.AppendLine($"return new {triggerTypeForUsage}[] {{ {triggerList} }};");
-                                }
-                                else
-                                {
-                                    Sb.AppendLine($"return {ArrayEmptyMethod}<{triggerTypeForUsage}>();");
-                                }
+                                // No guards: table has single entry at index 0
+                                Sb.AppendLine($"return s_perm__{stateFieldSuffix}[0];");
                             }
                             else
                             {
-                                // Has guards - build list dynamically
-                                Sb.AppendLine($"var permitted = new List<{triggerTypeForUsage}>();");
-
-                                foreach (var transition in stateGroup)
+                                Sb.AppendLine("int mask = 0;");
+                                for (int i = 0; i < guarded.Count; i++)
                                 {
-                                    if (!string.IsNullOrEmpty(transition.GuardMethod))
-                                    {
-                                        WriteGuardCall(transition, "canFire", "null", throwOnException: false);
-                                        using (Sb.Block("if (canFire)"))
-                                        {
-                                            Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
-                                        }
-                                    }
-                                    else
-                                    {
-                                        Sb.AppendLine($"permitted.Add({triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)});");
-                                    }
+                                    var tr = guarded[i];
+                                    var from = TypeHelper.EscapeIdentifier(tr.FromState);
+                                    var trig = TypeHelper.EscapeIdentifier(tr.Trigger);
+                                    Sb.AppendLine($"if (EvaluateGuard__{from}__{trig}(null)) mask |= {1 << i};");
                                 }
-
-                                Sb.AppendLine("return permitted.Count == 0 ? ");
-                                using (Sb.Indent())
-                                {
-                                    Sb.AppendLine($"{ArrayEmptyMethod}<{triggerTypeForUsage}>() :");
-                                    Sb.AppendLine("permitted.ToArray();");
-                                }
+                                Sb.AppendLine($"return s_perm__{stateFieldSuffix}[mask];");
                             }
                         }
                     }
@@ -1859,6 +1828,28 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         }
     }
 
+    // Helper to mirror UnifiedStateMachineGenerator.MakeSafeMemberSuffix without coupling
+    protected static string UnifiedStateMachineGenerator_MemberSuffixWrapper(string raw)
+    {
+        if (string.IsNullOrEmpty(raw)) return "_";
+        if (raw.Length > 0 && raw[0] == '@') raw = raw.Substring(1);
+        var sb = new System.Text.StringBuilder(raw.Length);
+        foreach (var ch in raw)
+        {
+            if (char.IsLetterOrDigit(ch) || ch == '_') sb.Append(ch);
+            else sb.Append('_');
+        }
+        var s = sb.ToString();
+        if (s.Length == 0 || char.IsDigit(s[0])) s = "_" + s;
+        switch (s)
+        {
+            case "class": case "return": case "void": case "int": case "interface": case "namespace":
+            case "new": case "throw": case "break": case "continue": case "goto":
+                s = s + "_"; break;
+        }
+        return s;
+    }
+
     #endregion
 
     #endregion
@@ -1957,7 +1948,9 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
         if (Model.ExceptionHandler == null)
         {
             // No exception handler - use existing logic
+            Sb.AppendLine("#if DEBUG || FASTFSM_DEBUG_GENERATED_COMMENTS");
             Sb.AppendLine($"// FSM_DEBUG: No exception handler found for {Model.ClassName}");
+            Sb.AppendLine("#endif");
             WriteActionCall(transition);
             WriteLogStatement("Debug",
                 $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
@@ -2428,7 +2421,9 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                         }
                         else
                         {
+                            Sb.AppendLine("#if DEBUG || FASTFSM_DEBUG_GENERATED_COMMENTS");
                             Sb.AppendLine("/* action failed but transition succeeded */");
+                            Sb.AppendLine("#endif");
                         }
                     }
                     Sb.AppendLine("break;");
@@ -2507,7 +2502,9 @@ public abstract class StateMachineCodeGenerator(StateMachineModel model)
                         }
                         else
                         {
+                            Sb.AppendLine("#if DEBUG || FASTFSM_DEBUG_GENERATED_COMMENTS");
                             Sb.AppendLine("/* action failed but transition succeeded */");
+                            Sb.AppendLine("#endif");
                         }
                     }
                     Sb.AppendLine("break;");

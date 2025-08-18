@@ -116,7 +116,7 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
 }
 
     private void WriteClass(string className, string stateType, string triggerType)
-{
+    {
         var baseClass = GetBaseClassName(stateType, triggerType);
         using (Sb.Block($"public partial class {className} : {baseClass}, I{className}"))
     {
@@ -135,11 +135,80 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
             }
             WriteStructuralApiMethods(stateType, triggerType);
             WriteHierarchyMethods(stateType, triggerType);
+
+            // Emit per-transition guard helpers for sync machines
+            if (!IsAsyncMachine)
+            {
+                WriteGuardHelperMethods(stateType, triggerType);
+            }
         }
-}
+    }
+
+    // Generates private helper methods EvaluateGuard__<FROM>__<TRIGGER>(object? payload)
+    // and Guard__<FROM>__<TRIGGER>(object? payload) for sync machines.
+    private void WriteGuardHelperMethods(string stateTypeForUsage, string triggerTypeForUsage)
+    {
+        var transitionsWithGuards = Model.Transitions.Where(t => !string.IsNullOrEmpty(t.GuardMethod)).ToList();
+        if (transitionsWithGuards.Count == 0) return;
+
+        Sb.AppendLine();
+        Sb.AppendLine("// Guard evaluation helpers (sync)");
+        foreach (var tr in transitionsWithGuards)
+        {
+            var from = TypeHelper.EscapeIdentifier(tr.FromState);
+            var trig = TypeHelper.EscapeIdentifier(tr.Trigger);
+            var guardWrapper = $"Guard__{from}__{trig}";
+            var evalName = $"EvaluateGuard__{from}__{trig}";
+
+            // Core guard invocation without try/catch
+            Sb.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+            using (Sb.Block($"private bool {guardWrapper}(object? payload)"))
+            {
+                // No guard method? Always true (shouldn't happen for this emission path)
+                if (string.IsNullOrEmpty(tr.GuardMethod))
+                {
+                    Sb.AppendLine("return true;");
+                }
+                else
+                {
+                    // Use GuardGenerationHelper to emit the call w/o try/catch
+                    GuardGenerationHelper.EmitGuardCheck(
+                        Sb,
+                        tr,
+                        resultVar: "__guard",
+                        payloadVar: "payload",
+                        isAsync: false,
+                        wrapInTryCatch: false,
+                        continueOnCapturedContext: false,
+                        handleResultAfterTry: true,
+                        cancellationTokenVar: null,
+                        treatCancellationAsFailure: false);
+                    Sb.AppendLine("return __guard;");
+                }
+            }
+
+            // Safe wrapper that handles exceptions if FASTFSM_SAFE_GUARDS is enabled
+            Sb.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+            using (Sb.Block($"private bool {evalName}(object? payload)"))
+            {
+                Sb.AppendLine("#if FASTFSM_SAFE_GUARDS");
+                using (Sb.Block("try"))
+                {
+                    Sb.AppendLine($"return {guardWrapper}(payload);");
+                }
+                Sb.AppendLine("catch (System.OperationCanceledException) { return false; }");
+                Sb.AppendLine("catch (System.Exception) { return false; }");
+                Sb.AppendLine("#else");
+                Sb.AppendLine($"return {guardWrapper}(payload);");
+                Sb.AppendLine("#endif");
+            }
+
+            Sb.AppendLine();
+        }
+    }
 
     private void WriteFields(string className)
-{
+    {
         // Instance ID for async machines
         if (IsAsyncMachine)
     {
@@ -170,7 +239,88 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
             WriteHierarchyArrays(GetTypeNameForUsage(Model.StateType));
             WriteHierarchyRuntimeFieldsAndHelpers(GetTypeNameForUsage(Model.StateType));
         }
-}
+
+        // Emit static permitted-trigger arrays for flat FSM (zero-alloc GetPermittedTriggersInternal)
+        if (!IsHierarchical)
+        {
+            WritePermittedTriggerArrays(GetTypeNameForUsage(Model.StateType), GetTypeNameForUsage(Model.TriggerType));
+        }
+    }
+
+    // Generates static readonly arrays mapping guard masks to permitted trigger arrays per state (flat FSM only)
+    private void WritePermittedTriggerArrays(string stateTypeForUsage, string triggerTypeForUsage)
+    {
+        var transitionsByFromState = Model.Transitions
+            .GroupBy(t => t.FromState)
+            .OrderBy(g => g.Key);
+
+        foreach (var stateGroup in transitionsByFromState)
+        {
+            var stateNameRaw = stateGroup.Key;
+            var stateFieldSuffix = MakeSafeMemberSuffix(stateNameRaw);
+            var stateEnumName = TypeHelper.EscapeIdentifier(stateNameRaw);
+            var unguarded = stateGroup.Where(t => string.IsNullOrEmpty(t.GuardMethod))
+                                      .Select(t => $"{triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(t.Trigger)}")
+                                      .Distinct()
+                                      .ToList();
+            var guarded = stateGroup.Where(t => !string.IsNullOrEmpty(t.GuardMethod)).ToList();
+
+            int m = guarded.Count;
+            int tableSize = Math.Max(1, 1 << m);
+
+            // Build the jagged array initializer inline
+            var rows = new List<string>();
+            for (int mask = 0; mask < tableSize; mask++)
+            {
+                var entries = new List<string>();
+                entries.AddRange(unguarded);
+                for (int i = 0; i < m; i++)
+                {
+                    if (((mask >> i) & 1) != 0)
+                    {
+                        var tr = guarded[i];
+                        entries.Add($"{triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(tr.Trigger)}");
+                    }
+                }
+                entries = entries.Distinct().ToList();
+                if (entries.Count == 0)
+                {
+                    rows.Add($"System.Array.Empty<{triggerTypeForUsage}>()");
+                }
+                else
+                {
+                    rows.Add($"new {triggerTypeForUsage}[] {{ {string.Join(", ", entries)} }}");
+                }
+            }
+            Sb.AppendLine($"private static readonly {triggerTypeForUsage}[][] s_perm__{stateFieldSuffix} = new {triggerTypeForUsage}[][] {{ {string.Join(", ", rows)} }};");
+            Sb.AppendLine();
+        }
+    }
+
+    private static string MakeSafeMemberSuffix(string raw)
+    {
+        if (string.IsNullOrEmpty(raw)) return "_";
+        // Remove leading '@' if present (verbatim identifier)
+        if (raw.Length > 0 && raw[0] == '@') raw = raw.Substring(1);
+        // Replace invalid identifier chars with '_'
+        var sb = new System.Text.StringBuilder(raw.Length);
+        foreach (var ch in raw)
+        {
+            if (char.IsLetterOrDigit(ch) || ch == '_') sb.Append(ch);
+            else sb.Append('_');
+        }
+        var s = sb.ToString();
+        // Prefix if starts with digit
+        if (s.Length == 0 || char.IsDigit(s[0])) s = "_" + s;
+        // If keyword, add trailing underscore to avoid collisions
+        switch (s)
+        {
+            case "class": case "return": case "void": case "int": case "interface": case "namespace":
+            case "new": case "throw": case "break": case "continue": case "goto":
+                s = s + "_"; break;
+        }
+        return s;
+    }
 
     private void WriteConstructor(string stateTypeForUsage, string className)
 {
@@ -695,12 +845,16 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         // For WithExtensions variant, we need special exception handling
         if (ExtensionsOn)
     {
+            Sb.AppendLine("#if DEBUG || FASTFSM_DEBUG_GENERATED_COMMENTS");
             Sb.AppendLine($"// DEBUG: Using WriteTransitionLogicSyncWithExtensions for {Model.ClassName}");
+            Sb.AppendLine("#endif");
             WriteTransitionLogicSyncWithExtensions(transition, stateTypeForUsage, triggerTypeForUsage);
         }
         else
     {
+            Sb.AppendLine("#if DEBUG || FASTFSM_DEBUG_GENERATED_COMMENTS");
             Sb.AppendLine($"// DEBUG: Using base WriteTransitionLogicForFlatNonPayload for {Model.ClassName}");
+            Sb.AppendLine("#endif");
             base.WriteTransitionLogicForFlatNonPayload(transition, stateTypeForUsage, triggerTypeForUsage);
         }
 }
@@ -725,7 +879,9 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         Sb.AppendLine();
 
         // Comment about exception handling
+        Sb.AppendLine("#if DEBUG || FASTFSM_DEBUG_GENERATED_COMMENTS");
         Sb.AppendLine($"// FSM_DEBUG: No handler for {Model.ClassName}, action={transition.ActionMethod}");
+        Sb.AppendLine("#endif");
 
         // All transition logic in try-catch
         Sb.AppendLine("try {");
@@ -1144,7 +1300,9 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                                         {
                                             if (!string.IsNullOrEmpty(transition.GuardMethod))
                                             {
-                                                WriteGuardCall(transition, "guardResult", "null", throwOnException: false);
+                                                var from = TypeHelper.EscapeIdentifier(transition.FromState);
+                                                var trig = TypeHelper.EscapeIdentifier(transition.Trigger);
+                                                Sb.AppendLine($"var guardResult = EvaluateGuard__{from}__{trig}(null);");
                                                 Sb.AppendLine("return guardResult;");
                                             }
                                             else
@@ -1188,7 +1346,9 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                                     {
                                         if (!string.IsNullOrEmpty(transition.GuardMethod))
                                         {
-                                            WriteGuardCall(transition, "guardResult", "null", throwOnException: false);
+                                            var from = TypeHelper.EscapeIdentifier(transition.FromState);
+                                            var trig = TypeHelper.EscapeIdentifier(transition.Trigger);
+                                            Sb.AppendLine($"var guardResult = EvaluateGuard__{from}__{trig}(null);");
                                             Sb.AppendLine("return guardResult;");
                                         }
                                         else
@@ -1728,7 +1888,9 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
         if (!string.IsNullOrEmpty(transition.GuardMethod))
     {
             WriteGuardEvaluationHook(transition, stateTypeForUsage, triggerTypeForUsage);
-            WriteGuardCall(transition, "guardResult", PayloadVar, throwOnException: false);
+            var from = TypeHelper.EscapeIdentifier(transition.FromState);
+            var trig = TypeHelper.EscapeIdentifier(transition.Trigger);
+            Sb.AppendLine($"                        var guardResult = EvaluateGuard__{from}__{trig}({PayloadVar});");
             // Ensure extensions get the evaluated notification
             WriteAfterGuardEvaluatedHook(transition, "guardResult", stateTypeForUsage, triggerTypeForUsage);
             Sb.AppendLine("                        if (!guardResult)");
