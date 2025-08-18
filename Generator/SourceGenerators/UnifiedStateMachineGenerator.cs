@@ -122,6 +122,8 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
     {
             // Write class content
             WriteFields(className);
+            // Emit optional action-exception hook (no-op if not implemented by user)
+            WriteActionExceptionHook();
             WriteConstructor(stateType, className);
             WriteStartMethods();
             WriteInitialEntryMethods(stateType);
@@ -142,6 +144,14 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                 WriteGuardHelperMethods(stateType, triggerType);
             }
         }
+    }
+
+    // Emits optional partial hook for action exception reporting
+    private void WriteActionExceptionHook()
+    {
+        Sb.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        Sb.AppendLine("partial void OnActionException(string context, System.Exception ex);");
+        Sb.AppendLine();
     }
 
     // Generates private helper methods EvaluateGuard__<FROM>__<TRIGGER>(object? payload)
@@ -533,7 +543,7 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                     Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
                     Sb.AppendLine("try { ");
                     Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
-                    Sb.AppendLine("} catch (System.OperationCanceledException) { } catch (System.Exception) { }");
+                    Sb.AppendLine($"}} catch (System.OperationCanceledException oce) {{ OnActionException(\"OnInitialEntry:{stateEntry.OnEntryMethod}\", oce); return; }} catch (System.Exception ex) {{ OnActionException(\"OnInitialEntry:{stateEntry.OnEntryMethod}\", ex); return; }}");
                     Sb.AppendLine("#else");
                     Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
                     Sb.AppendLine("#endif");
@@ -555,7 +565,7 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
                     Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
                     Sb.AppendLine("try { ");
                     Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
-                    Sb.AppendLine("} catch (System.OperationCanceledException) { } catch (System.Exception) { }");
+                    Sb.AppendLine($"}} catch (System.OperationCanceledException oce) {{ OnActionException(\"OnInitialEntry:{stateEntry.OnEntryMethod}\", oce); return; }} catch (System.Exception ex) {{ OnActionException(\"OnInitialEntry:{stateEntry.OnEntryMethod}\", ex); return; }}");
                     Sb.AppendLine("#else");
                     Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
                     Sb.AppendLine("#endif");
