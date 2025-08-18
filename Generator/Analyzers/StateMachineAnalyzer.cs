@@ -48,17 +48,36 @@ public class StateMachineAnalyzer : DiagnosticAnalyzer
         var fsmAttribute = namedTypeSymbol.GetAttributes()
             .FirstOrDefault(attr => attr.AttributeClass?.ToDisplayString() == StateMachineAttributeName);
 
+        // Narrow FSM004 candidates: only classes that actually look like FSMs
+        // i.e., have any FSM-related attributes on the class or its members
+        string[] fsmRelatedAttrs = new[]
+        {
+            StateAttributeFullName,
+            TransitionAttributeName,
+            InternalTransitionAttributeName,
+            PayloadTypeAttributeFullName
+        };
+
+        bool hasFsmRelatedAttributes =
+            namedTypeSymbol.GetAttributes().Any(a =>
+                a.AttributeClass?.ToDisplayString() is string n1 && fsmRelatedAttrs.Contains(n1)) ||
+            namedTypeSymbol.GetMembers().OfType<IMethodSymbol>().Any(m =>
+                m.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() is string n2 && fsmRelatedAttrs.Contains(n2)));
+
         bool isPartial = namedTypeSymbol.DeclaringSyntaxReferences
             .Select(sr => sr.GetSyntax(symbolContext.CancellationToken))
             .OfType<ClassDeclarationSyntax>()
             .Any(cds => cds.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)));
 
-        var missingAttrCtx = new MissingStateMachineAttributeValidationContext(
-            fsmAttribute != null,
-            fsmAttribute?.ConstructorArguments.Length ?? 0,
-            namedTypeSymbol.Name,
-            isPartial);
-        ProcessRuleResults(_missingStateMachineAttributeRule.Validate(missingAttrCtx), classLocation, symbolContext);
+        if (hasFsmRelatedAttributes)
+        {
+            var missingAttrCtx = new MissingStateMachineAttributeValidationContext(
+                fsmAttribute != null,
+                fsmAttribute?.ConstructorArguments.Length ?? 0,
+                namedTypeSymbol.Name,
+                isPartial);
+            ProcessRuleResults(_missingStateMachineAttributeRule.Validate(missingAttrCtx), classLocation, symbolContext);
+        }
 
         // Only continue if attribute is present, class is partial and has enough constructor args
         if (fsmAttribute != null && isPartial && fsmAttribute.ConstructorArguments.Length >= 2)

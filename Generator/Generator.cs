@@ -30,7 +30,7 @@ public class StateMachineGenerator : IIncrementalGenerator
         "State machine candidate found",
         "Discovered [StateMachine]: {0} in {1}",
         "FSM.Generator.Discovery",
-        DiagnosticSeverity.Warning,
+        DiagnosticSeverity.Info,
         isEnabledByDefault: true);
     
     private static readonly DiagnosticDescriptor FSM997_SkippedCandidate = new(
@@ -38,7 +38,7 @@ public class StateMachineGenerator : IIncrementalGenerator
         "State machine candidate skipped",
         "Skipped state machine candidate {0}: {1}",
         "FSM.Generator.Discovery",
-        DiagnosticSeverity.Warning,
+        DiagnosticSeverity.Info,
         isEnabledByDefault: true);
     
     private static readonly DiagnosticDescriptor FSM996_AddSourceOk = new(
@@ -46,7 +46,7 @@ public class StateMachineGenerator : IIncrementalGenerator
         "AddSource succeeded",
         "AddSource ok: {0} (len={1})",
         "FSM.Generator.AddSource",
-        DiagnosticSeverity.Warning,
+        DiagnosticSeverity.Info,
         isEnabledByDefault: true);
     
     private static readonly DiagnosticDescriptor FSM994_EnumOnlyFallback = new(
@@ -62,7 +62,7 @@ public class StateMachineGenerator : IIncrementalGenerator
         "MSBuild analyzer properties",
         "EmitCompilerGeneratedFiles={0}; CompilerGeneratedFilesOutputPath={1}",
         "FSM.Generator.Config",
-        DiagnosticSeverity.Warning,
+        DiagnosticSeverity.Info,
         isEnabledByDefault: true);
     
     private static readonly DiagnosticDescriptor FSM993_EmptyCode = new(
@@ -78,7 +78,7 @@ public class StateMachineGenerator : IIncrementalGenerator
         "Declaration plan",
         "DECLARATION_PLAN for {0}: ns='{1}', nesting='{2}', class='{3}', accessibility='{4}', partial={5}",
         "FSM.Generator",
-        DiagnosticSeverity.Warning,
+        DiagnosticSeverity.Info,
         isEnabledByDefault: true);
     
     private static readonly DiagnosticDescriptor FSM991_Variant = new(
@@ -86,7 +86,7 @@ public class StateMachineGenerator : IIncrementalGenerator
         "Variant decision",
         "{0} -> variant={1}; internalOnly={2}; payloadPresent={3}",
         "FSM.Generator",
-        DiagnosticSeverity.Warning,
+        DiagnosticSeverity.Info,
         isEnabledByDefault: true);
     
     private static readonly DiagnosticDescriptor FSM989_ConfigSections = new(
