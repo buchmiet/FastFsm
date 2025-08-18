@@ -13,10 +13,13 @@
   <ItemGroup>
     <ProjectReference Include="..\StateMachine\StateMachine.csproj" />
     <ProjectReference Include="..\Abstractions\Abstractions.csproj" />
+    <!-- Analyzer references for generator and its runtime dependencies used at generation time -->
     <ProjectReference Include="..\Generator\Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\Generator.Model\Generator.Model.csproj" />
-    <ProjectReference Include="..\Generator.Rules\Generator.Rules.csproj" />
-    <ProjectReference Include="..\IndentedStringBuilder\IndentedStringBuilder.csproj" />
+    <ProjectReference Include="..\Generator.Model\Generator.Model.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Generator.Rules\Generator.Rules.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Generator.Logger\Generator.Logger.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Generator.DependencyInjection\Generator.DependencyInjection.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\IndentedStringBuilder\IndentedStringBuilder.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <Target Name="CleanGeneratedFiles" BeforeTargets="Clean">
