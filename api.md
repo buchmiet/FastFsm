@@ -2,15 +2,16 @@
 
 ## Overview
 
-FastFSM is a high-performance, zero-overhead finite state machine framework for .NET that leverages C# source generators to create highly optimized state machines at compile time. This document provides comprehensive API documentation for all projects in the FastFSM solution.
+FastFSM is a high-performance, zero-overhead state machine framework for .NET that leverages C# source generators to create highly optimized code at compile time. This document provides comprehensive API documentation for all projects in the FastFSM solution.
 
 ### Key Features
 - **Zero Runtime Reflection** - All transitions compile to simple switch statements
-- **Zero Heap Allocations** - No garbage collection pressure in state logic
+- **Zero Heap Allocations** - No garbage collection pressure during state transitions
 - **Compile-time Validation** - Invalid states and transitions caught during build
-- **Hierarchical State Machines (HSM)** - Support for composite states, substates, and history
+- **Hierarchical State Machines (HSM)** - Support for composite states, substates, and history (v0.7+)
 - **Native AOT Ready** - Fully compatible with trimming and ahead-of-time compilation
 - **Extensible** - Support for logging, dependency injection, and custom extensions
+- **Feature-Gated Generation** - Only generates code for features you actually use
 
 ## Solution Structure
 
@@ -59,14 +60,16 @@ Marks a partial class as a state machine that should be generated.
 public partial class MyStateMachine { }
 ```
 
+**Constructor Parameters:**
+- `Type stateType` - Enum type defining possible states (required)
+- `Type triggerType` - Enum type defining possible triggers (required)
+
 **Properties:**
-- `Type StateType` - Enum type defining possible states (required)
-- `Type TriggerType` - Enum type defining possible triggers (required)
-- `Type DefaultPayloadType` - Default payload type for all triggers
+- `Type DefaultPayloadType` - Default payload type for all triggers (optional)
 - `bool GenerateExtensibleVersion` - Enable extension support (default: true)
-- `bool GenerateStructuralApi` - Generate structural analysis methods
+- `bool GenerateStructuralApi` - Generate structural analysis methods (default: false)
 - `bool ContinueOnCapturedContext` - Control async continuation context (default: false)
-- `bool EnableHierarchy` - Enable HSM features (auto-enabled when HSM attributes used)
+- `bool EnableHierarchy` - Enable HSM features (default: false, auto-enabled when HSM attributes used)
 
 **Nested Classes Support:**
 
@@ -79,12 +82,15 @@ Defines a state transition with optional guard and action.
 [Transition(FromState, Trigger, ToState, Guard = "method", Action = "method")]
 ```
 
-**Parameters:**
-- `object fromState` - Source state
-- `object trigger` - Trigger that causes transition
-- `object toState` - Destination state
+**Constructor Parameters:**
+- `object fromState` - Source state (required)
+- `object trigger` - Trigger that causes transition (required)
+- `object toState` - Destination state (required)
+
+**Properties:**
 - `string Guard` - Optional guard method name (returns bool)
 - `string Action` - Optional action method name
+- `int Priority` - Transition priority for HSM conflict resolution (default: 0)
 
 ##### `InternalTransitionAttribute`
 Defines an internal transition that executes an action without changing state.
@@ -92,6 +98,14 @@ Defines an internal transition that executes an action without changing state.
 ```csharp
 [InternalTransition(State, Trigger, Guard = "method", Action = "method")]
 ```
+
+**Constructor Parameters:**
+- `object state` - State where the internal transition occurs (required)
+- `object trigger` - Trigger that causes the internal transition (required)
+
+**Properties:**
+- `string Guard` - Optional guard method name
+- `string Action` - Optional action method name
 
 ##### `StateAttribute`
 Configures state-specific behavior and hierarchy.
@@ -105,13 +119,15 @@ Configures state-specific behavior and hierarchy.
     IsInitial = true)]
 ```
 
+**Constructor Parameters:**
+- `object state` - The state to configure (required)
+
 **Properties:**
-- `object State` - The state to configure (required)
-- `string OnEntry` - Method to execute when entering state
-- `string OnExit` - Method to execute when leaving state
+- `string OnEntry` - Method to execute when entering state (optional)
+- `string OnExit` - Method to execute when leaving state (optional)
 - `object Parent` - Parent state for HSM (optional)
-- `HistoryMode History` - History behavior for composite states
-- `bool IsInitial` - Marks as initial substate of parent
+- `HistoryMode History` - History behavior for composite states (default: None)
+- `bool IsInitial` - Marks as initial substate of parent (default: false)
 
 #### Hierarchical State Machine (HSM) Support
 
@@ -127,29 +143,31 @@ public enum HistoryMode
 }
 ```
 
-##### HSM Runtime Helpers
+##### HSM Runtime Methods
 
-###### `bool IsInHierarchy(TState ancestor)`
-Checks if the current state lies within the hierarchy of a given ancestor state.
+The following methods are available on the generated state machine interface for HSM support:
 
-**Returns:** `true` if `ancestor` is the current state or any of its parents; `false` otherwise.
+###### `bool IsIn(TState state)`
+Checks if the given state is in the active state path.
 
-**Availability:** All build configurations (Debug and Release) for HSM-enabled machines.
+**Returns:** `true` if the state is active (current state or any of its ancestors); `false` otherwise.
+
+**Availability:** All state machines (for non-HSM, only returns true if state equals CurrentState).
 
 ```csharp
 // Example usage
-if (machine.IsInHierarchy(WorkflowState.Processing))
+if (machine.IsIn(WorkflowState.Processing))
 {
     // Current state is within the Processing composite
 }
 ```
 
-###### `string DumpActivePath()`
-Returns the active path from root to current leaf state as a string (DEBUG-only).
+###### `IReadOnlyList<TState> GetActivePath()`
+Gets the active state path from root to the current leaf state.
 
-**Returns:** Path string like `"Root / Menu / Menu_Settings"`
+**Returns:** List of states from root to current leaf (single element for non-HSM)
 
-**Availability:** DEBUG builds only for HSM-enabled machines.
+**Availability:** All state machines.
 
 #### Additional Attributes
 
@@ -160,6 +178,12 @@ Specifies payload type for specific triggers.
 [PayloadType(typeof(OrderData), Triggers = new[] { OrderTrigger.Submit })]
 ```
 
+**Constructor Parameters:**
+- `Type payloadType` - The payload type for the specified triggers (required)
+
+**Properties:**
+- `object[] Triggers` - Array of triggers that use this payload type
+
 ##### `OnExceptionAttribute`
 Specifies exception handling method.
 
@@ -167,6 +191,9 @@ Specifies exception handling method.
 [OnException(nameof(HandleError))]
 private void HandleError(ExceptionContext<TState, TTrigger> context) { }
 ```
+
+**Constructor Parameters:**
+- `string methodName` - Name of the exception handling method (required)
 
 ##### `GenerateLoggingAttribute`
 Controls logging code generation.
@@ -176,22 +203,42 @@ Controls logging code generation.
 public partial class MyStateMachine { }
 ```
 
+**Note:** This attribute marks the state machine for logging support generation.
+
 ## Project: `StateMachine`
 
 **Purpose**: Contains the core runtime components and base classes that generated state machines inherit from. This is the runtime library that applications depend on.
 
 ### Builder
 
-#### `StateMachineBuilder<TState, TTrigger>`
-A fluent builder for creating state machine instances at runtime (for dynamic scenarios).
+#### `IStateMachineBuilder<TState, TTrigger>`
+Interface for building state machines programmatically.
+
+**Type Constraints:**
+- `TState : unmanaged, Enum`
+- `TTrigger : unmanaged, Enum`
 
 **Methods:**
-- `Build(TState initialState)` - Creates a configured state machine instance
-- `WithTransition(from, trigger, to)` - Adds a transition
-- `WithGuard(guard)` - Adds a guard condition
-- `WithAction(action)` - Adds a transition action
-- `WithOnEntry(state, callback)` - Sets entry callback
-- `WithOnExit(state, callback)` - Sets exit callback
+- `IStateMachineBuilder<TState, TTrigger> WithTransition(TState from, TTrigger trigger, TState to)` - Add transition
+- `IStateMachineBuilder<TState, TTrigger> WithGuard(Func<bool> guard)` - Add guard to last transition
+- `IStateMachineBuilder<TState, TTrigger> WithAction(Action action)` - Add action to last transition
+- `IStateMachineBuilder<TState, TTrigger> WithOnEntry(TState state, Action callback)` - Set entry callback
+- `IStateMachineBuilder<TState, TTrigger> WithOnExit(TState state, Action callback)` - Set exit callback
+- `IStateMachineSync<TState, TTrigger> Build(TState initialState)` - Build the state machine
+
+#### `StateMachineBuilder<TState, TTrigger>`
+Concrete implementation of the state machine builder.
+
+**Implements:** `IStateMachineBuilder<TState, TTrigger>`
+
+**Usage Example:**
+```csharp
+var machine = new StateMachineBuilder<State, Trigger>()
+    .WithTransition(State.Idle, Trigger.Start, State.Running)
+    .WithGuard(() => isReady)
+    .WithOnEntry(State.Running, () => Console.WriteLine("Started"))
+    .Build(State.Idle);
+```
 
 ### Contracts
 
@@ -200,32 +247,67 @@ A fluent builder for creating state machine instances at runtime (for dynamic sc
 ##### `IStateMachineSync<TState, TTrigger>`
 Synchronous state machine interface.
 
+**Type Constraints:**
+- `TState : unmanaged, Enum`
+- `TTrigger : unmanaged, Enum`
+
 **Properties:**
 - `TState CurrentState` - Current state of the machine
 - `bool IsStarted` - Whether machine has been started
 
 **Methods:**
 - `void Start()` - Initialize and start the machine
-- `bool TryFire(TTrigger, object? payload)` - Attempt transition
-- `void Fire(TTrigger, object? payload)` - Execute transition (throws if invalid)
-- `bool CanFire(TTrigger)` - Check if trigger is valid
+- `bool TryFire(TTrigger trigger, object? payload = null)` - Attempt transition
+- `void Fire(TTrigger trigger, object? payload = null)` - Execute transition (throws if invalid)
+- `bool CanFire(TTrigger trigger)` - Check if trigger is valid
 - `IReadOnlyList<TTrigger> GetPermittedTriggers()` - Get valid triggers
+- `bool IsIn(TState state)` - Check if state is in active path (HSM support)
+- `IReadOnlyList<TState> GetActivePath()` - Get active state path (HSM support)
 
 ##### `IStateMachineAsync<TState, TTrigger>`
 Asynchronous state machine interface.
+
+**Type Constraints:**
+- `TState : unmanaged, Enum`
+- `TTrigger : unmanaged, Enum`
 
 **Properties:**
 - `TState CurrentState` - Current state of the machine
 - `bool IsStarted` - Whether machine has been started
 
 **Methods:**
-- `ValueTask StartAsync(CancellationToken)` - Initialize and start
-- `ValueTask<bool> TryFireAsync(TTrigger, object?, CancellationToken)` - Attempt transition
-- `ValueTask FireAsync(TTrigger, object?, CancellationToken)` - Execute transition
-- `ValueTask<bool> CanFireAsync(TTrigger, CancellationToken)` - Check validity
-- `ValueTask<IReadOnlyList<TTrigger>> GetPermittedTriggersAsync(CancellationToken)` - Get valid triggers
+- `ValueTask StartAsync(CancellationToken cancellationToken = default)` - Initialize and start
+- `ValueTask<bool> TryFireAsync(TTrigger trigger, object? payload = null, CancellationToken cancellationToken = default)` - Attempt transition
+- `ValueTask FireAsync(TTrigger trigger, object? payload = null, CancellationToken cancellationToken = default)` - Execute transition
+- `ValueTask<bool> CanFireAsync(TTrigger trigger, CancellationToken cancellationToken = default)` - Check validity
+- `ValueTask<IReadOnlyList<TTrigger>> GetPermittedTriggersAsync(CancellationToken cancellationToken = default)` - Get valid triggers
+- `bool IsIn(TState state)` - Check if state is in active path (HSM support)
+- `IReadOnlyList<TState> GetActivePath()` - Get active state path (HSM support)
 
 #### Extension Interfaces
+
+##### `IExtensibleStateMachine`
+Marker interface for state machines that support extensions.
+
+**Purpose:** Identifies state machines generated with extension support enabled.
+
+##### `IExtensibleStateMachineSync<TState, TTrigger>`
+Synchronous extensible state machine interface.
+
+**Inherits:** `IStateMachineSync<TState, TTrigger>`, `IExtensibleStateMachine`
+
+**Additional Methods:**
+- `void RegisterExtension(IStateMachineExtension extension)` - Register an extension
+- `void UnregisterExtension(IStateMachineExtension extension)` - Unregister an extension
+
+##### `IExtensibleStateMachineAsync<TState, TTrigger>`
+Asynchronous extensible state machine interface.
+
+**Inherits:** `IStateMachineAsync<TState, TTrigger>`, `IExtensibleStateMachine`
+
+**Additional Methods:**
+- `void RegisterExtension(IStateMachineExtension extension)` - Register an extension
+- `void UnregisterExtension(IStateMachineExtension extension)` - Unregister an extension
 
 ##### `IStateMachineExtension`
 Interface for implementing cross-cutting concerns.
@@ -1063,76 +1145,111 @@ Result from rule validation.
 
 #### Structural Rules
 
-##### `MissingStateMachineAttributeRule`
+##### `DuplicateTransition`
 **ID:** FSM001  
-**Validates:** Class has [StateMachine] attribute  
-**Error:** "Class must be marked with [StateMachine] attribute"
-
-##### `NonPartialClassRule`
-**ID:** FSM002  
-**Validates:** Class is marked as partial  
-**Error:** "State machine class must be partial"
-
-##### `InvalidEnumTypeRule`
-**ID:** FSM003  
-**Validates:** State and Trigger types are enums  
-**Error:** "State and Trigger types must be enums"
-
-#### Transition Rules
-
-##### `DuplicateTransitionRule`
-**ID:** FSM010  
-**Validates:** No duplicate transitions  
+**Validates:** No duplicate transitions from same state on same trigger  
 **Error:** "Duplicate transition from {0} on {1}"
 
-##### `InvalidEnumValueInTransitionRule`
-**ID:** FSM011  
-**Validates:** Transition states/triggers are valid enum values  
-**Error:** "Invalid enum value {0} for type {1}"
-
-##### `UnreachableStateRule`
-**ID:** FSM012  
+##### `UnreachableState`
+**ID:** FSM002  
 **Validates:** All states are reachable from initial state  
 **Warning:** "State {0} is unreachable"
 
-#### Method Signature Rules
-
-##### `InvalidMethodSignatureRule`
-**ID:** FSM020  
+##### `InvalidMethodSignature`
+**ID:** FSM003  
 **Validates:** Callback methods have valid signatures  
 **Error:** "Method {0} has invalid signature for {1}"
 
-##### `MixedModeRule`
-**ID:** FSM021  
-**Validates:** Consistent sync/async usage  
-**Error:** "Cannot mix sync and async methods in state machine"
+#### Type and Configuration Rules
 
-##### `GuardWithPayloadInNonPayloadMachineRule`
-**ID:** FSM022  
+##### `MissingStateMachineAttribute`
+**ID:** FSM004  
+**Validates:** Class has [StateMachine] attribute  
+**Error:** "Class must be marked with [StateMachine] attribute"
+
+##### `InvalidTypesInAttribute`
+**ID:** FSM005  
+**Validates:** State and Trigger types are enums  
+**Error:** "State and Trigger types must be enums"
+
+##### `InvalidEnumValueInTransition`
+**ID:** FSM006  
+**Validates:** Transition states/triggers are valid enum values  
+**Error:** "Invalid enum value {0} for type {1}"
+
+#### Payload and Async Rules
+
+##### `MissingPayloadType`
+**ID:** FSM007  
+**Validates:** Payload type is defined when required  
+**Error:** "Missing payload type configuration"
+
+##### `ConflictingPayloadConfiguration`
+**ID:** FSM008  
+**Validates:** Payload configurations are consistent  
+**Error:** "Conflicting payload configuration"
+
+##### `InvalidForcedVariantConfiguration`
+**ID:** FSM009  
+**Validates:** Forced variant configuration is valid  
+**Error:** "Invalid forced variant configuration"
+
+##### `GuardWithPayloadInNonPayloadMachine`
+**ID:** FSM010  
 **Validates:** Payload usage consistency  
 **Error:** "Guard expects payload but machine has no payload type"
 
+##### `MixedSyncAsyncCallbacks`
+**ID:** FSM011  
+**Validates:** Consistent sync/async usage  
+**Error:** "Cannot mix sync and async methods in state machine"
+
+##### `InvalidGuardTaskReturnType`
+**ID:** FSM012  
+**Validates:** Guard methods return bool or Task<bool>  
+**Error:** "Guard must return bool or Task<bool>"
+
+##### `AsyncCallbackInSyncMachine`
+**ID:** FSM013  
+**Validates:** No async callbacks in sync machines  
+**Error:** "Cannot use async callback in synchronous state machine"
+
+##### `InvalidAsyncVoid`
+**ID:** FSM014  
+**Validates:** No async void methods  
+**Error:** "Async methods must return Task or ValueTask, not void"
+
 #### HSM Rules
 
-##### `CircularHierarchyRule`
-**ID:** FSM030  
+##### `CircularHierarchy`
+**ID:** FSM100  
 **Validates:** No circular parent-child relationships  
 **Error:** "Circular hierarchy detected: {0}"
 
-##### `MultipleInitialStatesRule`
-**ID:** FSM031  
+##### `OrphanSubstate`
+**ID:** FSM101  
+**Validates:** Substates have valid parents  
+**Error:** "State {0} references non-existent parent {1}"
+
+##### `InvalidHierarchyConfiguration`
+**ID:** FSM102  
+**Validates:** Composite states have initial substates  
+**Error:** "Composite state {0} must have an initial substate"
+
+##### `MultipleInitialSubstates`
+**ID:** FSM103  
 **Validates:** At most one initial substate per parent  
 **Error:** "Parent state {0} has multiple initial substates"
 
-##### `InvalidHistoryModeRule`
-**ID:** FSM032  
+##### `InvalidHistoryConfiguration`
+**ID:** FSM104  
 **Validates:** History only on composite states  
 **Error:** "History mode can only be set on composite states"
 
-##### `OrphanSubstateRule`
-**ID:** FSM033  
-**Validates:** Substates have valid parents  
-**Error:** "State {0} references non-existent parent {1}"
+##### `ConflictingTransitionTargets`
+**ID:** FSM105  
+**Validates:** Transitions to composites are unambiguous  
+**Warning:** "Transition to composite state {0} without explicit child target"
 
 ### Contexts
 
@@ -1309,13 +1426,20 @@ public partial class DoorController
 {
     [Transition(DoorState.Closed, DoorTrigger.Open, DoorState.Open)]
     [Transition(DoorState.Open, DoorTrigger.Close, DoorState.Closed)]
+    [Transition(DoorState.Closed, DoorTrigger.Lock, DoorState.Locked)]
+    [Transition(DoorState.Locked, DoorTrigger.Unlock, DoorState.Closed)]
     private void Configure() { }
+    
+    [State(DoorState.Open, OnEntry = nameof(OnDoorOpened))]
+    private void ConfigureOpen() { }
+    
+    private void OnDoorOpened() => Console.WriteLine("Door is now open");
 }
 
 // Usage
 var door = new DoorController(DoorState.Closed);
 door.Start();
-door.Fire(DoorTrigger.Open);
+door.Fire(DoorTrigger.Open);  // Prints: "Door is now open"
 ```
 
 ### Hierarchical State Machine
@@ -1324,9 +1448,9 @@ door.Fire(DoorTrigger.Open);
 [StateMachine(typeof(PhoneState), typeof(PhoneTrigger), EnableHierarchy = true)]
 public partial class PhoneController
 {
-    // Define hierarchy
+    // Define hierarchy with history
     [State(PhoneState.OnHook)]
-    [State(PhoneState.OffHook)]
+    [State(PhoneState.OffHook, History = HistoryMode.Shallow)]
     [State(PhoneState.Connected, Parent = PhoneState.OffHook, IsInitial = true)]
     [State(PhoneState.OnHold, Parent = PhoneState.OffHook)]
     [State(PhoneState.Ringing, Parent = PhoneState.OffHook)]
@@ -1335,26 +1459,47 @@ public partial class PhoneController
     // Transitions respect hierarchy
     [Transition(PhoneState.OnHook, PhoneTrigger.IncomingCall, PhoneState.Ringing)]
     [Transition(PhoneState.Ringing, PhoneTrigger.Answer, PhoneState.Connected)]
+    [Transition(PhoneState.Connected, PhoneTrigger.Hold, PhoneState.OnHold)]
+    [Transition(PhoneState.OffHook, PhoneTrigger.HangUp, PhoneState.OnHook)]
+    
+    // Internal transition - handles event without state change
+    [InternalTransition(PhoneState.Connected, PhoneTrigger.Mute, Action = nameof(ToggleMute))]
     private void ConfigureTransitions() { }
+    
+    private void ToggleMute() => _isMuted = !_isMuted;
+    private bool _isMuted;
 }
+
+// Usage
+var phone = new PhoneController(PhoneState.OnHook);
+phone.Start();
+phone.Fire(PhoneTrigger.IncomingCall);  // Now in Ringing
+phone.Fire(PhoneTrigger.Answer);         // Now in Connected
+phone.Fire(PhoneTrigger.Hold);           // Now in OnHold
+phone.Fire(PhoneTrigger.HangUp);         // Back to OnHook
+phone.Fire(PhoneTrigger.IncomingCall);   // Back to OffHook, but Connected (history restored)
 ```
 
 ### With Dependency Injection
 
 ```csharp
 // Registration
-services.AddStateMachineFactory();
+services.AddStateMachineFactory<IOrderWorkflow, OrderWorkflow, OrderState, OrderTrigger>();
 services.AddScoped<OrderWorkflow>();
 
 // Usage
 public class OrderService
 {
-    private readonly IStateMachineFactory _factory;
+    private readonly IStateMachineFactory<IOrderWorkflow, OrderWorkflow, OrderState, OrderTrigger> _factory;
+    
+    public OrderService(IStateMachineFactory<IOrderWorkflow, OrderWorkflow, OrderState, OrderTrigger> factory)
+    {
+        _factory = factory;
+    }
     
     public async Task ProcessOrder()
     {
-        var fsm = await _factory.CreateStartedAsync<OrderWorkflow>(
-            OrderState.New);
+        var fsm = await _factory.CreateStartedAsync(OrderState.New);
         await fsm.FireAsync(OrderTrigger.Submit);
     }
 }
@@ -1368,15 +1513,20 @@ public class OrderService
 - **Switch-based Dispatch** - CPU branch prediction friendly
 - **Struct-based Context** - Stack allocated, no heap pressure
 - **ValueTask Returns** - Allocation-free async hot path
+- **Feature-Gated Code** - Only pay for features you use
 
 ### Benchmark Results (AMD Ryzen 5 9600X)
 
 | Operation | Time | Allocations |
 |-----------|------|-------------|
-| Basic Transition | 0.81 ns | 0 B |
-| With Guard | 2.18 ns | 0 B |
-| With Payload | 0.83 ns | 0 B |
-| Async (hot path) | 444 ns | 0 B |
+| Basic Transition | 0.68 ns | 0 B |
+| With Guard | 0.56 ns | 0 B |
+| With Payload | 0.72 ns | 0 B |
+| HSM Transition | 11.69 ns | 0 B |
+| Internal Transition | 4.24 ns | 0 B |
+| History Restore | 15.01 ns | 0 B |
+| Async (hot path) | 412 ns | 0 B |
+| Async (with yield) | 413 ns | 376 B |
 
 ## Further Reading
 
