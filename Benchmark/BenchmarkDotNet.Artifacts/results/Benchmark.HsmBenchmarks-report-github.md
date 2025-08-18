@@ -10,12 +10,12 @@ Runtime=.NET 9.0  IterationCount=15  LaunchCount=1
 WarmupCount=3  
 
 ```
-| Method                         | Mean         | Error      | StdDev     | Code Size | Gen0   | Gen1   | Gen2   | Allocated |
-|------------------------------- |-------------:|-----------:|-----------:|----------:|-------:|-------:|-------:|----------:|
-| FastFSM_Hsm_AsyncYield         |   436.271 ns | 12.3546 ns | 11.5565 ns |   6,348 B | 0.0134 | 0.0010 | 0.0010 |         - |
-| Stateless_Hsm_AsyncYield       | 1,157.745 ns | 41.3971 ns | 38.7229 ns |   1,445 B | 0.1259 | 0.0019 | 0.0019 |         - |
-| FastFSM_Hsm_Basic_EnterLeave   |    17.343 ns |  0.1885 ns |  0.1763 ns |   2,706 B |      - |      - |      - |         - |
-| Stateless_Hsm_Basic_EnterLeave |   535.308 ns |  4.9084 ns |  3.8321 ns |  11,847 B | 0.1431 |      - |      - |    3952 B |
-| FastFSM_Hsm_History_Shallow    |    18.224 ns |  0.2552 ns |  0.2387 ns |   4,573 B |      - |      - |      - |         - |
-| FastFSM_Hsm_Internal           |     4.470 ns |  0.0752 ns |  0.0704 ns |   3,044 B |      - |      - |      - |         - |
-| Stateless_Hsm_Internal         |   236.297 ns |  2.7920 ns |  2.6116 ns |  15,037 B | 0.0563 |      - |      - |    1408 B |
+| Method                         | Mean          | Error      | StdDev     | Gen0   | Code Size | Gen1   | Gen2   | Allocated |
+|------------------------------- |--------------:|-----------:|-----------:|-------:|----------:|-------:|-------:|----------:|
+| FastFSM_Hsm_AsyncYield         |   425.4098 ns |  5.5806 ns |  4.6600 ns | 0.0315 |   6,354 B | 0.0010 | 0.0010 |         - |
+| Stateless_Hsm_AsyncYield       | 1,149.5876 ns | 29.2949 ns | 25.9692 ns | 0.1202 |   1,445 B | 0.0019 | 0.0019 |         - |
+| FastFSM_Hsm_Basic_EnterLeave   |     4.5557 ns |  0.0582 ns |  0.0516 ns |      - |   1,597 B |      - |      - |         - |
+| Stateless_Hsm_Basic_EnterLeave |   591.7239 ns |  9.3663 ns |  8.7612 ns | 0.1307 |  11,839 B |      - |      - |    3952 B |
+| FastFSM_Hsm_History_Shallow    |     8.3063 ns |  0.1888 ns |  0.1766 ns |      - |   2,501 B |      - |      - |         - |
+| FastFSM_Hsm_Internal           |     0.8851 ns |  0.0140 ns |  0.0124 ns |      - |     826 B |      - |      - |         - |
+| Stateless_Hsm_Internal         |   252.9802 ns |  6.0893 ns |  5.6960 ns | 0.0467 |  14,715 B |      - |      - |    1408 B |
