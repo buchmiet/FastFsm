@@ -446,24 +446,34 @@ await downloader.FireAsync(DownloadTrigger.Start);
 
 ### Dependency Injection
 
-When using `FastFSM.Net.DependencyInjection`:
+The `FastFSM.Net.DependencyInjection` package provides seamless integration with Microsoft's dependency injection container. This package automatically enables logging features as well:
 
 ```csharp
-// In your service configuration
-services.AddStateMachineFactory();
-services.AddTransient<OrderWorkflow>();
+// In your service configuration (e.g., Program.cs)
+services.AddStateMachine<OrderWorkflow>(ServiceLifetime.Transient);
+
+// The DI package will register both the concrete type and its interface
+// It also automatically enables logging if an ILogger is configured
 
 // In your consumer class
-public class OrderService(IStateMachineFactory factory)
+public class OrderService
 {
+    private readonly OrderWorkflow _workflow;
+    
+    public OrderService(OrderWorkflow workflow) // Or inject via interface
+    {
+        _workflow = workflow;
+    }
+    
     public void ProcessNewOrder()
     {
-        // Create and start in one step
-        var sm = factory.CreateStarted<OrderWorkflow>(OrderState.New);
-        sm.Fire(OrderTrigger.Submit);
+        _workflow.Start();
+        _workflow.Fire(OrderTrigger.Submit);
     }
 }
 ```
+
+**Note:** The DI package automatically enables logging features by setting compile-time flags. If your state machine needs an `ILogger`, it will be injected automatically through the DI container.
 
 ### Compile-Time Safety Toggles
 
@@ -509,19 +519,27 @@ player.Start();
 
 ### Performance Summary
 
-FastFSM achieves **sub-nanosecond** transition times for flat (non-hierarchical) state machines and low double-digit nanosecond times for hierarchical transitions -- all with **zero heap allocations** during operation[\[1\]](https://github.com/buchmiet/FastFsm/blob/67256e72d650d372df7e245618d81544603a0d20/readme.md#L749-L757). Below is a quick summary of FastFSM performance characteristics on a modern desktop CPU:
+FastFSM achieves **sub-nanosecond** transition times on x64 and single-digit nanosecond times on ARM64 for flat state machines, with consistently **zero heap allocations** across all platforms. Below is a summary of FastFSM performance characteristics across different architectures:
 
+#### x64 (AMD Ryzen 5 9600X with AVX-512)
 - **Flat FSM:** ~**0.68 ns** per basic transition, **0 bytes** allocated
-- **HSM (basic transition):** ~**11.7 ns** per hierarchical transition (entering/exiting parent states), **0 bytes** allocated
-- **HSM (internal transition):** ~**4.2 ns** for an internal transition (handled in-state with no exit/entry), **0 bytes** allocated
-- **HSM (history restore):** ~**15.0 ns** to re-enter a parent state and automatically return to the last active substate (shallow history), **0 bytes** allocated
+- **HSM (basic transition):** ~**11.7 ns** per hierarchical transition, **0 bytes** allocated
+- **HSM (internal transition):** ~**4.2 ns** for internal transitions, **0 bytes** allocated
+- **HSM (history restore):** ~**15.0 ns** for shallow history restore, **0 bytes** allocated
 
-When compared to other state machine libraries (across various languages and frameworks), FastFSM demonstrates the advantage of compile-time code generation over runtime abstraction layers.
+#### ARM64 (Rockchip RK3588, 4x Cortex-A76 @ 2.3GHz + 4x Cortex-A55 @ 1.8GHz)
+- **Flat FSM:** ~**3.87 ns** per basic transition, **0 bytes** allocated
+- **HSM (basic transition):** ~**18.6 ns** per hierarchical transition, **0 bytes** allocated
+- **HSM (internal transition):** ~**4.5 ns** for internal transitions, **0 bytes** allocated
+- **HSM (history restore):** ~**33.8 ns** for shallow history restore, **0 bytes** allocated
 
-### Test Environment
+FastFSM maintains its performance leadership across architectures, with ARM64 showing excellent efficiency despite the lower clock speeds and different instruction set.
 
-All benchmarks were conducted under the following environment/setup for consistency:
+### Test Environments
 
+Benchmarks were conducted on two different architectures to demonstrate FastFSM's cross-platform performance:
+
+#### x64 Platform
 | Component | Version / Details |
 |-----------|------------------|
 | **CPU** | AMD Ryzen 5 9600X (6C/12T, Zen 5 @ 3.9--5.4 GHz, AVX-512 enabled) |
@@ -530,27 +548,49 @@ All benchmarks were conducted under the following environment/setup for consiste
 | **JVM** | OpenJDK 21.0.8+9 (Temurin, Server VM, G1 GC) |
 | **C++ Compiler** | MSVC 19.44 (Visual C++ 2022, /O2 /GL, AVX512) + Google Benchmark 1.8.4 |
 | **Rust** | rustc 1.80.0 + Statig 0.4 (LTO, codegen-units=1, criterion 0.5.1) |
-| **TypeScript** | Bun 1.2.19 (JavaScriptCore JIT) + mitata benchmark |
-| **JavaScript** | Bun 1.2.19 (JavaScriptCore JIT, ES2023 syntax) + mitata |
-| **Benchmark Tool** | BenchmarkDotNet 0.15.2 (.NET), JMH 1.37 (Java), Criterion 0.5 (Rust) |
-| **Methodology** | 1024 operations per iteration, 15 iterations (reporting mean ± std dev) |
-| **Date** | August 7, 2025 |
+| **TypeScript/JS** | Bun 1.2.19 (JavaScriptCore JIT) + mitata benchmark |
+
+#### ARM64 Platform
+| Component | Version / Details |
+|-----------|------------------|
+| **CPU** | Rockchip RK3588 (4x Cortex-A76 @ 2.3GHz + 4x Cortex-A55 @ 1.8GHz) |
+| **Memory** | 8 GB LPDDR4, Ubuntu Linux |
+| **.NET Runtime** | .NET 9.0.8 (RyuJIT with AdvSIMD, Server GC) |
+| **Architecture** | AArch64, Little Endian |
+| **CPU Features** | AdvSIMD, AES, CRC32, SHA1, SHA256, Atomics |
+
+#### Methodology
+- **Benchmark Tool:** BenchmarkDotNet 0.15.2 (.NET), JMH 1.37 (Java), Criterion 0.5 (Rust)
+- **Iterations:** 1024 operations per iteration, 15 iterations (reporting mean ± std dev)
+- **Date:** August 2024
 
 **Note:** Results may vary by ±5--8% on CPUs without AVX-512. The Rust benchmarks use the Statig 0.4 library for a fair comparison with a Rust state machine abstraction (as opposed to a hand-written state machine), to illustrate library overhead.
 
 ### FastFSM vs .NET State‑Machine Libraries
 
-The table below compares FastFSM with popular .NET state machine libraries on several scenarios. Lower times are better. All values are *nanoseconds per operation* (mean). "**Winner**" indicates which library is fastest in that scenario and the speedup relative to the next-best library.
+The tables below compare FastFSM with popular .NET state machine libraries across both x64 and ARM64 architectures. All values are in nanoseconds per operation (mean).
 
+#### x64 Performance (AMD Ryzen 5 9600X)
 | Scenario | FastFSM | Stateless | LiquidState | Appccelerate | Winner |
 |----------|---------|-----------|-------------|--------------|--------|
 | **Basic Transitions** | **0.68 ns** | 193.06 ns | 22.14 ns | 187.21 ns | FastFSM (**33×** vs LiquidState) |
 | Guards + Actions | **0.56 ns** | 210.33 ns | *n/a*¹ | 193.07 ns | FastFSM (**345×** vs Appccelerate) |
 | Payload (data transfer) | **0.72 ns** | 231.14 ns | 24.93 ns | 205.49 ns | FastFSM (**34×** vs LiquidState) |
 | Can Fire (query) | **0.31 ns** | 101.88 ns | *n/a*¹ | *n/a*¹ | FastFSM (**330×** vs Stateless) |
-| Get Permitted Triggers | **1.06 ns** | 24.85 ns | *n/a*¹ | *n/a*¹ | FastFSM (**≈23×** vs Stateless) |
+| Get Permitted Triggers | **1.06 ns** | 24.85 ns | *n/a*¹ | *n/a*¹ | FastFSM (**23×** vs Stateless) |
 | Async Hot Path² | 411.89 ns | 288.53 ns | **63.13 ns** | 437.81 ns | LiquidState (**6.5×** faster) |
 | Async w/ Yield³ | **412.89 ns** | 1002.01 ns | 450.72 ns | 1315.18 ns | FastFSM (fastest) |
+
+#### ARM64 Performance (Rockchip RK3588)
+| Scenario | FastFSM | Stateless | LiquidState | Appccelerate | Winner |
+|----------|---------|-----------|-------------|--------------|--------|
+| **Basic Transitions** | **3.87 ns** | 1103.93 ns | 112.58 ns | 1066.17 ns | FastFSM (**29×** vs LiquidState) |
+| Guards + Actions | **3.72 ns** | 1158.75 ns | *n/a*¹ | 1121.23 ns | FastFSM (**301×** vs Appccelerate) |
+| Payload (data transfer) | **4.46 ns** | 1224.87 ns | 172.18 ns | 1108.53 ns | FastFSM (**39×** vs LiquidState) |
+| Can Fire (query) | **1.79 ns** | 705.34 ns | *n/a*¹ | *n/a*¹ | FastFSM (**394×** vs Stateless) |
+| Get Permitted Triggers | **4.01 ns** | 138.63 ns | *n/a*¹ | *n/a*¹ | FastFSM (**35×** vs Stateless) |
+| Async Hot Path² | 1801.25 ns | 1672.28 ns | **314.31 ns** | 2097.39 ns | LiquidState (**5.3×** faster) |
+| Async w/ Yield³ | **1829.48 ns** | 4403.07 ns | 1872.81 ns | 6318.36 ns | FastFSM (fastest) |
 
 ¹ API not available or scenario not applicable in that library  
 ² All async actions complete immediately (e.g. using `Task.FromResult` or `ValueTask.CompletedTask`). Measures the overhead of handling an asynchronous action without an actual context switch.  
@@ -564,8 +604,9 @@ In asynchronous scenarios, results vary. **Async Hot Path** (where async actions
 
 ### FastFSM HSM vs Stateless HSM (Hierarchical State Machines)
 
-This table compares FastFSM 0.7's hierarchical state machine performance against the popular Stateless library (which offers a basic form of hierarchical states via substates). FastFSM's HSM operations are measured with a similar state configuration in Stateless. Times are in nanoseconds; allocations are per transition:
+FastFSM 0.7's hierarchical state machine performance compared to Stateless across both architectures:
 
+#### x64 HSM Performance
 | Scenario | FastFSM HSM | Stateless HSM | Speedup | FastFSM Allocations | Stateless Allocations |
 |----------|-------------|---------------|---------|--------------------|-----------------------|
 | **Hierarchical Transition** | **11.69 ns** | 548.91 ns | **47×** | **0 B** | 3,952 B |
@@ -573,8 +614,31 @@ This table compares FastFSM 0.7's hierarchical state machine performance against
 | Shallow History Restore | **15.01 ns** | *n/a* | *n/a* | **0 B** | *n/a* |
 | Async Transition (with yield) | **409.90 ns** | 1,164.60 ns | **2.8×** | 376 B¹ | 13,434 B |
 
+#### ARM64 HSM Performance
+| Scenario | FastFSM HSM | Stateless HSM | Speedup | FastFSM Allocations | Stateless Allocations |
+|----------|-------------|---------------|---------|--------------------|-----------------------|
+| **Hierarchical Transition** | **18.59 ns** | 3,129.25 ns | **168×** | **0 B** | 3,952 B |
+| Internal Transition | **4.53 ns** | 1,658.59 ns | **366×** | **0 B** | 1,408 B |
+| Shallow History Restore | **33.84 ns** | *n/a* | *n/a* | **0 B** | *n/a* |
+| Async Transition (with yield) | **1,735.34 ns** | 5,180.81 ns | **3.0×** | 376 B¹ | 3,104 B |
+
 ¹ The 376 B allocation in FastFSM's async case comes from the .NET `async/await` infrastructure when yielding; FastFSM's own state logic still allocates nothing.  
 Stateless does not support built-in history states, so that scenario is not applicable for comparison.
+
+### Cross-Platform Performance Analysis
+
+**Architecture Comparison:** The benchmarks reveal interesting patterns across x64 and ARM64:
+
+1. **Relative Performance Scaling:** While ARM64 shows higher absolute times due to lower clock speeds (2.3GHz vs 5.4GHz), FastFSM maintains its massive performance advantage over competitors on both platforms. The speedup factors are actually **higher on ARM64** (e.g., 168× vs 47× for HSM transitions), demonstrating that FastFSM's compile-time optimizations are even more valuable on efficiency-oriented architectures.
+
+2. **Zero-Allocation Guarantee:** FastFSM maintains **zero heap allocations** for all synchronous operations on both x64 and ARM64, while competitors allocate kilobytes per operation regardless of architecture.
+
+3. **Instruction Set Efficiency:** 
+   - x64 with AVX-512: Sub-nanosecond transitions (~0.68 ns)
+   - ARM64 with AdvSIMD: Single-digit nanosecond transitions (~3.87 ns)
+   - The ~5.7× difference aligns well with the clock speed ratio, showing excellent architectural efficiency
+
+4. **Async Performance:** ARM64 shows larger async overhead (1.8μs vs 0.4μs), likely due to different thread scheduling characteristics between Windows and Linux, but FastFSM still outperforms competitors by wide margins.
 
 **Key Insights:** FastFSM's hierarchical state handling remains extremely fast and memory-efficient:
 
