@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>FastFsm.Net</id>
+    <version>0.6.9-pre-release.1</version>
+    <authors>Lukasz Buchmiet</authors>
+    <license type="expression">MIT</license>
+    <licenseUrl>https://licenses.nuget.org/MIT</licenseUrl>
+    <readme>README.md</readme>
+    <projectUrl>https://github.com/buchmiet/FastFsm</projectUrl>
+    <description>High-performance state machine using source generators</description>
+    <tags>fsm state machine source generator roslyn dotnet</tags>
+    <repository type="git" url="https://github.com/buchmiet/FastFsm" commit="3de45a19d1b909ce77c6f750e048b6a15b141f61" />
+    <dependencies>
+      <group targetFramework="net9.0" />
+    </dependencies>
+    <contentFiles>
+      <files include="cs/any/ExtensionRunner.cs" buildAction="Compile" />
+      <files include="cs/any/FsmServiceCollectionExtensions.cs" buildAction="Compile" />
+      <files include="cs/any/StateMachineFactory.cs" buildAction="Compile" />
+    </contentFiles>
+  </metadata>
+</package>

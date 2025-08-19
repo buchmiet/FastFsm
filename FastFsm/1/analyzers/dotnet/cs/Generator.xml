@@ -1,0 +1,681 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Generator</name>
+    </assembly>
+    <members>
+        <member name="T:Generator.CandidateResult">
+            <summary>
+            Represents the result of processing a state machine candidate through the pipeline.
+            Following Roslyn incremental generator best practices to avoid silent drops.
+            See: https://github.com/dotnet/roslyn/blob/main/docs/features/incremental-generators.md
+            </summary>
+        </member>
+        <member name="T:Generator.Helpers.AsyncGenerationHelper">
+            <summary>
+            Centralizuje transformacje sync→async dla generowania kodu maszyn stanów.
+            Eliminuje if(IsAsync) rozproszone po kodzie.
+            </summary>
+        </member>
+        <member name="M:Generator.Helpers.AsyncGenerationHelper.GetReturnType(System.String,System.Boolean)">
+            <summary>
+            Zwraca odpowiedni typ zwracany dla metody w zależności od trybu sync/async.
+            </summary>
+        </member>
+        <member name="M:Generator.Helpers.AsyncGenerationHelper.GetMethodModifiers(System.Boolean)">
+            <summary>
+            Zwraca modyfikatory metody (async keyword).
+            </summary>
+        </member>
+        <member name="M:Generator.Helpers.AsyncGenerationHelper.GetAwaitKeyword(System.Boolean,System.Boolean)">
+            <summary>
+            Zwraca await keyword jeśli potrzebny.
+            </summary>
+        </member>
+        <member name="M:Generator.Helpers.AsyncGenerationHelper.GetConfigureAwait(System.Boolean,System.Boolean)">
+            <summary>
+            Zwraca ConfigureAwait call jeśli potrzebny.
+            </summary>
+        </member>
+        <member name="M:Generator.Helpers.AsyncGenerationHelper.EmitMethodInvocation(IndentedStringBuilder.IndentedStringBuilder,System.String,System.Boolean,System.Boolean,System.Boolean,System.String[])">
+            <summary>
+            Generuje wywołanie metody z obsługą await i ConfigureAwait.
+            </summary>
+        </member>
+        <member name="M:Generator.Helpers.AsyncGenerationHelper.GetMethodName(System.String,System.Boolean,System.Boolean)">
+            <summary>
+            Zwraca odpowiednią nazwę metody z sufiksem Async jeśli potrzebny.
+            </summary>
+        </member>
+        <member name="M:Generator.Helpers.AsyncGenerationHelper.GetBaseClassName(System.String,System.String,System.Boolean)">
+            <summary>
+            Zwraca nazwę klasy bazowej dla maszyny stanów.
+            </summary>
+        </member>
+        <member name="M:Generator.Helpers.AsyncGenerationHelper.GetInterfaceName(System.String,System.String,System.Boolean)">
+            <summary>
+            Zwraca nazwę interfejsu dla maszyny stanów.
+            </summary>
+        </member>
+        <member name="M:Generator.Helpers.AsyncGenerationHelper.EmitFireAndForgetAsyncCall(IndentedStringBuilder.IndentedStringBuilder,System.Action{IndentedStringBuilder.IndentedStringBuilder})">
+            <summary>
+            Generuje fire-and-forget async call dla konstruktora (initial OnEntry).
+            </summary>
+        </member>
+        <member name="T:Generator.Helpers.AsyncSignatureAnalyzer">
+            <summary>
+            Analizuje symbol metody (IMethodSymbol) i określa jej charakterystykę asynchroniczną.
+            Działa w izolacji, co ułatwia testowanie.
+            </summary>
+        </member>
+        <member name="M:Generator.Helpers.AsyncSignatureAnalyzer.Analyze(Microsoft.CodeAnalysis.IMethodSymbol,Microsoft.CodeAnalysis.Compilation)">
+            <summary>
+            Analizuje sygnaturę metody z cache'owaniem wyników.
+            </summary>
+        </member>
+        <member name="M:Generator.Helpers.AsyncSignatureAnalyzer.AnalyzeCallback(Microsoft.CodeAnalysis.IMethodSymbol,System.String,Microsoft.CodeAnalysis.Compilation)">
+            <summary>
+            Analizuje sygnaturę metody z dodatkową walidacją dla konkretnego typu callbacku.
+            </summary>
+        </member>
+        <member name="M:Generator.Helpers.AsyncSignatureAnalyzer.GetExpectedReturnType(System.String,System.Boolean)">
+            <summary>
+            Zwraca oczekiwany typ zwracany dla danego typu callbacku i trybu.
+            </summary>
+        </member>
+        <member name="M:Generator.Helpers.AsyncSignatureAnalyzer.ClearCache">
+            <summary>
+            Czyści cache analizy. Użyteczne w testach.
+            </summary>
+        </member>
+        <member name="T:Generator.Helpers.AsyncSignatureInfo">
+            <summary>
+            Zawiera wynik analizy sygnatury metody pod kątem jej asynchroniczności i poprawności.
+            </summary>
+        </member>
+        <member name="P:Generator.Helpers.AsyncSignatureInfo.IsAsync">
+            <summary>
+            Czy metoda jest asynchroniczna (zwraca Task/ValueTask).
+            </summary>
+        </member>
+        <member name="P:Generator.Helpers.AsyncSignatureInfo.IsVoidEquivalent">
+            <summary>
+            Czy sygnatura jest równoważna `void` (void, Task, ValueTask).
+            Używane dla Action, OnEntry, OnExit.
+            </summary>
+        </member>
+        <member name="P:Generator.Helpers.AsyncSignatureInfo.IsBoolEquivalent">
+            <summary>
+            Czy sygnatura jest równoważna `bool` (bool, ValueTask&lt;bool&gt;).
+            Używane dla Guard.
+            </summary>
+        </member>
+        <member name="P:Generator.Helpers.AsyncSignatureInfo.IsInvalidAsyncVoid">
+            <summary>
+            Czy wykryto niepoprawną sygnaturę `async void`.
+            </summary>
+        </member>
+        <member name="P:Generator.Helpers.AsyncSignatureInfo.IsInvalidGuardTask">
+            <summary>
+            Czy wykryto niepoprawną sygnaturę `Task&lt;bool&gt;` dla guarda.
+            </summary>
+        </member>
+        <member name="M:Generator.Helpers.CallbackGenerationHelper.EmitCallbackInvocation(IndentedStringBuilder.IndentedStringBuilder,System.String,Generator.Helpers.CallbackGenerationHelper.CallbackType,System.Boolean,System.Boolean,System.Boolean,System.Boolean,System.String,System.String,System.Boolean,System.Boolean,System.Boolean,System.Boolean,System.Nullable{Generator.Model.CallbackSignatureInfo},System.String,System.Boolean)">
+            <summary>
+            Generuje wywołanie callback z pełną obsługą wariantów.
+            </summary>
+        </member>
+        <member name="M:Generator.Helpers.CallbackGenerationHelper.EmitOnEntryCall(IndentedStringBuilder.IndentedStringBuilder,Generator.Model.StateModel,System.String,System.String,System.String,System.Boolean,System.Boolean,System.Boolean,System.Boolean,System.Boolean,System.String,System.Boolean)">
+            <summary>
+            Generuje wywołanie OnEntry dla StateModel z obsługą multi-payload.
+            </summary>
+        </member>
+        <member name="M:Generator.Helpers.CallbackGenerationHelper.EmitOnExitCall(IndentedStringBuilder.IndentedStringBuilder,Generator.Model.StateModel,System.String,System.String,System.String,System.Boolean,System.Boolean,System.Boolean,System.Boolean,System.Boolean,System.String,System.Boolean)">
+            <summary>
+            Generuje wywołanie OnExit dla StateModel z obsługą multi-payload.
+            </summary>
+        </member>
+        <member name="M:Generator.Helpers.CallbackGenerationHelper.EmitActionCall(IndentedStringBuilder.IndentedStringBuilder,Generator.Model.TransitionModel,System.String,System.Boolean,System.Boolean,System.Boolean,System.String,System.Boolean)">
+            <summary>
+            Generuje wywołanie Action dla TransitionModel.
+            </summary>
+        </member>
+        <member name="T:Generator.Helpers.CallbackSignatureAnalyzer">
+            <summary>
+            Analyzes callback method signatures to determine all available overloads
+            and their characteristics (async, parameters, return types).
+            </summary>
+        </member>
+        <member name="M:Generator.Helpers.CallbackSignatureAnalyzer.AnalyzeCallback(Microsoft.CodeAnalysis.ITypeSymbol,System.String,System.String,Microsoft.CodeAnalysis.Compilation)">
+            <summary>
+            Analyzes all overloads of a callback method and returns comprehensive signature information.
+            </summary>
+            <param name="typeSymbol">The type containing the callback methods</param>
+            <param name="callbackName">The name of the callback method</param>
+            <param name="callbackType">The type of callback (Guard, Action, OnEntry, OnExit)</param>
+            <param name="compilation">The compilation context</param>
+            <returns>Complete signature information including all overloads</returns>
+        </member>
+        <member name="M:Generator.Helpers.CallbackSignatureAnalyzer.AnalyzeSpecificMethod(Microsoft.CodeAnalysis.IMethodSymbol,System.String,Microsoft.CodeAnalysis.Compilation)">
+            <summary>
+            Analyzes a specific method overload for a transition or state callback.
+            Used when we already know which specific overload to analyze.
+            Also scans other overloads of the same method name to provide complete overload information.
+            </summary>
+        </member>
+        <member name="M:Generator.Helpers.DiagnosticFactory.Get(System.String)">
+            <summary>
+            Pobiera lub tworzy DiagnosticDescriptor na podstawie RuleId.
+            Deskryptor jest cache'owany.
+            </summary>
+            <param name="ruleId">Identyfikator reguły (np. "FSM001").</param>
+            <returns>Odpowiedni DiagnosticDescriptor.</returns>
+            <exception cref="T:System.Collections.Generic.KeyNotFoundException">Jeśli reguła o danym ID nie jest zdefiniowana w DefinedRules.</exception>
+        </member>
+        <member name="M:Generator.Helpers.GuardGenerationHelper.EmitGuardCheck(IndentedStringBuilder.IndentedStringBuilder,Generator.Model.TransitionModel,System.String,System.String,System.Boolean,System.Boolean,System.Boolean,System.Boolean,System.String,System.Boolean)">
+            <summary>
+            Generuje kompletny blok sprawdzenia guarda z obsługą wszystkich wariantów.
+            </summary>
+            <param name="sb">String builder do generowania kodu</param>
+            <param name="transition">Model przejścia zawierający informacje o guard</param>
+            <param name="resultVar">Nazwa zmiennej wynikowej (np. "guardResult")</param>
+            <param name="payloadVar">Nazwa zmiennej z payloadem lub "null"</param>
+            <param name="isAsync">Czy wywołujący jest metodą async</param>
+            <param name="wrapInTryCatch">Czy owinąć w try-catch (dla CanFire/GetPermittedTriggers)</param>
+            <param name="continueOnCapturedContext">Wartość dla ConfigureAwait (tylko dla async)</param>
+            <param name="handleResultAfterTry">Czy wynik guarda będzie używany po bloku try/catch</param>
+            <param name="cancellationTokenVar">Nazwa zmiennej z CancellationToken (null = brak przekazywania)</param>
+            <param name="treatCancellationAsFailure">Czy traktować anulowanie jako błąd</param>
+        </member>
+        <member name="T:Generator.Helpers.ModelDebugDumper">
+            <summary>
+            Dumps parsed StateMachineModel to a diagnostic source file for debugging
+            </summary>
+        </member>
+        <member name="T:Generator.Infrastructure.TypeSystemHelper">
+            <summary>
+            Provides centralized, testable operations for type system manipulation in code generation.
+            </summary>
+        </member>
+        <member name="M:Generator.Infrastructure.TypeSystemHelper.IsCancellationToken(Microsoft.CodeAnalysis.ITypeSymbol,Microsoft.CodeAnalysis.Compilation)">
+            <summary>
+            Zwraca <c>true</c>, jeżeli symbol reprezentuje <see cref="T:System.Threading.CancellationToken"/>.
+            Robi to w sposób odporny na:
+            • brak referencji do System.Private.CoreLib (GetTypeByMetadataName zwraca <c>null</c>)  
+            • „retargeting assemblies” (ten sam typ z dwóch różnych kompilacji)  
+            </summary>
+        </member>
+        <member name="M:Generator.Infrastructure.TypeSystemHelper.AnalyzeAwaitable(Microsoft.CodeAnalysis.ITypeSymbol,Microsoft.CodeAnalysis.Compilation)">
+            <summary>
+            Sprawdza czy zwracany typ jest:
+              * Task
+              * ValueTask
+              * Task&lt;bool&gt;
+              * ValueTask&lt;bool&gt;
+            </summary>
+        </member>
+        <member name="M:Generator.Infrastructure.TypeSystemHelper.FormatTypeForUsage(System.String,System.Boolean)">
+            <summary>
+            Formatuje w pełni kwalifikowaną nazwę typu do użycia w wygenerowanym kodzie:
+            • stosuje aliasy (string, int, …),
+            • upraszcza generyki CLR oraz składnię przyjazną C#,
+            • zachowuje (opcjonalnie) prefiks global::,
+            • poprawnie obsługuje typy zagnieżdżone, tablice i nullable.
+            Metoda jest zgodna z netstandard2.0 (bez System.Range itp.).
+            </summary>
+        </member>
+        <member name="M:Generator.Infrastructure.TypeSystemHelper.GetNamespace(System.String)">
+            <summary>
+            Gets the namespace from a fully qualified type name
+            </summary>
+        </member>
+        <member name="M:Generator.Infrastructure.TypeSystemHelper.IsNestedType(System.String)">
+            <summary>
+            Determines if a type is nested (contains another type)
+            </summary>
+        </member>
+        <member name="M:Generator.Infrastructure.TypeSystemHelper.IsGenericType(System.String)">
+            <summary>
+            Determines if a type is generic
+            </summary>
+        </member>
+        <member name="M:Generator.Infrastructure.TypeSystemHelper.EscapeIdentifier(System.String)">
+            <summary>
+            Escapes C# keywords with @ prefix
+            </summary>
+        </member>
+        <member name="M:Generator.Infrastructure.TypeSystemHelper.BuildFullTypeName(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            Builds a fully qualified type name from a type symbol, preserving nested type format
+            </summary>
+        </member>
+        <member name="M:Generator.Infrastructure.TypeSystemHelper.GetRequiredNamespaces(System.String)">
+            <summary>
+            Zwraca przestrzenie nazw, które należy dodać w using-ach,
+            aby poprawnie użyć podanego typu w generowanym kodzie.
+            </summary>
+        </member>
+        <member name="M:Generator.Infrastructure.TypeSystemHelper.FormatForTypeof(System.String)">
+            <summary>
+            Formatuje nazwę typu do użycia w wyrażeniu typeof(…).
+            • Dla CLR-owych definicji generyków (List`1, Dictionary`2, …) zwraca otwartą
+              definicję w postaci List&lt;&gt;, Dictionary&lt;,&gt; itp.
+            • Dla typów posiadających namespace („.”) lub zagnieżdżenie („+”) dodaje „global::”.
+            • Dla gołych nazw (bez kropki ani plusa) pozostawia nazwę bez prefiksu,
+              żeby można było korzystać z typów z bieżącej przestrzeni nazw.
+            </summary>
+        </member>
+        <member name="M:Generator.Infrastructure.TypeSystemHelper.ConvertClrGenericToFriendly(System.String,System.Boolean)">
+            <summary>
+            Konwertuje zapis CLR (np. Dictionary`2[[System.String],[System.Int32]])
+            na przyjazny C# (Dictionary&lt;string, int&gt;), obsługując zagnieżdżone
+            generyki i kwalifikatory assembly.
+            </summary>
+        </member>
+        <member name="M:Generator.Infrastructure.TypeSystemHelper.RemoveAssemblyQualifier(System.String)">
+            Usuwa część ", Assembly.Name, Version=..." z CLR-owego zapisu typu.
+        </member>
+        <member name="M:Generator.Infrastructure.TypeSystemHelper.ExtractClrGenericArguments(System.String)">
+            Ekstrahuje listę surowych argumentów z sekwencji "[[T1],[T2], ...]".
+        </member>
+        <member name="M:Generator.Infrastructure.TypeSystemHelper.ProcessFriendlyGenericType(System.String,System.Boolean)">
+            <summary>
+            Przetwarza przyjazny (C#) zapis generyka, np.
+                "Namespace.Event&lt;string, List&lt;int&gt;&gt;"
+            i zwraca sformatowaną nazwę gotową do wstawienia w kod.
+            </summary>
+        </member>
+        <member name="M:Generator.Infrastructure.TypeSystemHelper.BuildFullTypeName(Microsoft.CodeAnalysis.ITypeSymbol)">
+            <summary>
+            Builds a fully qualified type name from any type symbol.
+            Handles INamedTypeSymbol, arrays, pointers, and other type kinds.
+            </summary>
+        </member>
+        <member name="M:Generator.Parsers.StateMachineParser.ValidateCallbackMethodSignature(Microsoft.CodeAnalysis.INamedTypeSymbol,System.String,System.String,Microsoft.CodeAnalysis.AttributeData,System.Boolean@,System.Nullable{System.Boolean}@,System.Boolean@,System.Boolean@,System.Boolean,Microsoft.CodeAnalysis.IMethodSymbol@,System.String)">
+            <summary>
+            Waliduje sygnaturę metody zwrotnej (callback) opisanej w atrybucie FSM.
+            Zwraca <c>true</c>, gdy nie wykryto błędów krytycznych.
+            </summary>
+        </member>
+        <member name="M:Generator.Parsers.StateMachineParser.ParsePayloadTypeAttributes(Microsoft.CodeAnalysis.INamedTypeSymbol,Generator.Model.StateMachineModel,System.Boolean@)">
+            <summary>
+             Odczytuje atrybuty <see cref="T:Abstractions.Attributes.PayloadTypeAttribute"/> i wypełnia
+             <c>model.DefaultPayloadType</c> oraz <c>model.TriggerPayloadTypes</c>.
+            </summary>
+        </member>
+        <member name="T:Generator.Planning.FlatTransitionPlanner">
+            <summary>
+            Planner for flat (non-hierarchical) state machines
+            </summary>
+        </member>
+        <member name="T:Generator.Planning.HierarchicalTransitionPlanner">
+            <summary>
+            Planner for hierarchical state machines with parent-child relationships
+            </summary>
+        </member>
+        <member name="T:Generator.Planning.ITransitionPlanner">
+            <summary>
+            Interface for transition planners that generate execution plans for state transitions
+            </summary>
+        </member>
+        <member name="M:Generator.Planning.ITransitionPlanner.BuildPlan(Generator.Planning.TransitionBuildContext)">
+            <summary>
+            Builds a plan for executing a transition
+            </summary>
+            <param name="context">Context containing all information needed to build the plan</param>
+            <returns>A plan containing all steps to execute the transition</returns>
+        </member>
+        <member name="T:Generator.Planning.PlanStep">
+            <summary>
+            Represents a single step in a transition plan
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.PlanStep.Kind">
+            <summary>
+            The type of this step
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.PlanStep.StateIndex">
+            <summary>
+            Index of the state involved in this step (-1 if not applicable)
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.PlanStep.ParentIndex">
+            <summary>
+            Index of the parent state (-1 if not applicable)
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.PlanStep.TriggerIndex">
+            <summary>
+            Index of the trigger (-1 if not applicable)
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.PlanStep.GuardMethod">
+            <summary>
+            Name of the guard method (null if not applicable)
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.PlanStep.ActionMethod">
+            <summary>
+            Name of the action method (null if not applicable)
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.PlanStep.LogTemplate">
+            <summary>
+            Log template for logging steps (null if not applicable)
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.PlanStep.IsAsyncAction">
+            <summary>
+            Whether the action is async
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.PlanStep.IsInternal">
+            <summary>
+            Whether this is an internal transition
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.PlanStep.UseDeepHistory">
+            <summary>
+            Whether to use deep history
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.PlanStep.HasPayload">
+            <summary>
+            Whether the transition has payload
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.PlanStep.StateName">
+            <summary>
+            State name for logging/debugging
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.PlanStep.OnEntryMethod">
+            <summary>
+            OnEntry method name
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.PlanStep.OnExitMethod">
+            <summary>
+            OnExit method name
+            </summary>
+        </member>
+        <member name="T:Generator.Planning.PlanStepKind">
+            <summary>
+            Defines the type of step in a transition plan
+            </summary>
+        </member>
+        <member name="F:Generator.Planning.PlanStepKind.ExitState">
+            <summary>
+            Exit a state (calls OnExit)
+            </summary>
+        </member>
+        <member name="F:Generator.Planning.PlanStepKind.EntryState">
+            <summary>
+            Enter a state (calls OnEntry)
+            </summary>
+        </member>
+        <member name="F:Generator.Planning.PlanStepKind.AssignState">
+            <summary>
+            Assign the current state field
+            </summary>
+        </member>
+        <member name="F:Generator.Planning.PlanStepKind.InternalAction">
+            <summary>
+            Execute an internal action without state change
+            </summary>
+        </member>
+        <member name="F:Generator.Planning.PlanStepKind.RecordHistory">
+            <summary>
+            Record history for a composite state
+            </summary>
+        </member>
+        <member name="F:Generator.Planning.PlanStepKind.Log">
+            <summary>
+            Log a transition or state change
+            </summary>
+        </member>
+        <member name="F:Generator.Planning.PlanStepKind.GuardCheck">
+            <summary>
+            Check a guard condition
+            </summary>
+        </member>
+        <member name="T:Generator.Planning.TransitionBuildContext">
+            <summary>
+            Context for building a transition plan
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.TransitionBuildContext.Model">
+            <summary>
+            The state machine model
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.TransitionBuildContext.Transition">
+            <summary>
+            The transition being planned
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.TransitionBuildContext.CurrentStateIndex">
+            <summary>
+            Current state index (for runtime resolution)
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.TransitionBuildContext.IsAsyncVariant">
+            <summary>
+            Whether this is for async variant
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.TransitionBuildContext.HasPayload">
+            <summary>
+            Whether the machine has payload support
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.TransitionBuildContext.AllStates">
+            <summary>
+            Ordered list of all state names
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.TransitionBuildContext.ParentIndices">
+            <summary>
+            Parent indices array (from hierarchy)
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.TransitionBuildContext.Depths">
+            <summary>
+            Depth array (from hierarchy)
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.TransitionBuildContext.InitialChildIndices">
+            <summary>
+            Initial child indices (from hierarchy)
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.TransitionBuildContext.HistoryModes">
+            <summary>
+            History modes for states
+            </summary>
+        </member>
+        <member name="T:Generator.Planning.TransitionPlan">
+            <summary>
+            Represents a complete plan for executing a transition
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.TransitionPlan.IsInternal">
+            <summary>
+            Whether this is an internal transition (no state change)
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.TransitionPlan.FromStateIndex">
+            <summary>
+            Index of the source state
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.TransitionPlan.ToStateIndex">
+            <summary>
+            Index of the target state
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.TransitionPlan.LcaIndex">
+            <summary>
+            Index of the Lowest Common Ancestor in hierarchy (-1 for flat machines)
+            </summary>
+        </member>
+        <member name="P:Generator.Planning.TransitionPlan.Steps">
+            <summary>
+            Ordered list of steps to execute this transition
+            </summary>
+        </member>
+        <member name="T:Generator.SourceGenerators.StateMachineCodeGenerator">
+            <summary>
+            Baza dla wszystkich generatorów-wariantów.
+            Posiada kompletny zestaw helperów sync/async oraz hooków.
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.#ctor(Generator.Model.StateMachineModel)">
+            <summary>
+            Baza dla wszystkich generatorów-wariantów.
+            Posiada kompletny zestaw helperów sync/async oraz hooków.
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.WriteHierarchyArrays(System.String,System.String)">
+            <summary>
+            Writes static hierarchy arrays if HSM is enabled
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.GenerateHsmPermittedTriggerArrays(System.String)">
+            <summary>
+            Generates precomputed permission arrays for HSM zero-alloc GetPermittedTriggers
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.WriteHierarchyMethods(System.String,System.String)">
+            <summary>
+            Writes HSM-specific methods (IsIn, GetActivePath)
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.WriteHierarchyRuntimeFieldsAndHelpers(System.String)">
+            <summary>
+            Writes HSM runtime fields and helper methods (instance-level) if HSM is enabled.
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.WriteTransitionLogicForFlatNonPayload(Generator.Model.TransitionModel,System.String,System.String)">
+            <summary>
+            Simplified transition logic for flat non-payload machines using direct returns.
+            No success variable, no goto labels, minimal braces.
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.WriteStructuralApiMethods(System.String,System.String)">
+            <summary>
+            Writes structural API methods if enabled
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.WriteHasTransitionMethod(System.String,System.String)">
+            <summary>
+            Writes HasTransition method for structural analysis
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.WriteGetDefinedTriggersMethod(System.String,System.String)">
+            <summary>
+            Writes GetDefinedTriggers method for structural analysis
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.WriteGuardCall(Generator.Model.TransitionModel,System.String,System.String,System.Boolean)">
+            <summary>
+            Generates code to call a guard method with proper exception handling
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.GetCtVar">
+            <summary>
+            Returns the cancellation token variable name or CancellationToken.None for sync machines.
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.EmitOnEntryWithExceptionPolicy(Generator.Model.StateModel,System.String,System.String,System.String,System.String)">
+            <summary>
+            Emits OnEntry call with optional exception policy wrapping.
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.EmitActionWithExceptionPolicy(Generator.Model.TransitionModel,System.String,System.String)">
+            <summary>
+            Emits Action call with optional exception policy wrapping.
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.EmitOnEntryWithExceptionPolicyPayload(Generator.Model.StateModel,System.String,System.String,System.String,System.String,System.String,System.Boolean,System.Boolean)">
+            <summary>
+            Emits OnEntry call with optional exception policy wrapping (for payload variant).
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.EmitActionWithExceptionPolicyPayload(Generator.Model.TransitionModel,System.String,System.String)">
+            <summary>
+            Emits Action call with optional exception policy wrapping (for payload variant).
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.EmitExceptionHandlerCall(System.String,System.String,System.String,System.String,System.Boolean)">
+            <summary>
+            Emits the call to the exception handler and handles the directive.
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.EmitExceptionHandlerCallForAction(System.String,System.String,System.String)">
+            <summary>
+            Emits the call to the exception handler for Actions with proper directive handling.
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.GetPlanner">
+            <summary>
+            Gets the appropriate planner based on hierarchy configuration
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.CreateBuildContext(Generator.Model.TransitionModel)">
+            <summary>
+            Creates a build context for planning transitions
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.HasAsyncActions">
+            <summary>
+            Generates the ActionId enum for zero-allocation action dispatch
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.GenerateAsyncActionIdEnum">
+            <summary>
+            Generates the AsyncActionId enum for zero-allocation async action dispatch
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.GetActionIdName(Generator.Model.TransitionModel)">
+            <summary>
+            Gets the ActionId enum member name for a transition
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.GetSafeActionIdName(System.String)">
+            <summary>
+            Converts action method name to safe enum identifier
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.GenerateActionSwitch(System.String,System.Boolean)">
+            <summary>
+            Generates the action execution switch statement for sync actions
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.StateMachineCodeGenerator.GenerateAsyncActionSwitch(System.String,System.Boolean)">
+            <summary>
+            Generates the async action execution switch statement with ValueTask fast-path
+            </summary>
+        </member>
+        <member name="T:Generator.SourceGenerators.UnifiedStateMachineGenerator">
+            <summary>
+            Unified state machine generator that handles all variants through feature flags
+            instead of inheritance hierarchy.
+            Phase 2: Implementing Core/Basic logic directly
+            </summary>
+        </member>
+        <member name="M:Generator.SourceGenerators.UnifiedStateMachineGenerator.#ctor(Generator.Model.StateMachineModel)">
+            <summary>
+            Unified state machine generator that handles all variants through feature flags
+            instead of inheritance hierarchy.
+            Phase 2: Implementing Core/Basic logic directly
+            </summary>
+        </member>
+        <member name="T:Generator.Strings">
+            <summary>
+            Zbiór stałych/literalów używanych przez generator.
+            </summary>
+        </member>
+    </members>
+</doc>

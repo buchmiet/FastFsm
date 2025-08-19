@@ -5,7 +5,7 @@
 		<TargetFramework>net9.0</TargetFramework>
 		<LangVersion>latest</LangVersion>
 		<Nullable>enable</Nullable>
-
+ 	
 		<!-- AOT / trimming -->
 		<IsAotCompatible>true</IsAotCompatible>
 		<EnableTrimAnalyzer>true</EnableTrimAnalyzer>
@@ -15,11 +15,28 @@
 		<PackageId>FastFsm.Net</PackageId>
 		<Authors>Lukasz Buchmiet</Authors>
 		<Description>High-performance state machine using source generators</Description>
-
+			<PackageReadmeFile>README.md</PackageReadmeFile>
+  <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  <RepositoryUrl>https://github.com/buchmiet/FastFsm</RepositoryUrl>
+  <RepositoryType>git</RepositoryType>
+  <PackageProjectUrl>https://github.com/buchmiet/FastFsm</PackageProjectUrl>
+  <PackageTags>fsm;state machine;source generator;roslyn;dotnet</PackageTags>
 		<!-- Pack to the repo-local feed (aligned with nuget.config -> ./nuget) -->
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<PackageOutputPath>../nuget</PackageOutputPath>
+		 <IncludeSymbols>true</IncludeSymbols>
+  <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  <PublishRepositoryUrl>true</PublishRepositoryUrl>
+  <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  <AllowedOutputExtensionsInPackageBuildOutputFolder>
+    $(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb
+  </AllowedOutputExtensionsInPackageBuildOutputFolder>
 	</PropertyGroup>
+
+<ItemGroup>
+  <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All"/>
+</ItemGroup>
 
 	<!-- ───────────  project references  ─────────── -->
 	<ItemGroup>
@@ -34,6 +51,12 @@
 						  OutputItemType="Analyzer"
 						  ReferenceOutputAssembly="false" />
 	</ItemGroup>
+
+<!-- Put README.md into the package root so PackageReadmeFile can find it -->
+<ItemGroup>
+  <None Include="README.md" Pack="true" PackagePath="" />
+</ItemGroup>
+
 
 	<!-- ───────────  props shipped with the package  ─────────── -->
 	<ItemGroup>

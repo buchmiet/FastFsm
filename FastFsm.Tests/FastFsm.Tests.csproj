@@ -1,30 +1,86 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-	<PropertyGroup>
-		<TargetFramework>net9.0</TargetFramework>
-		<IsPackable>false</IsPackable>
-		<IsTestProject>true</IsTestProject>
-		<Nullable>enable</Nullable>
-		<!-- pokazywanie wygenerowanych plików -->
-		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-		<CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\GeneratedFiles</CompilerGeneratedFilesOutputPath>
-	</PropertyGroup>
-	<ItemGroup>
-		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
-		<PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.6" />
-		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-		<PackageReference Include="xunit" Version="2.9.3" />
-		<PackageReference Include="xunit.runner.visualstudio" Version="3.1.1">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
-		<PackageReference Include="Shouldly" Version="4.3.0" />
-		<PackageReference Include="Moq" Version="4.20.72" />
-	</ItemGroup>
-	<ItemGroup>
-	  <Folder Include="HierarchicalStateMachine\" />
-	</ItemGroup>
 
-	<Target Name="CleanGeneratedFiles" BeforeTargets="Clean">
-		<RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)" />
-	</Target>
+  <!-- Basic test project settings -->
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <Nullable>enable</Nullable>
+
+    <!-- Show generated files from the source generator -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\GeneratedFiles</CompilerGeneratedFilesOutputPath>
+  </PropertyGroup>
+
+  <!-- Common test dependencies -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Shouldly" Version="4.3.0" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.6" />
+  </ItemGroup>
+
+  <!-- Switch: repo (ProjectReference) vs packages (PackageReference) -->
+  <Choose>
+
+    <!-- REPO MODE (default: UsePackages != true) -->
+    <When Condition="'$(UsePackages)' != 'true'">
+      <ItemGroup>
+        <!-- We need attributes in compile (State, Transition, etc.) -->
+        <ProjectReference Include="..\Abstractions\Abstractions.csproj" />
+        <!-- Build FastFsm from sources -->
+        <ProjectReference Include="..\FastFsm\FastFsm.csproj" />
+        <!-- Ensure the generator project builds (so its bin output exists) -->
+        <ProjectReference Include="..\Generator\Generator.csproj" />
+        <!-- (optional but harmless) build its helper libs too -->
+        <ProjectReference Include="..\Generator.Model\Generator.Model.csproj" />
+        <ProjectReference Include="..\Generator.Rules\Generator.Rules.csproj" />
+        <ProjectReference Include="..\Generator.Logger\Generator.Logger.csproj" />
+        <ProjectReference Include="..\Generator.DependencyInjection\Generator.DependencyInjection.csproj" />
+        <ProjectReference Include="..\IndentedStringBuilder\IndentedStringBuilder.csproj" />
+      </ItemGroup>
+
+      <!-- KEY: Add ALL analyzer binaries so Roslyn can load the generator with its deps.
+           We point directly to bin/<Configuration>/netstandard2.0/*.dll of each module. -->
+      <ItemGroup>
+        <Analyzer Include="..\Generator\bin\$(Configuration)\netstandard2.0\*.dll" />
+        <Analyzer Include="..\Generator.Model\bin\$(Configuration)\netstandard2.0\*.dll" />
+        <Analyzer Include="..\Generator.Rules\bin\$(Configuration)\netstandard2.0\*.dll" />
+        <Analyzer Include="..\Generator.Logger\bin\$(Configuration)\netstandard2.0\*.dll" />
+        <Analyzer Include="..\Generator.DependencyInjection\bin\$(Configuration)\netstandard2.0\*.dll" />
+        <Analyzer Include="..\IndentedStringBuilder\bin\$(Configuration)\netstandard2.0\*.dll" />
+      </ItemGroup>
+
+      <!-- Simulate contentFiles/Compile that the NuGet package would inject -->
+      <ItemGroup>
+        <Compile Include="..\FastFsm\Runtime\Extensions\ExtensionRunner.cs"
+                 Link="Runtime\Extensions\ExtensionRunner.cs" />
+      </ItemGroup>
+    </When>
+
+    <!-- PACKAGE MODE (UsePackages = true) -->
+    <Otherwise>
+      <ItemGroup>
+        <PackageReference Include="FastFsm.Net" Version="0.6.9-*" />
+      </ItemGroup>
+    </Otherwise>
+
+  </Choose>
+
+  <!-- Clean generated files when cleaning the project -->
+  <Target Name="CleanGeneratedFiles" BeforeTargets="Clean">
+    <RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)" />
+  </Target>
+
+  <!-- (Optional) keep folder structure visible in IDE -->
+  <ItemGroup>
+    <Folder Include="HierarchicalStateMachine\" />
+  </ItemGroup>
+
 </Project>
