@@ -1,8 +1,9 @@
 <Project>
   <PropertyGroup>
-    <FsmGenerateLogging Condition="'$(FsmGenerateLogging)' == ''">false</FsmGenerateLogging>
-    <FsmGenerateDI Condition="'$(FsmGenerateDI)' == ''">false</FsmGenerateDI>
+    <UsePackages>false</UsePackages>
 
+    <FsmGenerateLogging Condition="'$(FsmGenerateLogging)' == ''">false</FsmGenerateLogging>
+    <FsmGenerateDI      Condition="'$(FsmGenerateDI)' == ''">false</FsmGenerateDI>
   </PropertyGroup>
   
   <ItemGroup>

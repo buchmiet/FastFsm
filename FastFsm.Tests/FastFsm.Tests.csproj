@@ -23,9 +23,7 @@
 	<ItemGroup>
 	  <Folder Include="HierarchicalStateMachine\" />
 	</ItemGroup>
-	<ItemGroup>
-	  <ProjectReference Include="..\FastFsm\FastFsm.csproj" />
-	</ItemGroup>
+
 	<Target Name="CleanGeneratedFiles" BeforeTargets="Clean">
 		<RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)" />
 	</Target>
