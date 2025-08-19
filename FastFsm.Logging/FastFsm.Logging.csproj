@@ -20,17 +20,9 @@
 		<LangVersion>latest</LangVersion>
 	</PropertyGroup>
 
-	<!-- wersjonowanie -->
-	<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
-		<PropertyGroup>
-			<Version>0.6.0-dev.$([System.DateTime]::UtcNow.ToString("yyyyMMddHHmmss"))</Version>
-			<PackageVersion>$(Version)</PackageVersion>
-		</PropertyGroup>
-	</Target>
-
 	<!-- zależności -->
 	<ItemGroup>
-		<PackageReference Include="FastFsm.Net" Version="*-dev.*" />
+		<PackageReference Include="FastFsm.Net" Version="0.6.9-*" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
 	</ItemGroup>
 

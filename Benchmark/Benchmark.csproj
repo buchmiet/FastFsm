@@ -16,13 +16,16 @@
 		<PackageReference Include="Appccelerate.StateMachine" Version="6.0.0" />
 		<PackageReference Include="BenchmarkDotNet" Version="0.15.2" />
 		<PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.15.2" />
-		<PackageReference Include="FastFsm.Net" Version="*-dev.*" />
 		<PackageReference Include="Stateless" Version="5.17.0" />
 		<PackageReference Include="LiquidState" Version="8.2.0" />
 	</ItemGroup>
 
 	<ItemGroup>
 	  <Folder Include="BenchmarkDotNet.Artifacts\results\" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\FastFsm\FastFsm.csproj" />
 	</ItemGroup>
 
 </Project>
