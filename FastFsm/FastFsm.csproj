@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<!-- ───────────  podstawowe ustawienia  ─────────── -->
+	<!-- ───────────  basic settings  ─────────── -->
 	<PropertyGroup>
 		<TargetFramework>net9.0</TargetFramework>
 		<LangVersion>latest</LangVersion>
@@ -11,60 +11,81 @@
 		<EnableTrimAnalyzer>true</EnableTrimAnalyzer>
 		<IsTrimmable>true</IsTrimmable>
 
-		<!-- NuGet metadane -->
+		<!-- NuGet metadata -->
 		<PackageId>FastFsm.Net</PackageId>
 		<Authors>Lukasz Buchmiet</Authors>
 		<Description>High-performance state machine using source generators</Description>
 
+		<!-- Pack to the repo-local feed (aligned with nuget.config -> ./nuget) -->
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<PackageOutputPath>../nuget</PackageOutputPath>
-
-		<TargetsForTfmSpecificBuildOutput>
-			$(TargetsForTfmSpecificBuildOutput);
-			CopyProjectReferencesToPackage
-		</TargetsForTfmSpecificBuildOutput>
 	</PropertyGroup>
 
-	<!-- generator -->
+	<!-- ───────────  project references  ─────────── -->
 	<ItemGroup>
+		<!-- We compile against Abstractions, but do NOT export it as a NuGet dependency.
+         We'll add Abstractions.dll to the nupkg explicitly in a target below. -->
 		<ProjectReference Include="..\Abstractions\Abstractions.csproj" PrivateAssets="all" />
-		<ProjectReference Include="..\Generator\Generator.csproj" PrivateAssets="all" />
-	</ItemGroup>
-	<Target Name="IncludeAbstractionsInPackage" AfterTargets="ResolveReferences">
-		<ItemGroup>
-			<BuildOutputInPackage
-				Include="@(ReferenceCopyLocalPaths)"
-				Condition="'%(ReferenceCopyLocalPaths.Filename)'=='Abstractions' and '%(ReferenceCopyLocalPaths.Extension)'=='.dll'" />
-		</ItemGroup>
-	</Target>
 
-	<!-- pliki *.props do nupkg -->
+		<!-- The source generator is attached as an Analyzer so that consumers via ProjectReference
+         (e.g., tests in the same repo) get the generator without needing the NuGet package. -->
+		<ProjectReference Include="..\Generator\Generator.csproj"
+						  PrivateAssets="all"
+						  OutputItemType="Analyzer"
+						  ReferenceOutputAssembly="false" />
+	</ItemGroup>
+
+	<!-- ───────────  props shipped with the package  ─────────── -->
 	<ItemGroup>
 		<None Include="build\*.props" Pack="true" PackagePath="build" />
 	</ItemGroup>
 
-	<!-- analyzer (DLL generatora) -->
+	<!-- ───────────  analyzer (generator DLL) included in the nupkg  ───────────
+       We still ship the compiled generator as an analyzer for NuGet consumers. -->
 	<ItemGroup>
-		<None Include="..\Generator\bin\$(Configuration)\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-		<None Include="..\Generator\bin\$(Configuration)\netstandard2.0\*.xml" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+		<None Include="..\Generator\bin\$(Configuration)\netstandard2.0\*.dll"
+			  Pack="true"
+			  PackagePath="analyzers/dotnet/cs"
+			  Visible="false" />
+		<None Include="..\Generator\bin\$(Configuration)\netstandard2.0\*.xml"
+			  Pack="true"
+			  PackagePath="analyzers/dotnet/cs"
+			  Visible="false" />
 	</ItemGroup>
 
-	<!-- Zawartości (contentFiles) kopiowane do projektu konsumenta -->
+	<!-- ───────────  contentFiles to be included into consumer projects  ───────────
+       These files are excluded from THIS assembly but shipped as Compile content
+       so consumers get the source when they install the package. -->
 	<ItemGroup>
 		<Compile Remove="Runtime\Extensions\ExtensionRunner.cs" />
-		<None Include="Runtime\Extensions\ExtensionRunner.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
+		<None Include="Runtime\Extensions\ExtensionRunner.cs"
+			  Pack="true"
+			  PackagePath="contentFiles/cs/any"
+			  BuildAction="Compile"
+			  Visible="false" />
 
 		<Compile Remove="DependencyInjection\FsmServiceCollectionExtensions.cs" />
-		<None Include="DependencyInjection\FsmServiceCollectionExtensions.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
+		<None Include="DependencyInjection\FsmServiceCollectionExtensions.cs"
+			  Pack="true"
+			  PackagePath="contentFiles/cs/any"
+			  BuildAction="Compile"
+			  Visible="false" />
 
 		<Compile Remove="DependencyInjection\StateMachineFactory.cs" />
-		<None Include="DependencyInjection\StateMachineFactory.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
+		<None Include="DependencyInjection\StateMachineFactory.cs"
+			  Pack="true"
+			  PackagePath="contentFiles/cs/any"
+			  BuildAction="Compile"
+			  Visible="false" />
 	</ItemGroup>
 
-	<!-- Abstractions.dll do paczki -->
-	<Target Name="CopyProjectReferencesToPackage" DependsOnTargets="BuildOnlySettings;ResolveReferences">
+	<!-- ───────────  include Abstractions.dll in the nupkg without creating a NuGet dependency  ───────────
+       We look at the actually resolved copy-local references and pick Abstractions.dll from there. -->
+	<Target Name="IncludeAbstractionsInPackage" AfterTargets="ResolveReferences">
 		<ItemGroup>
-			<BuildOutputInPackage Include="$(OutputPath)Abstractions.dll" />
+			<BuildOutputInPackage
+			  Include="@(ReferenceCopyLocalPaths)"
+			  Condition="'%(ReferenceCopyLocalPaths.Filename)'=='Abstractions' and '%(ReferenceCopyLocalPaths.Extension)'=='.dll'" />
 		</ItemGroup>
 	</Target>
 
