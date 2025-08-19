@@ -1,0 +1,1133 @@
+PS C:\Users\newon> systeminfo
+
+Host Name:                     CRAY
+OS Name:                       Microsoft Windows 11 Pro
+OS Version:                    10.0.26100 N/A Build 26100
+OS Manufacturer:               Microsoft Corporation
+OS Configuration:              Standalone Workstation
+OS Build Type:                 Multiprocessor Free
+Registered Owner:              newonce@hotmail.co.uk
+Registered Organization:       N/A
+Product ID:                    00330-80000-00000-AA315
+Original Install Date:         10/03/2025, 19:57:03
+System Boot Time:              16/08/2025, 23:17:48
+System Manufacturer:           ASRock
+System Model:                  X870 Pro RS
+System Type:                   x64-based PC
+Processor(s):                  1 Processor(s) Installed.
+                               [01]: AMD64 Family 26 Model 68 Stepping 0 AuthenticAMD ~3900 Mhz
+BIOS Version:                  American Megatrends International, LLC. 3.15, 10/12/2024
+Windows Directory:             C:\windows
+System Directory:              C:\windows\system32
+Boot Device:                   \Device\HarddiskVolume1
+System Locale:                 en-gb;English (United Kingdom)
+Input Locale:                  en-gb;English (United Kingdom)
+Time Zone:                     (UTC+00:00) Dublin, Edinburgh, Lisbon, London
+Total Physical Memory:         31,831 MB
+Available Physical Memory:     8,257 MB
+Virtual Memory: Max Size:      97,367 MB
+Virtual Memory: Available:     57,126 MB
+Virtual Memory: In Use:        40,241 MB
+Page File Location(s):         C:\pagefile.sys
+Domain:                        WORKGROUP
+Logon Server:                  \\CRAY
+Hotfix(s):                     6 Hotfix(s) Installed.
+                               [01]: KB5056579
+                               [02]: KB5048779
+                               [03]: KB5050575
+                               [04]: KB5063878
+                               [05]: KB5063666
+                               [06]: KB5065381
+Network Card(s):               5 NIC(s) Installed.
+                               [01]: OpenVPN Data Channel Offload
+                                     Connection Name: OpenVPN Data Channel Offload for NordVPN
+                                     Status:          Media disconnected
+                               [02]: TAP-NordVPN Windows Adapter V9
+                                     Connection Name: Local Area Connection 2
+                                     Status:          Media disconnected
+                               [03]: WireGuard Tunnel
+                                     Connection Name: NordLynx
+                                     DHCP Enabled:    No
+                                     IP address(es)
+                                     [01]: 10.5.0.2
+                                     [02]: fe80::7d56:d335:9394:b3ea
+                               [04]: Realtek Gaming 2.5GbE Family Controller
+                                     Connection Name: Ethernet 3
+                                     DHCP Enabled:    Yes
+                                     DHCP Server:     192.168.0.1
+                                     IP address(es)
+                                     [01]: 192.168.0.123
+                               [05]: VirtualBox Host-Only Ethernet Adapter
+                                     Connection Name: Ethernet 2
+                                     DHCP Enabled:    No
+                                     IP address(es)
+                                     [01]: 192.168.56.1
+                                     [02]: fe80::1186:7d3e:f9f3:4da0
+Virtualization-based security: Status: Running
+                               Required Security Properties:
+                                     Base Virtualization Support
+                               Available Security Properties:
+                                     Base Virtualization Support
+                                     DMA Protection
+                                     UEFI Code Readonly
+                                     SMM Security Mitigations 1.0
+                                     Mode Based Execution Control
+                               Services Configured:
+                                     Hypervisor enforced Code Integrity
+                               Services Running:
+                                     Hypervisor enforced Code Integrity
+                               App Control for Business policy: Enforced
+                               App Control for Business user mode policy: Off
+                               Security Features Enabled:
+Hyper-V Requirements:          A hypervisor has been detected. Features required for Hyper-V will not be displayed.
+// AfterAll
+// Benchmark Process 8316 has exited with code 0.
+
+Mean = 205.494 ns, StdErr = 0.659 ns (0.32%), N = 15, StdDev = 2.553 ns
+Min = 202.060 ns, Q1 = 203.367 ns, Median = 204.883 ns, Q3 = 207.672 ns, Max = 209.849 ns
+IQR = 4.305 ns, LowerFence = 196.910 ns, UpperFence = 214.130 ns
+ConfidenceInterval = [202.766 ns; 208.223 ns] (CI 99.9%), Margin = 2.729 ns (1.33% of Mean)
+Skewness = 0.29, Kurtosis = 1.6, MValue = 2
+
+// ** Remained 0 (0.0%) benchmark(s) to run. Estimated finish 2025-08-18 23:07 (0h 0m from now) **
+Successfully reverted power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// ***** BenchmarkRunner: Finish  *****
+
+// * Export *
+  BenchmarkDotNet.Artifacts\results\Benchmark.StateMachineBenchmarks-report.csv
+  BenchmarkDotNet.Artifacts\results\Benchmark.StateMachineBenchmarks-report-github.md
+  BenchmarkDotNet.Artifacts\results\Benchmark.StateMachineBenchmarks-report.html
+  BenchmarkDotNet.Artifacts\results\Benchmark.StateMachineBenchmarks-asm.md
+
+// * Detailed results *
+StateMachineBenchmarks.FastFsm_AsyncActions_HotPath: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 411.885 ns, StdErr = 1.879 ns (0.46%), N = 15, StdDev = 7.276 ns
+Min = 404.932 ns, Q1 = 406.771 ns, Median = 407.331 ns, Q3 = 415.661 ns, Max = 426.622 ns
+IQR = 8.891 ns, LowerFence = 393.435 ns, UpperFence = 428.997 ns
+ConfidenceInterval = [404.107 ns; 419.663 ns] (CI 99.9%), Margin = 7.778 ns (1.89% of Mean)
+Skewness = 0.76, Kurtosis = 2.02, MValue = 2
+-------------------- Histogram --------------------
+[403.193 ns ; 413.785 ns) | @@@@@@@@@
+[413.785 ns ; 430.494 ns) | @@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.Stateless_AsyncActions_HotPath: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 288.525 ns, StdErr = 3.081 ns (1.07%), N = 15, StdDev = 11.931 ns
+Min = 274.995 ns, Q1 = 279.482 ns, Median = 284.709 ns, Q3 = 296.283 ns, Max = 310.785 ns
+IQR = 16.801 ns, LowerFence = 254.280 ns, UpperFence = 321.485 ns
+ConfidenceInterval = [275.770 ns; 301.279 ns] (CI 99.9%), Margin = 12.755 ns (4.42% of Mean)
+Skewness = 0.61, Kurtosis = 1.86, MValue = 2
+-------------------- Histogram --------------------
+[274.119 ns ; 286.818 ns) | @@@@@@@@@
+[286.818 ns ; 303.492 ns) | @@@@
+[303.492 ns ; 317.135 ns) | @@
+---------------------------------------------------
+
+StateMachineBenchmarks.LiquidState_AsyncActions_HotPath: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 63.132 ns, StdErr = 0.177 ns (0.28%), N = 15, StdDev = 0.687 ns
+Min = 62.043 ns, Q1 = 62.684 ns, Median = 63.134 ns, Q3 = 63.633 ns, Max = 64.298 ns
+IQR = 0.950 ns, LowerFence = 61.259 ns, UpperFence = 65.058 ns
+ConfidenceInterval = [62.398 ns; 63.867 ns] (CI 99.9%), Margin = 0.734 ns (1.16% of Mean)
+Skewness = -0.03, Kurtosis = 1.71, MValue = 2
+-------------------- Histogram --------------------
+[61.678 ns ; 64.664 ns) | @@@@@@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.Appccelerate_AsyncActions_HotPath: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 437.807 ns, StdErr = 1.313 ns (0.30%), N = 14, StdDev = 4.911 ns
+Min = 431.329 ns, Q1 = 434.730 ns, Median = 436.769 ns, Q3 = 441.316 ns, Max = 446.529 ns
+IQR = 6.586 ns, LowerFence = 424.851 ns, UpperFence = 451.195 ns
+ConfidenceInterval = [432.267 ns; 443.347 ns] (CI 99.9%), Margin = 5.540 ns (1.27% of Mean)
+Skewness = 0.56, Kurtosis = 1.89, MValue = 2
+-------------------- Histogram --------------------
+[428.654 ns ; 449.204 ns) | @@@@@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.Stateless_AsyncActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 1.002 us, StdErr = 0.002 us (0.23%), N = 13, StdDev = 0.008 us
+Min = 0.991 us, Q1 = 0.997 us, Median = 1.000 us, Q3 = 1.002 us, Max = 1.017 us
+IQR = 0.005 us, LowerFence = 0.989 us, UpperFence = 1.010 us
+ConfidenceInterval = [0.992 us; 1.012 us] (CI 99.9%), Margin = 0.010 us (0.99% of Mean)
+Skewness = 0.68, Kurtosis = 2.27, MValue = 2
+-------------------- Histogram --------------------
+[0.990 us ; 1.022 us) | @@@@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.FastFsm_AsyncActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 412.894 ns, StdErr = 1.900 ns (0.46%), N = 15, StdDev = 7.357 ns
+Min = 403.610 ns, Q1 = 406.014 ns, Median = 413.078 ns, Q3 = 418.560 ns, Max = 424.406 ns
+IQR = 12.546 ns, LowerFence = 387.195 ns, UpperFence = 437.378 ns
+ConfidenceInterval = [405.029 ns; 420.760 ns] (CI 99.9%), Margin = 7.865 ns (1.90% of Mean)
+Skewness = 0.14, Kurtosis = 1.35, MValue = 2
+-------------------- Histogram --------------------
+[402.879 ns ; 424.936 ns) | @@@@@@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.LiquidState_AsyncActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 450.717 ns, StdErr = 1.225 ns (0.27%), N = 15, StdDev = 4.745 ns
+Min = 444.349 ns, Q1 = 446.568 ns, Median = 450.753 ns, Q3 = 454.967 ns, Max = 458.797 ns
+IQR = 8.398 ns, LowerFence = 433.971 ns, UpperFence = 467.564 ns
+ConfidenceInterval = [445.644 ns; 455.789 ns] (CI 99.9%), Margin = 5.072 ns (1.13% of Mean)
+Skewness = 0.2, Kurtosis = 1.49, MValue = 2
+-------------------- Histogram --------------------
+[444.012 ns ; 461.322 ns) | @@@@@@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.Appccelerate_AsyncActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 1.315 us, StdErr = 0.003 us (0.26%), N = 15, StdDev = 0.013 us
+Min = 1.299 us, Q1 = 1.304 us, Median = 1.312 us, Q3 = 1.323 us, Max = 1.343 us
+IQR = 0.019 us, LowerFence = 1.277 us, UpperFence = 1.351 us
+ConfidenceInterval = [1.301 us; 1.329 us] (CI 99.9%), Margin = 0.014 us (1.09% of Mean)
+Skewness = 0.64, Kurtosis = 2.22, MValue = 2
+-------------------- Histogram --------------------
+[1.292 us ; 1.319 us) | @@@@@@@@@@
+[1.319 us ; 1.350 us) | @@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.Stateless_Basic: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 193.058 ns, StdErr = 0.423 ns (0.22%), N = 14, StdDev = 1.583 ns
+Min = 191.149 ns, Q1 = 191.836 ns, Median = 192.697 ns, Q3 = 193.789 ns, Max = 196.545 ns
+IQR = 1.953 ns, LowerFence = 188.907 ns, UpperFence = 196.719 ns
+ConfidenceInterval = [191.273 ns; 194.843 ns] (CI 99.9%), Margin = 1.785 ns (0.92% of Mean)
+Skewness = 0.81, Kurtosis = 2.4, MValue = 2
+-------------------- Histogram --------------------
+[190.287 ns ; 197.407 ns) | @@@@@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.FastFsm_Basic: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 0.678 ns, StdErr = 0.003 ns (0.44%), N = 15, StdDev = 0.012 ns
+Min = 0.665 ns, Q1 = 0.667 ns, Median = 0.677 ns, Q3 = 0.687 ns, Max = 0.701 ns
+IQR = 0.019 ns, LowerFence = 0.639 ns, UpperFence = 0.715 ns
+ConfidenceInterval = [0.666 ns; 0.691 ns] (CI 99.9%), Margin = 0.012 ns (1.82% of Mean)
+Skewness = 0.32, Kurtosis = 1.78, MValue = 2
+-------------------- Histogram --------------------
+[0.664 ns ; 0.679 ns) | @@@@@@@@
+[0.679 ns ; 0.707 ns) | @@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.LiquidState_Basic: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 22.138 ns, StdErr = 0.126 ns (0.57%), N = 15, StdDev = 0.487 ns
+Min = 21.654 ns, Q1 = 21.752 ns, Median = 21.976 ns, Q3 = 22.454 ns, Max = 23.184 ns
+IQR = 0.702 ns, LowerFence = 20.699 ns, UpperFence = 23.508 ns
+ConfidenceInterval = [21.618 ns; 22.659 ns] (CI 99.9%), Margin = 0.521 ns (2.35% of Mean)
+Skewness = 0.84, Kurtosis = 2.18, MValue = 2.6
+-------------------- Histogram --------------------
+[21.578 ns ; 22.096 ns) | @@@@@@@@@@
+[22.096 ns ; 22.667 ns) | @
+[22.667 ns ; 23.186 ns) | @@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.Appccelerate_Basic: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 187.211 ns, StdErr = 0.581 ns (0.31%), N = 14, StdDev = 2.175 ns
+Min = 183.206 ns, Q1 = 185.797 ns, Median = 187.017 ns, Q3 = 189.320 ns, Max = 190.295 ns
+IQR = 3.522 ns, LowerFence = 180.514 ns, UpperFence = 194.603 ns
+ConfidenceInterval = [184.757 ns; 189.664 ns] (CI 99.9%), Margin = 2.453 ns (1.31% of Mean)
+Skewness = -0.03, Kurtosis = 1.75, MValue = 2
+-------------------- Histogram --------------------
+[182.021 ns ; 191.479 ns) | @@@@@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.Stateless_GuardsActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 210.332 ns, StdErr = 0.641 ns (0.30%), N = 15, StdDev = 2.484 ns
+Min = 206.171 ns, Q1 = 209.155 ns, Median = 209.914 ns, Q3 = 211.876 ns, Max = 214.581 ns
+IQR = 2.721 ns, LowerFence = 205.074 ns, UpperFence = 215.958 ns
+ConfidenceInterval = [207.676 ns; 212.987 ns] (CI 99.9%), Margin = 2.656 ns (1.26% of Mean)
+Skewness = 0.19, Kurtosis = 2.01, MValue = 2
+-------------------- Histogram --------------------
+[204.848 ns ; 215.903 ns) | @@@@@@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.FastFsm_GuardsActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 0.559 ns, StdErr = 0.001 ns (0.15%), N = 14, StdDev = 0.003 ns
+Min = 0.553 ns, Q1 = 0.556 ns, Median = 0.560 ns, Q3 = 0.562 ns, Max = 0.563 ns
+IQR = 0.006 ns, LowerFence = 0.548 ns, UpperFence = 0.570 ns
+ConfidenceInterval = [0.555 ns; 0.563 ns] (CI 99.9%), Margin = 0.004 ns (0.65% of Mean)
+Skewness = -0.42, Kurtosis = 1.68, MValue = 2
+-------------------- Histogram --------------------
+[0.551 ns ; 0.565 ns) | @@@@@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.Appccelerate_GuardsActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 193.069 ns, StdErr = 0.405 ns (0.21%), N = 15, StdDev = 1.567 ns
+Min = 190.767 ns, Q1 = 191.745 ns, Median = 193.294 ns, Q3 = 194.210 ns, Max = 195.816 ns
+IQR = 2.465 ns, LowerFence = 188.047 ns, UpperFence = 197.908 ns
+ConfidenceInterval = [191.393 ns; 194.744 ns] (CI 99.9%), Margin = 1.676 ns (0.87% of Mean)
+Skewness = 0.11, Kurtosis = 1.6, MValue = 2
+-------------------- Histogram --------------------
+[189.933 ns ; 195.974 ns) | @@@@@@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.Stateless_CanFire: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 101.881 ns, StdErr = 0.368 ns (0.36%), N = 14, StdDev = 1.375 ns
+Min = 99.687 ns, Q1 = 100.919 ns, Median = 101.823 ns, Q3 = 102.344 ns, Max = 104.759 ns
+IQR = 1.425 ns, LowerFence = 98.781 ns, UpperFence = 104.482 ns
+ConfidenceInterval = [100.330 ns; 103.432 ns] (CI 99.9%), Margin = 1.551 ns (1.52% of Mean)
+Skewness = 0.51, Kurtosis = 2.5, MValue = 2
+-------------------- Histogram --------------------
+[ 99.232 ns ; 103.074 ns) | @@@@@@@@@@@@
+[103.074 ns ; 105.508 ns) | @@
+---------------------------------------------------
+
+StateMachineBenchmarks.FastFsm_CanFire: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 0.308 ns, StdErr = 0.001 ns (0.34%), N = 15, StdDev = 0.004 ns
+Min = 0.301 ns, Q1 = 0.305 ns, Median = 0.307 ns, Q3 = 0.311 ns, Max = 0.314 ns
+IQR = 0.006 ns, LowerFence = 0.295 ns, UpperFence = 0.321 ns
+ConfidenceInterval = [0.303 ns; 0.312 ns] (CI 99.9%), Margin = 0.004 ns (1.42% of Mean)
+Skewness = 0.07, Kurtosis = 1.53, MValue = 2
+-------------------- Histogram --------------------
+[0.301 ns ; 0.309 ns) | @@@@@@@@@
+[0.309 ns ; 0.315 ns) | @@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.Stateless_GetPermittedTriggers: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 24.851 ns, StdErr = 0.093 ns (0.37%), N = 15, StdDev = 0.360 ns
+Min = 24.086 ns, Q1 = 24.623 ns, Median = 24.833 ns, Q3 = 24.995 ns, Max = 25.533 ns
+IQR = 0.372 ns, LowerFence = 24.065 ns, UpperFence = 25.552 ns
+ConfidenceInterval = [24.465 ns; 25.236 ns] (CI 99.9%), Margin = 0.385 ns (1.55% of Mean)
+Skewness = 0.05, Kurtosis = 2.71, MValue = 2
+-------------------- Histogram --------------------
+[23.894 ns ; 24.508 ns) | @
+[24.508 ns ; 25.634 ns) | @@@@@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.FastFsm_GetPermittedTriggers: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 1.061 ns, StdErr = 0.003 ns (0.32%), N = 15, StdDev = 0.013 ns
+Min = 1.044 ns, Q1 = 1.051 ns, Median = 1.056 ns, Q3 = 1.067 ns, Max = 1.086 ns
+IQR = 0.016 ns, LowerFence = 1.026 ns, UpperFence = 1.092 ns
+ConfidenceInterval = [1.047 ns; 1.075 ns] (CI 99.9%), Margin = 0.014 ns (1.31% of Mean)
+Skewness = 0.58, Kurtosis = 1.94, MValue = 2
+-------------------- Histogram --------------------
+[1.039 ns ; 1.093 ns) | @@@@@@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.Stateless_Payload: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 231.142 ns, StdErr = 1.075 ns (0.47%), N = 15, StdDev = 4.164 ns
+Min = 225.990 ns, Q1 = 227.470 ns, Median = 230.056 ns, Q3 = 233.609 ns, Max = 238.579 ns
+IQR = 6.139 ns, LowerFence = 218.262 ns, UpperFence = 242.817 ns
+ConfidenceInterval = [226.690 ns; 235.593 ns] (CI 99.9%), Margin = 4.451 ns (1.93% of Mean)
+Skewness = 0.34, Kurtosis = 1.66, MValue = 2
+-------------------- Histogram --------------------
+[225.743 ns ; 231.869 ns) | @@@@@@@@
+[231.869 ns ; 240.795 ns) | @@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.FastFsm_Payload: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 0.720 ns, StdErr = 0.002 ns (0.33%), N = 15, StdDev = 0.009 ns
+Min = 0.708 ns, Q1 = 0.713 ns, Median = 0.721 ns, Q3 = 0.725 ns, Max = 0.738 ns
+IQR = 0.012 ns, LowerFence = 0.694 ns, UpperFence = 0.744 ns
+ConfidenceInterval = [0.710 ns; 0.730 ns] (CI 99.9%), Margin = 0.010 ns (1.37% of Mean)
+Skewness = 0.44, Kurtosis = 2.1, MValue = 2
+-------------------- Histogram --------------------
+[0.703 ns ; 0.743 ns) | @@@@@@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.LiquidState_Payload: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 24.933 ns, StdErr = 0.097 ns (0.39%), N = 15, StdDev = 0.377 ns
+Min = 24.336 ns, Q1 = 24.630 ns, Median = 24.891 ns, Q3 = 25.195 ns, Max = 25.559 ns
+IQR = 0.565 ns, LowerFence = 23.782 ns, UpperFence = 26.042 ns
+ConfidenceInterval = [24.531 ns; 25.336 ns] (CI 99.9%), Margin = 0.403 ns (1.61% of Mean)
+Skewness = 0.3, Kurtosis = 1.72, MValue = 2
+-------------------- Histogram --------------------
+[24.136 ns ; 24.973 ns) | @@@@@@@@@
+[24.973 ns ; 25.685 ns) | @@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.Appccelerate_Payload: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI; GC = Concurrent Server
+Mean = 205.494 ns, StdErr = 0.659 ns (0.32%), N = 15, StdDev = 2.553 ns
+Min = 202.060 ns, Q1 = 203.367 ns, Median = 204.883 ns, Q3 = 207.672 ns, Max = 209.849 ns
+IQR = 4.305 ns, LowerFence = 196.910 ns, UpperFence = 214.130 ns
+ConfidenceInterval = [202.766 ns; 208.223 ns] (CI 99.9%), Margin = 2.729 ns (1.33% of Mean)
+Skewness = 0.29, Kurtosis = 1.6, MValue = 2
+-------------------- Histogram --------------------
+[200.702 ns ; 206.249 ns) | @@@@@@@@@@
+[206.249 ns ; 211.207 ns) | @@@@@
+---------------------------------------------------
+
+// * Summary *
+
+BenchmarkDotNet v0.15.2, Windows 11 (10.0.26100.4946/24H2/2024Update/HudsonValley)
+Unknown processor
+.NET SDK 9.0.300
+  [Host]     : .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
+  Job-ZNFXLH : .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
+
+Runtime=.NET 9.0  IterationCount=15  LaunchCount=1
+WarmupCount=3
+
+| Method                            | Mean          | Error      | StdDev     | Ratio | RatioSD | Gen0   | Code Size | Gen1   | Gen2   | Allocated | Alloc Ratio |
+|---------------------------------- |--------------:|-----------:|-----------:|------:|--------:|-------:|----------:|-------:|-------:|----------:|------------:|
+| FastFsm_AsyncActions_HotPath      |   411.8848 ns |  7.7782 ns |  7.2757 ns | 2.134 |    0.04 | 0.0153 |   8,068 B | 0.0010 | 0.0010 |         - |        0.00 |
+| Stateless_AsyncActions_HotPath    |   288.5247 ns | 12.7547 ns | 11.9308 ns | 1.495 |    0.06 | 0.0486 |   1,106 B |      - |      - |    1472 B |        1.11 |
+| LiquidState_AsyncActions_HotPath  |    63.1323 ns |  0.7343 ns |  0.6868 ns | 0.327 |    0.00 | 0.0094 |   1,133 B | 0.0001 | 0.0001 |         - |        0.00 |
+| Appccelerate_AsyncActions_HotPath |   437.8073 ns |  5.5399 ns |  4.9110 ns | 2.268 |    0.03 | 0.0739 |   1,084 B |      - |      - |    1840 B |        1.39 |
+| Stateless_AsyncActions            | 1,002.0095 ns |  9.8738 ns |  8.2450 ns | 5.191 |    0.06 | 0.0763 |   3,436 B |      - |      - |    2295 B |        1.73 |
+| FastFsm_AsyncActions              |   412.8943 ns |  7.8654 ns |  7.3573 ns | 2.139 |    0.04 | 0.0758 |   8,068 B |      - |      - |     383 B |        0.29 |
+| LiquidState_AsyncActions          |   450.7167 ns |  5.0724 ns |  4.7447 ns | 2.335 |    0.03 | 0.0234 |   3,496 B | 0.0005 | 0.0005 |         - |        0.00 |
+| Appccelerate_AsyncActions         | 1,315.1799 ns | 14.2770 ns | 13.3547 ns | 6.813 |    0.09 | 0.1068 |   3,400 B |      - |      - |    3168 B |        2.39 |
+| Stateless_Basic                   |   193.0581 ns |  1.7852 ns |  1.5825 ns | 1.000 |    0.01 | 0.0441 |  19,579 B |      - |      - |    1328 B |        1.00 |
+| FastFsm_Basic                     |     0.6784 ns |  0.0123 ns |  0.0115 ns | 0.004 |    0.00 |      - |     975 B |      - |      - |         - |        0.00 |
+| LiquidState_Basic                 |    22.1385 ns |  0.5208 ns |  0.4871 ns | 0.115 |    0.00 | 0.0065 |      64 B |      - |      - |     136 B |        0.10 |
+| Appccelerate_Basic                |   187.2108 ns |  2.4535 ns |  2.1750 ns | 0.970 |    0.01 | 0.0534 |   3,722 B |      - |      - |    1608 B |        1.21 |
+| Stateless_GuardsActions           |   210.3316 ns |  2.6559 ns |  2.4843 ns | 1.090 |    0.02 | 0.0455 |  20,510 B |      - |      - |    1368 B |        1.03 |
+| FastFsm_GuardsActions             |     0.5591 ns |  0.0036 ns |  0.0032 ns | 0.003 |    0.00 |      - |   1,012 B |      - |      - |         - |        0.00 |
+| Appccelerate_GuardsActions        |   193.0686 ns |  1.6757 ns |  1.5674 ns | 1.000 |    0.01 | 0.2081 |   3,711 B |      - |      - |    1648 B |        1.24 |
+| Stateless_CanFire                 |   101.8809 ns |  1.5512 ns |  1.3751 ns | 0.528 |    0.01 | 0.0243 |  13,031 B |      - |      - |     608 B |        0.46 |
+| FastFsm_CanFire                   |     0.3078 ns |  0.0044 ns |  0.0041 ns | 0.002 |    0.00 |      - |     902 B |      - |      - |         - |        0.00 |
+| Stateless_GetPermittedTriggers    |    24.8505 ns |  0.3852 ns |  0.3603 ns | 0.129 |    0.00 | 0.0081 |   3,760 B |      - |      - |     224 B |        0.17 |
+| FastFsm_GetPermittedTriggers      |     1.0609 ns |  0.0139 ns |  0.0130 ns | 0.005 |    0.00 |      - |   1,037 B |      - |      - |         - |        0.00 |
+| Stateless_Payload                 |   231.1420 ns |  4.4515 ns |  4.1639 ns | 1.197 |    0.02 | 0.0472 |  20,732 B |      - |      - |    1424 B |        1.07 |
+| FastFsm_Payload                   |     0.7201 ns |  0.0098 ns |  0.0092 ns | 0.004 |    0.00 |      - |     995 B |      - |      - |         - |        0.00 |
+| LiquidState_Payload               |    24.9332 ns |  0.4026 ns |  0.3766 ns | 0.129 |    0.00 | 0.0073 |      92 B |      - |      - |     136 B |        0.10 |
+| Appccelerate_Payload              |   205.4944 ns |  2.7289 ns |  2.5526 ns | 1.064 |    0.02 | 0.0548 |   3,721 B |      - |      - |    1648 B |        1.24 |
+
+// * Hints *
+Outliers
+  StateMachineBenchmarks.Appccelerate_AsyncActions_HotPath: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3 -> 1 outlier  was  removed (455.01 ns)
+  StateMachineBenchmarks.Stateless_AsyncActions: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3            -> 2 outliers were removed (1.04 us, 1.05 us)
+  StateMachineBenchmarks.Stateless_Basic: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3                   -> 1 outlier  was  removed (206.58 ns)
+  StateMachineBenchmarks.Appccelerate_Basic: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3                -> 1 outlier  was  removed (198.92 ns)
+  StateMachineBenchmarks.FastFsm_GuardsActions: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3             -> 1 outlier  was  removed (0.58 ns)
+  StateMachineBenchmarks.Stateless_CanFire: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3                 -> 1 outlier  was  removed (107.24 ns)
+
+// * Legends *
+  Mean        : Arithmetic mean of all measurements
+  Error       : Half of 99.9% confidence interval
+  StdDev      : Standard deviation of all measurements
+  Ratio       : Mean of the ratio distribution ([Current]/[Baseline])
+  RatioSD     : Standard deviation of the ratio distribution ([Current]/[Baseline])
+  Gen0        : GC Generation 0 collects per 1000 operations
+  Code Size   : Native code size of the disassembled method(s)
+  Gen1        : GC Generation 1 collects per 1000 operations
+  Gen2        : GC Generation 2 collects per 1000 operations
+  Allocated   : Allocated memory per single operation (managed only, inclusive, 1KB = 1024B)
+  Alloc Ratio : Allocated memory ratio distribution ([Current]/[Baseline])
+  1 ns        : 1 Nanosecond (0.000000001 sec)
+
+// * Diagnostic Output - MemoryDiagnoser *
+
+// * Diagnostic Output - DisassemblyDiagnoser *
+Disassembled benchmarks got exported to ".\BenchmarkDotNet.Artifacts\results\*asm.md"
+
+// ***** BenchmarkRunner: End *****
+Run time: 00:06:17 (377.16 sec), executed benchmarks: 23
+
+Global total time: 00:06:21 (381.8 sec), executed benchmarks: 23
+// * Artifacts cleanup *
+Artifacts cleanup is finished
+
+
+
+lukasz@ubuntu:~/FastFsm$ lscpu         # szczegóły procesora (architektura, rdzenie, cache)
+free -h       # użycie pamięci RAM
+uname -r      # wersja kernela
+Architecture:           aarch64
+  CPU op-mode(s):       32-bit, 64-bit
+  Byte Order:           Little Endian
+CPU(s):                 8
+  On-line CPU(s) list:  0-7
+Model name:             -
+  Model:                0
+  Thread(s) per core:   1
+  Core(s) per socket:   4
+  Socket(s):            1
+  CPU(s) scaling MHz:   100%
+  CPU max MHz:          1800.0000
+  CPU min MHz:          408.0000
+  BogoMIPS:             48.00
+  Flags:                fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp
+                        asimdhp cpuid asimdrdm lrcpc dcpop asimddp
+Model name:             -
+  Model:                0
+  Thread(s) per core:   1
+  Core(s) per socket:   4
+  Socket(s):            1
+  CPU(s) scaling MHz:   100%
+  CPU max MHz:          2304.0000
+  CPU min MHz:          408.0000
+  BogoMIPS:             48.00
+  Flags:                fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp
+                        asimdhp cpuid asimdrdm lrcpc dcpop asimddp
+Model name:             -
+  Model:                Rockchip RK3588
+  Thread(s) per core:   0
+  Core(s) per socket:   0
+  Socket(s):            0
+  Stepping:             0x2
+  BogoMIPS:             48.00
+  Flags:                fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp
+                        asimdhp cpuid asimdrdm lrcpc dcpop asimddp
+Model name:             -
+  Model:                Rockchip RK3588
+  Thread(s) per core:   0
+  Core(s) per socket:   0
+  Socket(s):            0
+  Stepping:             0x4
+Caches (sum of all):
+  L1d:                  384 KiB (8 instances)
+  L1i:                  384 KiB (8 instances)
+  L2:                   2.5 MiB (8 instances)
+  L3:                   3 MiB (1 instance)
+Vulnerabilities:
+  Gather data sampling: Not affected
+  Itlb multihit:        Not affected
+  L1tf:                 Not affected
+  Mds:                  Not affected
+  Meltdown:             Not affected
+  Mmio stale data:      Not affected
+  Retbleed:             Not affected
+  Spec rstack overflow: Not affected
+  Spec store bypass:    Mitigation; Speculative Store Bypass disabled via prctl
+  Spectre v1:           Mitigation; __user pointer sanitization
+  Spectre v2:           Vulnerable: Unprivileged eBPF enabled
+  Srbds:                Not affected
+  Tsx async abort:      Not affected
+               total        used        free      shared  buff/cache   available
+Mem:           7.7Gi       1.4Gi       1.4Gi       136Mi       5.2Gi       6.4Gi
+Swap:             0B          0B          0B
+// Validating benchmarks:
+// ***** BenchmarkRunner: Start   *****
+// ***** Found 23 benchmark(s) in total *****
+// ***** Building 1 exe(s) in Parallel: Start   *****
+// start dotnet  restore /p:UseSharedCompilation=false /p:BuildInParallel=false /m:1 /p:Deterministic=true /p:Optimize=true /p:ArtifactsPath="/home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-1/" /p:OutDir="/home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-1/bin/Release/net9.0/" /p:OutputPath="/home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-1/bin/Release/net9.0/" /p:PublishDir="/home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-1/publish/" in /home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-1
+// command took 2.41 sec and exited with 0
+// start dotnet  build -c Release --no-restore /p:UseSharedCompilation=false /p:BuildInParallel=false /m:1 /p:Deterministic=true /p:Optimize=true /p:ArtifactsPath="/home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-1/" /p:OutDir="/home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-1/bin/Release/net9.0/" /p:OutputPath="/home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-1/bin/Release/net9.0/" /p:PublishDir="/home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-1/publish/" --output "/home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-1/bin/Release/net9.0/" in /home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-1
+// command took 7.77 sec and exited with 0
+// ***** Done, took 00:00:10 (10.34 sec)   *****
+// Found 23 benchmarks:
+//   StateMachineBenchmarks.FastFsm_AsyncActions_HotPath: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.Stateless_AsyncActions_HotPath: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.LiquidState_AsyncActions_HotPath: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.Appccelerate_AsyncActions_HotPath: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.Stateless_AsyncActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.FastFsm_AsyncActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.LiquidState_AsyncActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.Appccelerate_AsyncActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.Stateless_Basic: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.FastFsm_Basic: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.LiquidState_Basic: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.Appccelerate_Basic: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.Stateless_GuardsActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.FastFsm_GuardsActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.Appccelerate_GuardsActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.Stateless_CanFire: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.FastFsm_CanFire: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.Stateless_GetPermittedTriggers: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.FastFsm_GetPermittedTriggers: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.Stateless_Payload: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.FastFsm_Payload: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.LiquidState_Payload: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   StateMachineBenchmarks.Appccelerate_Payload: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+
+// **************************
+// Benchmark: StateMachineBenchmarks.FastFsm_AsyncActions_HotPath: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet Benchmark-Job-ZNFXLH-1.dll --anonymousPipes 116 118 --benchmarkName Benchmark.StateMachineBenchmarks.FastFsm_AsyncActions_HotPath --job "Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3" --benchmarkId 0 in /home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-1/bin/Release/net9.0
+// Failed to set up high priority (Permission denied). In order to run benchmarks with high priority, make sure you have the right permissions.
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.2
+// Runtime=.NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD
+// GC=Concurrent Server
+// HardwareIntrinsics=AdvSIMD,AES,CRC32,DP,RDM,SHA1,SHA256 VectorSize=128
+// Job: Job-CTQNHY(IterationCount=15, LaunchCount=1, WarmupCount=3)
+
+
+// ** Remained 0 (0.0 %) benchmark(s) to run. Estimated finish 2025-08-18 22:12 (0h 0m from now) **
+// ***** BenchmarkRunner: Finish  *****
+
+// * Export *
+  BenchmarkDotNet.Artifacts/results/Benchmark.StateMachineBenchmarks-report.csv
+  BenchmarkDotNet.Artifacts/results/Benchmark.StateMachineBenchmarks-report-github.md
+  BenchmarkDotNet.Artifacts/results/Benchmark.StateMachineBenchmarks-report.html
+  BenchmarkDotNet.Artifacts/results/Benchmark.StateMachineBenchmarks-asm.md
+
+// * Detailed results *
+StateMachineBenchmarks.FastFsm_AsyncActions_HotPath: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 1.801 us, StdErr = 0.025 us (1.39%), N = 15, StdDev = 0.097 us
+Min = 1.647 us, Q1 = 1.719 us, Median = 1.804 us, Q3 = 1.853 us, Max = 2.011 us
+IQR = 0.134 us, LowerFence = 1.518 us, UpperFence = 2.053 us
+ConfidenceInterval = [1.698 us; 1.905 us] (CI 99.9%), Margin = 0.103 us (5.74% of Mean)
+Skewness = 0.3, Kurtosis = 2.36, MValue = 3.25
+-------------------- Histogram --------------------
+[1.634 us ; 1.737 us) | @@@@@
+[1.737 us ; 1.802 us) | @
+[1.802 us ; 1.905 us) | @@@@@@@@
+[1.905 us ; 1.959 us) | 
+[1.959 us ; 2.062 us) | @
+---------------------------------------------------
+
+StateMachineBenchmarks.Stateless_AsyncActions_HotPath: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 1.672 us, StdErr = 0.007 us (0.43%), N = 14, StdDev = 0.027 us
+Min = 1.646 us, Q1 = 1.648 us, Median = 1.666 us, Q3 = 1.689 us, Max = 1.727 us
+IQR = 0.041 us, LowerFence = 1.587 us, UpperFence = 1.751 us
+ConfidenceInterval = [1.642 us; 1.702 us] (CI 99.9%), Margin = 0.030 us (1.80% of Mean)
+Skewness = 0.6, Kurtosis = 1.95, MValue = 2
+-------------------- Histogram --------------------
+[1.641 us ; 1.736 us) | @@@@@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.LiquidState_AsyncActions_HotPath: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 314.311 ns, StdErr = 2.504 ns (0.80%), N = 14, StdDev = 9.370 ns
+Min = 300.469 ns, Q1 = 308.803 ns, Median = 312.998 ns, Q3 = 317.003 ns, Max = 337.429 ns
+IQR = 8.200 ns, LowerFence = 296.502 ns, UpperFence = 329.303 ns
+ConfidenceInterval = [303.742 ns; 324.881 ns] (CI 99.9%), Margin = 10.570 ns (3.36% of Mean)
+Skewness = 0.89, Kurtosis = 3.27, MValue = 2
+-------------------- Histogram --------------------
+[295.367 ns ; 305.002 ns) | @
+[305.002 ns ; 315.206 ns) | @@@@@@@@@
+[315.206 ns ; 326.353 ns) | @@@
+[326.353 ns ; 342.531 ns) | @
+---------------------------------------------------
+
+StateMachineBenchmarks.Appccelerate_AsyncActions_HotPath: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 2.097 us, StdErr = 0.012 us (0.57%), N = 13, StdDev = 0.043 us
+Min = 1.988 us, Q1 = 2.082 us, Median = 2.096 us, Q3 = 2.118 us, Max = 2.173 us
+IQR = 0.036 us, LowerFence = 2.029 us, UpperFence = 2.171 us
+ConfidenceInterval = [2.046 us; 2.149 us] (CI 99.9%), Margin = 0.052 us (2.46% of Mean)
+Skewness = -0.73, Kurtosis = 4.03, MValue = 2
+-------------------- Histogram --------------------
+[1.964 us ; 2.012 us) | @
+[2.012 us ; 2.060 us) | 
+[2.060 us ; 2.124 us) | @@@@@@@@@@
+[2.124 us ; 2.183 us) | @@
+---------------------------------------------------
+
+StateMachineBenchmarks.Stateless_AsyncActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 4.403 us, StdErr = 0.020 us (0.46%), N = 13, StdDev = 0.073 us
+Min = 4.313 us, Q1 = 4.357 us, Median = 4.386 us, Q3 = 4.415 us, Max = 4.554 us
+IQR = 0.058 us, LowerFence = 4.269 us, UpperFence = 4.503 us
+ConfidenceInterval = [4.315 us; 4.491 us] (CI 99.9%), Margin = 0.088 us (1.99% of Mean)
+Skewness = 0.96, Kurtosis = 2.69, MValue = 2
+-------------------- Histogram --------------------
+[4.272 us ; 4.422 us) | @@@@@@@@@@
+[4.422 us ; 4.595 us) | @@@
+---------------------------------------------------
+
+StateMachineBenchmarks.FastFsm_AsyncActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 1.829 us, StdErr = 0.019 us (1.04%), N = 14, StdDev = 0.071 us
+Min = 1.698 us, Q1 = 1.799 us, Median = 1.851 us, Q3 = 1.867 us, Max = 1.944 us
+IQR = 0.068 us, LowerFence = 1.697 us, UpperFence = 1.970 us
+ConfidenceInterval = [1.749 us; 1.910 us] (CI 99.9%), Margin = 0.081 us (4.41% of Mean)
+Skewness = -0.57, Kurtosis = 2.19, MValue = 2.44
+-------------------- Histogram --------------------
+[1.681 us ; 1.759 us) | @@@
+[1.759 us ; 1.824 us) | @
+[1.824 us ; 1.902 us) | @@@@@@@@@
+[1.902 us ; 1.982 us) | @
+---------------------------------------------------
+
+StateMachineBenchmarks.LiquidState_AsyncActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 1.873 us, StdErr = 0.009 us (0.50%), N = 14, StdDev = 0.035 us
+Min = 1.832 us, Q1 = 1.842 us, Median = 1.869 us, Q3 = 1.902 us, Max = 1.943 us
+IQR = 0.060 us, LowerFence = 1.752 us, UpperFence = 1.992 us
+ConfidenceInterval = [1.834 us; 1.912 us] (CI 99.9%), Margin = 0.039 us (2.10% of Mean)
+Skewness = 0.51, Kurtosis = 1.88, MValue = 2
+-------------------- Histogram --------------------
+[1.813 us ; 1.876 us) | @@@@@@@@@@
+[1.876 us ; 1.946 us) | @@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.Appccelerate_AsyncActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 6.318 us, StdErr = 0.041 us (0.64%), N = 14, StdDev = 0.152 us
+Min = 6.081 us, Q1 = 6.205 us, Median = 6.326 us, Q3 = 6.395 us, Max = 6.608 us
+IQR = 0.189 us, LowerFence = 5.922 us, UpperFence = 6.678 us
+ConfidenceInterval = [6.147 us; 6.490 us] (CI 99.9%), Margin = 0.171 us (2.71% of Mean)
+Skewness = 0.17, Kurtosis = 1.96, MValue = 2
+-------------------- Histogram --------------------
+[5.998 us ; 6.177 us) | @@
+[6.177 us ; 6.364 us) | @@@@@@@
+[6.364 us ; 6.522 us) | @@@@
+[6.522 us ; 6.691 us) | @
+---------------------------------------------------
+
+StateMachineBenchmarks.Stateless_Basic: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 1.104 us, StdErr = 0.004 us (0.38%), N = 14, StdDev = 0.016 us
+Min = 1.085 us, Q1 = 1.093 us, Median = 1.096 us, Q3 = 1.112 us, Max = 1.138 us
+IQR = 0.019 us, LowerFence = 1.065 us, UpperFence = 1.141 us
+ConfidenceInterval = [1.086 us; 1.122 us] (CI 99.9%), Margin = 0.018 us (1.60% of Mean)
+Skewness = 0.74, Kurtosis = 2.21, MValue = 2
+-------------------- Histogram --------------------
+[1.080 us ; 1.104 us) | @@@@@@@@
+[1.104 us ; 1.146 us) | @@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.FastFsm_Basic: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 3.868 ns, StdErr = 0.002 ns (0.06%), N = 15, StdDev = 0.009 ns
+Min = 3.861 ns, Q1 = 3.861 ns, Median = 3.864 ns, Q3 = 3.879 ns, Max = 3.883 ns
+IQR = 0.018 ns, LowerFence = 3.834 ns, UpperFence = 3.907 ns
+ConfidenceInterval = [3.859 ns; 3.878 ns] (CI 99.9%), Margin = 0.010 ns (0.25% of Mean)
+Skewness = 0.6, Kurtosis = 1.37, MValue = 2
+-------------------- Histogram --------------------
+[3.856 ns ; 3.888 ns) | @@@@@@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.LiquidState_Basic: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 112.576 ns, StdErr = 0.291 ns (0.26%), N = 12, StdDev = 1.007 ns
+Min = 111.040 ns, Q1 = 111.583 ns, Median = 112.839 ns, Q3 = 113.212 ns, Max = 114.328 ns
+IQR = 1.629 ns, LowerFence = 109.139 ns, UpperFence = 115.656 ns
+ConfidenceInterval = [111.287 ns; 113.866 ns] (CI 99.9%), Margin = 1.289 ns (1.15% of Mean)
+Skewness = -0.08, Kurtosis = 1.7, MValue = 2
+-------------------- Histogram --------------------
+[110.462 ns ; 114.905 ns) | @@@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.Appccelerate_Basic: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 1.066 us, StdErr = 0.010 us (0.94%), N = 13, StdDev = 0.036 us
+Min = 1.038 us, Q1 = 1.048 us, Median = 1.052 us, Q3 = 1.061 us, Max = 1.167 us
+IQR = 0.013 us, LowerFence = 1.028 us, UpperFence = 1.080 us
+ConfidenceInterval = [1.023 us; 1.110 us] (CI 99.9%), Margin = 0.043 us (4.08% of Mean)
+Skewness = 1.65, Kurtosis = 4.75, MValue = 2
+-------------------- Histogram --------------------
+[1.029 us ; 1.070 us) | @@@@@@@@@@
+[1.070 us ; 1.121 us) | @@
+[1.121 us ; 1.147 us) | 
+[1.147 us ; 1.187 us) | @
+---------------------------------------------------
+
+StateMachineBenchmarks.Stateless_GuardsActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 1.159 us, StdErr = 0.008 us (0.71%), N = 13, StdDev = 0.030 us
+Min = 1.129 us, Q1 = 1.138 us, Median = 1.146 us, Q3 = 1.169 us, Max = 1.225 us
+IQR = 0.031 us, LowerFence = 1.092 us, UpperFence = 1.216 us
+ConfidenceInterval = [1.123 us; 1.194 us] (CI 99.9%), Margin = 0.036 us (3.07% of Mean)
+Skewness = 1.08, Kurtosis = 2.73, MValue = 2
+-------------------- Histogram --------------------
+[1.126 us ; 1.159 us) | @@@@@@@@@
+[1.159 us ; 1.192 us) | @@
+[1.192 us ; 1.234 us) | @@
+---------------------------------------------------
+
+StateMachineBenchmarks.FastFsm_GuardsActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 3.718 ns, StdErr = 0.131 ns (3.52%), N = 15, StdDev = 0.507 ns
+Min = 2.902 ns, Q1 = 3.463 ns, Median = 4.009 ns, Q3 = 4.011 ns, Max = 4.031 ns
+IQR = 0.548 ns, LowerFence = 2.642 ns, UpperFence = 4.832 ns
+ConfidenceInterval = [3.177 ns; 4.260 ns] (CI 99.9%), Margin = 0.542 ns (14.57% of Mean)
+Skewness = -0.95, Kurtosis = 1.84, MValue = 2.73
+-------------------- Histogram --------------------
+[2.632 ns ; 3.179 ns) | @@@@
+[3.179 ns ; 3.750 ns) | 
+[3.750 ns ; 4.301 ns) | @@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.Appccelerate_GuardsActions: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 1.121 us, StdErr = 0.006 us (0.58%), N = 15, StdDev = 0.025 us
+Min = 1.094 us, Q1 = 1.100 us, Median = 1.115 us, Q3 = 1.138 us, Max = 1.182 us
+IQR = 0.038 us, LowerFence = 1.044 us, UpperFence = 1.194 us
+ConfidenceInterval = [1.094 us; 1.148 us] (CI 99.9%), Margin = 0.027 us (2.39% of Mean)
+Skewness = 0.72, Kurtosis = 2.73, MValue = 2
+-------------------- Histogram --------------------
+[1.091 us ; 1.118 us) | @@@@@@@@
+[1.118 us ; 1.149 us) | @@@@@@
+[1.149 us ; 1.195 us) | @
+---------------------------------------------------
+
+StateMachineBenchmarks.Stateless_CanFire: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 705.337 ns, StdErr = 9.785 ns (1.39%), N = 14, StdDev = 36.611 ns
+Min = 621.833 ns, Q1 = 709.881 ns, Median = 716.437 ns, Q3 = 722.332 ns, Max = 739.323 ns
+IQR = 12.450 ns, LowerFence = 691.206 ns, UpperFence = 741.007 ns
+ConfidenceInterval = [664.037 ns; 746.637 ns] (CI 99.9%), Margin = 41.300 ns (5.86% of Mean)
+Skewness = -1.52, Kurtosis = 3.83, MValue = 2
+-------------------- Histogram --------------------
+[601.896 ns ; 642.526 ns) | @@
+[642.526 ns ; 678.160 ns) | 
+[678.160 ns ; 704.541 ns) | @
+[704.541 ns ; 744.416 ns) | @@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.FastFsm_CanFire: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 1.785 ns, StdErr = 0.000 ns (0.01%), N = 12, StdDev = 0.000 ns
+Min = 1.785 ns, Q1 = 1.785 ns, Median = 1.785 ns, Q3 = 1.785 ns, Max = 1.786 ns
+IQR = 0.000 ns, LowerFence = 1.785 ns, UpperFence = 1.786 ns
+ConfidenceInterval = [1.785 ns; 1.786 ns] (CI 99.9%), Margin = 0.000 ns (0.02% of Mean)
+Skewness = -0.01, Kurtosis = 2.64, MValue = 2
+-------------------- Histogram --------------------
+[1.784 ns ; 1.786 ns) | @@@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.Stateless_GetPermittedTriggers: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 138.634 ns, StdErr = 1.144 ns (0.83%), N = 14, StdDev = 4.282 ns
+Min = 134.397 ns, Q1 = 135.252 ns, Median = 136.671 ns, Q3 = 142.631 ns, Max = 146.678 ns
+IQR = 7.379 ns, LowerFence = 124.183 ns, UpperFence = 153.699 ns
+ConfidenceInterval = [133.803 ns; 143.465 ns] (CI 99.9%), Margin = 4.831 ns (3.48% of Mean)
+Skewness = 0.58, Kurtosis = 1.62, MValue = 3.11
+-------------------- Histogram --------------------
+[133.541 ns ; 138.205 ns) | @@@@@@@@@
+[138.205 ns ; 142.074 ns) | 
+[142.074 ns ; 146.738 ns) | @@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.FastFsm_GetPermittedTriggers: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 4.012 ns, StdErr = 0.009 ns (0.23%), N = 15, StdDev = 0.035 ns
+Min = 3.968 ns, Q1 = 3.979 ns, Median = 4.008 ns, Q3 = 4.042 ns, Max = 4.066 ns
+IQR = 0.063 ns, LowerFence = 3.884 ns, UpperFence = 4.137 ns
+ConfidenceInterval = [3.974 ns; 4.049 ns] (CI 99.9%), Margin = 0.038 ns (0.94% of Mean)
+Skewness = 0.22, Kurtosis = 1.35, MValue = 2
+-------------------- Histogram --------------------
+[3.949 ns ; 4.085 ns) | @@@@@@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.Stateless_Payload: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 1.225 us, StdErr = 0.006 us (0.51%), N = 13, StdDev = 0.023 us
+Min = 1.202 us, Q1 = 1.209 us, Median = 1.218 us, Q3 = 1.245 us, Max = 1.280 us
+IQR = 0.036 us, LowerFence = 1.155 us, UpperFence = 1.298 us
+ConfidenceInterval = [1.198 us; 1.252 us] (CI 99.9%), Margin = 0.027 us (2.22% of Mean)
+Skewness = 1, Kurtosis = 2.94, MValue = 2
+-------------------- Histogram --------------------
+[1.199 us ; 1.224 us) | @@@@@@@@@
+[1.224 us ; 1.258 us) | @@@
+[1.258 us ; 1.292 us) | @
+---------------------------------------------------
+
+StateMachineBenchmarks.FastFsm_Payload: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 4.460 ns, StdErr = 0.003 ns (0.06%), N = 15, StdDev = 0.011 ns
+Min = 4.451 ns, Q1 = 4.452 ns, Median = 4.454 ns, Q3 = 4.474 ns, Max = 4.477 ns
+IQR = 0.022 ns, LowerFence = 4.419 ns, UpperFence = 4.508 ns
+ConfidenceInterval = [4.448 ns; 4.472 ns] (CI 99.9%), Margin = 0.012 ns (0.27% of Mean)
+Skewness = 0.63, Kurtosis = 1.33, MValue = 2
+-------------------- Histogram --------------------
+[4.445 ns ; 4.483 ns) | @@@@@@@@@@@@@@@
+---------------------------------------------------
+
+StateMachineBenchmarks.LiquidState_Payload: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 172.183 ns, StdErr = 1.189 ns (0.69%), N = 15, StdDev = 4.605 ns
+Min = 167.594 ns, Q1 = 168.629 ns, Median = 170.828 ns, Q3 = 174.466 ns, Max = 183.191 ns
+IQR = 5.837 ns, LowerFence = 159.873 ns, UpperFence = 183.222 ns
+ConfidenceInterval = [167.261 ns; 177.106 ns] (CI 99.9%), Margin = 4.923 ns (2.86% of Mean)
+Skewness = 1.03, Kurtosis = 2.9, MValue = 2
+-------------------- Histogram --------------------
+[166.947 ns ; 171.848 ns) | @@@@@@@@@
+[171.848 ns ; 179.015 ns) | @@@@
+[179.015 ns ; 183.917 ns) | @@
+---------------------------------------------------
+
+StateMachineBenchmarks.Appccelerate_Payload: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 1.109 us, StdErr = 0.004 us (0.34%), N = 13, StdDev = 0.013 us
+Min = 1.091 us, Q1 = 1.101 us, Median = 1.103 us, Q3 = 1.123 us, Max = 1.130 us
+IQR = 0.023 us, LowerFence = 1.067 us, UpperFence = 1.157 us
+ConfidenceInterval = [1.092 us; 1.125 us] (CI 99.9%), Margin = 0.016 us (1.45% of Mean)
+Skewness = 0.48, Kurtosis = 1.53, MValue = 2
+-------------------- Histogram --------------------
+[1.083 us ; 1.113 us) | @@@@@@@@@
+[1.113 us ; 1.138 us) | @@@@
+---------------------------------------------------
+
+// * Summary *
+
+BenchmarkDotNet v0.15.2, Linux Ubuntu 24.04.3 LTS (Noble Numbat)
+- 2.30GHz
+.NET SDK 9.0.109
+  [Host]     : .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD
+  Job-ZNFXLH : .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD
+
+Runtime=.NET 9.0  IterationCount=15  LaunchCount=1  
+WarmupCount=3  
+
+| Method                            | Mean         | Error       | StdDev      | Ratio | RatioSD | Code Size | Gen0   | Allocated | Alloc Ratio |
+|---------------------------------- |-------------:|------------:|------------:|------:|--------:|----------:|-------:|----------:|------------:|
+| FastFsm_AsyncActions_HotPath      | 1,801.254 ns | 103.4455 ns |  96.7630 ns | 1.632 |    0.09 |   1,072 B | 0.0229 |     384 B |        0.29 |
+| Stateless_AsyncActions_HotPath    | 1,672.276 ns |  30.0316 ns |  26.6222 ns | 1.515 |    0.03 |     620 B | 0.0935 |    1472 B |        1.11 |
+| LiquidState_AsyncActions_HotPath  |   314.311 ns |  10.5695 ns |   9.3696 ns | 0.285 |    0.01 |     620 B | 0.0148 |     240 B |        0.18 |
+| Appccelerate_AsyncActions_HotPath | 2,097.394 ns |  51.5103 ns |  43.0134 ns | 1.900 |    0.05 |     620 B | 0.1144 |    1840 B |        1.39 |
+| Stateless_AsyncActions            | 4,403.067 ns |  87.5723 ns |  73.1268 ns | 3.989 |    0.08 |     700 B | 0.1526 |    2296 B |        1.73 |
+| FastFsm_AsyncActions              | 1,829.476 ns |  80.5909 ns |  71.4417 ns | 1.658 |    0.07 |   1,072 B | 0.0248 |     384 B |        0.29 |
+| LiquidState_AsyncActions          | 1,872.807 ns |  39.2708 ns |  34.8125 ns | 1.697 |    0.04 |     600 B | 0.0420 |     656 B |        0.49 |
+| Appccelerate_AsyncActions         | 6,318.358 ns | 171.3920 ns | 151.9346 ns | 5.725 |    0.15 |     600 B | 0.1526 |    3175 B |        2.39 |
+| Stateless_Basic                   | 1,103.928 ns |  17.6120 ns |  15.6126 ns | 1.000 |    0.02 |  21,372 B | 0.0820 |    1328 B |        1.00 |
+| FastFsm_Basic                     |     3.868 ns |   0.0098 ns |   0.0092 ns | 0.004 |    0.00 |   1,140 B |      - |         - |        0.00 |
+| LiquidState_Basic                 |   112.576 ns |   1.2893 ns |   1.0066 ns | 0.102 |    0.00 |     128 B | 0.0086 |     136 B |        0.10 |
+| Appccelerate_Basic                | 1,066.169 ns |  43.4917 ns |  36.3175 ns | 0.966 |    0.03 |   4,540 B | 0.1011 |    1608 B |        1.21 |
+| Stateless_GuardsActions           | 1,158.753 ns |  35.5862 ns |  29.7161 ns | 1.050 |    0.03 |  16,272 B | 0.0858 |    1368 B |        1.03 |
+| FastFsm_GuardsActions             |     3.718 ns |   0.5417 ns |   0.5067 ns | 0.003 |    0.00 |   1,196 B |      - |         - |        0.00 |
+| Appccelerate_GuardsActions        | 1,121.234 ns |  26.8045 ns |  25.0729 ns | 1.016 |    0.03 |   4,512 B | 0.1049 |    1648 B |        1.24 |
+| Stateless_CanFire                 |   705.337 ns |  41.2997 ns |  36.6111 ns | 0.639 |    0.03 |  13,432 B | 0.0381 |     608 B |        0.46 |
+| FastFsm_CanFire                   |     1.785 ns |   0.0004 ns |   0.0003 ns | 0.002 |    0.00 |   1,064 B |      - |         - |        0.00 |
+| Stateless_GetPermittedTriggers    |   138.634 ns |   4.8307 ns |   4.2823 ns | 0.126 |    0.00 |   3,040 B | 0.0141 |     224 B |        0.17 |
+| FastFsm_GetPermittedTriggers      |     4.012 ns |   0.0377 ns |   0.0353 ns | 0.004 |    0.00 |   1,256 B |      - |         - |        0.00 |
+| Stateless_Payload                 | 1,224.867 ns |  27.2333 ns |  22.7410 ns | 1.110 |    0.02 |  19,980 B | 0.0896 |    1424 B |        1.07 |
+| FastFsm_Payload                   |     4.460 ns |   0.0120 ns |   0.0112 ns | 0.004 |    0.00 |   1,160 B |      - |         - |        0.00 |
+| LiquidState_Payload               |   172.183 ns |   4.9226 ns |   4.6046 ns | 0.156 |    0.00 |     156 B | 0.0086 |     136 B |        0.10 |
+| Appccelerate_Payload              | 1,108.533 ns |  16.0430 ns |  13.3966 ns | 1.004 |    0.02 |   4,540 B | 0.1049 |    1648 B |        1.24 |
+
+// * Warnings *
+MultimodalDistribution
+  StateMachineBenchmarks.FastFsm_AsyncActions_HotPath: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3 -> It seems that the distribution is bimodal (mValue = 3.25)
+
+// * Hints *
+Outliers
+  StateMachineBenchmarks.Stateless_AsyncActions_HotPath: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3    -> 1 outlier  was  removed (1.94 us)
+  StateMachineBenchmarks.LiquidState_AsyncActions_HotPath: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3  -> 1 outlier  was  removed (341.27 ns)
+  StateMachineBenchmarks.Appccelerate_AsyncActions_HotPath: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3 -> 2 outliers were removed, 3 outliers were detected (1.99 us, 2.29 us, 2.39 us)
+  StateMachineBenchmarks.Stateless_AsyncActions: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3            -> 2 outliers were removed (5.16 us, 5.16 us)
+  StateMachineBenchmarks.FastFsm_AsyncActions: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3              -> 1 outlier  was  removed, 3 outliers were detected (1.70 us, 1.70 us, 1.98 us)
+  StateMachineBenchmarks.LiquidState_AsyncActions: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3          -> 1 outlier  was  removed (2.25 us)
+  StateMachineBenchmarks.Appccelerate_AsyncActions: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3         -> 1 outlier  was  removed (7.22 us)
+  StateMachineBenchmarks.Stateless_Basic: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3                   -> 1 outlier  was  removed (1.19 us)
+  StateMachineBenchmarks.LiquidState_Basic: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3                 -> 3 outliers were removed (117.54 ns..131.83 ns)
+  StateMachineBenchmarks.Appccelerate_Basic: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3                -> 2 outliers were removed (1.18 us, 1.19 us)
+  StateMachineBenchmarks.Stateless_GuardsActions: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3           -> 2 outliers were removed (1.35 us, 1.40 us)
+  StateMachineBenchmarks.Stateless_CanFire: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3                 -> 1 outlier  was  removed, 3 outliers were detected (621.84 ns, 623.35 ns, 764.55 ns)
+  StateMachineBenchmarks.FastFsm_CanFire: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3                   -> 3 outliers were removed (1.80 ns..1.80 ns)
+  StateMachineBenchmarks.Stateless_GetPermittedTriggers: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3    -> 1 outlier  was  removed (157.90 ns)
+  StateMachineBenchmarks.Stateless_Payload: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3                 -> 2 outliers were removed (1.35 us, 1.35 us)
+  StateMachineBenchmarks.Appccelerate_Payload: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3              -> 2 outliers were removed (1.17 us, 1.35 us)
+
+// * Legends *
+  Mean        : Arithmetic mean of all measurements
+  Error       : Half of 99.9% confidence interval
+  StdDev      : Standard deviation of all measurements
+  Ratio       : Mean of the ratio distribution ([Current]/[Baseline])
+  RatioSD     : Standard deviation of the ratio distribution ([Current]/[Baseline])
+  Code Size   : Native code size of the disassembled method(s)
+  Gen0        : GC Generation 0 collects per 1000 operations
+  Allocated   : Allocated memory per single operation (managed only, inclusive, 1KB = 1024B)
+  Alloc Ratio : Allocated memory ratio distribution ([Current]/[Baseline])
+  1 ns        : 1 Nanosecond (0.000000001 sec)
+
+// * Diagnostic Output - MemoryDiagnoser *
+
+// * Diagnostic Output - DisassemblyDiagnoser *
+Disassembled benchmarks got exported to ".\BenchmarkDotNet.Artifacts\results\*asm.md"
+
+// ***** BenchmarkRunner: End *****
+Run time: 00:05:42 (342.78 sec), executed benchmarks: 23
+
+Global total time: 00:05:53 (353.89 sec), executed benchmarks: 23
+// * Artifacts cleanup *
+Artifacts cleanup is finished
+// Validating benchmarks:
+// ***** BenchmarkRunner: Start   *****
+// ***** Found 7 benchmark(s) in total *****
+// ***** Building 1 exe(s) in Parallel: Start   *****
+// start dotnet  restore /p:UseSharedCompilation=false /p:BuildInParallel=false /m:1 /p:Deterministic=true /p:Optimize=true /p:ArtifactsPath="/home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-2/" /p:OutDir="/home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-2/bin/Release/net9.0/" /p:OutputPath="/home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-2/bin/Release/net9.0/" /p:PublishDir="/home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-2/publish/" in /home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-2
+// command took 3.44 sec and exited with 0
+// start dotnet  build -c Release --no-restore /p:UseSharedCompilation=false /p:BuildInParallel=false /m:1 /p:Deterministic=true /p:Optimize=true /p:ArtifactsPath="/home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-2/" /p:OutDir="/home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-2/bin/Release/net9.0/" /p:OutputPath="/home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-2/bin/Release/net9.0/" /p:PublishDir="/home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-2/publish/" --output "/home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-2/bin/Release/net9.0/" in /home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-2
+// command took 14 sec and exited with 0
+// ***** Done, took 00:00:17 (17.46 sec)   *****
+// Found 7 benchmarks:
+//   HsmBenchmarks.FastFSM_Hsm_AsyncYield: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   HsmBenchmarks.Stateless_Hsm_AsyncYield: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   HsmBenchmarks.FastFSM_Hsm_Basic_EnterLeave: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   HsmBenchmarks.Stateless_Hsm_Basic_EnterLeave: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   HsmBenchmarks.FastFSM_Hsm_History_Shallow: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   HsmBenchmarks.FastFSM_Hsm_Internal: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+//   HsmBenchmarks.Stateless_Hsm_Internal: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+
+// **************************
+// Benchmark: HsmBenchmarks.FastFSM_Hsm_AsyncYield: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet Benchmark-Job-ZNFXLH-2.dll --anonymousPipes 156 157 --benchmarkName Benchmark.HsmBenchmarks.FastFSM_Hsm_AsyncYield --job "Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3" --benchmarkId 0 in /home/lukasz/FastFsm/Benchmark/bin/Release/net9.0/Benchmark-Job-ZNFXLH-2/bin/Release/net9.0
+// Failed to set up high priority (Permission denied). In order to run benchmarks with high priority, make sure you have the right permissions.
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.2
+// Runtime=.NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD
+// GC=Concurrent Server
+// HardwareIntrinsics=AdvSIMD,AES,CRC32,DP,RDM,SHA1,SHA256 VectorSize=128
+// Job: Job-CTQNHY(IterationCount=15, LaunchCount=1, WarmupCount=3)
+
+
+
+// AfterAll
+// Benchmark Process 2609566 has exited with code 0.
+
+Mean = 1.659 us, StdErr = 0.009 us (0.56%), N = 15, StdDev = 0.036 us
+Min = 1.603 us, Q1 = 1.633 us, Median = 1.652 us, Q3 = 1.684 us, Max = 1.743 us
+IQR = 0.051 us, LowerFence = 1.557 us, UpperFence = 1.760 us
+ConfidenceInterval = [1.620 us; 1.697 us] (CI 99.9%), Margin = 0.038 us (2.32% of Mean)
+Skewness = 0.58, Kurtosis = 2.7, MValue = 2
+
+// ** Remained 0 (0.0 %) benchmark(s) to run. Estimated finish 2025-08-18 22:14 (0h 0m from now) **
+// ***** BenchmarkRunner: Finish  *****
+
+// * Export *
+  BenchmarkDotNet.Artifacts/results/Benchmark.HsmBenchmarks-report.csv
+  BenchmarkDotNet.Artifacts/results/Benchmark.HsmBenchmarks-report-github.md
+  BenchmarkDotNet.Artifacts/results/Benchmark.HsmBenchmarks-report.html
+  BenchmarkDotNet.Artifacts/results/Benchmark.HsmBenchmarks-asm.md
+
+// * Detailed results *
+HsmBenchmarks.FastFSM_Hsm_AsyncYield: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 1.735 us, StdErr = 0.008 us (0.44%), N = 14, StdDev = 0.029 us
+Min = 1.696 us, Q1 = 1.715 us, Median = 1.731 us, Q3 = 1.753 us, Max = 1.798 us
+IQR = 0.038 us, LowerFence = 1.658 us, UpperFence = 1.810 us
+ConfidenceInterval = [1.703 us; 1.768 us] (CI 99.9%), Margin = 0.032 us (1.86% of Mean)
+Skewness = 0.54, Kurtosis = 2.38, MValue = 2
+-------------------- Histogram --------------------
+[1.693 us ; 1.764 us) | @@@@@@@@@@@@
+[1.764 us ; 1.802 us) | @@
+---------------------------------------------------
+
+HsmBenchmarks.Stateless_Hsm_AsyncYield: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 5.181 us, StdErr = 0.030 us (0.58%), N = 13, StdDev = 0.107 us
+Min = 4.967 us, Q1 = 5.129 us, Median = 5.188 us, Q3 = 5.253 us, Max = 5.395 us
+IQR = 0.124 us, LowerFence = 4.943 us, UpperFence = 5.438 us
+ConfidenceInterval = [5.052 us; 5.309 us] (CI 99.9%), Margin = 0.129 us (2.48% of Mean)
+Skewness = -0.08, Kurtosis = 2.65, MValue = 2
+-------------------- Histogram --------------------
+[4.907 us ; 5.037 us) | @
+[5.037 us ; 5.149 us) | @@@
+[5.149 us ; 5.335 us) | @@@@@@@@
+[5.335 us ; 5.455 us) | @
+---------------------------------------------------
+
+HsmBenchmarks.FastFSM_Hsm_Basic_EnterLeave: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 18.592 ns, StdErr = 0.002 ns (0.01%), N = 12, StdDev = 0.008 ns
+Min = 18.583 ns, Q1 = 18.585 ns, Median = 18.591 ns, Q3 = 18.596 ns, Max = 18.610 ns
+IQR = 0.011 ns, LowerFence = 18.568 ns, UpperFence = 18.613 ns
+ConfidenceInterval = [18.581 ns; 18.603 ns] (CI 99.9%), Margin = 0.011 ns (0.06% of Mean)
+Skewness = 0.72, Kurtosis = 2.45, MValue = 2
+-------------------- Histogram --------------------
+[18.578 ns ; 18.615 ns) | @@@@@@@@@@@@
+---------------------------------------------------
+
+HsmBenchmarks.Stateless_Hsm_Basic_EnterLeave: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 3.129 us, StdErr = 0.020 us (0.64%), N = 13, StdDev = 0.072 us
+Min = 3.068 us, Q1 = 3.081 us, Median = 3.103 us, Q3 = 3.141 us, Max = 3.307 us
+IQR = 0.061 us, LowerFence = 2.990 us, UpperFence = 3.232 us
+ConfidenceInterval = [3.043 us; 3.215 us] (CI 99.9%), Margin = 0.086 us (2.74% of Mean)
+Skewness = 1.4, Kurtosis = 3.66, MValue = 2
+-------------------- Histogram --------------------
+[3.067 us ; 3.147 us) | @@@@@@@@@@@
+[3.147 us ; 3.239 us) | 
+[3.239 us ; 3.319 us) | @@
+---------------------------------------------------
+
+HsmBenchmarks.FastFSM_Hsm_History_Shallow: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 33.839 ns, StdErr = 0.018 ns (0.05%), N = 13, StdDev = 0.065 ns
+Min = 33.702 ns, Q1 = 33.797 ns, Median = 33.854 ns, Q3 = 33.889 ns, Max = 33.927 ns
+IQR = 0.092 ns, LowerFence = 33.659 ns, UpperFence = 34.027 ns
+ConfidenceInterval = [33.761 ns; 33.917 ns] (CI 99.9%), Margin = 0.078 ns (0.23% of Mean)
+Skewness = -0.45, Kurtosis = 2.18, MValue = 2
+-------------------- Histogram --------------------
+[33.665 ns ; 33.963 ns) | @@@@@@@@@@@@@
+---------------------------------------------------
+
+HsmBenchmarks.FastFSM_Hsm_Internal: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 4.533 ns, StdErr = 0.000 ns (0.00%), N = 14, StdDev = 0.001 ns
+Min = 4.532 ns, Q1 = 4.532 ns, Median = 4.532 ns, Q3 = 4.533 ns, Max = 4.534 ns
+IQR = 0.001 ns, LowerFence = 4.531 ns, UpperFence = 4.534 ns
+ConfidenceInterval = [4.532 ns; 4.533 ns] (CI 99.9%), Margin = 0.001 ns (0.02% of Mean)
+Skewness = 0.51, Kurtosis = 1.86, MValue = 2
+-------------------- Histogram --------------------
+[4.531 ns ; 4.534 ns) | @@@@@@@@@@@@@@
+---------------------------------------------------
+
+HsmBenchmarks.Stateless_Hsm_Internal: Job-ZNFXLH(Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD; GC = Concurrent Server
+Mean = 1.659 us, StdErr = 0.009 us (0.56%), N = 15, StdDev = 0.036 us
+Min = 1.603 us, Q1 = 1.633 us, Median = 1.652 us, Q3 = 1.684 us, Max = 1.743 us
+IQR = 0.051 us, LowerFence = 1.557 us, UpperFence = 1.760 us
+ConfidenceInterval = [1.620 us; 1.697 us] (CI 99.9%), Margin = 0.038 us (2.32% of Mean)
+Skewness = 0.58, Kurtosis = 2.7, MValue = 2
+-------------------- Histogram --------------------
+[1.584 us ; 1.617 us) | @
+[1.617 us ; 1.656 us) | @@@@@@@@
+[1.656 us ; 1.701 us) | @@@@@
+[1.701 us ; 1.762 us) | @
+---------------------------------------------------
+
+// * Summary *
+
+BenchmarkDotNet v0.15.2, Linux Ubuntu 24.04.3 LTS (Noble Numbat)
+- 2.30GHz
+.NET SDK 9.0.109
+  [Host]     : .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD
+  Job-ZNFXLH : .NET 9.0.8 (9.0.825.36511), Arm64 RyuJIT AdvSIMD
+
+Runtime=.NET 9.0  IterationCount=15  LaunchCount=1  
+WarmupCount=3  
+
+| Method                         | Mean         | Error       | StdDev      | Code Size | Gen0   | Allocated |
+|------------------------------- |-------------:|------------:|------------:|----------:|-------:|----------:|
+| FastFSM_Hsm_AsyncYield         | 1,735.338 ns |  32.2150 ns |  28.5577 ns |   1,072 B | 0.0248 |     376 B |
+| Stateless_Hsm_AsyncYield       | 5,180.811 ns | 128.6660 ns | 107.4420 ns |     600 B | 0.2060 |    3104 B |
+| FastFSM_Hsm_Basic_EnterLeave   |    18.592 ns |   0.0106 ns |   0.0083 ns |   1,988 B |      - |         - |
+| Stateless_Hsm_Basic_EnterLeave | 3,129.253 ns |  85.8057 ns |  71.6517 ns |  14,096 B | 0.2480 |    3952 B |
+| FastFSM_Hsm_History_Shallow    |    33.839 ns |   0.0779 ns |   0.0651 ns |   2,964 B |      - |         - |
+| FastFSM_Hsm_Internal           |     4.533 ns |   0.0008 ns |   0.0007 ns |   1,148 B |      - |         - |
+| Stateless_Hsm_Internal         | 1,658.588 ns |  38.4000 ns |  35.9193 ns |  15,636 B | 0.0877 |    1408 B |
+
+// * Hints *
+Outliers
+  HsmBenchmarks.FastFSM_Hsm_AsyncYield: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3         -> 1 outlier  was  removed (1.90 us)
+  HsmBenchmarks.Stateless_Hsm_AsyncYield: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3       -> 2 outliers were removed, 3 outliers were detected (4.97 us, 5.50 us, 5.56 us)
+  HsmBenchmarks.FastFSM_Hsm_Basic_EnterLeave: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3   -> 3 outliers were removed (18.68 ns..18.70 ns)
+  HsmBenchmarks.Stateless_Hsm_Basic_EnterLeave: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3 -> 2 outliers were removed (3.42 us, 3.47 us)
+  HsmBenchmarks.FastFSM_Hsm_History_Shallow: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3    -> 2 outliers were removed (34.12 ns, 34.29 ns)
+  HsmBenchmarks.FastFSM_Hsm_Internal: Runtime=.NET 9.0, IterationCount=15, LaunchCount=1, WarmupCount=3           -> 1 outlier  was  removed (4.54 ns)
+
+// * Legends *
+  Mean      : Arithmetic mean of all measurements
+  Error     : Half of 99.9% confidence interval
+  StdDev    : Standard deviation of all measurements
+  Code Size : Native code size of the disassembled method(s)
+  Gen0      : GC Generation 0 collects per 1000 operations
+  Allocated : Allocated memory per single operation (managed only, inclusive, 1KB = 1024B)
+  1 ns      : 1 Nanosecond (0.000000001 sec)
+
+// * Diagnostic Output - MemoryDiagnoser *
+
+// * Diagnostic Output - DisassemblyDiagnoser *
+Disassembled benchmarks got exported to ".\BenchmarkDotNet.Artifacts\results\*asm.md"
+
+// ***** BenchmarkRunner: End *****
+Run time: 00:01:56 (116.24 sec), executed benchmarks: 7
+
+Global total time: 00:02:13 (133.78 sec), executed benchmarks: 7
+// * Artifacts cleanup *
+Artifacts cleanup is finished
