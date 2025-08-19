@@ -32,7 +32,7 @@
 	<ItemGroup>
 
 		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
-		<None Include="..\StateMachine\Runtime\Extensions\ExtensionRunner.cs"
+		<None Include="..\FastFsm\Runtime\Extensions\ExtensionRunner.cs"
 		      Pack="true"
 		      PackagePath="contentFiles/cs/any"
 		      BuildAction="Compile"
@@ -40,7 +40,7 @@
 
 
 		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
-		<None Include="..\StateMachine\DependencyInjection\FsmServiceCollectionExtensions.cs"
+		<None Include="..\FastFsm\DependencyInjection\FsmServiceCollectionExtensions.cs"
 		      Pack="true"
 		      PackagePath="contentFiles/cs/any"
 		      BuildAction="Compile"
@@ -49,7 +49,7 @@
 	
 
 		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
-		<None Include="..\StateMachine\DependencyInjection\StateMachineFactory.cs"
+		<None Include="..\FastFsm\DependencyInjection\StateMachineFactory.cs"
 		      Pack="true"
 		      PackagePath="contentFiles/cs/any"
 		      BuildAction="Compile"
@@ -59,11 +59,5 @@
 
 
 
-	<!-- Timestamp version -->
-	<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
-		<PropertyGroup>
-			<Version>0.6.0-dev.$([System.DateTime]::UtcNow.ToString("yyyyMMddHHmmss"))</Version>
-			<PackageVersion>$(Version)</PackageVersion>
-		</PropertyGroup>
-	</Target>
+	
 </Project>
