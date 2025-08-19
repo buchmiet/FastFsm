@@ -16,18 +16,18 @@
 		<Authors>Lukasz Buchmiet</Authors>
 		<Description>High-performance state machine using source generators</Description>
 
-		<!-- Pakowanie -->
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<PackageOutputPath>../nupkgs</PackageOutputPath>
+		<PackageOutputPath>../nuget</PackageOutputPath>
+
 		<TargetsForTfmSpecificBuildOutput>
 			$(TargetsForTfmSpecificBuildOutput);
 			CopyProjectReferencesToPackage
 		</TargetsForTfmSpecificBuildOutput>
 	</PropertyGroup>
 
-
 	<!-- generator -->
 	<ItemGroup>
+		<ProjectReference Include="..\Abstractions\Abstractions.csproj" />
 		<ProjectReference Include="..\Generator\Generator.csproj" PrivateAssets="all" />
 	</ItemGroup>
 
@@ -39,44 +39,26 @@
 	<!-- analyzer (DLL generatora) -->
 	<ItemGroup>
 		<None Include="..\Generator\bin\$(Configuration)\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-		<!-- Analyzer XML documentation -->
 		<None Include="..\Generator\bin\$(Configuration)\netstandard2.0\*.xml" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
 	</ItemGroup>
 
-	
+	<!-- Zawartości (contentFiles) kopiowane do projektu konsumenta -->
 	<ItemGroup>
-		<!-- 1️⃣ nie kompilujemy wewnątrz FastFsm.Net.dll -->
 		<Compile Remove="Runtime\Extensions\ExtensionRunner.cs" />
-
-		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
 		<None Include="Runtime\Extensions\ExtensionRunner.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
 
 		<Compile Remove="DependencyInjection\FsmServiceCollectionExtensions.cs" />
-
-		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
 		<None Include="DependencyInjection\FsmServiceCollectionExtensions.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
 
 		<Compile Remove="DependencyInjection\StateMachineFactory.cs" />
-
-		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
 		<None Include="DependencyInjection\StateMachineFactory.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
-
 	</ItemGroup>
 
-	
 	<!-- Abstractions.dll do paczki -->
 	<Target Name="CopyProjectReferencesToPackage" DependsOnTargets="BuildOnlySettings;ResolveReferences">
 		<ItemGroup>
 			<BuildOutputInPackage Include="$(OutputPath)Abstractions.dll" />
 		</ItemGroup>
-	</Target>
-
-	<!-- wersja z timestampem -->
-	<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
-		<PropertyGroup>
-			<Version>0.6.0-dev.$([System.DateTime]::UtcNow.ToString("yyyyMMddHHmmss"))</Version>
-			<PackageVersion>$(Version)</PackageVersion>
-		</PropertyGroup>
 	</Target>
 
 </Project>
