@@ -22,7 +22,7 @@
 
 	<!-- zależności -->
 	<ItemGroup>
-		<PackageReference Include="FastFsm.Net" Version="0.6.9-*" />
+		<PackageReference Include="FastFsm.Net" Version="0.6.9-local.*" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
 	</ItemGroup>
 
@@ -34,7 +34,7 @@
 	<!-- ───────────  shared-source: ExtensionRunner (link)  ─────────── -->
 	<ItemGroup>
 		<!-- plik pobieramy z projektu core -->
-		<Content Include="..\StateMachine\Runtime\Extensions\ExtensionRunner.cs"
+		<Content Include="..\FastFsm\Runtime\Extensions\ExtensionRunner.cs"
 		         Link="Runtime\Extensions\ExtensionRunner.cs"
 		         Pack="true"
 		         PackagePath="contentFiles/cs/any"

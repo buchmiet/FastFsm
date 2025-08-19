@@ -27,9 +27,16 @@
 
 	<!-- generator -->
 	<ItemGroup>
-		<ProjectReference Include="..\Abstractions\Abstractions.csproj" />
+		<ProjectReference Include="..\Abstractions\Abstractions.csproj" PrivateAssets="all" />
 		<ProjectReference Include="..\Generator\Generator.csproj" PrivateAssets="all" />
 	</ItemGroup>
+	<Target Name="IncludeAbstractionsInPackage" AfterTargets="ResolveReferences">
+		<ItemGroup>
+			<BuildOutputInPackage
+				Include="@(ReferenceCopyLocalPaths)"
+				Condition="'%(ReferenceCopyLocalPaths.Filename)'=='Abstractions' and '%(ReferenceCopyLocalPaths.Extension)'=='.dll'" />
+		</ItemGroup>
+	</Target>
 
 	<!-- pliki *.props do nupkg -->
 	<ItemGroup>

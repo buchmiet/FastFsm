@@ -18,7 +18,7 @@ namespace Generator.SourceGenerators;
 /// instead of inheritance hierarchy.
 /// Phase 2: Implementing Core/Basic logic directly
 /// </summary>
-public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
+public class UnifiedStateMachineGenerator(StateMachineModel model) : StateMachineCodeGenerator(model)
 {
     // Feature detection flags
     private bool HasPayload => Model.GenerationConfig.HasPayload;
@@ -28,16 +28,12 @@ public class UnifiedStateMachineGenerator : StateMachineCodeGenerator
     private bool IsHierarchical => Model.HierarchyEnabled;
     private bool HasMultiPayload => Model.TriggerPayloadTypes?.Any() == true;
 
-    // Track if smCtx variable has been created in current transition context
+
     private bool _smCtxCreated = false;
 
     // Extensions feature writer (used when HasExtensions)
     private readonly ExtensionsFeatureWriter _ext = new();
 
-    public UnifiedStateMachineGenerator(StateMachineModel model) : base(model)
-{
-        // Unified generator handles all variants directly (Pure/Basic/WithPayload/WithExtensions/Full)
-}
 
     public override string Generate()
 {
