@@ -18,7 +18,7 @@ namespace Generator.SourceGenerators;
 /// Baza dla wszystkich generatorów-wariantów.
 /// Posiada kompletny zestaw helperów sync/async oraz hooków.
 /// </summary>
-public abstract class StateMachineCodeGenerator(StateMachineModel model)
+internal abstract class StateMachineCodeGenerator(StateMachineModel model)
 {
 
 

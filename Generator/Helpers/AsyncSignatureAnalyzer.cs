@@ -9,7 +9,7 @@ namespace Generator.Helpers;
 /// Analizuje symbol metody (IMethodSymbol) i określa jej charakterystykę asynchroniczną.
 /// Działa w izolacji, co ułatwia testowanie.
 /// </summary>
-public sealed class AsyncSignatureAnalyzer
+internal sealed class AsyncSignatureAnalyzer
 {
     private readonly TypeSystemHelper _typeHelper;
     private readonly ConcurrentDictionary<IMethodSymbol, AsyncSignatureInfo> _cache = new(SymbolEqualityComparer.Default);
@@ -24,6 +24,9 @@ public sealed class AsyncSignatureAnalyzer
     private const string BoolFullName = "System.Boolean";
     private const string VoidFullName = "System.Void";
 
+    /// <summary>
+    /// Initializes a new instance of the AsyncSignatureAnalyzer class.
+    /// </summary>
     public AsyncSignatureAnalyzer(TypeSystemHelper typeHelper)
     {
         _typeHelper = typeHelper;

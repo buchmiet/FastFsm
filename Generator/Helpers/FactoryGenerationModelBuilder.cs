@@ -7,9 +7,9 @@ using static Generator.Strings;
 
 namespace Generator.Helpers;
 
-public class FactoryGenerationModelBuilder
+internal class FactoryGenerationModelBuilder
 {
-    public static FactoryGenerationModel Create(StateMachineModel model)
+    internal static FactoryGenerationModel Create(StateMachineModel model)
     {
         var typeHelper = new TypeSystemHelper();
 

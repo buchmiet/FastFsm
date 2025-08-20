@@ -12,7 +12,7 @@ namespace Generator.Infrastructure;
 /// <summary>
 /// Provides centralized, testable operations for type system manipulation in code generation.
 /// </summary>
-public class TypeSystemHelper
+internal class TypeSystemHelper
 {
     private  INamedTypeSymbol _taskSymbol;
     private  INamedTypeSymbol _taskOfTSymbol;
@@ -20,7 +20,7 @@ public class TypeSystemHelper
     private  INamedTypeSymbol _valueTaskOfTSymbol;
 
 
-    public TypeSystemHelper()
+    internal TypeSystemHelper()
     {
 
 
@@ -212,7 +212,7 @@ public class TypeSystemHelper
         return lastDot > 0 ? typeName.Substring(0, lastDot) : null;
     }
 
-    public string GetSimpleTypeName(string fullyQualifiedTypeName)
+    internal string GetSimpleTypeName(string fullyQualifiedTypeName)
     {
         if (string.IsNullOrEmpty(fullyQualifiedTypeName))
             return "object";

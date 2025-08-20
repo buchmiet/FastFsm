@@ -11,9 +11,9 @@ namespace Generator.Helpers;
 /// <summary>
 /// Dumps parsed StateMachineModel to a diagnostic source file for debugging
 /// </summary>
-public static class ModelDebugDumper
+internal static class ModelDebugDumper
 {
-    public static void Dump(SourceProductionContext context, StateMachineModel model, string safeName, HashSet<string> usedNames)
+    internal static void Dump(SourceProductionContext context, StateMachineModel model, string safeName, HashSet<string> usedNames)
     {
         var uniqueName = GetUniqueDumpName(safeName, usedNames);
         var content = GenerateDumpContent(model, uniqueName);

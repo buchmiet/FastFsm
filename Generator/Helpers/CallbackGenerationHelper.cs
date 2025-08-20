@@ -3,14 +3,29 @@ using Generator.Model;
 
 namespace Generator.Helpers
 {
-    public static class CallbackGenerationHelper
+    /// <summary>
+    /// Helper for generating callback code.
+    /// </summary>
+    internal static class CallbackGenerationHelper
     {
         private static TypeSystemHelper TypeHelper = new();
 
-        public enum CallbackType
+        /// <summary>
+        /// Type of callback being generated.
+        /// </summary>
+        internal enum CallbackType
         {
+            /// <summary>
+            /// State entry callback.
+            /// </summary>
             OnEntry,
+            /// <summary>
+            /// State exit callback.
+            /// </summary>
             OnExit,
+            /// <summary>
+            /// Transition action callback.
+            /// </summary>
             Action
         }
 

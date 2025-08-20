@@ -19,6 +19,9 @@ using static Generator.Strings;
 
 namespace Generator;
 
+/// <summary>
+/// Roslyn incremental source generator for state machines.
+/// </summary>
 [Generator]
 public class StateMachineGenerator : IIncrementalGenerator
 {
@@ -132,6 +135,10 @@ public class StateMachineGenerator : IIncrementalGenerator
         }
     }
 
+    /// <summary>
+    /// Initializes the source generator.
+    /// </summary>
+    /// <param name="ctx">The generator initialization context.</param>
     public void Initialize(IncrementalGeneratorInitializationContext ctx)
     {
         // Following Roslyn incremental generator best practices:

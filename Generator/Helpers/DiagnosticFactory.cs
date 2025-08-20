@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis;
 
 namespace Generator.Helpers; 
 
-public static class DiagnosticFactory
+internal static class DiagnosticFactory
 {
    
     private static readonly ConcurrentDictionary<string, DiagnosticDescriptor> DescriptorCache = new();
@@ -30,7 +30,7 @@ public static class DiagnosticFactory
     /// <param name="ruleId">Identyfikator reguły (np. "FSM001").</param>
     /// <returns>Odpowiedni DiagnosticDescriptor.</returns>
     /// <exception cref="KeyNotFoundException">Jeśli reguła o danym ID nie jest zdefiniowana w DefinedRules.</exception>
-    public static DiagnosticDescriptor Get(string ruleId)
+    internal static DiagnosticDescriptor Get(string ruleId)
     {
         return DescriptorCache.GetOrAdd(ruleId, id =>
         {
@@ -57,7 +57,7 @@ public static class DiagnosticFactory
         });
     }
 
-    public static bool TryCreateDiagnostic(ValidationResult validationResult, Location location,out Diagnostic result)
+    internal static bool TryCreateDiagnostic(ValidationResult validationResult, Location location,out Diagnostic result)
     {
       
         if (validationResult.IsValid || string.IsNullOrEmpty(validationResult.RuleId) || string.IsNullOrEmpty(validationResult.Message))

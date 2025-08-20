@@ -5,7 +5,7 @@ namespace Generator.Planning;
 /// <summary>
 /// Represents a complete plan for executing a transition
 /// </summary>
-public readonly struct TransitionPlan
+internal readonly struct TransitionPlan
 {
     /// <summary>
     /// Whether this is an internal transition (no state change)
@@ -32,6 +32,9 @@ public readonly struct TransitionPlan
     /// </summary>
     public IReadOnlyList<PlanStep> Steps { get; }
     
+    /// <summary>
+    /// Initializes a new instance of the TransitionPlan struct.
+    /// </summary>
     public TransitionPlan(
         bool isInternal,
         int fromStateIndex,

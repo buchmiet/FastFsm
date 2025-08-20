@@ -7,8 +7,11 @@ namespace Generator.Planning;
 /// <summary>
 /// Planner for hierarchical state machines with parent-child relationships
 /// </summary>
-public class HierarchicalTransitionPlanner : ITransitionPlanner
+internal class HierarchicalTransitionPlanner : ITransitionPlanner
 {
+    /// <summary>
+    /// Builds a transition plan for hierarchical state machines.
+    /// </summary>
     public TransitionPlan BuildPlan(TransitionBuildContext context)
     {
         var steps = new List<PlanStep>();
