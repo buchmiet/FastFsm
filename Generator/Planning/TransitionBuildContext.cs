@@ -6,7 +6,7 @@ namespace Generator.Planning;
 /// <summary>
 /// Context for building a transition plan
 /// </summary>
-public class TransitionBuildContext
+internal class TransitionBuildContext
 {
     /// <summary>
     /// The state machine model
@@ -58,6 +58,9 @@ public class TransitionBuildContext
     /// </summary>
     public HistoryMode[] HistoryModes { get; }
     
+    /// <summary>
+    /// Initializes a new instance of the TransitionBuildContext class.
+    /// </summary>
     public TransitionBuildContext(
         StateMachineModel model,
         TransitionModel transition,

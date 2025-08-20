@@ -6,8 +6,11 @@ namespace Generator.Planning;
 /// <summary>
 /// Planner for flat (non-hierarchical) state machines
 /// </summary>
-public class FlatTransitionPlanner : ITransitionPlanner
+internal class FlatTransitionPlanner : ITransitionPlanner
 {
+    /// <summary>
+    /// Builds a transition plan for flat state machines.
+    /// </summary>
     public TransitionPlan BuildPlan(TransitionBuildContext context)
     {
         var steps = new List<PlanStep>();

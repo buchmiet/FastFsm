@@ -3,7 +3,7 @@ namespace Generator.Planning;
 /// <summary>
 /// Interface for transition planners that generate execution plans for state transitions
 /// </summary>
-public interface ITransitionPlanner
+internal interface ITransitionPlanner
 {
     /// <summary>
     /// Builds a plan for executing a transition

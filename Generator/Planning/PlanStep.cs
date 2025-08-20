@@ -3,7 +3,7 @@ namespace Generator.Planning;
 /// <summary>
 /// Represents a single step in a transition plan
 /// </summary>
-public readonly struct PlanStep
+internal readonly struct PlanStep
 {
     /// <summary>
     /// The type of this step
@@ -75,6 +75,9 @@ public readonly struct PlanStep
     /// </summary>
     public string? OnExitMethod { get; }
     
+    /// <summary>
+    /// Initializes a new instance of the PlanStep struct.
+    /// </summary>
     public PlanStep(
         PlanStepKind kind,
         int stateIndex = -1,

@@ -3,7 +3,7 @@
 /// <summary>
 /// Zawiera wynik analizy sygnatury metody pod kątem jej asynchroniczności i poprawności.
 /// </summary>
-public struct AsyncSignatureInfo
+internal struct AsyncSignatureInfo
 {
     /// <summary>
     /// Czy metoda jest asynchroniczna (zwraca Task/ValueTask).

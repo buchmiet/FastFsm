@@ -3,7 +3,7 @@ namespace Generator.Planning;
 /// <summary>
 /// Defines the type of step in a transition plan
 /// </summary>
-public enum PlanStepKind
+internal enum PlanStepKind
 {
     /// <summary>
     /// Exit a state (calls OnExit)

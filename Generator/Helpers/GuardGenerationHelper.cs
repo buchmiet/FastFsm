@@ -3,7 +3,10 @@ using Generator.Model;
 
 namespace Generator.Helpers
 {
-    public static class GuardGenerationHelper
+    /// <summary>
+    /// Helper for generating guard check code.
+    /// </summary>
+    internal static class GuardGenerationHelper
     {
         private static TypeSystemHelper TypeHelper = new();
 

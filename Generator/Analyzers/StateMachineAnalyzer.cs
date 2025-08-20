@@ -15,11 +15,17 @@ using static Generator.Strings;
 
 namespace Generator.Analyzers;
 
+/// <summary>
+/// Roslyn analyzer for validating state machine definitions.
+/// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class StateMachineAnalyzer : DiagnosticAnalyzer
 {
 
 
+    /// <summary>
+    /// Gets the diagnostics supported by this analyzer.
+    /// </summary>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         [
             ..DefinedRules.All
@@ -31,6 +37,10 @@ public class StateMachineAnalyzer : DiagnosticAnalyzer
     private static readonly InvalidTypesInAttributeRule _invalidTypesInAttributeRule = new();
     private static readonly DuplicateTransitionRule _duplicateTransitionRule = new();
 
+    /// <summary>
+    /// Initializes the analyzer.
+    /// </summary>
+    /// <param name="context">The analysis context.</param>
     public override void Initialize(AnalysisContext context)
     {
         // Analyzer config

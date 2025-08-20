@@ -18,7 +18,7 @@ namespace Generator.SourceGenerators;
 /// instead of inheritance hierarchy.
 /// Phase 2: Implementing Core/Basic logic directly
 /// </summary>
-public class UnifiedStateMachineGenerator(StateMachineModel model) : StateMachineCodeGenerator(model)
+internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMachineCodeGenerator(model)
 {
     // Feature detection flags
     private bool HasPayload => Model.GenerationConfig.HasPayload;

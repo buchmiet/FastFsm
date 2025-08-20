@@ -11,7 +11,7 @@ namespace Generator.Helpers;
 /// Analyzes callback method signatures to determine all available overloads
 /// and their characteristics (async, parameters, return types).
 /// </summary>
-public sealed class CallbackSignatureAnalyzer
+internal sealed class CallbackSignatureAnalyzer
 {
     private readonly TypeSystemHelper _typeHelper;
     private readonly AsyncSignatureAnalyzer _asyncAnalyzer;
@@ -20,6 +20,9 @@ public sealed class CallbackSignatureAnalyzer
     // Known type names
     private const string CancellationTokenFullName = "System.Threading.CancellationToken";
 
+    /// <summary>
+    /// Initializes a new instance of the CallbackSignatureAnalyzer class.
+    /// </summary>
     public CallbackSignatureAnalyzer(TypeSystemHelper typeHelper, AsyncSignatureAnalyzer asyncAnalyzer)
     {
         _typeHelper = typeHelper;
