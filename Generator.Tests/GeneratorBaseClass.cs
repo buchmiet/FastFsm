@@ -42,7 +42,7 @@ public abstract class GeneratorBaseClass(ITestOutputHelper output)
         string? solutionDir = null;
         for (int i = 0; i < 10; i++)
         {
-            if (Directory.GetFiles(currentDir, "*.sln").Any())
+            if (Directory.GetFiles(currentDir, "*.slnx").Any())
             {
                 solutionDir = currentDir;
                 break;
@@ -57,7 +57,7 @@ public abstract class GeneratorBaseClass(ITestOutputHelper output)
 
         // Dodaj StateMachine.dll
         string fsmFastDllPath = Path.Combine(
-            solutionDir, "StateMachine", "bin", configuration, "net9.0", "StateMachine.dll");
+            solutionDir, "FastFsm", "bin", configuration, "net9.0", "FastFsm.dll");
 
         if (File.Exists(fsmFastDllPath))
         {
@@ -66,7 +66,7 @@ public abstract class GeneratorBaseClass(ITestOutputHelper output)
         }
         else
         {
-            throw new FileNotFoundException($"StateMachine.dll not found at: {fsmFastDllPath}. " +
+            throw new FileNotFoundException($"FastFsm.dll not found at: {fsmFastDllPath}. " +
                                             "Make sure StateMachine. project is built before running tests.");
         }
 
@@ -133,7 +133,7 @@ public abstract class GeneratorBaseClass(ITestOutputHelper output)
         {
             // ExtensionRunner.cs (shared‑source)
             var extRunner = Path.Combine(solutionDir,
-                                         "StateMachine",
+                                         "FastFsm",
                                          "Runtime",
                                          "Extensions",
                                          "ExtensionRunner.cs");
