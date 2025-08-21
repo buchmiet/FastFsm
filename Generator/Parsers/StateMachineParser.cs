@@ -254,26 +254,27 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         // === SEKCJA 5: Podstawowa walidacja atrybutu i klasy ===
         report?.Invoke("Section 5: Basic attribute and class validation");
         
-        // FIXED: Get all declarations of this type symbol to properly check if it's partial
-        var allDecls = classSymbol.DeclaringSyntaxReferences
+        // Aggregate all partial declarations for this symbol (not just current declaration)
+        var allDecls = classSymbol
+            .DeclaringSyntaxReferences
             .Select(r => r.GetSyntax(context.CancellationToken))
             .OfType<ClassDeclarationSyntax>()
             .ToArray();
-        
-        // FIXED: Check if ALL parts are partial (not just the current one)
-        bool isPartialAcrossType = allDecls.Length > 0 && 
-            allDecls.All(cd => cd.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)));
-        
-        // FIXED: Check if any declaration is from generated code (obj folder)
-        bool anyFromObj = allDecls.Any(d => 
+
+        // Partial-as-a-whole: at least one part must be 'partial' for our requirement
+        var isPartialAcrossType = allDecls.Any(cd => cd.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)));
+
+        // Skip diagnosing missing attribute from generated files under obj/ (avoids FP from generated partials)
+        var anyFromObj = allDecls.Any(d =>
         {
-            var path = d.SyntaxTree?.FilePath ?? "";
-            return path.Contains($"{System.IO.Path.DirectorySeparatorChar}obj{System.IO.Path.DirectorySeparatorChar}");
+            var p = d.SyntaxTree?.FilePath ?? string.Empty;
+            return p.Contains($"{System.IO.Path.DirectorySeparatorChar}obj{System.IO.Path.DirectorySeparatorChar}");
         });
-        
-        // FIXED: Better diagnostic location - prefer first non-generated declaration
-        Location diagLocation = allDecls.FirstOrDefault()?.Identifier.GetLocation() 
-            ?? classSymbol.Locations.FirstOrDefault() 
+
+        // Stable diagnostic location for "missing attribute": first user declaration (fallbacks to symbol/declaration)
+        var diagLocation =
+            allDecls.FirstOrDefault()?.Identifier.GetLocation()
+            ?? classSymbol.Locations.FirstOrDefault()
             ?? classDeclaration.Identifier.GetLocation();
         
         // Use attribute location only when we have an attribute with issues
@@ -281,7 +282,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         
         report?.Invoke($"Class is partial across type: {isPartialAcrossType} (checked {allDecls.Length} declarations)");
 
-        // NEW: quick check whether this class looks like an FSM at all
+        // Check whether this class looks like an FSM at all
         bool hasClassLevelFsmAttrs = classSymbol.GetAttributes().Any(a =>
         {
             var n = a.AttributeClass?.ToDisplayString();
@@ -298,49 +299,64 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
                     || n == InternalTransitionAttributeFullName;
             }));
 
-        // Check if this is a framework base class that should be excluded
-        bool isFrameworkBaseClass = classSymbol.Name == "StateMachineBase" || 
-                                   classSymbol.Name == "AsyncStateMachineBase" ||
-                                   (classSymbol.ContainingNamespace?.ToDisplayString() == "StateMachine.Runtime");
-        
         bool looksLikeFsm = (fsmAttribute != null) || hasClassLevelFsmAttrs || hasMemberLevelFsmAttrs;
-        report?.Invoke($"LooksLikeFSM: {looksLikeFsm}, IsFrameworkBaseClass: {isFrameworkBaseClass}");
+        report?.Invoke($"LooksLikeFSM: {looksLikeFsm}");
 
-        // If it doesn't look like a state machine at all, or if it's a framework base class, silently skip (no FSM004)
-        if (!looksLikeFsm || isFrameworkBaseClass)
+        // Get constructor argument count early (needed in multiple places)
+        var ctorArgCount = fsmAttribute?.ConstructorArguments.Length ?? 0;
+
+        // ── Guard before running the rule:
+        // 1) If class obviously isn't a FSM candidate → skip
+        if (!looksLikeFsm)
         {
-            report?.Invoke("Skipping MissingStateMachineAttributeRule: class does not look like FSM or is a framework base class");
-            return false;
+            report?.Invoke("Skipping MissingStateMachineAttributeRule: class does not look like FSM");
+            goto AfterMissingAttrValidation;
         }
-        
-        // FIXED: Skip FSM004 for generated code when attribute is missing
-        if (fsmAttribute == null && anyFromObj)
+
+        // 2) If analyzer is looking only at generated parts (obj/) and we don't see the attribute here,
+        //    don't emit FSM004 based on generated code. Let user code drive the diagnostic.
+        if (fsmAttribute is null && anyFromObj)
         {
             report?.Invoke("Skipping MissingStateMachineAttributeRule: no attribute but in generated code");
-            return false;
+            goto AfterMissingAttrValidation;
         }
 
-        // Existing behavior for real/likely FSM classes:
-        // FIXED: Use isPartialAcrossType instead of local isPartial
-        var missingAttrCtx = new MissingStateMachineAttributeValidationContext(
-            fsmAttribute != null,
-            fsmAttribute?.ConstructorArguments.Length ?? 0,
-            classSymbol.Name,
-            isPartialAcrossType  // FIXED: was isPartial
-        );
+        // 3) If symbol has a proper attribute and is partial as a whole → do not run the rule at all.
+        if (fsmAttribute is not null && ctorArgCount >= 2 && isPartialAcrossType)
+        {
+            report?.Invoke("Skipping MissingStateMachineAttributeRule: has proper attribute and is partial");
+            goto AfterMissingAttrValidation;
+        }
 
+        // Build context and run the rule only now.
+        var missingAttrCtx = new MissingStateMachineAttributeValidationContext(
+            hasAttribute: fsmAttribute != null,
+            argCount: ctorArgCount,
+            className: classSymbol.Name,
+            isPartial: isPartialAcrossType
+        );
         report?.Invoke("Validating missing attribute rule");
-        // FIXED: Use diagLocation for better error positioning
         ProcessRuleResults(_missingStateMachineAttributeRule.Validate(missingAttrCtx), 
-            fsmAttribute != null ? fsmAttributeLocation : diagLocation, 
+            fsmAttributeLocation ?? diagLocation,
             ref criticalErrorOccurred);
         report?.Invoke($"Critical error after missing attribute validation: {criticalErrorOccurred}");
 
-        // FIXED: Use isPartialAcrossType in the condition
-        if (fsmAttribute == null || fsmAttribute.ConstructorArguments.Length < 2 || !isPartialAcrossType)
+    AfterMissingAttrValidation:
+        // Hard gate: if still missing or malformed on the symbol, stop parsing
+        // BUT: only check this if we actually ran the validation (i.e., didn't skip via goto)
+        if (fsmAttribute == null || ctorArgCount < 2 || !isPartialAcrossType)
         {
-            report?.Invoke("ERROR: Invalid attribute or not partial class - returning false");
-            return false;
+            // If we skipped validation because class has valid attribute, we should continue
+            if (fsmAttribute != null && ctorArgCount >= 2 && isPartialAcrossType)
+            {
+                // Valid state machine, continue parsing
+                report?.Invoke("Valid state machine detected - continuing");
+            }
+            else
+            {
+                report?.Invoke("ERROR: Invalid attribute or not partial class - returning false");
+                return false;
+            }
         }
 
         // === SEKCJA 6: Walidacja typów State i Trigger ===
@@ -507,10 +523,60 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         
         report?.Invoke($"Transition metrics: internal={internalCount}, external={externalCount}, total={totalCount}");
 
+        // ── HSM helpers (local): expand composite entry into initial child chain
+        string ExpandEntryTarget(string stateName)
+        {
+            if (!currentModel.HierarchyEnabled) return stateName;
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var target = stateName;
+            while (true)
+            {
+                if (!seen.Add(target)) break; // safety: avoid cycles
+                if (currentModel.InitialChildOf.TryGetValue(target, out var initial))
+                {
+                    target = initial;
+                    continue;
+                }
+                break;
+            }
+            return target;
+        }
+
+        // Prefer explicit top-level initial; otherwise any top-level; otherwise first state
+        string DetermineInitialTopLevelState()
+        {
+            var topInitial = currentModel.States.Values
+                .FirstOrDefault(s => s.IsInitial && s.ParentState == null)?.Name;
+            if (!string.IsNullOrEmpty(topInitial)) return topInitial!;
+
+            var anyTop = currentModel.States.Values
+                .FirstOrDefault(s => s.ParentState == null)?.Name;
+            if (!string.IsNullOrEmpty(anyTop)) return anyTop!;
+
+            return currentModel.States.Keys.FirstOrDefault() ?? string.Empty;
+        }
+
+        // Podstawowe przejścia: NIE podmieniamy celu na "expanded"
         var transitionsForReachability = currentModel.Transitions
             .Where(t => !string.IsNullOrEmpty(t.ToState))
             .Select(t => new TransitionDefinition(t.FromState, t.Trigger, t.ToState!))
             .ToList();
+
+        // Dla HSM: dodaj pseudo-krawędzie Parent → InitialChild,
+        // aby BFS po dotarciu do rodzica schodził do jego stanu początkowego.
+        if (currentModel.HierarchyEnabled && currentModel.InitialChildOf.Count > 0)
+        {
+            foreach (var kv in currentModel.InitialChildOf)
+            {
+                var parent = kv.Key;
+                var initialChild = kv.Value;
+                if (!string.IsNullOrEmpty(parent) && !string.IsNullOrEmpty(initialChild))
+                {
+                    transitionsForReachability.Add(
+                        new TransitionDefinition(parent, string.Empty, initialChild));
+                }
+            }
+        }
         
         // Report diagnostic for internal-only or no-transitions machines
         if (externalCount == 0 && internalCount > 0)
@@ -539,7 +605,10 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         else if (externalCount > 0)
         {
             // Only validate reachability when there are external transitions
-            string initialStateForReachability = allStateNames.FirstOrDefault() ?? string.Empty;
+            // Start from top-level initial (BEZ ekspansji do liścia),
+            // żeby rodzic (kompozyt) był osiągalny sam w sobie.
+            var initialTop = DetermineInitialTopLevelState();
+            string initialStateForReachability = initialTop;
             report?.Invoke($"Initial state: {initialStateForReachability}");
 
             var unreachableCtx = new UnreachableStateContext(initialStateForReachability, allStateNames, transitionsForReachability);
