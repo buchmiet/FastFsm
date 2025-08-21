@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Abstractions.Attributes;
 
-namespace StateMachine.Async.Tests.Features.Cancellation
+namespace  FastFsm.Async.Tests.Features.Cancellation
 {
     // Simple machine to test cancellation token propagation
     [StateMachine(typeof(SimpleStates), typeof(SimpleTriggers))]

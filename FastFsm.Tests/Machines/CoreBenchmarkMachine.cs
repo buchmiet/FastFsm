@@ -1,7 +1,7 @@
 ﻿using Abstractions.Attributes;
-using static StateMachine.Tests.Features.Performance.BenchmarkTests;
+using static FastFsm.Tests.Features.Performance.BenchmarkTests;
 
-namespace StateMachine.Tests.Machines
+namespace FastFsm.Tests.Machines
 {
     [StateMachine(typeof(BenchmarkState), typeof(BenchmarkTrigger))]
     public partial class CoreBenchmarkMachine

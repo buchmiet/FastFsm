@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Xunit;
-using StateMachine.Async.Tests.Features.Cancellation;
+using  FastFsm.Async.Tests.Features.Cancellation;
 
-namespace StateMachine.Async.Tests.Features.Lifecycle
+namespace  FastFsm.Async.Tests.Features.Lifecycle
 {
     public class AsyncLifecycleTests
     {

@@ -1,6 +1,6 @@
 using Xunit;
 
-namespace StateMachine.Tests.Features.Hsm.CompileTime
+namespace FastFsm.Tests.Features.Hsm.CompileTime
 {
     public class HsmDebugDumpTests
     {

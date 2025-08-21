@@ -1,12 +1,10 @@
-﻿
-
-using System;
+﻿using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Abstractions.Attributes;
-using StateMachine.Contracts;
+using FastFsm.Contracts;
 
-namespace StateMachine.Builder;
+namespace FastFsm.Builder;
 
 
 public class StateMachineBuilder<TState, TTrigger> : IStateMachineBuilder<TState, TTrigger>

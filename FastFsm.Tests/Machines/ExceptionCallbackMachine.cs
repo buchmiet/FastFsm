@@ -1,9 +1,9 @@
 ﻿using System;
 using Abstractions.Attributes;
-using StateMachine.Tests.Features.Core;
+using FastFsm.Tests.Features.Core;
 
 
-namespace StateMachine.Tests.Machines
+namespace FastFsm.Tests.Machines
 {
     [StateMachine(typeof(StateCallbackTests.ExceptionState), typeof(StateCallbackTests.ExceptionTrigger))]
     public partial class ExceptionCallbackMachine

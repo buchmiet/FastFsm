@@ -2,7 +2,7 @@ using System.Threading.Tasks;
 using Abstractions.Attributes;
 using Xunit;
 
-namespace StateMachine.Async.Tests.Features.Hsm.CompileTime;
+namespace  FastFsm.Async.Tests.Features.Hsm.CompileTime;
 
 public partial class AsyncNoActionHsmTests
 {

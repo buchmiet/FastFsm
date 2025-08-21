@@ -1,15 +1,15 @@
 ﻿using Abstractions.Attributes;
 using Shouldly;
-using StateMachine.Contracts;
-using StateMachine.Exceptions;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using FastFsm.Exceptions;
 using Xunit;
 
-namespace StateMachine.Async.Tests.Features.Core;
+namespace  FastFsm.Async.Tests.Features.Core;
 
 // Definicje dla testów
 public enum AsyncStates

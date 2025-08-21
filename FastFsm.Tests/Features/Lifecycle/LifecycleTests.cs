@@ -1,13 +1,13 @@
-﻿using StateMachine.Tests.Machines;
+﻿using FastFsm.Tests.Machines;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Xunit;
-using static StateMachine.Tests.Features.Performance.BenchmarkTests;
+using static FastFsm.Tests.Features.Performance.BenchmarkTests;
 
-namespace StateMachine.Tests.Features.Lifecycle
+namespace FastFsm.Tests.Features.Lifecycle
 {
     public class LifecycleTests
     {

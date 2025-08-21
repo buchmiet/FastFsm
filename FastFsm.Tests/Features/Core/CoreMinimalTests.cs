@@ -1,10 +1,10 @@
 using System;
 using Shouldly;
-using StateMachine.Tests.Machines;
-using StateMachine.Tests.Features.Performance;
+using FastFsm.Tests.Machines;
+using FastFsm.Tests.Features.Performance;
 using Xunit;
 
-namespace StateMachine.Tests.Features.Core
+namespace FastFsm.Tests.Features.Core
 {
     public class CoreMinimalTests
     {

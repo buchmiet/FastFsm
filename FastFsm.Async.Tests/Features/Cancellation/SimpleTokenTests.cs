@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace StateMachine.Async.Tests.Features.Cancellation;
+namespace  FastFsm.Async.Tests.Features.Cancellation;
 
 // \n// ====== Minimal token‑aware state machine ======\n//
 

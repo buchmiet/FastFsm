@@ -1,7 +1,7 @@
 ﻿using Abstractions.Attributes;
 
 
-namespace StateMachine.Tests.Features.EdgeCases
+namespace FastFsm.Tests.Features.EdgeCases
 {
     [StateMachine(typeof(EmptyMachineTests.EmptyState), typeof(EmptyMachineTests.EmptyTrigger))]
     public partial class NoTransitionsMachine

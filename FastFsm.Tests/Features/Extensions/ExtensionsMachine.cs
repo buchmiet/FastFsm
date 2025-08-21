@@ -1,6 +1,7 @@
 ﻿using Abstractions.Attributes;
+using FastFsm.Tests.Features.Extensions;
 
-namespace StateMachine.Tests.Features.Extensions
+namespace FastFsm.Tests.Features.Extensions
 {
     [StateMachine(typeof(ExtState), typeof(ExtTrigger), GenerateExtensibleVersion = true)]
     public partial class ExtensionsMachine

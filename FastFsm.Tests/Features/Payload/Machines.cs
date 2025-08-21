@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 using Abstractions.Attributes;
-using static StateMachine.Tests.Features.Payload.PayloadVariantTests;
+using static FastFsm.Tests.Features.Payload.PayloadVariantTests;
 
-namespace StateMachine.Tests.Features.Payload
+namespace FastFsm.Tests.Features.Payload
 {
     [StateMachine(typeof(OrderState), typeof(OrderTrigger))]
     [PayloadType(typeof(OrderData))]

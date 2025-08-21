@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
 using Abstractions.Attributes;
-using StateMachine.Tests.Features.Core;
+using FastFsm.Tests.Features.Core;
 
 
-namespace StateMachine.Tests.Machines
+namespace FastFsm.Tests.Machines
 {
     [StateMachine(typeof(StateCallbackTests.InternalState), typeof(StateCallbackTests.InternalTrigger))]
     public partial class InternalTransitionMachine

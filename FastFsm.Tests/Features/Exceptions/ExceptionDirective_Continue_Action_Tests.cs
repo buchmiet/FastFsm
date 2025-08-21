@@ -1,9 +1,10 @@
 ﻿using System;
 using Abstractions.Attributes;
-using StateMachine.Exceptions;
+using FastFsm.Exceptions;
+using FastFsm.Exceptions;
 using Xunit;
 
-namespace StateMachine.Tests.Features.Exceptions;
+namespace FastFsm.Tests.Features.Exceptions;
 
 public class ExceptionDirective_Continue_Action_Tests
 {

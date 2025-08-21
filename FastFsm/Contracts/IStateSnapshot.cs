@@ -1,4 +1,4 @@
-﻿namespace StateMachine.Contracts;
+﻿namespace FastFsm.Contracts;
 
 /// <summary>
 /// Provides a non-generic, reflection-free snapshot of a transition's key properties.

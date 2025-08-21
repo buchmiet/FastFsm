@@ -71,7 +71,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         var stateCount = allStates.Count;
         
         // Parent array (-1 for root states)
-        Sb.Append("        private static readonly int[] s_parent = new int[] { ");
+        Sb.Append("        private static readonly int[] g_parent = new int[] { ");
         var parentValues = allStates.Select(state =>
         {
             if (Model.ParentOf.TryGetValue(state, out var parent) && parent != null)
@@ -85,7 +85,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine(" };");
         
         // Depth array
-        Sb.Append("        private static readonly int[] s_depth = new int[] { ");
+        Sb.Append("        private static readonly int[] g_depth = new int[] { ");
         var depthValues = allStates.Select(state =>
         {
             if (Model.Depth.TryGetValue(state, out var depth))
@@ -98,7 +98,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine(" };");
         
         // Initial child array (-1 for non-composites)
-        Sb.Append("        private static readonly int[] s_initialChild = new int[] { ");
+        Sb.Append("        private static readonly int[] g_initialChild = new int[] { ");
         var initialValues = allStates.Select(state =>
         {
             if (Model.InitialChildOf.TryGetValue(state, out var initial) && initial != null)
@@ -112,18 +112,28 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine(" };");
         
         // History mode array
-        Sb.Append("        private static readonly HistoryMode[] s_history = new HistoryMode[] { ");
+        var historyModeType = TypeHelper.GetHistoryModeTypeName();
+        Sb.Append($"        private static readonly {historyModeType}[] g_history = new {historyModeType}[] {{ ");
         var historyValues = allStates.Select(state =>
         {
             if (Model.HistoryOf.TryGetValue(state, out var history))
             {
-                return $"HistoryMode.{history}";
+                return $"{historyModeType}.{history}";
             }
-            return "HistoryMode.None";
+            return $"{historyModeType}.None";
         });
         Sb.Append(string.Join(", ", historyValues));
         Sb.AppendLine(" };");
         
+        // Add override properties for base class
+        Sb.AppendLine("        protected override int[] ParentArray => g_parent;");
+        Sb.AppendLine("        protected override int[] DepthArray => g_depth;");
+        Sb.AppendLine("        protected override int[] InitialChildArray => g_initialChild;");
+        Sb.AppendLine($"        protected override {historyModeType}[] HistoryArray => g_history;");
+        var hasHistory = Model.HistoryOf.Values.Any(h =>
+            !h.Equals(Abstractions.Attributes.HistoryMode.None));
+        Sb.AppendLine($"        protected override bool HasHistory => {(hasHistory ? "true" : "false")};");
+
         // Generate precomputed permission arrays for HSM (zero-alloc)
         GenerateHsmPermittedTriggerArrays(triggerTypeForUsage);
         
@@ -199,7 +209,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             }
             Sb.AppendLine();
             Sb.AppendLine("// Walk up the parent chain from current state");
-            Sb.AppendLine("var parentIndex = s_parent[currentIndex];");
+            Sb.AppendLine("var parentIndex = g_parent[currentIndex];");
             using (Sb.Block("while (parentIndex >= 0)"))
             {
                 Sb.AppendLine("if (parentIndex == targetIndex)");
@@ -207,7 +217,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                 {
                     Sb.AppendLine("return true;");
                 }
-                Sb.AppendLine("parentIndex = s_parent[parentIndex];");
+                Sb.AppendLine("parentIndex = g_parent[parentIndex];");
             }
             Sb.AppendLine();
             Sb.AppendLine("return false;");
@@ -227,7 +237,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             using (Sb.Block("while (currentIndex >= 0)"))
             {
                 Sb.AppendLine($"path.Add(({stateTypeForUsage})currentIndex);");
-                Sb.AppendLine("currentIndex = s_parent[currentIndex];");
+                Sb.AppendLine("currentIndex = g_parent[currentIndex];");
             }
             Sb.AppendLine();
             Sb.AppendLine("// Reverse to get root-to-leaf order");
@@ -251,7 +261,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             using (Sb.Block("while (tempIndex >= 0)"))
             {
                 Sb.AppendLine("depth++;");
-                Sb.AppendLine("tempIndex = s_parent[tempIndex];");
+                Sb.AppendLine("tempIndex = g_parent[tempIndex];");
             }
             Sb.AppendLine();
             Sb.AppendLine("// Check if destination has enough space");
@@ -266,7 +276,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             using (Sb.Block("while (currentIndex >= 0 && writeIndex >= 0)"))
             {
                 Sb.AppendLine($"destination[writeIndex] = ({stateTypeForUsage})currentIndex;");
-                Sb.AppendLine("currentIndex = s_parent[currentIndex];");
+                Sb.AppendLine("currentIndex = g_parent[currentIndex];");
                 Sb.AppendLine("writeIndex--;");
             }
             Sb.AppendLine();
@@ -292,65 +302,8 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             Sb.AppendLine();
         }
         
-        // Add DEBUG-only DumpActivePath helper
-        Sb.AppendLine("#if DEBUG");
-        EmitXmlDocSummary(Sb, "Returns the active path from the root composite down to the current leaf state, e.g. \"Working / Working_Initializing\". DEBUG-only helper to diagnose hierarchy.");
-        using (Sb.Block("public string DumpActivePath()"))
-        {
-            Sb.AppendLine("const int NO_PARENT = -1;");
-            Sb.AppendLine();
-            Sb.AppendLine("var sb = new global::System.Text.StringBuilder(64);");
-            Sb.AppendLine($"var current = {CurrentStateField}; // {stateTypeForUsage} enum");
-            Sb.AppendLine("// Convert enum to index:");
-            Sb.AppendLine("int idx = (int)(object)current;");
-            Sb.AppendLine();
-            Sb.AppendLine("// Seed with leaf");
-            Sb.AppendLine("sb.Insert(0, current.ToString());");
-            Sb.AppendLine();
-            Sb.AppendLine("// Walk up to root");
-            using (Sb.Block("while (true)"))
-            {
-                Sb.AppendLine("int parent = s_parent[idx];");
-                Sb.AppendLine("if (parent == NO_PARENT) break;");
-                Sb.AppendLine();
-                Sb.AppendLine("// Cast parent index back to enum");
-                Sb.AppendLine($"current = ({stateTypeForUsage})(object)parent;");
-                Sb.AppendLine("sb.Insert(0, \" / \");");
-                Sb.AppendLine("sb.Insert(0, current.ToString());");
-                Sb.AppendLine("idx = parent;");
-            }
-            Sb.AppendLine();
-            Sb.AppendLine("return sb.ToString();");
-        }
-        Sb.AppendLine("#endif");
-        Sb.AppendLine();
-        
-        // Add IsInHierarchy helper (available in both Debug and Release)
-        Sb.WriteSummary("Returns true if the current state lies in the hierarchy of the given ancestor (i.e., ancestor is the current leaf or any of its parents).");
-        Sb.WriteParam("ancestor", "The potential ancestor state to check");
-        Sb.WriteReturns("True if ancestor is the current state or any of its parents, false otherwise");
-        using (Sb.Block($"public bool IsInHierarchy({stateTypeForUsage} ancestor)"))
-        {
-            Sb.AppendLine("const int NO_PARENT = -1;");
-            Sb.AppendLine("int idx = (int)(object)_currentState;");
-            Sb.AppendLine("int ancIdx = (int)(object)ancestor;");
-            Sb.AppendLine();
-            Sb.AppendLine("// Bounds check");
-            Sb.AppendLine("if ((uint)idx >= (uint)s_parent.Length) return false;");
-            Sb.AppendLine("if ((uint)ancIdx >= (uint)s_parent.Length) return false;");
-            Sb.AppendLine();
-            Sb.AppendLine("// Check if ancestor is current state");
-            Sb.AppendLine("if (idx == ancIdx) return true;");
-            Sb.AppendLine();
-            Sb.AppendLine("// Walk up parent chain");
-            using (Sb.Block("while (true)"))
-            {
-                Sb.AppendLine("int parent = s_parent[idx];");
-                Sb.AppendLine("if (parent == NO_PARENT) return false;");
-                Sb.AppendLine("if (parent == ancIdx) return true;");
-                Sb.AppendLine("idx = parent;");
-            }
-        }
+        // DumpActivePath and IsInHierarchy are now provided by the base class
+        // No need to generate them here
         Sb.AppendLine();
     }
     
@@ -360,102 +313,9 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
     protected virtual void WriteHierarchyRuntimeFieldsAndHelpers(string stateTypeForUsage)
     {
         if (!Model.HierarchyEnabled) return;
-
-        // Instance array for SHALLOW/DEEP history bookkeeping (index by composite state)
-        // Initialize with -1 to distinguish "never visited" from "visited state 0"
-        Sb.AppendLine("        private readonly int[] _lastActiveChild;");
-        Sb.AppendLine();
-
-        // RecordHistoryForCurrentPath: walks up the parent chain recording current leaf for history
-        Sb.WriteSummary("Records the current leaf state in all ancestor composite states that have history enabled.");
-        Sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]");
-        using (Sb.Block("private void RecordHistoryForCurrentPath()"))
-        {
-            Sb.AppendLine("int leafLeaf = (int)_currentState; // remember the deepest active leaf");
-            Sb.AppendLine("int cursor = leafLeaf;");
-            Sb.AppendLine("int parent = (uint)cursor < (uint)s_parent.Length ? s_parent[cursor] : -1;");
-            Sb.AppendLine();
-            using (Sb.Block("while (parent >= 0)"))
-            {
-                Sb.AppendLine("if (s_history[parent] != HistoryMode.None)");
-                using (Sb.Indent())
-                    Sb.AppendLine("_lastActiveChild[parent] = leafLeaf; // Always record the original leaf, not cursor");
-                Sb.AppendLine();
-                Sb.AppendLine("cursor = parent;");
-                Sb.AppendLine("parent = s_parent[cursor];");
-            }
-        }
-        Sb.AppendLine();
         
-
-        // GetCompositeEntryTarget: resolve initial/history for a composite index → leaf index
-        Sb.WriteSummary("Resolves the actual leaf to enter for a composite state, using Initial/History semantics.");
-        using (Sb.Block("private int GetCompositeEntryTarget(int compositeIndex)"))
-        {
-            Sb.AppendLine("int idx = compositeIndex;");
-            Sb.AppendLine("while (true)");
-            using (Sb.Block(""))
-            {
-                Sb.AppendLine("// Check if this is a leaf (no initial child)");
-                Sb.AppendLine("if ((uint)idx >= (uint)s_initialChild.Length || s_initialChild[idx] < 0)");
-                using (Sb.Indent())
-                {
-                    Sb.AppendLine("return idx;");
-                }
-                Sb.AppendLine();
-                Sb.AppendLine("// Check for history");
-                Sb.AppendLine("var mode = s_history[idx];");
-                Sb.AppendLine("int child = -1;");
-                Sb.AppendLine();
-                Sb.AppendLine("if (mode != HistoryMode.None && _lastActiveChild[idx] >= 0)");
-                using (Sb.Block(""))
-                {
-                    Sb.AppendLine("int remembered = _lastActiveChild[idx];");
-                    Sb.AppendLine();
-                    Sb.AppendLine("if (mode == HistoryMode.Shallow)");
-                    using (Sb.Block(""))
-                    {
-                        Sb.AppendLine("// Map remembered LEAF up to the IMMEDIATE child of 'idx'");
-                        Sb.AppendLine("int immediate = remembered;");
-                        Sb.AppendLine("while (immediate >= 0 && s_parent[immediate] != idx)");
-                        using (Sb.Indent())
-                        {
-                            Sb.AppendLine("immediate = s_parent[immediate];");
-                        }
-                        Sb.AppendLine();
-                        Sb.AppendLine("// Fallback to initial if something went wrong");
-                        Sb.AppendLine("child = immediate >= 0 ? immediate : s_initialChild[idx];");
-                    }
-                    Sb.AppendLine("else // Deep");
-                    using (Sb.Block(""))
-                    {
-                        Sb.AppendLine("child = remembered;");
-                    }
-                }
-                Sb.AppendLine("else");
-                using (Sb.Block(""))
-                {
-                    Sb.AppendLine("child = s_initialChild[idx];");
-                }
-                Sb.AppendLine();
-                Sb.AppendLine("if (child < 0) return idx; // Safety check");
-                Sb.AppendLine("idx = child; // Descend");
-            }
-        }
-        Sb.AppendLine();
-
-        // DescendToInitialIfComposite: applied at startup (and can be reused if needed)
-        Sb.WriteSummary("If CurrentState is composite, resolves and assigns the leaf according to Initial/History.");
-        using (Sb.Block("private void DescendToInitialIfComposite()"))
-        {
-            Sb.AppendLine("int currentIdx = (int)_currentState;");
-            Sb.AppendLine("if ((uint)currentIdx >= (uint)s_initialChild.Length) return;");
-            Sb.AppendLine("int initialChild = s_initialChild[currentIdx];");
-            Sb.AppendLine("if (initialChild < 0) return; // Already a leaf");
-            Sb.AppendLine("int resolved = GetCompositeEntryTarget(currentIdx);");
-            Sb.AppendLine("_currentState = (" + stateTypeForUsage + ")resolved;");
-        }
-        Sb.AppendLine();
+        // All runtime fields and methods are now in the base class
+        // We don't emit anything here anymore
     }
     
     #endregion
@@ -523,8 +383,8 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
     //            using (Sb.Block("while (currentIdx >= 0)"))
     //            {
     //                Sb.AppendLine($"entryChain.Add(({stateTypeForUsage})currentIdx);");
-    //                Sb.AppendLine("if ((uint)currentIdx >= (uint)s_parent.Length) break;");
-    //                Sb.AppendLine("currentIdx = s_parent[currentIdx];");
+    //                Sb.AppendLine("if ((uint)currentIdx >= (uint)g_parent.Length) break;");
+    //                Sb.AppendLine("currentIdx = g_parent[currentIdx];");
     //            }
     //            Sb.AppendLine();
                 
@@ -1005,7 +865,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         using (Sb.Block("while (check >= 0)"))
         {
             Sb.AppendLine($"var enumState = ({stateTypeForUsage})check;");
-            Sb.AppendLine($"int depthFromCurrent = (check == currentIndex) ? 0 : (s_depth[currentIndex] - s_depth[check]);");
+            Sb.AppendLine($"int depthFromCurrent = (check == currentIndex) ? 0 : (g_depth[currentIndex] - g_depth[check]);");
             Sb.AppendLine();
             
             // Group transitions by source state
@@ -1049,7 +909,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             // Move to parent state
             Sb.AppendLine();
             Sb.AppendLine("// Move to parent state");
-            Sb.AppendLine("check = (uint)check < (uint)s_parent.Length ? s_parent[check] : -1;");
+            Sb.AppendLine("check = (uint)check < (uint)g_parent.Length ? g_parent[check] : -1;");
         }
         
         Sb.AppendLine();
@@ -1087,17 +947,17 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             Sb.AppendLine("int srcLeaf = (int)_currentState;");
             Sb.AppendLine("int destLeaf = bestDestIndex;");
             Sb.AppendLine();
-            Sb.AppendLine("// Calculate LCA using s_parent and s_depth");
+            Sb.AppendLine("// Calculate LCA using g_parent and g_depth");
             Sb.AppendLine("int lca = -1;");
             Sb.AppendLine("if (srcLeaf == destLeaf) { lca = srcLeaf; }");
             Sb.AppendLine("else {");
             Sb.AppendLine("    int src = srcLeaf;");
             Sb.AppendLine("    int dst = destLeaf;");
             Sb.AppendLine("    // Bring both to same depth");
-            Sb.AppendLine("    while (s_depth[src] > s_depth[dst]) { src = s_parent[src]; }");
-            Sb.AppendLine("    while (s_depth[dst] > s_depth[src]) { dst = s_parent[dst]; }");
+            Sb.AppendLine("    while (g_depth[src] > g_depth[dst]) { src = g_parent[src]; }");
+            Sb.AppendLine("    while (g_depth[dst] > g_depth[src]) { dst = g_parent[dst]; }");
             Sb.AppendLine("    // Walk up together until common ancestor");
-            Sb.AppendLine("    while (src != dst) { src = s_parent[src]; dst = s_parent[dst]; }");
+            Sb.AppendLine("    while (src != dst) { src = g_parent[src]; dst = g_parent[dst]; }");
             Sb.AppendLine("    lca = src;");
             Sb.AppendLine("}");
             Sb.AppendLine();
@@ -1110,7 +970,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             if (Model.GenerationConfig.HasOnEntryExit)
             {
                 Sb.AppendLine("// EXIT chain: from current leaf up to (but not including) LCA");
-                Sb.AppendLine("for (int s = srcLeaf; s != lca && s >= 0; s = s_parent[s]) {");
+                Sb.AppendLine("for (int s = srcLeaf; s != lca && s >= 0; s = g_parent[s]) {");
                 Sb.AppendLine($"    var exitState = ({stateTypeForUsage})s;");
                 Sb.AppendLine("    switch (exitState) {");
                 foreach (var state in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnExitMethod)))
@@ -1147,9 +1007,9 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                     Sb.AppendLine("// Build entry path using ArrayPool to avoid Span across await");
                     Sb.AppendLine("int entryCount = 0;");
                     Sb.AppendLine("var pool = System.Buffers.ArrayPool<int>.Shared;");
-                    Sb.AppendLine("int[] entryPath = pool.Rent(s_depth[(int)_currentState] + 1);");
+                    Sb.AppendLine("int[] entryPath = pool.Rent(g_depth[(int)_currentState] + 1);");
                     Sb.AppendLine("try {");
-                    Sb.AppendLine("    for (int s = (int)_currentState; s >= 0 && s != lca; s = (s < s_parent.Length) ? s_parent[s] : -1) {");
+                    Sb.AppendLine("    for (int s = (int)_currentState; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {");
                     Sb.AppendLine("        entryPath[entryCount++] = s;");
                     Sb.AppendLine("    }");
                     Sb.AppendLine("    // Execute entry callbacks in top-down order");
@@ -1199,8 +1059,8 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                     // Sync path: keep zero-alloc stackalloc
                     Sb.AppendLine("// Build entry path (stackalloc for zero-alloc)");
                     Sb.AppendLine("int entryCount = 0;");
-                    Sb.AppendLine($"Span<int> entryPath = stackalloc int[s_depth[(int)_currentState] + 1];");
-                    Sb.AppendLine("for (int s = (int)_currentState; s >= 0 && s != lca; s = (s < s_parent.Length) ? s_parent[s] : -1) {");
+                    Sb.AppendLine($"Span<int> entryPath = stackalloc int[g_depth[(int)_currentState] + 1];");
+                    Sb.AppendLine("for (int s = (int)_currentState; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {");
                     Sb.AppendLine("    entryPath[entryCount++] = s;");
                     Sb.AppendLine("}");
                     Sb.AppendLine("// Execute entry callbacks in top-down order");
@@ -1562,7 +1422,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         {
             AddUsing("System.Threading");
             AddUsing("System.Threading.Tasks");
-            AddUsing("StateMachine.Exceptions");
+            AddUsing("FastFsm.Exceptions");
         }
         
         if (Model.ExceptionHandler != null)
@@ -1695,7 +1555,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                         }
                         Sb.AppendLine("default: break;");
                     }
-                    Sb.AppendLine("check = (uint)check < (uint)s_parent.Length ? s_parent[check] : -1;");
+                    Sb.AppendLine("check = (uint)check < (uint)g_parent.Length ? g_parent[check] : -1;");
                 }
                 Sb.AppendLine("return false;");
             }
@@ -1804,7 +1664,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                         }
                         Sb.AppendLine("default: break;");
                     }
-                    Sb.AppendLine("check = (uint)check < (uint)s_parent.Length ? s_parent[check] : -1;");
+                    Sb.AppendLine("check = (uint)check < (uint)g_parent.Length ? g_parent[check] : -1;");
                 }
                 
                 Sb.AppendLine("// Return precomputed array based on mask");
@@ -1953,7 +1813,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                         }
                         Sb.AppendLine("default: break;");
                     }
-                    Sb.AppendLine("check = (uint)check < (uint)s_parent.Length ? s_parent[check] : -1;");
+                    Sb.AppendLine("check = (uint)check < (uint)g_parent.Length ? g_parent[check] : -1;");
                 }
                 Sb.AppendLine();
                 Sb.AppendLine("return writeIndex;");

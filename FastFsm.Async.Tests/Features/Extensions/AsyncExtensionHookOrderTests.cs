@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Abstractions.Attributes;
 using Shouldly;
-using StateMachine.Contracts;
+
 using Xunit;
 
-namespace StateMachine.Async.Tests.Features.Extensions;
+namespace  FastFsm.Async.Tests.Features.Extensions;
 
 // Minimal async machines with extensions enabled
 [StateMachine(typeof(AState), typeof(ATrigger), GenerateExtensibleVersion = true)]

@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 using Abstractions.Attributes;
-using StateMachine.Tests.Features.Integration;
+using FastFsm.Tests.Features.Integration;
 
-namespace StateMachine.Tests.Machines
+namespace FastFsm.Tests.Machines
 {
     // Full variant machine with single payload type and extensions
     [StateMachine(typeof(OrderState), typeof(OrderTrigger), GenerateExtensibleVersion = true)]

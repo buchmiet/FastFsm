@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace StateMachine.Async.Tests.Features.Cancellation;
+namespace  FastFsm.Async.Tests.Features.Cancellation;
 
 public enum TokenTestState { Initial, Processing, Completed, Cancelled }
 public enum TokenTestTrigger { Start, Process, Complete, Cancel }

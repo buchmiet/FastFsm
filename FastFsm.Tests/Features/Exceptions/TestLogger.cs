@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace StateMachine.Tests.Features.Exceptions
+namespace FastFsm.Tests.Features.Exceptions
 {
     /// <summary>
     /// Prosta implementacja ILogger do przechwytywania logów w testach.

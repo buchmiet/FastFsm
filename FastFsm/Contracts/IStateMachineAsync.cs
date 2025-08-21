@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace StateMachine.Contracts;
+namespace FastFsm.Contracts;
 
 /// <summary>
 /// Asynchronous state machine interface for enum-based states and triggers

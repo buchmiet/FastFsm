@@ -1,0 +1,12 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+/home/lukasz/.nuget/packages/fastfsm.net/0.6.9.5/contentFiles/cs/any/ExtensionRunner.cs(86,30): warning CS0168: The variable 'ex' is declared but never used [/mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/TestHsmProject/HsmMediaPlayer/HsmMediaPlayer.csproj]
+  HsmMediaPlayer -> /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/TestHsmProject/HsmMediaPlayer/bin/Debug/net9.0/HsmMediaPlayer.dll
+
+Build succeeded.
+
+/home/lukasz/.nuget/packages/fastfsm.net/0.6.9.5/contentFiles/cs/any/ExtensionRunner.cs(86,30): warning CS0168: The variable 'ex' is declared but never used [/mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/TestHsmProject/HsmMediaPlayer/HsmMediaPlayer.csproj]
+    1 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:02.74

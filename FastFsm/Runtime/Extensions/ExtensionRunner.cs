@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using StateMachine.Contracts;
+using FastFsm.Contracts;
 
 #if FSM_LOGGING_ENABLED
 using Microsoft.Extensions.Logging;
 #endif
 
-namespace StateMachine.Runtime.Extensions
+namespace FastFsm.Runtime.Extensions
 {
 #if FSM_LOGGING_ENABLED
     internal static class ExtensionRunnerLog
@@ -83,7 +83,12 @@ namespace StateMachine.Runtime.Extensions
             {
                 action(extension, context);
             }
+            // Uwaga: nagłówek catch zależny od kompilacji eliminujący CS0168 przy wyłączonym logowaniu
+#if FSM_LOGGING_ENABLED
             catch (Exception ex)
+#else
+            catch (Exception)
+#endif
             {
 #if FSM_LOGGING_ENABLED
                 if (_logger?.IsEnabled(LogLevel.Error) == true && context is IStateSnapshot snap)

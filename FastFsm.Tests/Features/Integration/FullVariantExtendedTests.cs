@@ -1,14 +1,15 @@
 using Shouldly;
-using StateMachine.Contracts;
-using StateMachine.Tests.Machines;
+
+using FastFsm.Tests.Machines;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using FastFsm.Contracts;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace StateMachine.Tests.Features.Integration
+namespace FastFsm.Tests.Features.Integration
 {
 
 

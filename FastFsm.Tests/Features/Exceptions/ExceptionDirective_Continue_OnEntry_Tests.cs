@@ -5,7 +5,7 @@
 //using StateMachine.Exceptions;
 //using Xunit;
 
-//namespace StateMachine.Tests.BasicVariant;
+//namespace FastFsm.Tests.BasicVariant;
 
 //public class ExceptionDirective_Continue_OnEntry_Tests
 //{

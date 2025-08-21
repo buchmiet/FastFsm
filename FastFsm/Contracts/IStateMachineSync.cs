@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace StateMachine.Contracts;
+namespace FastFsm.Contracts;
 
 /// <summary>
 /// Synchronous state machine interface for enum-based states and triggers

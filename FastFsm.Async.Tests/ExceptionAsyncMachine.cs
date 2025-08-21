@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Abstractions.Attributes;
 
-namespace StateMachine.Async.Tests
+namespace FastFsmTests.Tests
 {
     public enum ExStates { Init, Middle, Next }
     public enum ExTriggers { GuardBoom, ActionBoom, EntryBoom, ExitBoom }

@@ -1,10 +1,11 @@
 ﻿using Abstractions.Attributes;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using Xunit;
 
-namespace StateMachine.Tests.Features.Hsm.Runtime
+namespace FastFsm.Tests.Features.Hsm.Runtime
 {
     #region 1) Auto‑descend to initial child + basic parent/child wiring
     public partial class InitialChildTests
@@ -96,35 +97,73 @@ namespace StateMachine.Tests.Features.Hsm.Runtime
         [Fact]
         public void DeepHistory_Arrays_Generated_Correctly()
         {
-            // Use reflection to check generated arrays
             var type = typeof(DeepHistoryMachine);
-            var parentField = type.GetField("s_parent", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            var initialField = type.GetField("s_initialChild", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            var depthField = type.GetField("s_depth", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            var historyField = type.GetField("s_history", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            
-            var parent = (int[])parentField.GetValue(null);
-            var initial = (int[])initialField.GetValue(null);
-            var depth = (int[])depthField.GetValue(null);
-            var history = (System.Array)historyField.GetValue(null);
-            
+
+            // instancja jest potrzebna, jeśli będziemy czytać chronione właściwości
+            var instance = Activator.CreateInstance(type, DeepHistoryTests.S.Out)!;
+
+            // spróbuj: g_*  -> s_* (wsteczna zgodność) -> chronione właściwości z instancji
+            int[] parent = GetIntArray(type, instance, "g_parent", "ParentArray");
+            int[] initial = GetIntArray(type, instance, "g_initialChild", "InitialChildArray");
+            int[] depth = GetIntArray(type, instance, "g_depth", "DepthArray");
+            Array history = GetArray(type, instance, "g_history", "HistoryArray");
+
             // Expected: Out=0, Work=1, Work_S1=2, Work_S1_Loading=3, Work_S1_Calc=4
             Assert.Equal(new[] { -1, -1, 1, 2, 2 }, parent);
             Assert.Equal(new[] { -1, 2, 3, -1, -1 }, initial);
             Assert.Equal(new[] { 0, 0, 1, 2, 2 }, depth);
-            
-            // Verify history array: Only Work should have Deep history
-            // Debug: Print actual values
+
+            // Only Work has Deep history
             for (int i = 0; i < history.Length; i++)
-            {
-                Console.WriteLine($"s_history[{i}] = {history.GetValue(i)}");
-            }
-            
-            Assert.Equal("None", history.GetValue(0).ToString());
-            Assert.Equal("Deep", history.GetValue(1).ToString());
-            Assert.Equal("None", history.GetValue(2).ToString());
-            Assert.Equal("None", history.GetValue(3).ToString());
-            Assert.Equal("None", history.GetValue(4).ToString());
+                Console.WriteLine($"history[{i}] = {history.GetValue(i)}");
+
+            Assert.Equal("None", history.GetValue(0)!.ToString());
+            Assert.Equal("Deep", history.GetValue(1)!.ToString());
+            Assert.Equal("None", history.GetValue(2)!.ToString());
+            Assert.Equal("None", history.GetValue(3)!.ToString());
+            Assert.Equal("None", history.GetValue(4)!.ToString());
+        }
+
+        // --- helpers ---
+
+        static int[] GetIntArray(Type t, object instance, string staticFieldName, string protectedPropName)
+        {
+            var flags = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance;
+
+            // 1) nowe pole g_*
+            var f = t.GetField(staticFieldName, BindingFlags.NonPublic | BindingFlags.Static);
+            if (f != null) return (int[])f.GetValue(null)!;
+
+            // 2) wsteczna zgodność: stare pole s_*
+            var legacy = staticFieldName.Replace("g_", "s_");
+            f = t.GetField(legacy, BindingFlags.NonPublic | BindingFlags.Static);
+            if (f != null) return (int[])f.GetValue(null)!;
+
+            // 3) chroniona właściwość bazowa (override w klasie wygenerowanej)
+            var p = t.GetProperty(protectedPropName, BindingFlags.NonPublic | BindingFlags.Instance)
+                 ?? t.BaseType?.GetProperty(protectedPropName, BindingFlags.NonPublic | BindingFlags.Instance);
+            if (p != null) return (int[])p.GetValue(instance)!;
+
+            throw new InvalidOperationException($"Nie znaleziono {staticFieldName}/{protectedPropName} w {t.FullName}.");
+        }
+
+        static Array GetArray(Type t, object instance, string staticFieldName, string protectedPropName)
+        {
+            // 1) nowe pole g_*
+            var f = t.GetField(staticFieldName, BindingFlags.NonPublic | BindingFlags.Static);
+            if (f != null) return (Array)f.GetValue(null)!;
+
+            // 2) wsteczna zgodność: stare pole s_*
+            var legacy = staticFieldName.Replace("g_", "s_");
+            f = t.GetField(legacy, BindingFlags.NonPublic | BindingFlags.Static);
+            if (f != null) return (Array)f.GetValue(null)!;
+
+            // 3) chroniona właściwość bazowa
+            var p = t.GetProperty(protectedPropName, BindingFlags.NonPublic | BindingFlags.Instance)
+                 ?? t.BaseType?.GetProperty(protectedPropName, BindingFlags.NonPublic | BindingFlags.Instance);
+            if (p != null) return (Array)p.GetValue(instance)!;
+
+            throw new InvalidOperationException($"Nie znaleziono {staticFieldName}/{protectedPropName} w {t.FullName}.");
         }
 
         [Fact]

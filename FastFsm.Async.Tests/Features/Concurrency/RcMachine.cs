@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Abstractions.Attributes;
 
-namespace StateMachine.Async.Tests.Features.Concurrency
+namespace  FastFsm.Async.Tests.Features.Concurrency
 {
     public enum RcStates { Initial, A, B }
     public enum RcTriggers { ToA, ToB }

@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
 using Abstractions.Attributes;
-using StateMachine.Contracts;
+using FastFsm.Contracts;
 using Xunit;
 
-namespace StateMachine.Tests.Features.Extensions
+namespace FastFsm.Tests.Features.Extensions
 {
 
     // ── mini maszyna ───────────────────────────────────────────────────────────

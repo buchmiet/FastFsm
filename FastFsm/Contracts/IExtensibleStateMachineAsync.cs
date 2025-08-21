@@ -1,6 +1,6 @@
 using System;
 
-namespace StateMachine.Contracts;
+namespace FastFsm.Contracts;
 
 /// <summary>
 /// Asynchronous extensible state machine interface

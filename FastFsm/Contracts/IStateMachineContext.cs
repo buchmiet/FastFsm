@@ -1,6 +1,6 @@
 using System;
 
-namespace StateMachine.Contracts;
+namespace FastFsm.Contracts;
 
 /// <summary>
 /// Generic context with state and trigger information

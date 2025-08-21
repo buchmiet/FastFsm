@@ -1,12 +1,13 @@
 using Abstractions.Attributes;
 using Shouldly;
-using StateMachine.Exceptions;
+
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using FastFsm.Exceptions;
 using Xunit;
 
-namespace StateMachine.Async.Tests.Features.Exceptions;
+namespace  FastFsm.Async.Tests.Features.Exceptions;
 
 #region Test Enums and Custom Exception
 

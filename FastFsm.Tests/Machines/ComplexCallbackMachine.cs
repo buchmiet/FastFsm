@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using Abstractions.Attributes;
-using StateMachine.Tests.Features.Core;
+using FastFsm.Tests.Features.Core;
 
 
-namespace StateMachine.Tests.Machines
+namespace FastFsm.Tests.Machines
 {
     [StateMachine(typeof(StateCallbackTests.ComplexCallbackState), typeof(StateCallbackTests.ComplexCallbackTrigger))]
     public partial class ComplexCallbackMachine

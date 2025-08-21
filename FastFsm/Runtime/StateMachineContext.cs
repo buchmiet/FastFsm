@@ -1,7 +1,7 @@
 using System;
-using StateMachine.Contracts;
+using FastFsm.Contracts;
 
-namespace StateMachine.Runtime;
+namespace FastFsm.Runtime;
 
 /// <summary>
 /// Concrete implementation of state machine context

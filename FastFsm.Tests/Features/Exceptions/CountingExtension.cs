@@ -1,7 +1,6 @@
-﻿using StateMachine.Contracts;
+﻿using FastFsm.Contracts;
 
-
-namespace StateMachine.Tests.Features.Exceptions
+namespace FastFsm.Tests.Features.Exceptions
 {
     /// <summary>
     /// Implementacja rozszerzenia, które zlicza swoje wywołania.
