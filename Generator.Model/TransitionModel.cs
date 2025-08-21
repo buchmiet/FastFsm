@@ -40,12 +40,12 @@ public sealed class TransitionModel
     /// <summary>
     /// Nazwa metody guard (warunek przejścia)
     /// </summary>
-    public string GuardMethod { get; set; }
+    public string? GuardMethod { get; set; }
 
     /// <summary>
     /// Nazwa metody akcji wykonywanej podczas przejścia
     /// </summary>
-    public string ActionMethod { get; set; }
+    public string? ActionMethod { get; set; }
 
     #endregion
 
@@ -68,7 +68,7 @@ public sealed class TransitionModel
     /// <summary>
     /// Expected payload type for this transition (null if no payload expected)
     /// </summary>
-    public string ExpectedPayloadType { get; set; }
+    public string? ExpectedPayloadType { get; set; }
 
     #endregion
 
@@ -169,9 +169,9 @@ public sealed class TransitionModel
         string fromState,
         string toState,
         string trigger,
-        string guardMethod = null,
-        string actionMethod = null,
-        string expectedPayloadType = null)
+        string? guardMethod = null,
+        string? actionMethod = null,
+        string? expectedPayloadType = null)
     {
         return new TransitionModel
         {

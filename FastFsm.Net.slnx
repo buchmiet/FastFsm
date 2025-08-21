@@ -1,0 +1,11 @@
+<Solution>
+  <Project Path="Abstractions/Abstractions.csproj" />
+  <Project Path="FastFsm.Async.Tests/FastFsm.Async.Tests.csproj" />
+  <Project Path="FastFsm.Tests/FastFsm.Tests.csproj" />
+  <Project Path="FastFsm/FastFsm.csproj" />
+  <Project Path="Generator.DependencyInjection/Generator.DependencyInjection.csproj" />
+  <Project Path="Generator.Logger/Generator.Logger.csproj" />
+  <Project Path="Generator.Model/Generator.Model.csproj" />
+  <Project Path="Generator.Rules/Generator.Rules.csproj" />
+  <Project Path="Generator/Generator.csproj" />
+</Solution>
