@@ -253,9 +253,33 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
 
         // === SEKCJA 5: Podstawowa walidacja atrybutu i klasy ===
         report?.Invoke("Section 5: Basic attribute and class validation");
-        Location fsmAttributeLocation = fsmAttribute?.ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation() ?? classDeclaration.Identifier.GetLocation();
-        bool isPartial = classDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword));
-        report?.Invoke($"Class is partial: {isPartial}");
+        
+        // FIXED: Get all declarations of this type symbol to properly check if it's partial
+        var allDecls = classSymbol.DeclaringSyntaxReferences
+            .Select(r => r.GetSyntax(context.CancellationToken))
+            .OfType<ClassDeclarationSyntax>()
+            .ToArray();
+        
+        // FIXED: Check if ALL parts are partial (not just the current one)
+        bool isPartialAcrossType = allDecls.Length > 0 && 
+            allDecls.All(cd => cd.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)));
+        
+        // FIXED: Check if any declaration is from generated code (obj folder)
+        bool anyFromObj = allDecls.Any(d => 
+        {
+            var path = d.SyntaxTree?.FilePath ?? "";
+            return path.Contains($"{System.IO.Path.DirectorySeparatorChar}obj{System.IO.Path.DirectorySeparatorChar}");
+        });
+        
+        // FIXED: Better diagnostic location - prefer first non-generated declaration
+        Location diagLocation = allDecls.FirstOrDefault()?.Identifier.GetLocation() 
+            ?? classSymbol.Locations.FirstOrDefault() 
+            ?? classDeclaration.Identifier.GetLocation();
+        
+        // Use attribute location only when we have an attribute with issues
+        Location fsmAttributeLocation = fsmAttribute?.ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation() ?? diagLocation;
+        
+        report?.Invoke($"Class is partial across type: {isPartialAcrossType} (checked {allDecls.Length} declarations)");
 
         // NEW: quick check whether this class looks like an FSM at all
         bool hasClassLevelFsmAttrs = classSymbol.GetAttributes().Any(a =>
@@ -288,20 +312,32 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             report?.Invoke("Skipping MissingStateMachineAttributeRule: class does not look like FSM or is a framework base class");
             return false;
         }
+        
+        // FIXED: Skip FSM004 for generated code when attribute is missing
+        if (fsmAttribute == null && anyFromObj)
+        {
+            report?.Invoke("Skipping MissingStateMachineAttributeRule: no attribute but in generated code");
+            return false;
+        }
 
         // Existing behavior for real/likely FSM classes:
+        // FIXED: Use isPartialAcrossType instead of local isPartial
         var missingAttrCtx = new MissingStateMachineAttributeValidationContext(
             fsmAttribute != null,
             fsmAttribute?.ConstructorArguments.Length ?? 0,
             classSymbol.Name,
-            isPartial
+            isPartialAcrossType  // FIXED: was isPartial
         );
 
         report?.Invoke("Validating missing attribute rule");
-        ProcessRuleResults(_missingStateMachineAttributeRule.Validate(missingAttrCtx), fsmAttributeLocation, ref criticalErrorOccurred);
+        // FIXED: Use diagLocation for better error positioning
+        ProcessRuleResults(_missingStateMachineAttributeRule.Validate(missingAttrCtx), 
+            fsmAttribute != null ? fsmAttributeLocation : diagLocation, 
+            ref criticalErrorOccurred);
         report?.Invoke($"Critical error after missing attribute validation: {criticalErrorOccurred}");
 
-        if (fsmAttribute == null || fsmAttribute.ConstructorArguments.Length < 2 || !isPartial)
+        // FIXED: Use isPartialAcrossType in the condition
+        if (fsmAttribute == null || fsmAttribute.ConstructorArguments.Length < 2 || !isPartialAcrossType)
         {
             report?.Invoke("ERROR: Invalid attribute or not partial class - returning false");
             return false;
