@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 using Abstractions.Attributes;
-using static StateMachine.Tests.Features.Core.StateCallbackTests;
+using static FastFsm.Tests.Features.Core.StateCallbackTests;
 
-namespace StateMachine.Tests.Machines
+namespace FastFsm.Tests.Machines
 {
     [StateMachine(typeof(CallbackState), typeof(CallbackTrigger))]
     public partial class CallbackOrderMachine

@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Abstractions.Attributes;
-using StateMachine.Contracts;
-using StateMachine.Exceptions;
+using FastFsm.Contracts;
+using FastFsm.Exceptions;
 
-namespace StateMachine.Runtime
+namespace FastFsm.Runtime
 {
     /// <summary>
     /// Provides the base implementation for generated asynchronous state machines,
@@ -22,14 +21,20 @@ namespace StateMachine.Runtime
 
         protected readonly bool _continueOnCapturedContext;
         protected TState _currentState;
-        private bool _started = false;
-        
-        // Hierarchical state machine support fields (populated by generator)
-        protected static int[]? s_parent;  // Parent index for each state (-1 for root)
-        protected static int[]? s_depth;   // Depth in hierarchy for each state
-        protected static int[]? s_initialChild;  // Initial child state index for composites (-1 if not composite)
-        protected static HistoryMode[]? s_history;  // History mode for each state
-        protected int[]? _lastActiveChild;  // Last active child for each composite state (instance-specific)
+        private bool _started;
+
+        // HSM: domyślnie „płasko” — puste tablice (HSM je nadpisze w klasie generowanej)
+        protected virtual int[] ParentArray => Array.Empty<int>();
+        protected virtual int[] DepthArray => Array.Empty<int>();
+        protected virtual int[] InitialChildArray => Array.Empty<int>();
+        protected virtual HistoryMode[] HistoryArray => Array.Empty<HistoryMode>();
+
+        // Czy którakolwiek kompozycja używa historii (HSM nadpisze na true, jeśli trzeba)
+        protected virtual bool HasHistory => false;
+
+        // Ostatnio aktywne dzieci dla stanów z historią (alokowane tylko gdy HasHistory == true)
+        protected int[]? _lastActiveChild;
+
 
         /// <summary>
         /// Initializes a new instance of the asynchronous state machine base class.
@@ -88,16 +93,29 @@ namespace StateMachine.Runtime
         #endregion
 
         #region Public Asynchronous API
-        
+
         public virtual async ValueTask StartAsync(CancellationToken cancellationToken = default)
         {
             if (_started) return;
-            
+
             await _gate.WaitAsync(cancellationToken).ConfigureAwait(_continueOnCapturedContext);
             try
             {
                 if (_started) return; // Double-check after acquiring lock
                 _started = true;
+
+                // Alokuj bufor historii tylko wtedy, gdy faktycznie potrzebny (HSM + jakiekolwiek composite)
+                if (HasHistory)
+                {
+                    var initial = InitialChildArray;
+                    if (initial.Length > 0)
+                    {
+                        _lastActiveChild = new int[initial.Length];
+                        for (int i = 0; i < _lastActiveChild.Length; i++)
+                            _lastActiveChild[i] = -1;
+                    }
+                }
+
                 await OnInitialEntryAsync(cancellationToken).ConfigureAwait(_continueOnCapturedContext);
             }
             finally
@@ -105,7 +123,8 @@ namespace StateMachine.Runtime
                 _gate.Release();
             }
         }
-        
+
+
         protected virtual ValueTask OnInitialEntryAsync(CancellationToken cancellationToken = default)
         {
             // Override in generated code to dispatch initial OnEntry
@@ -205,7 +224,8 @@ namespace StateMachine.Runtime
         public virtual bool IsIn(TState state)
         {
             // For non-hierarchical machines, just check equality
-            if (s_parent == null || s_parent.Length == 0)
+            var parentArray = ParentArray;
+            if (parentArray == null || parentArray.Length == 0)
             {
                 return EqualityComparer<TState>.Default.Equals(_currentState, state);
             }
@@ -219,12 +239,12 @@ namespace StateMachine.Runtime
                 return true;
             
             // Walk up the parent chain from current state
-            var parentIndex = s_parent[currentIndex];
+            var parentIndex = parentArray[currentIndex];
             while (parentIndex >= 0)
             {
                 if (parentIndex == targetIndex)
                     return true;
-                parentIndex = s_parent[parentIndex];
+                parentIndex = parentArray[parentIndex];
             }
             
             return false;
@@ -236,7 +256,8 @@ namespace StateMachine.Runtime
         public virtual IReadOnlyList<TState> GetActivePath()
         {
             // For non-hierarchical machines, return single element
-            if (s_parent == null || s_parent.Length == 0)
+            var parentArray = ParentArray;
+            if (parentArray == null || parentArray.Length == 0)
             {
                 return new[] { _currentState };
             }
@@ -249,7 +270,7 @@ namespace StateMachine.Runtime
             while (currentIndex >= 0)
             {
                 path.Add((TState)Enum.ToObject(typeof(TState), currentIndex));
-                currentIndex = s_parent[currentIndex];
+                currentIndex = parentArray[currentIndex];
             }
             
             // Reverse to get root-to-leaf order
@@ -272,9 +293,10 @@ namespace StateMachine.Runtime
         /// </summary>
         protected void UpdateLastActiveChild(int childIndex)
         {
-            if (s_parent == null || _lastActiveChild == null) return;
+            var parentArray = ParentArray;
+            if (parentArray == null || _lastActiveChild == null) return;
             
-            var parentIndex = s_parent[childIndex];
+            var parentIndex = parentArray[childIndex];
             if (parentIndex >= 0)
             {
                 _lastActiveChild[parentIndex] = childIndex;
@@ -282,54 +304,163 @@ namespace StateMachine.Runtime
         }
         
         /// <summary>
-        /// Gets the target state when entering a composite, considering history
+        /// Resolves the actual leaf to enter for a composite state, using Initial/History semantics.
         /// </summary>
         protected int GetCompositeEntryTarget(int compositeIndex)
         {
-            if (s_history == null || s_initialChild == null || _lastActiveChild == null)
-                return compositeIndex;
+            var historyArray = HistoryArray;
+            var initialChildArray = InitialChildArray;
+            var parentArray = ParentArray;
             
-            var historyMode = s_history[compositeIndex];
-            
-            // Check for history
-            if (historyMode != HistoryMode.None && _lastActiveChild[compositeIndex] >= 0)
+            int idx = compositeIndex;
+            while (true)
             {
-                var lastChild = _lastActiveChild[compositeIndex];
-                
-                if (historyMode == HistoryMode.Shallow)
+                // Check if this is a leaf (no initial child)
+                if ((uint)idx >= (uint)initialChildArray.Length || initialChildArray[idx] < 0)
+                    return idx;
+
+                // Check for history
+                var mode = historyArray[idx];
+                int child = -1;
+
+                if (mode != HistoryMode.None && _lastActiveChild != null && _lastActiveChild[idx] >= 0)
                 {
-                    return lastChild;
+                    int remembered = _lastActiveChild[idx];
+
+                    if (mode == HistoryMode.Shallow)
+                    {
+                        // Map remembered LEAF up to the IMMEDIATE child of 'idx'
+                        int immediate = remembered;
+                        while (immediate >= 0 && parentArray[immediate] != idx)
+                            immediate = parentArray[immediate];
+
+                        // Fallback to initial if something went wrong
+                        child = immediate >= 0 ? immediate : initialChildArray[idx];
+                    }
+                    else // Deep
+                    {
+                        child = remembered;
+                    }
                 }
-                else if (historyMode == HistoryMode.Deep)
+                else
                 {
-                    // For deep history, recursively find the deepest last active state
-                    return GetDeepHistoryTarget(lastChild);
+                    child = initialChildArray[idx];
                 }
+
+                if (child < 0) return idx; // Safety check
+                idx = child; // Descend
             }
-            
-            // No history or first entry - use initial child
-            var initial = s_initialChild[compositeIndex];
-            return initial >= 0 ? initial : compositeIndex;
         }
         
         /// <summary>
-        /// Recursively finds the deepest historical state for deep history mode
+        /// Records the current leaf state in all ancestor composite states that have history enabled.
         /// </summary>
-        private int GetDeepHistoryTarget(int stateIndex)
+        protected void RecordHistoryForCurrentPath()
         {
-            if (_lastActiveChild == null || s_initialChild == null)
-                return stateIndex;
-                
-            // If this state has a last active child, recurse
-            if (_lastActiveChild[stateIndex] >= 0)
+            var parentArray = ParentArray;
+            var historyArray = HistoryArray;
+            
+            if (_lastActiveChild == null || parentArray == null || historyArray == null) return;
+            
+            int leafLeaf = Convert.ToInt32(_currentState); // remember the deepest active leaf
+            int cursor = leafLeaf;
+            int parent = (uint)cursor < (uint)parentArray.Length ? parentArray[cursor] : -1;
+
+            while (parent >= 0)
             {
-                return GetDeepHistoryTarget(_lastActiveChild[stateIndex]);
+                if (historyArray[parent] != HistoryMode.None)
+                    _lastActiveChild[parent] = leafLeaf; // Always record the original leaf, not cursor
+
+                cursor = parent;
+                parent = parentArray[cursor];
+            }
+        }
+        
+        /// <summary>
+        /// If CurrentState is composite, resolves and assigns the leaf according to Initial/History.
+        /// </summary>
+        protected void DescendToInitialIfComposite()
+        {
+            var initialChildArray = InitialChildArray;
+            if (initialChildArray == null) return;
+            
+            int currentIdx = Convert.ToInt32(_currentState);
+            if ((uint)currentIdx >= (uint)initialChildArray.Length) return;
+            int initialChild = initialChildArray[currentIdx];
+            if (initialChild < 0) return; // Already a leaf
+            int resolved = GetCompositeEntryTarget(currentIdx);
+            _currentState = (TState)Enum.ToObject(typeof(TState), resolved);
+        }
+        
+        /// <summary>
+        /// Returns true if the current state lies in the hierarchy of the given ancestor.
+        /// </summary>
+        /// <param name="ancestor">The potential ancestor state to check</param>
+        /// <returns>True if ancestor is the current state or any of its parents, false otherwise</returns>
+        public bool IsInHierarchy(TState ancestor)
+        {
+            const int NO_PARENT = -1;
+            var parentArray = ParentArray;
+            if (parentArray == null || parentArray.Length == 0) 
+                return EqualityComparer<TState>.Default.Equals(_currentState, ancestor);
+                
+            int idx = Convert.ToInt32(_currentState);
+            int ancIdx = Convert.ToInt32(ancestor);
+            
+            // Bounds check
+            if ((uint)idx >= (uint)parentArray.Length) return false;
+            if ((uint)ancIdx >= (uint)parentArray.Length) return false;
+            
+            // Check if ancestor is current state
+            if (idx == ancIdx) return true;
+            
+            // Walk up parent chain
+            while (true)
+            {
+                int parent = parentArray[idx];
+                if (parent == NO_PARENT) return false;
+                if (parent == ancIdx) return true;
+                idx = parent;
+            }
+        }
+        
+#if DEBUG
+        /// <summary>
+        /// Returns the active path from the root composite down to the current leaf state.
+        /// DEBUG-only helper to diagnose hierarchy.
+        /// </summary>
+        public string DumpActivePath()
+        {
+            const int NO_PARENT = -1;
+            var parentArray = ParentArray;
+            
+            if (parentArray == null || parentArray.Length == 0)
+                return _currentState.ToString();
+            
+            var sb = new System.Text.StringBuilder(64);
+            var current = _currentState;
+            int idx = Convert.ToInt32(current);
+            
+            // Seed with leaf
+            sb.Insert(0, current.ToString());
+            
+            // Walk up to root
+            while (true)
+            {
+                if ((uint)idx >= (uint)parentArray.Length) break;
+                int parent = parentArray[idx];
+                if (parent == NO_PARENT) break;
+                
+                // Cast parent index back to enum
+                current = (TState)Enum.ToObject(typeof(TState), parent);
+                sb.Insert(0, " / ");
+                sb.Insert(0, current.ToString());
+                idx = parent;
             }
             
-            // Otherwise check if it has an initial child
-            var initial = s_initialChild[stateIndex];
-            return initial >= 0 ? initial : stateIndex;
+            return sb.ToString();
         }
+#endif
         
         #endregion
     }

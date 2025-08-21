@@ -1,8 +1,8 @@
 ﻿using Abstractions.Attributes;
-using StateMachine.Tests.Features.EdgeCases;
-using static StateMachine.Tests.Features.EdgeCases.EmptyMachineTests;
+using FastFsm.Tests.Features.EdgeCases;
+using static FastFsm.Tests.Features.EdgeCases.EmptyMachineTests;
 
-namespace StateMachine.Tests.Machines
+namespace FastFsm.Tests.Machines
 {
     [StateMachine(typeof(EmptyMachineTests.InternalOnlyState), typeof(EmptyMachineTests.InternalOnlyTrigger))]
     public partial class InternalOnlyMachine

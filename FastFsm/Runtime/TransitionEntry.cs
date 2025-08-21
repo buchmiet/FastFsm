@@ -1,11 +1,8 @@
-﻿
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-
-namespace StateMachine.Runtime;
+namespace FastFsm.Runtime;
 
 /// <summary>
 /// Represents a single transition in the state machine.

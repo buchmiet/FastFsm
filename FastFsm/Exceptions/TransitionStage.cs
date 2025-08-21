@@ -1,4 +1,4 @@
-namespace StateMachine.Exceptions;
+namespace FastFsm.Exceptions;
 
 /// <summary>
 /// Identifies the stage of transition where an exception occurred.

@@ -1,8 +1,8 @@
 using System;
 using Xunit;
-using StateMachine.Tests.Features.Hsm.Runtime;
+using FastFsm.Tests.Features.Hsm.Runtime;
 
-namespace StateMachine.Tests.Features.Hsm.Runtime
+namespace FastFsm.Tests.Features.Hsm.Runtime
 {
     public class DebugHistoryTest
     {

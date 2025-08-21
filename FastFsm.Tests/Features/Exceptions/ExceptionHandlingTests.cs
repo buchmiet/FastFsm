@@ -1,11 +1,12 @@
-﻿using StateMachine.Contracts;
-using StateMachine.Runtime;
+﻿using FastFsm.Contracts;
+using FastFsm.Runtime;
 
 using System.Linq;
+using FastFsm.Tests.Features.Exceptions;
 using Xunit;
 
 
-namespace StateMachine.Tests.Features.Exceptions
+namespace FastFsm.Tests.Features.Exceptions
 {
     /// <summary>
     /// Zestaw testów weryfikujących poprawną obsługę wyjątków w rozszerzeniach.

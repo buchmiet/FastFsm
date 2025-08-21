@@ -1,4 +1,4 @@
-namespace StateMachine.Contracts;
+namespace FastFsm.Contracts;
 
 /// <summary>
 /// Extension interface for adding cross-cutting concerns to state machines

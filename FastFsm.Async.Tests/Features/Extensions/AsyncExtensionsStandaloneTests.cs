@@ -4,9 +4,10 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Abstractions.Attributes;
+using FastFsm.Contracts;
 using Xunit;
 
-namespace StateMachine.Async.Tests.Features.Extensions;
+namespace  FastFsm.Async.Tests.Features.Extensions;
 
 public class AsyncExtensionsStandaloneTests
 {

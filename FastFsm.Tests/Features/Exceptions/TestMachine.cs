@@ -1,6 +1,6 @@
 ﻿using Abstractions.Attributes;
 
-namespace StateMachine.Tests.Features.Exceptions
+namespace FastFsm.Tests.Features.Exceptions
 {
     /// <summary>
     /// Definicja prostej maszyny stanu używanej w testach.

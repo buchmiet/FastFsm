@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using Abstractions.Attributes;
-using StateMachine.Contracts;
+using FastFsm.Contracts;
+
 using Xunit;
 
-namespace StateMachine.Tests.Features.Exceptions;
+namespace FastFsm.Tests.Features.Exceptions;
 
 /// <summary>
 /// Sprawdza, że wyjątek w akcji nie zmienia stanu i prawidłowo ustawia wynik.

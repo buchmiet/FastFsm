@@ -1,6 +1,6 @@
 using System;
 
-namespace StateMachine.Exceptions;
+namespace FastFsm.Exceptions;
 
 /// <summary>
 /// Provides context information about an exception that occurred during a state transition.

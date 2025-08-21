@@ -2,7 +2,7 @@ using System;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace StateMachine.Tests.Features.Core;
+namespace FastFsm.Tests.Features.Core;
 
 public class StateCallbackTests(ITestOutputHelper output)
 {

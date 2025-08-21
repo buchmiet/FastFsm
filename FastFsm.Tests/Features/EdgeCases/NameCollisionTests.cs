@@ -1,7 +1,7 @@
 using Xunit;
 using Xunit.Abstractions;
 
-namespace StateMachine.Tests.Features.EdgeCases
+namespace FastFsm.Tests.Features.EdgeCases
 {
     public class NameCollisionTests
     {

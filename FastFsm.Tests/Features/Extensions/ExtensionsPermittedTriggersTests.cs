@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Xunit;
 
-namespace StateMachine.Tests.Features.Extensions;
+namespace FastFsm.Tests.Features.Extensions;
 
 public class ExtensionsPermittedTriggersTests
 {

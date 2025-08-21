@@ -1,7 +1,7 @@
 using Xunit;
-using StateMachine.Tests.Features.Hsm.CompileTime;
+using FastFsm.Tests.Features.Hsm.CompileTime;
 
-namespace StateMachine.Tests.Features.Hsm.Runtime
+namespace FastFsm.Tests.Features.Hsm.Runtime
 {
     public class HsmIsInHierarchyTests
     {

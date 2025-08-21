@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Abstractions.Attributes;
 
-namespace StateMachine.Tests.Machines
+namespace FastFsm.Tests.Machines
 {
     // WithPayload variant
     [StateMachine(typeof(TestState), typeof(TestTrigger), DefaultPayloadType = typeof(TestPayload))]

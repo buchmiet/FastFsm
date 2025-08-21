@@ -363,9 +363,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
     {
         if (Model.HierarchyEnabled)
         {
-                Sb.AppendLine("// Initialize history tracking array with -1 (no history)");
-                Sb.AppendLine("_lastActiveChild = new int[s_initialChild.Length];");
-                Sb.AppendLine("for (int i = 0; i < _lastActiveChild.Length; i++) _lastActiveChild[i] = -1;");
+                // History tracking array is now initialized in the base class Start() method
             }
             WriteLoggerAssignment();
             if (ExtensionsOn)
@@ -418,7 +416,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 Sb.AppendLine("// Count depth for pooled buffer");
                 Sb.AppendLine($"int leafIdx = (int){CurrentStateField};");
                 Sb.AppendLine("int depth = 0;");
-                Sb.AppendLine("for (int i = leafIdx; i >= 0; i = s_parent[i]) depth++;");
+                Sb.AppendLine("for (int i = leafIdx; i >= 0; i = g_parent[i]) depth++;");
                 Sb.AppendLine();
                 Sb.AppendLine("// Rent path buffer and fill from leaf to root");
                 Sb.AppendLine("var pool = System.Buffers.ArrayPool<int>.Shared;");
@@ -427,7 +425,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 using (Sb.Block(""))
                 {
                     Sb.AppendLine("int k = depth - 1;");
-                    Sb.AppendLine("for (int i = leafIdx; i >= 0; i = s_parent[i]) path[k--] = i;");
+                    Sb.AppendLine("for (int i = leafIdx; i >= 0; i = g_parent[i]) path[k--] = i;");
                     Sb.AppendLine();
                     Sb.AppendLine("// Execute OnEntry from root to leaf");
                     using (Sb.Block("for (int i = 0; i < depth; i++)"))
@@ -532,12 +530,12 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             Sb.AppendLine("// Count depth for stackalloc");
             Sb.AppendLine($"int leafIdx = (int){CurrentStateField};");
             Sb.AppendLine("int depth = 0;");
-            Sb.AppendLine("for (int i = leafIdx; i >= 0; i = s_parent[i]) depth++;");
+            Sb.AppendLine("for (int i = leafIdx; i >= 0; i = g_parent[i]) depth++;");
             Sb.AppendLine();
             Sb.AppendLine("// Build path from root to leaf without allocations");
             Sb.AppendLine("Span<int> path = depth <= 128 ? stackalloc int[depth] : new int[depth];");
             Sb.AppendLine("int k = depth - 1;");
-            Sb.AppendLine("for (int i = leafIdx; i >= 0; i = s_parent[i]) path[k--] = i;");
+            Sb.AppendLine("for (int i = leafIdx; i >= 0; i = g_parent[i]) path[k--] = i;");
             Sb.AppendLine();
             Sb.AppendLine("// Execute OnEntry from root to leaf");
             using (Sb.Block("for (int i = 0; i < path.Length; i++)"))
@@ -1003,7 +1001,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 }
 
                 // Move to parent
-                Sb.AppendLine($"__idx = s_parent[__idx];");
+                Sb.AppendLine($"__idx = g_parent[__idx];");
             }
         }
 
@@ -1502,7 +1500,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             }
             Sb.AppendLine("                default: break;");
             Sb.AppendLine("            }");
-            Sb.AppendLine("            check = (uint)check < (uint)s_parent.Length ? s_parent[check] : -1;");
+            Sb.AppendLine("            check = (uint)check < (uint)g_parent.Length ? g_parent[check] : -1;");
             Sb.AppendLine("        }");
             Sb.AppendLine("        return false;");
         }
@@ -1617,7 +1615,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                         }
                         Sb.AppendLine("default: break;");
                     }
-                    Sb.AppendLine("check = (uint)check < (uint)s_parent.Length ? s_parent[check] : -1;");
+                    Sb.AppendLine("check = (uint)check < (uint)g_parent.Length ? g_parent[check] : -1;");
                 }
                 Sb.AppendLine("return false;");
             }
@@ -1754,7 +1752,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             }
             Sb.AppendLine("                default: break;");
             Sb.AppendLine("            }");
-            Sb.AppendLine("            check = (uint)check < (uint)s_parent.Length ? s_parent[check] : -1;");
+            Sb.AppendLine("            check = (uint)check < (uint)g_parent.Length ? g_parent[check] : -1;");
             Sb.AppendLine("        }");
             Sb.AppendLine($"        return permitted.Count == 0 ? {ArrayEmptyMethod}<{triggerType}>() : permitted.ToArray();");
         }
@@ -2393,7 +2391,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             }
             Sb.AppendLine("                default: break;");
             Sb.AppendLine("            }");
-            Sb.AppendLine("            check = (uint)check < (uint)s_parent.Length ? s_parent[check] : -1;");
+            Sb.AppendLine("            check = (uint)check < (uint)g_parent.Length ? g_parent[check] : -1;");
             Sb.AppendLine("        }");
             Sb.AppendLine("        return false;");
         }
@@ -2561,7 +2559,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 }
                 Sb.AppendLine("                default: break;");
                 Sb.AppendLine("            }");
-                Sb.AppendLine("            check = (uint)check < (uint)s_parent.Length ? s_parent[check] : -1;");
+                Sb.AppendLine("            check = (uint)check < (uint)g_parent.Length ? g_parent[check] : -1;");
                 Sb.AppendLine("        }");
                 Sb.AppendLine();
                 Sb.AppendLine("        // Return precomputed array based on mask");

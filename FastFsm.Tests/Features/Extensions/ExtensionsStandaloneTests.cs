@@ -1,11 +1,12 @@
 using Shouldly;
-using StateMachine.Contracts;
+
 using System;
 using System.Collections.Generic;
+using FastFsm.Contracts;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace StateMachine.Tests.Features.Extensions
+namespace FastFsm.Tests.Features.Extensions
 {
     public class ExtensionsStandaloneTests(ITestOutputHelper output)
     {

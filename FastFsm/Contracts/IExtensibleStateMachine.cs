@@ -1,4 +1,4 @@
-namespace StateMachine.Contracts;
+namespace FastFsm.Contracts;
 
 /// <summary>
 /// Marker interface for state machines that support extensions

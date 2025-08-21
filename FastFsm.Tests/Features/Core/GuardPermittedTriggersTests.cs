@@ -1,7 +1,7 @@
 ﻿using Abstractions.Attributes;
 using Xunit;
 
-namespace StateMachine.Tests.Features.Core
+namespace FastFsm.Tests.Features.Core
 {
     public class GuardPermittedTriggersTests
     {

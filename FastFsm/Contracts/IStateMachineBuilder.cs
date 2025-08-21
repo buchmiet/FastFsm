@@ -4,7 +4,7 @@ using System;
 
 // Added for Enum constraint
 
-namespace StateMachine.Contracts;
+namespace FastFsm.Contracts;
 
 /// <summary>
 /// Builder interface for compile-time configuration validation

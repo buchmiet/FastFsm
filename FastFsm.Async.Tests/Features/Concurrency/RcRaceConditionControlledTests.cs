@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Shouldly;
 using Xunit;
 
-namespace StateMachine.Async.Tests.Features.Concurrency
+namespace  FastFsm.Async.Tests.Features.Concurrency
 {
     public class RcRaceConditionControlledTests
     {

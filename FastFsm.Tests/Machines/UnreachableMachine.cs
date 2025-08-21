@@ -1,7 +1,7 @@
 ﻿using Abstractions.Attributes;
-using static StateMachine.Tests.Features.EdgeCases.EmptyMachineTests;
+using static FastFsm.Tests.Features.EdgeCases.EmptyMachineTests;
 
-namespace StateMachine.Tests.Machines
+namespace FastFsm.Tests.Machines
 {
     [StateMachine(typeof(UnreachableState), typeof(UnreachableTrigger))]
     public partial class UnreachableMachine

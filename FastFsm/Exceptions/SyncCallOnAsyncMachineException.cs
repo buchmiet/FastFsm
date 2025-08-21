@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace StateMachine.Exceptions;
+namespace FastFsm.Exceptions;
 
 /// <summary>
 /// The exception that is thrown when a synchronous method is called on a state machine

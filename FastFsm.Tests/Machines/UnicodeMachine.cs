@@ -1,7 +1,7 @@
 ﻿using Abstractions.Attributes;
-using static StateMachine.Tests.Features.EdgeCases.NameCollisionTests;
+using static FastFsm.Tests.Features.EdgeCases.NameCollisionTests;
 
-namespace StateMachine.Tests.Machines
+namespace FastFsm.Tests.Machines
 {
     [StateMachine(typeof(UnicodeState), typeof(UnicodeTrigger))]
     public partial class UnicodeMachine

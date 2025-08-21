@@ -26,6 +26,14 @@ internal class TypeSystemHelper
 
         
     }
+    
+    /// <summary>
+    /// Returns the fully qualified name for HistoryMode type.
+    /// </summary>
+    public string GetHistoryModeTypeName()
+    {
+        return "Abstractions.Attributes.HistoryMode";
+    }
 
     /// <summary>
     /// Zwraca <c>true</c>, jeżeli symbol reprezentuje <see cref="System.Threading.CancellationToken"/>.

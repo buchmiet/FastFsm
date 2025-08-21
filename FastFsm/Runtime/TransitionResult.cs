@@ -1,5 +1,5 @@
 ﻿
-namespace StateMachine.Runtime;
+namespace FastFsm.Runtime;
 
 /// <summary>
 /// Result of a transition attempt (for internal use)

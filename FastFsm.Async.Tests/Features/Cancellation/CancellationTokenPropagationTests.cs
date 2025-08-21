@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace StateMachine.Async.Tests.Features.Cancellation
+namespace  FastFsm.Async.Tests.Features.Cancellation
 {
     // Machine for testing specific documentation requirements
     [StateMachine(typeof(SpecStates), typeof(SpecTriggers))]

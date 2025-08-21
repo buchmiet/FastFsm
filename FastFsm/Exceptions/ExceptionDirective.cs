@@ -1,4 +1,4 @@
-namespace StateMachine.Exceptions;
+namespace FastFsm.Exceptions;
 
 /// <summary>
 /// Specifies how to handle exceptions in state machine callbacks.

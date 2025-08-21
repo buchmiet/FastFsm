@@ -1,11 +1,11 @@
-﻿// StateMachine.Tests/Machines/FullMultiPayloadMachine.cs
+﻿// FastFsm.Tests/Machines/FullMultiPayloadMachine.cs
 
-using StateMachine.Contracts;
-using StateMachine.Tests.Features.Integration;
+
+using FastFsm.Tests.Features.Integration;
 using System.Collections.Generic;
 using Abstractions.Attributes;
 
-namespace StateMachine.Tests.Machines
+namespace FastFsm.Tests.Machines
 {
    
     [StateMachine(typeof(OrderState), typeof(OrderTrigger), GenerateExtensibleVersion = true)]

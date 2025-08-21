@@ -2,11 +2,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
-using StateMachine.Tests.Machines;
+using FastFsm.Tests.Machines;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace StateMachine.Tests.Features.Performance
+namespace FastFsm.Tests.Features.Performance
 {
     public class BenchmarkTests(ITestOutputHelper output)
     {

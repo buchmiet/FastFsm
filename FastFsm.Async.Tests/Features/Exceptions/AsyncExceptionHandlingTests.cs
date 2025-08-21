@@ -4,7 +4,7 @@ using System;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace StateMachine.Async.Tests.Features.Exceptions
+namespace  FastFsm.Async.Tests.Features.Exceptions
 {
     public class AsyncExceptionHandlingTests
     {

@@ -1,7 +1,7 @@
 using Xunit;
 using Abstractions.Attributes;
 
-namespace StateMachine.Tests.Features.Hsm.CompileTime;
+namespace FastFsm.Tests.Features.Hsm.CompileTime;
 
 /// <summary>
 /// HSM Parsing Compilation Tests

@@ -6,7 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace StateMachine.Async.Tests.Features.Hsm.Runtime
+namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
 {
     // 1) Auto‑descend to initial child + basic parent/child wiring (async)
     public partial class AsyncInitialChildTests

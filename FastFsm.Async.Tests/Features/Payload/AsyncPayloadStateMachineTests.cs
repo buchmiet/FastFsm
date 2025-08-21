@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace StateMachine.Async.Tests.Features.Payload;
+namespace  FastFsm.Async.Tests.Features.Payload;
 
 #region Test Enums and Payload Classes
 

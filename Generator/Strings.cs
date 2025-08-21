@@ -9,9 +9,9 @@ internal static class Strings
 {
 
     // --- Consts for attribute class names ---
-    public const string StateMachineAttributeName = "StateMachine.Attributes.StateMachineAttribute";
-    public const string TransitionAttributeName = "StateMachine.Attributes.TransitionAttribute";
-    public const string InternalTransitionAttributeName = "StateMachine.Attributes.InternalTransitionAttribute";
+    public const string StateMachineAttributeName = "FastFsm.Attributes.StateMachineAttribute";
+    public const string TransitionAttributeName = "FastFsm.Attributes.TransitionAttribute";
+    public const string InternalTransitionAttributeName = "FastFsm.Attributes.InternalTransitionAttribute";
 
     // ──────────────────────────────────────────────────────────────
     //  Dependency-Injection (nazwy pól/typów)
@@ -19,8 +19,8 @@ internal static class Strings
     public const string ServiceProviderField = "_serviceProvider";
    // public const string ActivatorUtilitiesClass = "Microsoft.Extensions.DependencyInjection.ActivatorUtilities";
    // public const string DINamespace = "Microsoft.Extensions.DependencyInjection";
-    public const string StateMachineContractsNamespace = "StateMachine.Contracts";
-  //  public const string StateMachineDINamespace = "StateMachine.DependencyInjection";
+    public const string StateMachineContractsNamespace = "FastFsm.Contracts";
+  //  public const string StateMachineDINamespace = "FastFsm.DependencyInjection";
     public const string FactorySuffix = "Factory";
     public const string ServiceCollectionExtensionsSuffix = "ServiceCollectionExtensions";
     public const string InitialStateProviderInterface = "IInitialStateProvider";
@@ -84,9 +84,9 @@ internal static class Strings
     public const string NamespaceSystemCollectionsGeneric = "System.Collections.Generic";
     public const string NamespaceSystemLinq = "System.Linq";
     public const string NamespaceSystemRuntimeCompilerServices = "System.Runtime.CompilerServices";
-    public const string NamespaceStateMachineContracts = "StateMachine.Contracts";
-    public const string NamespaceStateMachineRuntime = "StateMachine.Runtime";
-    public const string NamespaceStateMachineRuntimeExtensions = "StateMachine.Runtime.Extensions";
+    public const string NamespaceStateMachineContracts = "FastFsm.Contracts";
+    public const string NamespaceStateMachineRuntime = "FastFsm.Runtime";
+    public const string NamespaceStateMachineRuntimeExtensions = "FastFsm.Runtime.Extensions";
     public const string NamespaceMicrosoftExtensionsLogging = "Microsoft.Extensions.Logging";
     public const string NamespaceMicrosoftDependencyInjection = "Microsoft.Extensions.DependencyInjection";
 
@@ -97,10 +97,10 @@ internal static class Strings
     //  Exception handling
     // ──────────────────────────────────────────────────────────────
     public const string OnExceptionAttributeFullName = $"{AbstractionsNamespace}.OnExceptionAttribute";
-    public const string ExceptionDirectiveFullName = "StateMachine.Exceptions.ExceptionDirective";
-    public const string ExceptionContextFullNameOpen = "StateMachine.Exceptions.ExceptionContext`2";
+    public const string ExceptionDirectiveFullName = "FastFsm.Exceptions.ExceptionDirective";
+    public const string ExceptionContextFullNameOpen = "FastFsm.Exceptions.ExceptionContext`2";
     public const string CancellationTokenFullName = "System.Threading.CancellationToken";
     public const string ValueTaskOpenFullName = "System.Threading.Tasks.ValueTask`1";
-    public const string NamespaceStateMachineExceptions = "StateMachine.Exceptions";
+    public const string NamespaceStateMachineExceptions = "FastFsm.Exceptions";
 
 }

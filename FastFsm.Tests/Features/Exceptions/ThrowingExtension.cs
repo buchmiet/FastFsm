@@ -1,8 +1,9 @@
-﻿using StateMachine.Contracts;
+﻿
 using System;
+using FastFsm.Contracts;
 
 
-namespace StateMachine.Tests.Features.Exceptions
+namespace FastFsm.Tests.Features.Exceptions
 {
     /// <summary>
     /// Implementacja rozszerzenia, które zawsze rzuca wyjątek.
