@@ -11,12 +11,12 @@ namespace Generator.Model.Dtos
     public sealed record FactoryGenerationModel
     {
         // Informacje o typach
-        public TypeGenerationInfo StateType { get; set; }
-        public TypeGenerationInfo TriggerType { get; set; }
+        public TypeGenerationInfo StateType { get; set; } = new();
+        public TypeGenerationInfo TriggerType { get; set; } = new();
         public TypeGenerationInfo? PayloadType { get; set; } // Może nie istnieć
 
         // Informacje z oryginalnego StateMachineModel
-        public string ClassName { get; set; }
+        public string ClassName { get; set; } = "";
         public string? UserNamespace { get; set; }
         public bool ShouldGenerateLogging { get; set; }
         public bool HasExtensions { get; set; }
@@ -26,6 +26,6 @@ namespace Generator.Model.Dtos
         /// <summary>
         /// Zbiorcza, unikalna lista wszystkich przestrzeni nazw potrzebnych w generowanym pliku.
         /// </summary>
-        public IReadOnlyCollection<string> AllRequiredNamespaces { get; set; }
+        public IReadOnlyCollection<string> AllRequiredNamespaces { get; set; } = Array.Empty<string>();
     }
 }

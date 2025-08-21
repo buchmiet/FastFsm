@@ -257,6 +257,39 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         bool isPartial = classDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword));
         report?.Invoke($"Class is partial: {isPartial}");
 
+        // NEW: quick check whether this class looks like an FSM at all
+        bool hasClassLevelFsmAttrs = classSymbol.GetAttributes().Any(a =>
+        {
+            var n = a.AttributeClass?.ToDisplayString();
+            return n == PayloadTypeAttributeFullName || n == StateMachineAttributeFullName;
+        });
+
+        bool hasMemberLevelFsmAttrs = classSymbol.GetMembers()
+            .OfType<IMethodSymbol>()
+            .Any(m => m.GetAttributes().Any(a =>
+            {
+                var n = a.AttributeClass?.ToDisplayString();
+                return n == StateAttributeFullName
+                    || n == TransitionAttributeFullName
+                    || n == InternalTransitionAttributeFullName;
+            }));
+
+        // Check if this is a framework base class that should be excluded
+        bool isFrameworkBaseClass = classSymbol.Name == "StateMachineBase" || 
+                                   classSymbol.Name == "AsyncStateMachineBase" ||
+                                   (classSymbol.ContainingNamespace?.ToDisplayString() == "StateMachine.Runtime");
+        
+        bool looksLikeFsm = (fsmAttribute != null) || hasClassLevelFsmAttrs || hasMemberLevelFsmAttrs;
+        report?.Invoke($"LooksLikeFSM: {looksLikeFsm}, IsFrameworkBaseClass: {isFrameworkBaseClass}");
+
+        // If it doesn't look like a state machine at all, or if it's a framework base class, silently skip (no FSM004)
+        if (!looksLikeFsm || isFrameworkBaseClass)
+        {
+            report?.Invoke("Skipping MissingStateMachineAttributeRule: class does not look like FSM or is a framework base class");
+            return false;
+        }
+
+        // Existing behavior for real/likely FSM classes:
         var missingAttrCtx = new MissingStateMachineAttributeValidationContext(
             fsmAttribute != null,
             fsmAttribute?.ConstructorArguments.Length ?? 0,
@@ -1492,7 +1525,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
     }
 
     // Add this field to your parser class:
-    private CallbackSignatureAnalyzer _callbackAnalyzer;
+    private CallbackSignatureAnalyzer? _callbackAnalyzer;
 
     private void ParseOnExceptionAttribute(
         INamedTypeSymbol classSymbol,

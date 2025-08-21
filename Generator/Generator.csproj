@@ -1,47 +1,73 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <LangVersion>latest</LangVersion>
-    <Nullable>enable</Nullable>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    
-    <!-- Generator specific -->
-    <IsRoslynComponent>true</IsRoslynComponent>
-    <IncludeBuildOutput>false</IncludeBuildOutput> <!-- Important for generators -->
-    <DevelopmentDependency>true</DevelopmentDependency> <!-- Ensures it's a build-time dependency -->
-    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-        
-    <!-- NuGet -->
-    <PackageId>StateMachine.Generator</PackageId>
-    <Version>1.0.0-alpha1</Version>
-    <Authors>FSM Team</Authors>
-    <Description>Source Generator for FSM.NET</Description>
-  </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<LangVersion>latest</LangVersion>
+		<Nullable>enable</Nullable>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 
-  <!-- This ensures the DLL is packed into the nupkg in the correct analyzers folder -->
-  <ItemGroup>
-    <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-  </ItemGroup>
-  
-  <!-- Analyzer release tracking files -->
-  <ItemGroup>
-    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
-    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Abstractions\Abstractions.csproj" />
-    <ProjectReference Include="..\Generator.DependencyInjection\Generator.DependencyInjection.csproj" />
-    <ProjectReference Include="..\Generator.Logger\Generator.Logger.csproj" />
-    <ProjectReference Include="..\Generator.Model\Generator.Model.csproj" />
-    <ProjectReference Include="..\Generator.Rules\Generator.Rules.csproj" />
-    <ProjectReference Include="..\IndentedStringBuilder\IndentedStringBuilder.csproj" />
-  </ItemGroup>
+		<!-- generator -->
+		<IsRoslynComponent>true</IsRoslynComponent>
+		<IncludeBuildOutput>false</IncludeBuildOutput>
+		<DevelopmentDependency>true</DevelopmentDependency>
+		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+		<!-- skopiuj wszystkie zależności do bin/, żeby były współlokowane z generatorem -->
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+
+		<!-- NuGet - wyłączone, bo pakujemy przez FastFsm -->
+		<PackageId>StateMachine.Generator</PackageId>
+		<Version>1.0.0-alpha1</Version>
+		<Authors>Lukasz Buchmiet</Authors>
+		<Description>Source Generator for FastFsm.Net</Description>
+		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+		<PackageOutputPath>../nuget</PackageOutputPath>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+
+	<!-- zależności RUNTIME generatora (projekty) -->
+	<ItemGroup>
+		<ProjectReference Include="..\Abstractions\Abstractions.csproj" />
+		<ProjectReference Include="..\Generator.DependencyInjection\Generator.DependencyInjection.csproj" />
+		<ProjectReference Include="..\Generator.Logger\Generator.Logger.csproj" />
+		<ProjectReference Include="..\Generator.Model\Generator.Model.csproj" />
+		<ProjectReference Include="..\Generator.Rules\Generator.Rules.csproj" />
+		<ProjectReference Include="..\IndentedStringBuilder\IndentedStringBuilder.csproj" />
+	</ItemGroup>
+
+	<!-- podstawowy plik analyzera do nupkg -->
+	<ItemGroup>
+		<None Include="$(OutputPath)$(AssemblyName).dll"
+			  Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+		<None Include="$(OutputPath)$(AssemblyName).xml"
+			  Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false"
+			  Condition="Exists('$(OutputPath)$(AssemblyName).xml')" />
+	</ItemGroup>
+
+	<!-- zapakuj zależności generatora obok analyzera -->
+	<Target Name="PackAnalyzerDeps" BeforeTargets="GenerateNuspec" DependsOnTargets="Build">
+		<ItemGroup>
+			<_AnalyzerFiles Include="$(OutputPath)*.dll;$(OutputPath)*.xml" />
+			<!-- nie przenosimy bibliotek Roslyna i części systemowych -->
+			<_AnalyzerFiles Remove="$(OutputPath)Microsoft.CodeAnalysis*.dll" />
+			<_AnalyzerFiles Remove="$(OutputPath)System.Collections.Immutable.dll" />
+			<_AnalyzerFiles Remove="$(OutputPath)System.Runtime.CompilerServices.Unsafe.dll" />
+		</ItemGroup>
+		<ItemGroup>
+			<None Include="@(_AnalyzerFiles)" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+		</ItemGroup>
+	</Target>
+
+	<!-- release tracking (opcjonalnie) -->
+	<ItemGroup>
+		<AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+		<AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+	</ItemGroup>
+
 </Project>

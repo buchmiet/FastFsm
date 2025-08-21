@@ -114,6 +114,12 @@ public class StateMachineAnalyzer : DiagnosticAnalyzer
         }
 
         bool isClass = namedTypeSymbol.TypeKind == TypeKind.Class;
+        
+        // Check if this is a framework base class that should be excluded
+        bool isFrameworkBaseClass = namedTypeSymbol.Name == "StateMachineBase" || 
+                                   namedTypeSymbol.Name == "AsyncStateMachineBase" ||
+                                   (namedTypeSymbol.ContainingNamespace?.ToDisplayString() == "StateMachine.Runtime");
+        
         bool machineLike = hasFsmRelatedAttributes || IsMachineLikeByInheritance() || IsMachineLikeByInterfaces();
 
         bool isPartial = namedTypeSymbol.DeclaringSyntaxReferences
@@ -121,7 +127,8 @@ public class StateMachineAnalyzer : DiagnosticAnalyzer
             .OfType<ClassDeclarationSyntax>()
             .Any(cds => cds.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)));
 
-        if (isClass && machineLike && fsmAttribute == null)
+        // Skip FSM004 for framework base classes
+        if (isClass && machineLike && fsmAttribute == null && !isFrameworkBaseClass)
         {
             var missingAttrCtx = new MissingStateMachineAttributeValidationContext(
                 false,

@@ -57,7 +57,7 @@ internal static class DiagnosticFactory
         });
     }
 
-    internal static bool TryCreateDiagnostic(ValidationResult validationResult, Location location,out Diagnostic result)
+    internal static bool TryCreateDiagnostic(ValidationResult validationResult, Location location,out Diagnostic? result)
     {
       
         if (validationResult.IsValid || string.IsNullOrEmpty(validationResult.RuleId) || string.IsNullOrEmpty(validationResult.Message))

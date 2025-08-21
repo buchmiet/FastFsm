@@ -20,12 +20,12 @@ public sealed class StateModel
     /// <summary>
     /// Nazwa metody OnEntry (wykonywana przy wejściu do stanu)
     /// </summary>
-    public string OnEntryMethod { get; set; }
+    public string? OnEntryMethod { get; set; }
 
     /// <summary>
     /// Nazwa metody OnExit (wykonywana przy wyjściu ze stanu)
     /// </summary>
-    public string OnExitMethod { get; set; }
+    public string? OnExitMethod { get; set; }
 
     #endregion
 
@@ -167,8 +167,8 @@ public sealed class StateModel
     /// </summary>
     public static StateModel Create(
         string name,
-        string onEntryMethod = null,
-        string onExitMethod = null)
+        string? onEntryMethod = null,
+        string? onExitMethod = null)
     {
         return new StateModel
         {

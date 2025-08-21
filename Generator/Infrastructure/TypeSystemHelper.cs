@@ -14,10 +14,10 @@ namespace Generator.Infrastructure;
 /// </summary>
 internal class TypeSystemHelper
 {
-    private  INamedTypeSymbol _taskSymbol;
-    private  INamedTypeSymbol _taskOfTSymbol;
-    private  INamedTypeSymbol _valueTaskSymbol;
-    private  INamedTypeSymbol _valueTaskOfTSymbol;
+    private  INamedTypeSymbol? _taskSymbol;
+    private  INamedTypeSymbol? _taskOfTSymbol;
+    private  INamedTypeSymbol? _valueTaskSymbol;
+    private  INamedTypeSymbol? _valueTaskOfTSymbol;
 
 
     internal TypeSystemHelper()
@@ -60,15 +60,15 @@ internal class TypeSystemHelper
     /// </summary>
     public (bool isAsync, bool isBoolEquivalent) AnalyzeAwaitable(ITypeSymbol returnType, Compilation compilation)
     {
-        _taskSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task")!;
-        _taskOfTSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1")!;
-        _valueTaskSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask")!;
-        _valueTaskOfTSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask`1")!;
+        _taskSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task");
+        _taskOfTSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
+        _valueTaskSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask");
+        _valueTaskOfTSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask`1");
         
-        if (SymbolEqualityComparer.Default.Equals(returnType, _taskSymbol))
+        if (_taskSymbol != null && SymbolEqualityComparer.Default.Equals(returnType, _taskSymbol))
             return (true, false);
 
-        if (SymbolEqualityComparer.Default.Equals(returnType, _valueTaskSymbol))
+        if (_valueTaskSymbol != null && SymbolEqualityComparer.Default.Equals(returnType, _valueTaskSymbol))
             return (true, false);
 
         if (returnType is INamedTypeSymbol named &&
@@ -77,8 +77,8 @@ internal class TypeSystemHelper
             // otwarta definicja generyka: Task<T> / ValueTask<T>
             var open = named.ConstructedFrom;
 
-            if (SymbolEqualityComparer.Default.Equals(open, _taskOfTSymbol) ||
-                SymbolEqualityComparer.Default.Equals(open, _valueTaskOfTSymbol))
+            if ((_taskOfTSymbol != null && SymbolEqualityComparer.Default.Equals(open, _taskOfTSymbol)) ||
+                (_valueTaskOfTSymbol != null && SymbolEqualityComparer.Default.Equals(open, _valueTaskOfTSymbol)))
             {
                 bool boolLike = named.TypeArguments[0].SpecialType == SpecialType.System_Boolean;
                 return (true, boolLike);

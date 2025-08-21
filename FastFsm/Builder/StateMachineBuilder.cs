@@ -1,6 +1,7 @@
 ﻿
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Abstractions.Attributes;
 using StateMachine.Contracts;
@@ -12,9 +13,10 @@ public class StateMachineBuilder<TState, TTrigger> : IStateMachineBuilder<TState
     where TState : unmanaged, Enum
     where TTrigger : unmanaged, Enum
 {
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
     private readonly Type _machineType;
     
-    public StateMachineBuilder(Type machineType)
+    public StateMachineBuilder([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type machineType)
     {
         _machineType = machineType ?? throw new ArgumentNullException(nameof(machineType));
         

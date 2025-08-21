@@ -1,78 +1,159 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<!-- ───────────  basic settings  ─────────── -->
-	<PropertyGroup>
-		<TargetFramework>net9.0</TargetFramework>
-		<LangVersion>latest</LangVersion>
-		<Nullable>enable</Nullable>
+  <!-- Target Framework Configuration -->
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
 
-		<!-- AOT / trimming -->
-		<IsAotCompatible>true</IsAotCompatible>
-		<EnableTrimAnalyzer>true</EnableTrimAnalyzer>
-		<IsTrimmable>true</IsTrimmable>
+    <!-- AOT and Trimming Support -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <IsTrimmable>true</IsTrimmable>
 
-		<!-- NuGet metadata -->
-		<PackageId>FastFsm.Net</PackageId>
-		<Authors>Lukasz Buchmiet</Authors>
-		<Description>High-performance state machine using source generators</Description>
+    <!-- Build Configuration -->
+    <Deterministic>true</Deterministic>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageOutputPath>../nuget</PackageOutputPath>
 
-		<!-- Pack to the repo-local feed (aligned with nuget.config -> ./nuget) -->
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<PackageOutputPath>../nuget</PackageOutputPath>
-	</PropertyGroup>
+    <!-- NuGet Package Metadata -->
+    <PackageId>FastFsm.Net</PackageId>
+    <Authors>Lukasz Buchmiet</Authors>
+    <Description>High-performance state machine using source generators</Description>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/buchmiet/FastFsm</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/buchmiet/FastFsm</PackageProjectUrl>
+    <PackageTags>fsm;state machine;source generator;roslyn;dotnet</PackageTags>
+  </PropertyGroup>
 
-	<!-- generator -->
-	<ItemGroup>
-		<ProjectReference Include="..\Generator\Generator.csproj" PrivateAssets="all" />
-	</ItemGroup>
+  <!-- Runtime Dependencies -->
+  <ItemGroup>
+    <!-- Abstractions library required at compile time -->
+    <ProjectReference Include="..\Abstractions\Abstractions.csproj" PrivateAssets="all" />
+  </ItemGroup>
 
-	<!-- pliki *.props do nupkg -->
-	<ItemGroup>
-		<None Include="build\*.props" Pack="true" PackagePath="build" />
-	</ItemGroup>
+  <!-- Source Generator and Dependencies (Development-time Analyzers) -->
+  <ItemGroup>
+    <ProjectReference Include="..\Generator\Generator.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
+    <ProjectReference Include="..\IndentedStringBuilder\IndentedStringBuilder.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
+    <ProjectReference Include="..\Generator.Logger\Generator.Logger.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
+    <ProjectReference Include="..\Generator.Model\Generator.Model.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
+    <ProjectReference Include="..\Generator.Rules\Generator.Rules.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
+    <ProjectReference Include="..\Generator.DependencyInjection\Generator.DependencyInjection.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
+  </ItemGroup>
 
-	<!-- analyzer (DLL generatora) -->
-	<ItemGroup>
-		<None Include="..\Generator\bin\$(Configuration)\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-		<!-- Analyzer XML documentation -->
-		<None Include="..\Generator\bin\$(Configuration)\netstandard2.0\*.xml" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-	</ItemGroup>
+  <!-- Build Properties Files -->
+  <ItemGroup>
+    <None Include="build\*.props" Pack="true" PackagePath="build" />
+  </ItemGroup>
+
+  <!-- Package Documentation -->
+  <ItemGroup>
+    <None Include="readme.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <!-- Content Files (Compiled at Consumer Side) -->
+  <ItemGroup>
+    <!-- Extension Runner -->
+    <Compile Remove="Runtime\Extensions\ExtensionRunner.cs" />
+    <None Include="Runtime\Extensions\ExtensionRunner.cs" 
+          Pack="true" 
+          PackagePath="contentFiles/cs/any" 
+          BuildAction="Compile" 
+          Visible="false" />
+
+    <!-- Dependency Injection Extensions -->
+    <Compile Remove="DependencyInjection\FsmServiceCollectionExtensions.cs" />
+    <None Include="DependencyInjection\FsmServiceCollectionExtensions.cs" 
+          Pack="true" 
+          PackagePath="contentFiles/cs/any" 
+          BuildAction="Compile" 
+          Visible="false" />
+
+    <!-- State Machine Factory -->
+    <Compile Remove="DependencyInjection\StateMachineFactory.cs" />
+    <None Include="DependencyInjection\StateMachineFactory.cs" 
+          Pack="true" 
+          PackagePath="contentFiles/cs/any" 
+          BuildAction="Compile" 
+          Visible="false" />
+  </ItemGroup>
+
+  <!-- Package Abstractions.dll with FastFsm.dll in lib/net9.0 -->
+  <ItemGroup>
+    <None Include="..\Abstractions\bin\$(Configuration)\netstandard2.0\Abstractions.dll"
+          Pack="true"
+          PackagePath="lib/net9.0/"
+          Condition="Exists('..\Abstractions\bin\$(Configuration)\netstandard2.0\Abstractions.dll')" />
+  </ItemGroup>
+
+  <!-- Package Generator and Dependencies in Analyzers Folder -->
+  <ItemGroup>
+    <!-- Main Generator -->
+    <None Include="..\Generator\bin\$(Configuration)\netstandard2.0\Generator.dll" 
+          Pack="true" 
+          PackagePath="analyzers/dotnet/cs" 
+          Condition="Exists('..\Generator\bin\$(Configuration)\netstandard2.0\Generator.dll')" />
+    <None Include="..\Generator\bin\$(Configuration)\netstandard2.0\Generator.xml" 
+          Pack="true" 
+          PackagePath="analyzers/dotnet/cs" 
+          Condition="Exists('..\Generator\bin\$(Configuration)\netstandard2.0\Generator.xml')" />
+    
+    <!-- Generator Dependencies -->
+    <None Include="..\IndentedStringBuilder\bin\$(Configuration)\netstandard2.0\IndentedStringBuilder.dll" 
+          Pack="true" 
+          PackagePath="analyzers/dotnet/cs" 
+          Condition="Exists('..\IndentedStringBuilder\bin\$(Configuration)\netstandard2.0\IndentedStringBuilder.dll')" />
+    <None Include="..\Generator.Logger\bin\$(Configuration)\netstandard2.0\Generator.Logger.dll" 
+          Pack="true" 
+          PackagePath="analyzers/dotnet/cs" 
+          Condition="Exists('..\Generator.Logger\bin\$(Configuration)\netstandard2.0\Generator.Logger.dll')" />
+    <None Include="..\Generator.Model\bin\$(Configuration)\netstandard2.0\Generator.Model.dll" 
+          Pack="true" 
+          PackagePath="analyzers/dotnet/cs" 
+          Condition="Exists('..\Generator.Model\bin\$(Configuration)\netstandard2.0\Generator.Model.dll')" />
+    <None Include="..\Generator.Rules\bin\$(Configuration)\netstandard2.0\Generator.Rules.dll" 
+          Pack="true" 
+          PackagePath="analyzers/dotnet/cs" 
+          Condition="Exists('..\Generator.Rules\bin\$(Configuration)\netstandard2.0\Generator.Rules.dll')" />
+    <None Include="..\Generator.DependencyInjection\bin\$(Configuration)\netstandard2.0\Generator.DependencyInjection.dll" 
+          Pack="true" 
+          PackagePath="analyzers/dotnet/cs" 
+          Condition="Exists('..\Generator.DependencyInjection\bin\$(Configuration)\netstandard2.0\Generator.DependencyInjection.dll')" />
+    
+    <!-- Abstractions.dll required by Generator -->
+    <None Include="..\Abstractions\bin\$(Configuration)\netstandard2.0\Abstractions.dll" 
+          Pack="true" 
+          PackagePath="analyzers/dotnet/cs" 
+          Condition="Exists('..\Abstractions\bin\$(Configuration)\netstandard2.0\Abstractions.dll')" />
+  </ItemGroup>
 
 
-	<ItemGroup>
-		<!-- 1️⃣ nie kompilujemy wewnątrz FastFsm.Net.dll -->
-		<Compile Remove="Runtime\Extensions\ExtensionRunner.cs" />
-
-		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
-		<None Include="Runtime\Extensions\ExtensionRunner.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
-
-		<Compile Remove="DependencyInjection\FsmServiceCollectionExtensions.cs" />
-
-		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
-		<None Include="DependencyInjection\FsmServiceCollectionExtensions.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
-
-		<Compile Remove="DependencyInjection\StateMachineFactory.cs" />
-
-		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
-		<None Include="DependencyInjection\StateMachineFactory.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
-
-	</ItemGroup>
-
-
-	<!-- Abstractions.dll do paczki -->
-	<Target Name="CopyProjectReferencesToPackage" DependsOnTargets="BuildOnlySettings;ResolveReferences">
-		<ItemGroup>
-			<BuildOutputInPackage Include="$(OutputPath)Abstractions.dll" />
-		</ItemGroup>
-	</Target>
-
-	<!-- wersja z timestampem -->
-	<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
-		<PropertyGroup>
-			<Version>0.6.0-dev.$([System.DateTime]::UtcNow.ToString("yyyyMMddHHmmss"))</Version>
-			<PackageVersion>$(Version)</PackageVersion>
-		</PropertyGroup>
-	</Target>
-
+  <Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
+    <PropertyGroup>
+      <Version>0.6.9.4</Version>
+      <PackageVersion>$(Version)</PackageVersion>
+    </PropertyGroup>
+  </Target>
 
 </Project>
