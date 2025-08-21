@@ -406,11 +406,12 @@ MyStateMachine/
 
 ## Version Compatibility
 
-| FastFSM.Net Version | .NET Version | Status |
-|-------------------|--------------|---------|
-| 0.6.9.2          | .NET 9.0+    | Current |
-| 0.6.9-pre-release | .NET 9.0+    | Deprecated |
-| 0.6.x            | .NET 8.0+    | Supported |
+| FastFSM.Net Version | .NET Version | Status | Notes |
+|-------------------|--------------|---------|-------|
+| 0.6.9.4          | .NET 9.0+    | Current | Latest stable, HSM support |
+| 0.6.9.3          | .NET 9.0+    | Supported | Previous stable |
+| 0.6.9.2          | .NET 9.0+    | Deprecated | Use 0.6.9.4 instead |
+| 0.6.x            | .NET 8.0+    | Limited Support | Basic FSM only |
 
 ## License
 
