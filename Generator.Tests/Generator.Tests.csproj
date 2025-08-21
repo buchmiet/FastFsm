@@ -7,6 +7,34 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <Compile Remove="AsyncValidationDiagnosticTests.cs" />
+	  <Compile Remove="DiagnosticTests.cs" />
+	  <Compile Remove="EnvironmentDiagnosticTest.cs" />
+	  <Compile Remove="MinimalDiagnosticTest.cs" />
+	  <Compile Remove="PayloadValidationDiagnosticTests.cs" />
+	  <Compile Remove="TypeSystemHelper\TypeSystemHelperCompilationTests.cs" />
+	  <Compile Remove="TypeSystemHelper\TypeSystemHelperEdgeCaseTests.cs" />
+	  <Compile Remove="TypeSystemHelper\TypeSystemHelperIntegrationTests.cs" />
+	  <Compile Remove="TypeSystemHelper\TypeSystemHelperPerformanceTests.cs" />
+	  <Compile Remove="TypeSystemHelper\TypeSystemHelperRoslynTests.cs" />
+	  <Compile Remove="TypeSystemHelper\TypeSystemHelperTests.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Include="AsyncValidationDiagnosticTests.cs" />
+	  <None Include="DiagnosticTests.cs" />
+	  <None Include="EnvironmentDiagnosticTest.cs" />
+	  <None Include="MinimalDiagnosticTest.cs" />
+	  <None Include="PayloadValidationDiagnosticTests.cs" />
+	  <None Include="TypeSystemHelper\TypeSystemHelperCompilationTests.cs" />
+	  <None Include="TypeSystemHelper\TypeSystemHelperEdgeCaseTests.cs" />
+	  <None Include="TypeSystemHelper\TypeSystemHelperIntegrationTests.cs" />
+	  <None Include="TypeSystemHelper\TypeSystemHelperPerformanceTests.cs" />
+	  <None Include="TypeSystemHelper\TypeSystemHelperRoslynTests.cs" />
+	  <None Include="TypeSystemHelper\TypeSystemHelperTests.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
 		<PackageReference Include="Shouldly" Version="4.3.0" />
 		<PackageReference Include="xunit" Version="2.4.2" />
