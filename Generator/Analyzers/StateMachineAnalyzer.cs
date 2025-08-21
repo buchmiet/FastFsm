@@ -54,25 +54,39 @@ public class StateMachineAnalyzer : DiagnosticAnalyzer
         var namedTypeSymbol = (INamedTypeSymbol)symbolContext.Symbol;
         Location classLocation = namedTypeSymbol.Locations.FirstOrDefault() ?? Location.None;
 
-        // Check if class has [StateMachine] attribute
-        var fsmAttribute = namedTypeSymbol.GetAttributes()
-            .FirstOrDefault(attr => attr.AttributeClass?.ToDisplayString() == StateMachineAttributeName);
-
-        // Narrow FSM004 candidates: only classes that actually look like FSMs
-        // i.e., have any FSM-related attributes on the class or its members
-        string[] fsmRelatedAttrs = new[]
+        // Robust match for [StateMachine] attribute:
+        // - accept fully-qualified name (StateMachineAttributeName)
+        // - accept short metadata name "StateMachineAttribute"
+        // - tolerate "Attribute" suffix conventions
+        static bool MatchesAttr(ITypeSymbol? cls, string? expectedFull, string expectedShort)
         {
-            StateAttributeFullName,
-            TransitionAttributeName,
-            InternalTransitionAttributeName,
-            PayloadTypeAttributeFullName
-        };
+            if (cls is null) return false;
+            // Full name (error-message format is more stable across symbol kinds)
+            var full = cls.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+            if (!string.IsNullOrEmpty(expectedFull) && full == expectedFull) return true;
+            // Short names
+            var name = cls.Name; // e.g., "StateMachineAttribute"
+            if (name == expectedShort || name == expectedShort + "Attribute") return true;
+            return false;
+        }
+        var fsmAttribute = namedTypeSymbol.GetAttributes()
+            .FirstOrDefault(attr =>
+                MatchesAttr(attr.AttributeClass, StateMachineAttributeName, "StateMachine"));
 
-        bool hasFsmRelatedAttributes =
+        // Narrow FSM004 candidates: classes that actually look like FSMs
+        // Accept both fully-qualified and short names for related attributes.
+        static bool IsRelatedAttr(ITypeSymbol? cls, string? full, string shortName)
+            => MatchesAttr(cls, full, shortName);
+        bool ClassHasRelatedAttrs() =>
             namedTypeSymbol.GetAttributes().Any(a =>
-                a.AttributeClass?.ToDisplayString() is string n1 && fsmRelatedAttrs.Contains(n1)) ||
+                IsRelatedAttr(a.AttributeClass, StateAttributeFullName, "State") ||
+                IsRelatedAttr(a.AttributeClass, PayloadTypeAttributeFullName, "PayloadType"));
+        bool MembersHaveRelatedAttrs() =>
             namedTypeSymbol.GetMembers().OfType<IMethodSymbol>().Any(m =>
-                m.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() is string n2 && fsmRelatedAttrs.Contains(n2)));
+                m.GetAttributes().Any(a =>
+                    IsRelatedAttr(a.AttributeClass, /* full may be null/unknown */ null, "Transition") ||
+                    IsRelatedAttr(a.AttributeClass, /* full may be null/unknown */ null, "InternalTransition")));
+        bool hasFsmRelatedAttributes = ClassHasRelatedAttrs() || MembersHaveRelatedAttrs();
 
         // Additional machine-like heuristics: inherits StateMachineBase<,> / AsyncStateMachineBase<,>
         // or implements IStateMachine*/IExtensibleStateMachine* from StateMachine.Contracts
@@ -127,7 +141,7 @@ public class StateMachineAnalyzer : DiagnosticAnalyzer
             .OfType<ClassDeclarationSyntax>()
             .Any(cds => cds.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)));
 
-        // Skip FSM004 for framework base classes
+        // Emit FSM004 only for real machine-like classes that truly miss the attribute
         if (isClass && machineLike && fsmAttribute == null && !isFrameworkBaseClass)
         {
             var missingAttrCtx = new MissingStateMachineAttributeValidationContext(
