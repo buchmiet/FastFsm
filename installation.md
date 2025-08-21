@@ -43,10 +43,10 @@ cd MyStateMachine
 
 ```bash
 # Install the latest stable version
-dotnet add package FastFsm.Net --version 0.6.9.2
+dotnet add package FastFsm.Net --version 0.6.9.4
 
-# Or install the latest pre-release
-dotnet add package FastFsm.Net --prerelease
+# Or install the latest version available
+dotnet add package FastFsm.Net
 ```
 
 ### Alternative: PackageReference in .csproj
@@ -63,7 +63,7 @@ You can also add the package reference directly to your `.csproj` file:
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FastFsm.Net" Version="0.6.9.2" />
+    <PackageReference Include="FastFsm.Net" Version="0.6.9.4" />
   </ItemGroup>
 </Project>
 ```
@@ -186,7 +186,7 @@ The source generator automatically detects and processes classes marked with `[S
 1. **Check Package Installation**
 ```bash
 dotnet list package
-# Should show: FastFsm.Net 0.6.9.2
+# Should show: FastFsm.Net 0.6.9.4
 ```
 
 2. **Verify Source Generation**
@@ -202,15 +202,16 @@ ls obj/Debug/net9.0/Generator/Generator.StateMachineGenerator/
 3. **Test Compilation**
 ```bash
 dotnet build --verbosity normal
-# Should complete without errors
-# Warnings FSM002/FSM004 are often false positives
+# Should complete without errors or warnings
 ```
 
-### Common Warnings (Can Be Ignored)
+### Build Quality
 
-- **FSM002**: "State might be unreachable" - Often false positive for hierarchical states
-- **FSM004**: "Class missing [StateMachine] attribute" - False positive when attribute is present
-- **CS0108**: "Member hides inherited member" - Normal for HSM, will be fixed in future versions
+FastFSM.Net v0.6.9.4 provides excellent build-time experience:
+- **Zero warnings** with standard or elevated warning levels
+- **Clean compilation** even with `TreatWarningsAsErrors=true`
+- **Source generator** produces optimized code silently at compile time
+- **Full compatibility** with .NET 9.0 SDK and analyzers
 
 ## Troubleshooting
 
@@ -408,7 +409,7 @@ MyStateMachine/
 
 | FastFSM.Net Version | .NET Version | Status | Notes |
 |-------------------|--------------|---------|-------|
-| 0.6.9.4          | .NET 9.0+    | Current | Latest stable, HSM support |
+| 0.6.9.4          | .NET 9.0+    | Current | Latest stable, HSM support, clean builds |
 | 0.6.9.3          | .NET 9.0+    | Supported | Previous stable |
 | 0.6.9.2          | .NET 9.0+    | Deprecated | Use 0.6.9.4 instead |
 | 0.6.x            | .NET 8.0+    | Limited Support | Basic FSM only |
