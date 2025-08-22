@@ -424,10 +424,9 @@ namespace FastFsm.Runtime
             }
         }
         
-#if DEBUG
         /// <summary>
         /// Returns the active path from the root composite down to the current leaf state.
-        /// DEBUG-only helper to diagnose hierarchy.
+        /// Helper to diagnose hierarchy.
         /// </summary>
         public string DumpActivePath()
         {
@@ -460,7 +459,6 @@ namespace FastFsm.Runtime
             
             return sb.ToString();
         }
-#endif
         
         #endregion
     }

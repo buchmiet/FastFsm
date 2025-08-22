@@ -1,9 +1,9 @@
 ﻿using Abstractions.Attributes;
 using Microsoft.Extensions.Logging;
-using StateMachine.Contracts;
+using FastFsm.Contracts;
 using Xunit.Abstractions;
 
-namespace StateMachine.Logging.Tests
+namespace FastFsm.Logging.Tests
 {
     /// <summary>
     /// Example tests showing actual log output

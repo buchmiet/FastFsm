@@ -1,9 +1,10 @@
-using Abstractions.Attributes;
+
 using Shouldly;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Abstractions.Attributes;
 using Xunit;
 
 namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
@@ -315,7 +316,6 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
             m.IsIn(S.Parent).ShouldBeFalse();
         }
 
-#if DEBUG
         [Fact]
         public async Task DumpActivePath_Contains_Parent_And_Leaf()
         {
@@ -327,7 +327,6 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
             path.ShouldContain("Parent");
             path.ShouldContain("Parent_A");
         }
-#endif
 
         public enum S { Outside, Parent, Parent_A, Parent_B }
         public enum T { Enter, Next, Leave }

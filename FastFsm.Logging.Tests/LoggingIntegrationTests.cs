@@ -6,7 +6,7 @@ using Shouldly;
 using Xunit;
 using Abstractions.Attributes;
 
-namespace StateMachine.Logging.Tests
+namespace FastFsm.Logging.Tests
 {
     /// <summary>
     /// Integration tests for complex logging scenarios

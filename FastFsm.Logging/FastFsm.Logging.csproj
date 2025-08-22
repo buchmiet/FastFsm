@@ -8,8 +8,9 @@
 		<Authors>Lukasz Buchmiet</Authors>
 		<Description>Enables logging for FastFsm.Net state machines</Description>
 
+		<Deterministic>true</Deterministic>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<PackageOutputPath>../nupkgs</PackageOutputPath>
+		<PackageOutputPath>../nuget</PackageOutputPath>
 		<!-- brak własnego DLL-a -->
 		<IncludeBuildOutput>false</IncludeBuildOutput>
 
@@ -18,31 +19,42 @@
 		<DefineConstants>$(DefineConstants);FSM_LOGGING_ENABLED</DefineConstants>
 
 		<LangVersion>latest</LangVersion>
+
+
+		<!-- NuGet Package Metadata -->
+		<PackageId>FastFsm.Net.Logging</PackageId>
+		<Authors>Lukasz Buchmiet</Authors>
+		<Description>High-performance state machine using source generators with support for ILogger</Description>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<RepositoryUrl>https://github.com/buchmiet/FastFsm</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageProjectUrl>https://github.com/buchmiet/FastFsm</PackageProjectUrl>
+		<PackageTags>fsm;state machine;source generator;roslyn;dotnet</PackageTags>
 	</PropertyGroup>
 
 	<!-- zależności -->
 	<ItemGroup>
-		<PackageReference Include="FastFsm.Net" Version="0.6.9.4" />
+		<PackageReference Include="FastFsm.Net" Version="0.6.9.13" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
 	</ItemGroup>
 
-	<!-- buildTransitive props -->
+	<!-- build and buildTransitive props -->
 	<ItemGroup>
+		<None Include="build\FastFsm.Net.Logging.props" Pack="true" PackagePath="build" />
 		<None Include="build\FastFsm.Net.Logging.props" Pack="true" PackagePath="buildTransitive" />
 	</ItemGroup>
 
-	<!-- ───────────  shared-source: ExtensionRunner (link)  ─────────── -->
-	<ItemGroup>
-		<!-- plik pobieramy z projektu core -->
-		<Content Include="..\FastFsm\Runtime\Extensions\ExtensionRunner.cs"
-		         Link="Runtime\Extensions\ExtensionRunner.cs"
-		         Pack="true"
-		         PackagePath="contentFiles/cs/any"
-		         BuildAction="Compile"
-		         Visible="false" />
-	</ItemGroup>
+	<!-- ExtensionRunner comes from FastFsm.Net package contentFiles -->
 	<ItemGroup>
 	  <Folder Include="shared\" />
 	</ItemGroup>
+
+	<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
+		<PropertyGroup>
+			<Version>0.6.9.13</Version>
+			<PackageVersion>$(Version)</PackageVersion>
+		</PropertyGroup>
+	</Target>
+
 
 </Project>

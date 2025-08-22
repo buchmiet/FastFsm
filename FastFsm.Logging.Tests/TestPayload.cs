@@ -1,4 +1,4 @@
-﻿namespace StateMachine.Logging.Tests;
+﻿namespace FastFsm.Logging.Tests;
 
 /// <summary>
 /// Test payload class

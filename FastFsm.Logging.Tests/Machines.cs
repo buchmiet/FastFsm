@@ -1,6 +1,6 @@
 ﻿using Abstractions.Attributes;
 
-namespace StateMachine.Logging.Tests
+namespace FastFsm.Logging.Tests
 {
     // Pure variant state machine for testing
     [StateMachine(typeof(TestState), typeof(TestTrigger))]
