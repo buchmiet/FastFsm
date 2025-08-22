@@ -2692,4 +2692,35 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
         Sb.AppendLine("                        return true;");
 }
+
+    #region Helper Methods (moved from base class)
+
+    protected void WriteMethodAttribute() =>
+        Sb.AppendLine($"[{Strings.MethodImplAttribute}({AggressiveInliningAttribute})]");
+
+    protected string GetTypeNameForUsage(string fullyQualifiedName) =>
+        TypeHelper.FormatTypeForUsage(fullyQualifiedName, useGlobalPrefix: false);
+
+    protected void AddUsing(string usingStatement)
+    {
+        if (AddedUsings.Add(usingStatement))
+        {
+            Sb.AppendLine($"using {usingStatement};");
+        }
+    }
+
+    protected string GetConfigureAwait() => 
+        AsyncGenerationHelper.GetConfigureAwait(IsAsyncMachine, Model.ContinueOnCapturedContext);
+
+    protected string GetCtVar() => IsAsyncMachine
+        ? "cancellationToken"
+        : "System.Threading.CancellationToken.None";
+
+    // Helper to mirror MakeSafeMemberSuffix - keeping for compatibility
+    protected static string UnifiedStateMachineGenerator_MemberSuffixWrapper(string raw)
+    {
+        return MakeSafeMemberSuffix(raw);
+    }
+
+    #endregion
 }
