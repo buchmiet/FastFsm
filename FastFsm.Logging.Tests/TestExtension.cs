@@ -1,6 +1,6 @@
-﻿using StateMachine.Contracts;
+﻿using FastFsm.Contracts;
 
-namespace StateMachine.Logging.Tests
+namespace FastFsm.Logging.Tests
 {
     /// <summary>
     /// Test extension that can throw exceptions

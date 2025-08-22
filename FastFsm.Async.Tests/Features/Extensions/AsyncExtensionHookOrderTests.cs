@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Abstractions.Attributes;
+using FastFsm.Contracts;
 using Shouldly;
 
 using Xunit;

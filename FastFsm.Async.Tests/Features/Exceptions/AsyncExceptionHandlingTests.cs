@@ -2,6 +2,7 @@
 using Shouldly;
 using System;
 using System.Threading.Tasks;
+using FastFsmTests.Tests;
 using Xunit;
 
 namespace  FastFsm.Async.Tests.Features.Exceptions

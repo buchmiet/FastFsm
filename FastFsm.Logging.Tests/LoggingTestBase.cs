@@ -2,7 +2,7 @@
 using Moq;
 using Shouldly;
 
-namespace StateMachine.Logging.Tests;
+namespace FastFsm.Logging.Tests;
 
 /// <summary>
 /// Base class for all logging tests

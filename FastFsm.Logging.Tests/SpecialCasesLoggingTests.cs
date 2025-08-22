@@ -2,14 +2,14 @@
 using Microsoft.Extensions.Logging;
 using Moq;
 using Shouldly;
-using StateMachine.Runtime;
-using StateMachine.Runtime.Extensions;
+using FastFsm.Runtime;
+using FastFsm.Runtime.Extensions;
 using System;
 using System.Linq;
 using System.Reflection.PortableExecutable;
 using Xunit;
 
-namespace StateMachine.Logging.Tests
+namespace FastFsm.Logging.Tests
 {
     /// <summary>
     /// Tests for special cases and edge scenarios

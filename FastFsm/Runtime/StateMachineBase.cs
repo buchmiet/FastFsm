@@ -302,10 +302,9 @@ public abstract class StateMachineBase<TState, TTrigger>(TState initialState) : 
         }
     }
     
-#if DEBUG
     /// <summary>
     /// Returns the active path from the root composite down to the current leaf state.
-    /// DEBUG-only helper to diagnose hierarchy.
+    /// Helper to diagnose hierarchy.
     /// </summary>
     public string DumpActivePath()
     {
@@ -338,5 +337,4 @@ public abstract class StateMachineBase<TState, TTrigger>(TState initialState) : 
         
         return sb.ToString();
     }
-#endif
 }

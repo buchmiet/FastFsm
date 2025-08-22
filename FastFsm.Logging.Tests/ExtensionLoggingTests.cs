@@ -4,10 +4,10 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Shouldly;
 using Xunit;
-using StateMachine.Runtime;
-using StateMachine.Runtime.Extensions;
+using FastFsm.Runtime;
+using FastFsm.Runtime.Extensions;
 
-namespace StateMachine.Logging.Tests
+namespace FastFsm.Logging.Tests
 {
     /// <summary>
     /// Tests for extension-related logging, especially error scenarios
