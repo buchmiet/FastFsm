@@ -18,7 +18,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
     <PackageReference Include="Shouldly" Version="4.2.1" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.7" />
-    <PackageReference Include="FastFsm.Net.Logging" Version="*" />
+    <PackageReference Include="FastFsm.Net.Logging" Version="0.6.*" />
   </ItemGroup>
 
   <ItemGroup>
