@@ -2,9 +2,12 @@
   "mcpServers": {
     "roslyn-index": {
       "type": "stdio",
-      "command": "/home/lukasz/.dotnet/dotnet",
-      "args": ["/home/lukasz/RoslynMcpServer/src/RoslynMcpServer/bin/Release/net9.0/RoslynMcpServer.dll"],
-      "env": { "DOTNET_NOLOGO": "1", "DOTNET_CLI_TELEMETRY_OPTOUT": "1" }
+      "command": "dotnet",
+      "args": ["../RoslynMcpServer/src/RoslynMcpServer/bin/Release/net9.0/RoslynMcpServer.dll"],
+      "env": {
+        "DOTNET_NOLOGO": "1",
+        "DOTNET_CLI_TELEMETRY_OPTOUT": "1"
+      }
     }
   }
 }
