@@ -7,4 +7,9 @@
 		<CompilerVisibleProperty Include="FsmGenerateLogging" />
 		<CompilerVisibleProperty Include="FsmGenerateDI" />
 	</ItemGroup>
+	
+	<!-- Add global using for Abstractions.Attributes unless disabled -->
+	<ItemGroup Condition="'$(FASTFSM_NoGlobalUsings)' != 'true'">
+		<Using Include="Abstractions.Attributes" />
+	</ItemGroup>
 </Project>

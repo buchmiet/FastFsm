@@ -148,10 +148,22 @@
           Condition="Exists('..\Abstractions\bin\$(Configuration)\netstandard2.0\Abstractions.dll')" />
   </ItemGroup>
 
+ <ItemGroup>
+    <!-- Doda global using dla wszystkich konsumentów pakietu -->
+    <Using Include="Abstractions.Attributes" />
+  </ItemGroup>
+
+  <!-- Pozwól wyłączyć to przełącznikiem -->
+  <ItemGroup Condition="'$(FASTFSM_NoGlobalUsings)'=='true'">
+    <Using Remove="Abstractions.Attributes" />
+  </ItemGroup>
 
   <Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
+    <ReadLinesFromFile File="../.local-version">
+      <Output TaskParameter="Lines" PropertyName="LocalBuildNumber"/>
+    </ReadLinesFromFile>
     <PropertyGroup>
-      <Version>0.8.0.1</Version>
+      <Version>0.8.0.$(LocalBuildNumber)-local-$(LocalBuildNumber)</Version>
       <PackageVersion>$(Version)</PackageVersion>
     </PropertyGroup>
   </Target>
