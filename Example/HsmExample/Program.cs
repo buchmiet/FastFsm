@@ -1,5 +1,4 @@
 using System;
-using Abstractions.Attributes;
 
 namespace HsmExample;
 
@@ -148,11 +147,10 @@ class Program
         Console.WriteLine("5. Restarting workflow...");
         workflow.Fire(WorkflowTrigger.Start);
         Console.WriteLine($"Current state: {workflow.CurrentState}");
-        Console.WriteLine("   (Should be Loading again as it's the initial substate)\n");
+        Console.WriteLine("   (Shallow history restores last substate: Working)\n");
         
-        // Progress to Working, then simulate error
-        Console.WriteLine("6. Progressing to Working state...");
-        workflow.Fire(WorkflowTrigger.DataLoaded);
+        // Continue work in restored substate (Working), then simulate error
+        Console.WriteLine("6. Continuing in Working state (history)");
         workflow.Fire(WorkflowTrigger.UpdateProgress);
         Console.WriteLine($"Current state: {workflow.CurrentState}\n");
         
