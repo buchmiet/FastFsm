@@ -4,10 +4,32 @@
 
     <FsmGenerateLogging Condition="'$(FsmGenerateLogging)' == ''">false</FsmGenerateLogging>
     <FsmGenerateDI      Condition="'$(FsmGenerateDI)' == ''">false</FsmGenerateDI>
+    
+    <!-- Common properties for all projects -->
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    
+    <!-- Use local NuGet packages for development -->
+    <RestoreAdditionalProjectSources>$(MSBuildThisFileDirectory)nuget</RestoreAdditionalProjectSources>
+    
+    <!-- Deterministic builds -->
+    <Deterministic>true</Deterministic>
   </PropertyGroup>
   
   <ItemGroup>
     <CompilerVisibleProperty Include="FsmGenerateLogging" />
     <CompilerVisibleProperty Include="FsmGenerateDI" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <!-- Skrypt ustawi to na windowsową ścieżkę feedu, np. C:\Users\...\AppData\Local\FastFsm\nuget -->
+    <FastFsmLocalFeed>$(FASTFSM_LOCAL_FEED)</FastFsmLocalFeed>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(FastFsmLocalFeed)' != '' ">
+    <!-- Dodatkowe źródło NuGet tylko gdy ustawione przez skrypt -->
+    <RestoreAdditionalProjectSources>
+      $(RestoreAdditionalProjectSources);$(FastFsmLocalFeed)
+    </RestoreAdditionalProjectSources>
+  </PropertyGroup>
 </Project>

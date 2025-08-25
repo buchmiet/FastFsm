@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <!-- Target Framework Configuration -->
   <PropertyGroup>
@@ -164,8 +164,10 @@
     </ReadLinesFromFile>
     <PropertyGroup>
       <Version>0.8.0.$(LocalBuildNumber)-local-$(LocalBuildNumber)</Version>
-      <PackageVersion>$(Version)</PackageVersion>
+      <PackageVersion>0.8.0.3-dev</PackageVersion>
     </PropertyGroup>
   </Target>
 
 </Project>
+
+
