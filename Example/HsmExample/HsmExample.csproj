@@ -7,8 +7,14 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!-- Exclude incidental template files from nested test folder -->
   <ItemGroup>
-    <PackageReference Include="FastFsm.Net" Version="0.6.9.1-dev.*" />
+    <Compile Remove="TestInstallation/**" />
+    <None Include="TestInstallation/**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FastFsm.Net" Version="0.8.0.2" />
   </ItemGroup>
 
 </Project>

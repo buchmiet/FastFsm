@@ -97,6 +97,14 @@
           PackagePath="contentFiles/cs/any" 
           BuildAction="Compile" 
           Visible="false" />
+
+    <!-- Global usings to propagate attributes namespace to consumers -->
+    <Compile Remove="Runtime\GlobalUsings.FastFsm.cs" />
+    <None Include="Runtime\GlobalUsings.FastFsm.cs"
+          Pack="true"
+          PackagePath="contentFiles/cs/any"
+          BuildAction="Compile"
+          Visible="false" />
   </ItemGroup>
 
   <!-- Package Abstractions.dll with FastFsm.dll in lib/net9.0 -->
@@ -151,7 +159,7 @@
 
   <Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
     <PropertyGroup>
-      <Version>0.8.0.1</Version>
+      <Version>0.8.0.2</Version>
       <PackageVersion>$(Version)</PackageVersion>
     </PropertyGroup>
   </Target>
