@@ -66,6 +66,7 @@ namespace FastFsm.Logging.Tests
                 GetLogger<PayloadStateMachine>());
 
             // Act
+            machine.Start();
             var result = machine.TryFire(TestTrigger.Start, payload: null);
 
             // Assert
@@ -140,6 +141,7 @@ namespace FastFsm.Logging.Tests
             var wrongPayload = new { Wrong = "Type" };
 
             // Act
+            machine.Start();
             var result = machine.TryFire(TestTrigger.Start, wrongPayload);
 
             // Assert

@@ -1,0 +1,10 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  FastFsm.Logging.Tests -> /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/FastFsm.Logging.Tests/bin/Release/net9.0/FastFsm.Logging.Tests.dll
+Test run for /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/FastFsm.Logging.Tests/bin/Release/net9.0/FastFsm.Logging.Tests.dll (.NETCoreApp,Version=v9.0)
+VSTest version 17.14.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+No test matches the given testcase filter `FullyQualifiedName~ExtensionsStateMachine` in /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/FastFsm.Logging.Tests/bin/Release/net9.0/FastFsm.Logging.Tests.dll
+
