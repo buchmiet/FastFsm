@@ -54,7 +54,7 @@
 		<PropertyGroup>
 			<Version>0.8.0.11</Version>
 			<PackageVersion>$(Version)</PackageVersion>
-		<Version>0.8.0.18</Version><PackageVersion>$(Version)</PackageVersion></PropertyGroup>
+		<Version>0.8.0.18</Version><PackageVersion>$(Version)</PackageVersion><Version>0.8.0.18</Version><PackageVersion>$(Version)</PackageVersion></PropertyGroup>
 	</Target>
 
 
