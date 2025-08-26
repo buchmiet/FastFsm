@@ -16,9 +16,15 @@ PACKAGE_IDS = {
     "di":    ("FastFsm.Net.DependencyInjection", DI_PROJ),
 }
 
-def run(cmd, cwd=ROOT):
+def run(cmd, cwd=ROOT, fatal=True):
+    # Wypisz komendę, przepuść pełny stdout/stderr polecenia (w tym .NET warningi/błędy),
+    # ale bez Pythonowych tracebacków. Przy błędzie zakończ elegancko.
     print(">>", " ".join(cmd))
-    subprocess.check_call(cmd, cwd=cwd)
+    proc = subprocess.run(cmd, cwd=cwd)
+    if fatal and proc.returncode != 0:
+        print(f"ERROR: command failed (exit {proc.returncode}): {' '.join(cmd)}")
+        sys.exit(proc.returncode)
+    return proc.returncode
 
 def parse_version_from_stamp(csproj: Path) -> str:
     tree = ET.parse(csproj)
@@ -140,9 +146,18 @@ def restore_tests_with_local():
                  "--source", "https://api.nuget.org/v3/index.json"])
 
 def run_tests(configuration: str):
+    failed = []
     for csproj in find_csprojs():
         if is_test_project(csproj):
-            run(["dotnet", "test", str(csproj), "-c", configuration])
+            rc = run(["dotnet", "test", str(csproj), "-c", configuration], fatal=False)
+            if rc != 0:
+                failed.append(csproj)
+    if failed:
+        print("\nTest failures:")
+        for p in failed:
+            print(" -", p.relative_to(ROOT))
+        # zakończ bez tracebacka, ale z kodem błędu
+        sys.exit(1)
 
 def main():
     ap = argparse.ArgumentParser(description="Release builder for FastFsm (+DI + Logging) with wildcard test updates.")
