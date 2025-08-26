@@ -99,9 +99,9 @@
 
   <Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
     <PropertyGroup>
-      <Version>0.8.0.17</Version>
+      <Version>0.8.0.19</Version>
       <PackageVersion>$(Version)</PackageVersion>
-    <Version>0.8.0.18</Version><PackageVersion>$(Version)</PackageVersion><Version>0.8.0.18</Version><PackageVersion>$(Version)</PackageVersion></PropertyGroup>
+    </PropertyGroup>
   </Target>
 
 </Project>

@@ -50,10 +50,14 @@ def set_version_in_stamp(csproj: Path, new_version: str):
     if pg is None:
         pg = ET.SubElement(target, "PropertyGroup")
 
-    ver = pg.find("Version") or ET.SubElement(pg, "Version")
+    ver = pg.find("Version")
+    if ver is None:
+        ver = ET.SubElement(pg, "Version")
     ver.text = new_version
 
-    pkgver = pg.find("PackageVersion") or ET.SubElement(pg, "PackageVersion")
+    pkgver = pg.find("PackageVersion")
+    if pkgver is None:
+        pkgver = ET.SubElement(pg, "PackageVersion")
     # trzymajmy PackageVersion spięte z $(Version) – nupkg dostanie to samo
     pkgver.text = "$(Version)"
 
@@ -113,7 +117,17 @@ def git_commit_and_tag(new_version: str, do_commit: bool, do_tag: bool):
         run(["git", "add", "-A"])
         run(["git", "commit", "-m", f"chore(release): v{new_version}"])
     if do_tag:
-        run(["git", "tag", "-a", f"v{new_version}", "-m", f"v{new_version}"])
+        # jeśli tag już istnieje – nie przerywaj release'u
+        try:
+            existing = subprocess.check_output(
+                ["git", "tag", "-l", f"v{new_version}"], cwd=ROOT, text=True
+            ).strip()
+        except subprocess.CalledProcessError:
+            existing = ""
+        if existing:
+            print(f"Tag v{new_version} already exists — skipping tag creation.")
+        else:
+            run(["git", "tag", "-a", f"v{new_version}", "-m", f"v{new_version}"])
 
 def dotnet_pack(csproj: Path, configuration: str):
     run(["dotnet", "pack", str(csproj), "-c", configuration, "-o", str(NUGET_DIR)])
@@ -128,7 +142,7 @@ def restore_tests_with_local():
 def run_tests(configuration: str):
     for csproj in find_csprojs():
         if is_test_project(csproj):
-            run(["dotnet", "test", str(csproj), "-c", configuration, "--no-build"])
+            run(["dotnet", "test", str(csproj), "-c", configuration])
 
 def main():
     ap = argparse.ArgumentParser(description="Release builder for FastFsm (+DI + Logging) with wildcard test updates.")
