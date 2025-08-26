@@ -33,10 +33,10 @@
 	</PropertyGroup>
 
 	<!-- zależności -->
-	<ItemGroup>
-		<PackageReference Include="FastFsm.Net" Version="0.8.0.2" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
-	</ItemGroup>
+		<ItemGroup>
+			<PackageReference Include="FastFsm.Net" Version="0.8.0.4" />
+			<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
+		</ItemGroup>
 
 	<!-- build and buildTransitive props -->
 	<ItemGroup>
@@ -45,23 +45,24 @@
 	</ItemGroup>
 
 	<!-- Repackage ExtensionRunner.cs so consumers of Logging get it without direct FastFsm.Net reference -->
-	<ItemGroup>
-	  <None Include="..\FastFsm\Runtime\Extensions\ExtensionRunner.cs"
-	        Pack="true"
-	        PackagePath="contentFiles/cs/any"
-	        BuildAction="Compile"
-	        Visible="false" />
-	  <None Include="shared/Compatibility.FastFsm.Extensions.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
-	  <None Include="shared/Compatibility.FastFsm.Extensions.cs" Pack="true" PackagePath="build" BuildAction="Compile" Visible="false" />
-	  <Folder Include="shared\" />
-	</ItemGroup>
+		<ItemGroup>
+		  <None Include="..\FastFsm\Runtime\Extensions\ExtensionRunner.cs"
+		        Pack="true"
+		        PackagePath="contentFiles/cs/any"
+		        BuildAction="Compile"
+		        Visible="false" />
+		  <None Include="shared/Compatibility.FastFsm.Extensions.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
+		  <None Include="shared/Compatibility.FastFsm.Extensions.cs" Pack="true" PackagePath="build" BuildAction="Compile" Visible="false" />
+		  <None Include="shared/LogAdapter.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
+		  <Folder Include="shared\" />
+		</ItemGroup>
 
-	<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
-		<PropertyGroup>
-		<Version>0.8.0.3</Version>
-		<PackageVersion>$(Version)</PackageVersion>
-		</PropertyGroup>
-	</Target>
+		<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
+			<PropertyGroup>
+			<Version>0.8.0.5</Version>
+			<PackageVersion>$(Version)</PackageVersion>
+			</PropertyGroup>
+		</Target>
 
 
 </Project>

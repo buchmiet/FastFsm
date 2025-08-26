@@ -2,9 +2,9 @@
 
 using System;
 using Microsoft.Extensions.DependencyInjection;
-using StateMachine.Contracts;
+using FastFsm.Contracts;
 
-namespace StateMachine.DependencyInjection;
+namespace FastFsm.DependencyInjection;
 
 /// <summary>
 /// Generated factory that selects appropriate variant

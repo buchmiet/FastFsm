@@ -9,7 +9,7 @@
 		<Description>Dependency Injection support for FastFsm.Net state machines. Includes logging support.</Description>
 
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<PackageOutputPath>../nupkgs</PackageOutputPath>
+		<PackageOutputPath>../nuget</PackageOutputPath>
 		<IncludeBuildOutput>false</IncludeBuildOutput>
 
 		<!-- Włącz DI i Logging -->
@@ -19,7 +19,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="FastFsm.Net" Version="*-dev.*" />
+		<PackageReference Include="FastFsm.Net" Version="0.8.0.4" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.7" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
 	</ItemGroup>
@@ -55,7 +55,22 @@
 		      BuildAction="Compile"
 		      Visible="false" />
 
+		<!-- Log adapter for logging-enabled generation -->
+		<None Include="shared/LogAdapter.cs"
+		      Pack="true"
+		      PackagePath="contentFiles/cs/any"
+		      BuildAction="Compile"
+		      Visible="false" />
+
 	</ItemGroup>
+
+	<!-- Version stamping for nupkg -->
+	<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
+		<PropertyGroup>
+			<Version>0.8.0.5</Version>
+			<PackageVersion>$(Version)</PackageVersion>
+		</PropertyGroup>
+	</Target>
 
 
 
