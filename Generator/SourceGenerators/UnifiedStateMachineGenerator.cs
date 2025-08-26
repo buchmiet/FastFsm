@@ -931,6 +931,8 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
     private void EmitTryFireInternalFastPath(string stateTypeForUsage, string triggerTypeForUsage)
     {
         var triggerLit = GetSingleTriggerForFastPath(triggerTypeForUsage);
+        // We also need the trigger name as string for logging
+        var triggerName = Model.Transitions.Select(t => t.Trigger).Distinct().Single();
         var mapping = GetOrderedStateMapping();
 
         // Generujemy: if (trigger != <TRIGGER>) return false; + switch(_currentState){ case FROM: _currentState = TO; return true; ... }
@@ -947,7 +949,17 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             {
                 var fromEsc = TypeHelper.EscapeIdentifier(fromState);
                 var toEsc   = TypeHelper.EscapeIdentifier(toState);
-                Sb.AppendLine($"case {stateTypeForUsage}.{fromEsc}: {CurrentStateField} = {stateTypeForUsage}.{toEsc}; return true;");
+                Sb.AppendLine($"case {stateTypeForUsage}.{fromEsc}:");
+                using (Sb.Block(""))
+                {
+                    Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{toEsc};");
+                    if (ShouldGenerateLogging)
+                    {
+                        WriteLogStatement("Information",
+                            $"TransitionSucceeded(_logger, _instanceId, \"{fromState}\", \"{toState}\", \"{triggerName}\");");
+                    }
+                    Sb.AppendLine("return true;");
+                }
             }
             Sb.AppendLine("default: return false;");
         }
@@ -1265,7 +1277,59 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         // State change BEFORE OnEntry (so OnEntry runs in target state)
         if (!transition.IsInternal)
         {
-            Sb.AppendLine($"    {CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            if (IsHierarchical)
+            {
+                Sb.AppendLine("    RecordHistoryForCurrentPath();");
+                
+                // For HSM, we need to properly handle composite states and add diagnostics
+                Sb.AppendLine($"    string __fromName = {CurrentStateField}.ToString();");
+                
+                // Inline the composite handling with proper indentation
+                Sb.AppendLine($"    // Set destination and resolve through GetCompositeEntryTarget");
+                Sb.AppendLine($"    {CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+                Sb.AppendLine("    int __compositeIndex = (int)" + CurrentStateField + ";");
+                Sb.AppendLine("    int __resolvedIndex = GetCompositeEntryTarget(__compositeIndex);");
+                Sb.AppendLine($"    var __histMode = HistoryArray[(int)((int)__compositeIndex)];");
+                Sb.AppendLine("    string __resolution = (__histMode == Abstractions.Attributes.HistoryMode.None ? \"Initial\" : \"History\");");
+                
+                if (ShouldGenerateLogging)
+                {
+                    using (Sb.Block("    if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
+                    {
+                        Sb.AppendLine($"{Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                    }
+                    using (Sb.Block("    if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
+                    {
+                        Sb.AppendLine($"{Model.ClassName}Log.HistoryRestored(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __histMode.ToString());");
+                    }
+                }
+                
+                Sb.AppendLine($"    {CurrentStateField} = ({stateTypeForUsage})__resolvedIndex;");
+                
+                // Add HierarchicalTransition and ActivePath logging
+                if (ShouldGenerateLogging)
+                {
+                    Sb.AppendLine($"    // HSM transition diagnostics");
+                    Sb.AppendLine($"    int lca = FindLowestCommonAncestor((int)Enum.Parse<{stateTypeForUsage}>(__fromName), (int){CurrentStateField});");
+                    Sb.AppendLine($"    int __exitCount = 0;");
+                    Sb.AppendLine($"    for (int s = (int)Enum.Parse<{stateTypeForUsage}>(__fromName); s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __exitCount++; }}");
+                    Sb.AppendLine($"    int __entryCount = 0;");
+                    Sb.AppendLine($"    for (int s = (int){CurrentStateField}; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __entryCount++; }}");
+                    
+                    using (Sb.Block("    if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
+                    {
+                        Sb.AppendLine($"{Model.ClassName}Log.HierarchicalTransition(_logger, _instanceId, __fromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
+                    }
+                    using (Sb.Block("    if (_logger?.IsEnabled(LogLevel.Trace) == true)"))
+                    {
+                        Sb.AppendLine($"{Model.ClassName}Log.ActivePath(_logger, _instanceId, DumpActivePath());");
+                    }
+                }
+            }
+            else
+            {
+                Sb.AppendLine($"    {CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            }
         }
 
         // OnEntry (if applicable) - AFTER state change
@@ -1330,46 +1394,114 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             return;
         }
 
-        // Generate our own structure (don't call base which would duplicate)
-        var sortedTransitions = Model.Transitions
-            .Select((t, index) => new { Transition = t, Index = index })
-            .OrderByDescending(x => x.Transition.Priority)
-            .ThenBy(x => x.Index)
-            .Select(x => x.Transition);
-
-        var grouped = sortedTransitions.GroupBy(t => t.FromState);
-
-        Sb.AppendLine($"switch ({CurrentStateField}) {{");
-        foreach (var state in grouped)
-    {
-            Sb.AppendLine($"    case {stateType}.{TypeHelper.EscapeIdentifier(state.Key)}: {{");
-
-            var triggerGroups = state.GroupBy(t => t.Trigger);
-            Sb.AppendLine("        switch (trigger) {");
-
-            foreach (var triggerGroup in triggerGroups)
+        // For HSM: implement ancestor chain traversal similar to base generator
+        if (Model.HierarchyEnabled)
         {
-                Sb.AppendLine($"            case {triggerType}.{TypeHelper.EscapeIdentifier(triggerGroup.Key)}: {{");
-
-                foreach (var tr in triggerGroup)
+            // HSM implementation: walk up the parent chain
+            Sb.AppendLine($"int check = (int){CurrentStateField};");
+            Sb.AppendLine("string __fromName = " + CurrentStateField + ".ToString();");
+            Sb.AppendLine("while (check >= 0)");
+            Sb.AppendLine("{");
+            Sb.AppendLine($"    var state = ({stateType})check;");
+            Sb.AppendLine("    switch (state)");
+            Sb.AppendLine("    {");
+            
+            // Group transitions by from state
+            var grouped = Model.Transitions.GroupBy(t => t.FromState).OrderBy(g => g.Key);
+            
+            foreach (var group in grouped)
             {
-                    Sb.AppendLine($"                // Transition: {tr.FromState} -> {tr.ToState} (Priority: {tr.Priority})");
-                    writeTransitionLogic(tr, stateType, triggerType);
-                    break; // Only first matching transition
+                Sb.AppendLine($"        case {stateType}.{TypeHelper.EscapeIdentifier(group.Key)}:");
+                Sb.AppendLine("        {");
+                Sb.AppendLine("            switch (trigger)");
+                Sb.AppendLine("            {");
+                
+                // Group by trigger, with priority ordering
+                var triggerGroups = group
+                    .GroupBy(t => t.Trigger)
+                    .OrderBy(tg => tg.Key);
+                
+                foreach (var triggerGroup in triggerGroups)
+                {
+                    Sb.AppendLine($"                case {triggerType}.{TypeHelper.EscapeIdentifier(triggerGroup.Key)}:");
+                    Sb.AppendLine("                {");
+                    
+                    // Get the highest priority transition
+                    var bestTransition = triggerGroup
+                        .OrderByDescending(t => t.Priority)
+                        .First();
+                    
+                    // For internal transitions, emit InternalTransitionOnAncestor
+                    if (bestTransition.IsInternal && ShouldGenerateLogging)
+                    {
+                        Sb.AppendLine($"                    // Internal transition on ancestor: {bestTransition.FromState}");
+                        using (Sb.Block("                    if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
+                        {
+                            Sb.AppendLine($"                        {Model.ClassName}Log.InternalTransitionOnAncestor(_logger, _instanceId, (({stateType})check).ToString(), __fromName, trigger.ToString());");
+                        }
+                    }
+                    
+                    Sb.AppendLine($"                    // Transition: {bestTransition.FromState} -> {bestTransition.ToState} (Priority: {bestTransition.Priority})");
+                    writeTransitionLogic(bestTransition, stateType, triggerType);
+                    
+                    Sb.AppendLine("                }");
+                }
+                
+                Sb.AppendLine("                default: break;");
+                Sb.AppendLine("            }");
+                Sb.AppendLine("            break;");
+                Sb.AppendLine("        }");
+            }
+            
+            Sb.AppendLine("        default: break;");
+            Sb.AppendLine("    }");
+            Sb.AppendLine("    check = (uint)check < (uint)g_parent.Length ? g_parent[check] : -1;");
+            Sb.AppendLine("}");
+            Sb.AppendLine();
+        }
+        else
+        {
+            // Flat FSM implementation: original code
+            var sortedTransitions = Model.Transitions
+                .Select((t, index) => new { Transition = t, Index = index })
+                .OrderByDescending(x => x.Transition.Priority)
+                .ThenBy(x => x.Index)
+                .Select(x => x.Transition);
+
+            var grouped = sortedTransitions.GroupBy(t => t.FromState);
+
+            Sb.AppendLine($"switch ({CurrentStateField}) {{");
+            foreach (var state in grouped)
+            {
+                Sb.AppendLine($"    case {stateType}.{TypeHelper.EscapeIdentifier(state.Key)}: {{");
+
+                var triggerGroups = state.GroupBy(t => t.Trigger);
+                Sb.AppendLine("        switch (trigger) {");
+
+                foreach (var triggerGroup in triggerGroups)
+                {
+                    Sb.AppendLine($"            case {triggerType}.{TypeHelper.EscapeIdentifier(triggerGroup.Key)}: {{");
+
+                    foreach (var tr in triggerGroup)
+                    {
+                        Sb.AppendLine($"                // Transition: {tr.FromState} -> {tr.ToState} (Priority: {tr.Priority})");
+                        writeTransitionLogic(tr, stateType, triggerType);
+                        break; // Only first matching transition
+                    }
+
+                    Sb.AppendLine("            }");
                 }
 
-                Sb.AppendLine("            }");
+                Sb.AppendLine("            default: break;");
+                Sb.AppendLine("        }");
+                Sb.AppendLine("        break;");
+                Sb.AppendLine("    }");
             }
-
-            Sb.AppendLine("            default: break;");
-            Sb.AppendLine("        }");
-            Sb.AppendLine("        break;");
-            Sb.AppendLine("    }");
+            Sb.AppendLine("    default: break;");
+            Sb.AppendLine("}");
+            Sb.AppendLine();
         }
-        Sb.AppendLine("    default: break;");
-        Sb.AppendLine("}");
-        Sb.AppendLine();
-
+        
         // No transition found - notify extensions
         Sb.AppendLine("// No matching transition - notify extensions");
         Sb.AppendLine($"var noTransitionCtx = new StateMachineContext<{stateType}, {triggerType}>(");
@@ -2244,7 +2376,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         TransitionModel transition,
         string stateTypeForUsage,
         string triggerTypeForUsage)
-{
+    {
         // Hook: Before transition (must be before guard check)
         WriteBeforeTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage);
 
@@ -2308,7 +2440,58 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         // State change BEFORE action
         if (!transition.IsInternal)
     {
-            Sb.AppendLine($"                        {CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            if (IsHierarchical)
+        {
+                Sb.AppendLine("                        RecordHistoryForCurrentPath();");
+                
+                // Create a temporary StringBuilder with proper indentation for HSM logic
+                var indent = "                        ";
+                Sb.AppendLine($"{indent}string __fromName = {CurrentStateField}.ToString();");
+                Sb.AppendLine($"{indent}// Set destination and resolve through GetCompositeEntryTarget");
+                Sb.AppendLine($"{indent}{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+                Sb.AppendLine($"{indent}int __compositeIndex = (int)" + CurrentStateField + ";");
+                Sb.AppendLine($"{indent}int __resolvedIndex = GetCompositeEntryTarget(__compositeIndex);");
+                Sb.AppendLine($"{indent}var __histMode = HistoryArray[(int)((int)__compositeIndex)];");
+                Sb.AppendLine($"{indent}string __resolution = (__histMode == Abstractions.Attributes.HistoryMode.None ? \"Initial\" : \"History\");");
+                
+                if (ShouldGenerateLogging)
+                {
+                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true)");
+                    Sb.AppendLine($"{indent}{{");
+                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                    Sb.AppendLine($"{indent}}}");
+                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true)");
+                    Sb.AppendLine($"{indent}{{");
+                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.HistoryRestored(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __histMode.ToString());");
+                    Sb.AppendLine($"{indent}}}");
+                }
+                
+                Sb.AppendLine($"{indent}{CurrentStateField} = ({stateTypeForUsage})__resolvedIndex;");
+                
+                // Add HierarchicalTransition and ActivePath logging
+                if (ShouldGenerateLogging)
+                {
+                    Sb.AppendLine($"{indent}// HSM transition diagnostics");
+                    Sb.AppendLine($"{indent}int lca = FindLowestCommonAncestor((int)Enum.Parse<{stateTypeForUsage}>(__fromName), (int){CurrentStateField});");
+                    Sb.AppendLine($"{indent}int __exitCount = 0;");
+                    Sb.AppendLine($"{indent}for (int s = (int)Enum.Parse<{stateTypeForUsage}>(__fromName); s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __exitCount++; }}");
+                    Sb.AppendLine($"{indent}int __entryCount = 0;");
+                    Sb.AppendLine($"{indent}for (int s = (int){CurrentStateField}; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __entryCount++; }}");
+                    
+                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true)");
+                    Sb.AppendLine($"{indent}{{");
+                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.HierarchicalTransition(_logger, _instanceId, __fromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
+                    Sb.AppendLine($"{indent}}}");
+                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Trace) == true)");
+                    Sb.AppendLine($"{indent}{{");
+                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.ActivePath(_logger, _instanceId, DumpActivePath());");
+                    Sb.AppendLine($"{indent}}}");
+                }
+            }
+            else
+            {
+                Sb.AppendLine($"                        {CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            }
         }
 
         // OnEntry with exception policy (sync)
@@ -2337,8 +2520,15 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         // Hook: After successful transition
         WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
 
+        // Log success (parity with other sync/async paths)
+        if (!transition.IsInternal && ShouldGenerateLogging)
+        {
+            WriteLogStatement("Information",
+                $"TransitionSucceeded(_logger, _instanceId, \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+        }
+
         Sb.AppendLine("                        return true;");
-}
+    }
 
     private void WriteAsyncCanFireWithPayload(string stateTypeForUsage, string triggerTypeForUsage)
 {
@@ -2731,7 +2921,58 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         // State change BEFORE action (policy relies on stateAlreadyChanged)
         if (!transition.IsInternal)
     {
-            Sb.AppendLine($"                        {CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            if (IsHierarchical)
+        {
+                Sb.AppendLine("                        RecordHistoryForCurrentPath();");
+                
+                // Create HSM logic with proper indentation
+                var indent = "                        ";
+                Sb.AppendLine($"{indent}string __fromName = {CurrentStateField}.ToString();");
+                Sb.AppendLine($"{indent}// Set destination and resolve through GetCompositeEntryTarget");
+                Sb.AppendLine($"{indent}{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+                Sb.AppendLine($"{indent}int __compositeIndex = (int)" + CurrentStateField + ";");
+                Sb.AppendLine($"{indent}int __resolvedIndex = GetCompositeEntryTarget(__compositeIndex);");
+                Sb.AppendLine($"{indent}var __histMode = HistoryArray[(int)((int)__compositeIndex)];");
+                Sb.AppendLine($"{indent}string __resolution = (__histMode == Abstractions.Attributes.HistoryMode.None ? \"Initial\" : \"History\");");
+                
+                if (ShouldGenerateLogging)
+                {
+                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true)");
+                    Sb.AppendLine($"{indent}{{");
+                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                    Sb.AppendLine($"{indent}}}");
+                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true)");
+                    Sb.AppendLine($"{indent}{{");
+                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.HistoryRestored(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __histMode.ToString());");
+                    Sb.AppendLine($"{indent}}}");
+                }
+                
+                Sb.AppendLine($"{indent}{CurrentStateField} = ({stateTypeForUsage})__resolvedIndex;");
+                
+                // Add HierarchicalTransition and ActivePath logging
+                if (ShouldGenerateLogging)
+                {
+                    Sb.AppendLine($"{indent}// HSM transition diagnostics");
+                    Sb.AppendLine($"{indent}int lca = FindLowestCommonAncestor((int)Enum.Parse<{stateTypeForUsage}>(__fromName), (int){CurrentStateField});");
+                    Sb.AppendLine($"{indent}int __exitCount = 0;");
+                    Sb.AppendLine($"{indent}for (int s = (int)Enum.Parse<{stateTypeForUsage}>(__fromName); s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __exitCount++; }}");
+                    Sb.AppendLine($"{indent}int __entryCount = 0;");
+                    Sb.AppendLine($"{indent}for (int s = (int){CurrentStateField}; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __entryCount++; }}");
+                    
+                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true)");
+                    Sb.AppendLine($"{indent}{{");
+                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.HierarchicalTransition(_logger, _instanceId, __fromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
+                    Sb.AppendLine($"{indent}}}");
+                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Trace) == true)");
+                    Sb.AppendLine($"{indent}{{");
+                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.ActivePath(_logger, _instanceId, DumpActivePath());");
+                    Sb.AppendLine($"{indent}}}");
+                }
+            }
+            else
+            {
+                Sb.AppendLine($"                        {CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            }
         }
 
         // OnEntry with exception policy (sync)
