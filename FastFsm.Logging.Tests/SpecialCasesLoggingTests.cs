@@ -2,11 +2,11 @@
 using Microsoft.Extensions.Logging;
 using Moq;
 using Shouldly;
-using FastFsm.Runtime;
-using FastFsm.Runtime.Extensions;
 using System;
 using System.Linq;
 using System.Reflection.PortableExecutable;
+using FastFsm.Runtime;
+using FastFsm.Runtime.Extensions;
 using Xunit;
 
 namespace FastFsm.Logging.Tests
@@ -135,7 +135,7 @@ namespace FastFsm.Logging.Tests
         {
             // Arrange
             var machine = new MultiPayloadStateMachine(
-                TestState.Initial,null,
+                TestState.Initial,
                 GetLogger<MultiPayloadStateMachine>());
             var wrongPayload = new { Wrong = "Type" };
 
