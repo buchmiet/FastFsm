@@ -1,186 +1,198 @@
-# Referat: Przywrócenie generowania klas logujących w generatorze (bez LogAdapter)
+# Zlecenie: domknięcie testów logowania i dopracowanie generatora (FastFsm.Net 0.8.0.11)
 
-## Cel
-Przywrócić pierwotny mechanizm generowania logów w generatorze źródeł tak, aby:
-- generator znów emitował per‑maszynowe klasy pomocnicze `{ClassName}Log` (AddSource),
-- wygenerowany kod odwoływał się do metod `{ClassName}Log.*(...)`,
-- nie było potrzeby dystrybuowania wspólnego pliku źródłowego (LogAdapter) przez pakiety.
+Dokument opisuje aktualny stan, kontekst działania generatora i loggera, proces bumpowania pakietów oraz listę prac do wykonania, aby domknąć pozostałe testy w `FastFsm.Logging.Tests`.
 
-Docelowo chcemy usunąć doraźną łatkę (LogAdapter) i wrócić do samowystarczalnego generatora.
+## Kontekst i architektura
 
----
+- Generator źródeł (Roslyn, projekt `Generator`) emituje kod maszyn stanów na podstawie atrybutów z przestrzeni `Abstractions.Attributes` (`[StateMachine]`, `[Transition]`, `[State]`, itd.).
+- Emisja kodu odbywa się dwiema drogami:
+  - „Ścieżka bazowa/flat” (klasa bazowa `StateMachineCodeGenerator`) – bez rozszerzeń,
+  - „Ścieżka unified/Extensions” (`UnifiedStateMachineGenerator`) – wariant z rozszerzeniami (GenerateExtensibleVersion = true), a także agregacja wspólnych ścieżek.
+- Logowanie jest realizowane przez per‑maszynowe klasy `{ClassName}Log` dodawane przez `context.AddSource(...)` (AddSource). Nazwa pliku: `Namespace.ClassName.Log.g.cs`. Klasa jest `internal static` i udostępnia metody:
+  - `TransitionSucceeded`, `GuardFailed`, `TransitionFailed`,
+  - `OnEntryExecuted`, `OnExitExecuted`, `ActionExecuted`,
+  - oraz pomocnicze dla HSM/payload (np. `PayloadValidationFailed`, `HierarchicalTransition`, `ActivePath`, itp.).
+- Warunek generowania logowania: MSBuild property `FsmGenerateLogging=true` (eksportowane w `FastFsm/build/FastFsm.Net.props`, włączane przez pakiet `FastFsm.Net.Logging`). Flaga `FSM_LOGGING_ENABLED` umożliwia ewentualne warunkowanie kompilacji.
 
-## Jak było (model pierwotny)
-- Wygenerowany kod (np. `TryFire`) wołał metody logujące na klasie `{ClassName}Log`, np.:
-  - `PureStateMachineLog.TransitionSucceeded(_logger, _instanceId, ...);`
-- Generator (w `Generator/Generator.cs`) miał gałąź wykonywaną, gdy `model.GenerateLogging == true`, która dodawała do kompilacji (AddSource) dodatkowy plik z definicją klasy `internal static class {ClassName}Log`.
-- Kod tej klasy był wytwarzany przez `Generator.Logger/LoggingClassGenerator.cs` (metoda `Generate()`), zawierał zestaw wywołań `ILogger.Log(...)` z ustalonymi EventId i message template.
-- Warunek włączenia logowania pochodził z MSBuild:
-  - `FastFsm/build/FastFsm.Net.props` – właściwość `FsmGenerateLogging` eksportowana do kompilatora jako `CompilerVisibleProperty`.
-  - Pakiet `FastFsm.Net.Logging` ustawiał tę właściwość na `true` i dodawał `FSM_LOGGING_ENABLED`.
-- Efekt: nic poza referencją do pakietu `.Logging` nie było potrzebne, a wszystkie pliki logujące trafiały do kompilacji przez generator.
+## Co zostało już zrobione (0.8.0.10 → 0.8.0.11)
 
----
+- Przywrócono model `{ClassName}Log.*(...)` (bez LogAdapter) i uproszczono hint name AddSource.
+- Dodano brakujące logi w krytycznych miejscach:
+  - Extensions path: w `WriteTransitionLogicSyncWithExtensions(...)` logujemy teraz:
+    - `OnExitExecuted` (po OnExit), `ActionExecuted` (po Action), `OnEntryExecuted` (po OnEntry),
+    - `TransitionSucceeded` (na końcu ścieżki sukcesu),
+    - `GuardFailed` + `TransitionFailed` przy porażce guarda.
+  - Brak dopasowania przejścia (flat/HSM): dopisano `TransitionFailed` tuż przed `return false`.
+  - OnInitialEntry/OnInitialEntryAsync: dopisano `OnEntryExecuted` (Debug) dla OnEntry wykonywanych przy starcie.
+- Dodane diagnostyki generatora (FSM99x) ułatwiające śledzenie AddSource i MSBuild properties.
+- Bump do 0.8.0.11: `FastFsm.Net`, `FastFsm.Net.Logging`, `FastFsm.Net.DependencyInjection`; testy zaktualizowano do nowych wersji.
 
-## Jak jest teraz (po łatce)
-- Aby szybko usunąć błędy kompilacji (CS0103: `{ClassName}Log` nie istnieje), generator został przełączony na wspólny adapter:
-  - Zamiast `{ClassName}Log.*(...)` generowany kod woła `global::FastFsm.Runtime.Logging.LogAdapter.*(...)`.
-- Plik `LogAdapter` jest dostarczany jako `contentFiles` przez paczki:
-  - `FastFsm.Net.Logging/shared/LogAdapter.cs`,
-  - dodatkowo analogiczny plik w `FastFsm.Net.DependencyInjection`.
-- Zalety łatki: stabilność i brak zależności od dodatkowych AddSource; wady: dodatkowy plik źródłowy w projekcie konsumenta.
+## Obecny stan testów i luki do domknięcia
 
----
+Po przejściu na 0.8.0.11 trzy testy nadal nie przechodzą:
 
-## Co się zepsuło po refaktorze (przyczyna)
-- Po refaktorze “Unified” w generatorze:
-  - wywołania logowania zostały po staremu (do `{ClassName}Log`),
-  - ale gałąź dodająca pomocnicze pliki `{ClassName}Log` (AddSource) nie dostarczała już tych plików do kompilacji (w spakowanej wersji nuget),
-  - w efekcie kompilator nie znajdował klasy `{ClassName}Log` i zgłaszał CS0103.
-- W repo wciąż istnieje gałąź dodająca te pliki oraz `LoggingClassGenerator`, więc najpewniej problem był w logice warunku/wywołania AddSource lub w rozjeździe wersji generatora w `FastFsm.Net.nupkg`.
+1) `LoggingIntegrationTests.FullVariant_CompleteScenario_AllLogsPresent`
+   - Oczekuje obecności: `ActionExecuted`, `OnEntryExecuted`, `TransitionSucceeded` dla maszyny z rozszerzeniami i payloadem.
+   - Generator w ścieżce Extensions emituje już te logi – podejrzenie: test nadal korzysta z nieświeżych plików wygenerowanych / cache NuGet lub występuje różnica co do poziomu/filtrów (IsEnabled).
 
----
+2) `SpecialCasesLoggingTests.StateMachine_WithStructTypes_LogsCorrectly`
+   - Oczekuje `TransitionSucceeded` dla wariantu strukturalnego (enumy o typach wartościowych).
+   - Dla płaskiego wariantu non‑payload generator emituje `TransitionSucceeded`; należy zweryfikować, czy fast‑path lub zwykła ścieżka jest w użyciu i czy log jest faktycznie wywoływany.
 
-## Zmiany do przywrócenia (plan naprawy)
-1) Generator – przywrócić AddSource dla `{ClassName}Log` i spójność nazw:
-   - Plik: `Generator/Generator.cs`
-   - Sekcja: “Logging helpers (opcjonalnie)” – musi być wykonywana dla każdego kandydata z `model.GenerateLogging == true`.
-   - Generowany hintName dla źródeł: obecnie `var loggingHintName = GetUniqueHintName($"{fqn}Log", ...)`. Zweryfikować, że `fqn` i nazwa klasy w `LoggingClassGenerator` (używa `model.ClassName`) są zgodne (namespace + nazwa typu).
-   - Upewnić się, że `LoggingClassGenerator.Generate()` zwraca kod z poprawnym `namespace` (model.Namespace) i `internal static class {ClassName}Log`.
+3) `SpecialCasesLoggingTests.PayloadStateMachine_NullPayloadWithExpectedType_HandledGracefully`
+   - Oczekuje `TransitionSucceeded` po `TryFire(Start, payload: null)` (zastępowalność parametrem bezpayloadowym).
+   - W ścieżce płaskiej/payload log powinien się pojawić; do potwierdzenia, czy guard/action/OnEntry nie krótką drogą nie kończą przed emisją logu.
 
-2) Generator – z powrotem emitować wywołania do `{ClassName}Log`:
-   - Plik: `Generator.Logger/LoggingClassGenerator.cs`, metoda statyczna `WriteLogStatement(...)` powinna znów wpisywać: `{className}Log.{logMethodCall}`.
-   - Usunąć/wycofać przełączkę na `LogAdapter` w `WriteLogStatement` oraz w miejscach, gdzie generator dodał `using` do `FastFsm.Runtime.Logging`.
+## Jak zbudować i bumpować pakiety (procedura powtarzalna)
 
-3) Usunąć zależność od LogAdapter w pakietach overlay:
-   - `FastFsm.Logging/FastFsm.Logging.csproj` – usunąć linie pakujące `shared/LogAdapter.cs` jako `contentFiles`.
-   - `FastFsm.DependencyInjection/FastFsm.DependencyInjection.csproj` – analogicznie usunąć `shared/LogAdapter.cs` z contentFiles.
-   - Pozostawić wszystkie pozostałe ustawienia MSBuild (`FsmGenerateLogging=true`, `FSM_LOGGING_ENABLED`).
+1) Zmień wersje:
+   - `FastFsm/FastFsm.csproj` → target `StampVersionForNupkg` → `<Version>0.8.0.XX</Version>`
+   - `FastFsm.Logging/FastFsm.Logging.csproj` → `<Version>..</Version>` oraz referencja do `FastFsm.Net` na tę samą wersję.
+   - `FastFsm.DependencyInjection/FastFsm.DependencyInjection.csproj` → jw.
+   - Testy: `FastFsm.Logging.Tests.csproj`, `FastFsm.DependencyInjection.Tests.csproj` → referencje do nowych wersji pakietów.
 
-4) Porządki w generatorze (opcjonalnie po przywróceniu funkcji):
-   - Jeżeli pozostawimy tylko mechanizm `{ClassName}Log`, warto:
-     - usunąć martwy kod związany z `LogAdapter` (jeśli dodane),
-     - upewnić się, że `Generator.Logger.dll` jest potrzebny (zawiera helpery logujące i generuje klasy logujące),
-     - ewentualnie zostawić tylko statyczne helpery, jeżeli są wykorzystywane gdzie indziej.
+2) Pakowanie (lokalny feed `./nuget`):
+   - `dotnet build FastFsm/FastFsm.csproj -c Release`
+   - `dotnet build FastFsm.Logging/FastFsm.Logging.csproj -c Release`
+   - (opcjonalnie) `dotnet build FastFsm.DependencyInjection/FastFsm.DependencyInjection.csproj -c Release`
 
----
+3) Oczyść cache NuGet (szczególnie po zmianach generatora):
+   - `rm -rf ~/.nuget/packages/fastfsm.net/<wersja>`
+   - `rm -rf ~/.nuget/packages/fastfsm.net.logging/<wersja>`
+   - `rm -rf ~/.nuget/packages/fastfsm.net.dependencyinjection/<wersja>`
 
-## Miejsca w kodzie (mapa)
-- Emisja logów w generatorze:
-  - `Generator/SourceGenerators/StateMachineCodeGenerator.cs` (bazowe `WriteLogStatement(...)` wywoływane w wielu miejscach)
-  - `Generator/SourceGenerators/UnifiedStateMachineGenerator.cs` (dużo miejsc z `WriteLogStatement(...)`)
-- Wstrzykiwanie logera:
-  - `LoggingClassGenerator.WriteLoggerField(...)`, `GetLoggerConstructorParameter(...)`, `WriteLoggerAssignment(...)` – klasa: `Generator.Logger/LoggingClassGenerator.cs`.
-- Emisja klasy `{ClassName}Log` (AddSource):
-  - `Generator/Generator.cs` – sekcja “// 3) Logging helpers (opcjonalnie)”.
-- Budowa klasy `{ClassName}Log`:
-  - `Generator.Logger/LoggingClassGenerator.cs` – `Generate()` i metody `Write*Method()`.
-- Flagi MSBuild (detekcja `GenerateLogging`):
-  - `Generator/Helpers/BuildProperties.cs` → `GetGenerateLogging(...)` (czyta `build_property.FsmGenerateLogging`).
-  - `FastFsm/build/FastFsm.Net.props` – eksport `FsmGenerateLogging` do kompilatora.
-  - Overlay `FastFsm.Logging/build/FastFsm.Net.Logging.props` – ustawia `FsmGenerateLogging=true; FSM_LOGGING_ENABLED`.
-
----
-
-## Testowanie – jak odtworzyć i zweryfikować naprawę
-1) Przygotowanie lokalnego feedu:
-   - W repo jest `nuget.config` z wpisem do `./nuget`. Paczki będą trafiać do `./nuget`.
-
-2) Porządek budowania i bump wersji:
-   - Zwiększ wersję `FastFsm.Net` – w `FastFsm/FastFsm.csproj` (target `StampVersionForNupkg` → `<Version>0.8.0.x</Version>`).
-   - Zwiększ wersję `FastFsm.Net.Logging` – w `FastFsm.Logging/FastFsm.Logging.csproj` (oraz ustaw referencję `FastFsm.Net` na nową wersję).
-   - Zwiększ wersję `FastFsm.Net.DependencyInjection` – w `FastFsm.DependencyInjection/FastFsm.DependencyInjection.csproj` (i ustaw referencję `FastFsm.Net`).
-   - Zaktualizuj projekty testowe (FastFsm.Logging.Tests, FastFsm.DependencyInjection.Tests), by wskazywały nowe wersje paczek.
-
-3) Budowanie i czyszczenie cache:
-   - Usuń stare paczki z `./nuget` i z lokalnego cache NuGet:
-     - `rm -f ./nuget/FastFsm.Net.*.nupkg ./nuget/FastFsm.Net.Logging.*.nupkg ./nuget/FastFsm.Net.DependencyInjection.*.nupkg`
-     - `rm -rf ~/.nuget/packages/fastfsm.net/<stara_wersja> ~/.nuget/packages/fastfsm.net.logging/<stara_wersja> ~/.nuget/packages/fastfsm.net.dependencyinjection/<stara_wersja>`
-   - Zbuduj paczki (w tej kolejności):
-     - `dotnet build FastFsm/FastFsm.csproj -c Release`
-     - `dotnet build FastFsm.Logging/FastFsm.Logging.csproj -c Release`
-     - `dotnet build FastFsm.DependencyInjection/FastFsm.DependencyInjection.csproj -c Release`
-
-4) Weryfikacja generatora – kompilacja testów:
+4) Buduj i uruchamiaj testy:
+   - `dotnet clean FastFsm.Logging.Tests/FastFsm.Logging.Tests.csproj -c Release`
    - `dotnet restore FastFsm.Logging.Tests/FastFsm.Logging.Tests.csproj`
-   - `dotnet build FastFsm.Logging.Tests/FastFsm.Logging.Tests.csproj -c Release`
-   - Otwórz `obj/GeneratedFiles/...` i sprawdź: oprócz plików maszyn powinien pojawić się dodatkowy plik `{Something}Log` (nazwa wg hintName, zwykle `global__<FQN>Log.Generated.cs` albo analogiczna).
-   - Upewnij się, że wygenerowane maszyny odwołują się do `{ClassName}Log.*(...)`, a klasa taka istnieje w `obj/GeneratedFiles`.
+   - `dotnet test FastFsm.Logging.Tests/FastFsm.Logging.Tests.csproj -c Release`
 
-5) Szybki smoke test (opcjonalnie):
-   - `dotnet test FastFsm.Logging.Tests/FastFsm.Logging.Tests.csproj -c Release` – wystarczy, że przechodzi kompilacja; pełną zgodność logiki dopracujemy osobno.
-   - Analogicznie dla DI: `dotnet build` i `dotnet test` aby potwierdzić brak regresji kompilacyjnej.
+## Wskazówki diagnostyczne
 
----
+- Sprawdzaj, czy AddSource wrzuca oba pliki:
+  - `*.Generated.cs` (maszyna) i `Namespace.ClassName.Log.g.cs` (klasa logująca). Ścieżka: `obj/GeneratedFiles/Generator/Generator.StateMachineGenerator`.
+- Szukaj diagnostyk w build logu:
+  - `FSM996 AddSource ok: ...` (sukces), `FSM990_PRE` (pre-AddSource summary), `FSM990_PROP` (MSBuild logging flags widoczne dla generatora).
+- W razie niejasności dodawaj tymczasowy dump do testów (po akcji), np.:
+  - wypisz `Level`, `EventId.Id`, `EventId.Name`, `Message` dla każdego wpisu, aby zobaczyć, co faktycznie zostało zalogowane.
+- Uwaga: Testy asercji korzystają z `EventId.Name`. My tworzymy `new EventId(id, nameof(Method))`, więc `Name` powinno być ustawione. Jeśli środowisko pokaże braki nazwy, można asercje oprzeć o `EventId.Id` (1: TransitionSucceeded, 2: GuardFailed, 3: TransitionFailed, 4: OnEntryExecuted, 5: OnExitExecuted, 6: ActionExecuted).
 
-## Kryteria akceptacji (dla tej naprawy)
-- [ ] Wygenerowany kod przy włączonym logowaniu woła `{ClassName}Log.*(...)` (nie `LogAdapter`).
-- [ ] Generator dodaje pliki `{ClassName}Log` do kompilacji (AddSource) dla każdej maszyny z `GenerateLogging=true`.
-- [ ] Testy `FastFsm.Logging.Tests` kompilują się bez błędów CS0103 dotyczących `{ClassName}Log`.
-- [ ] Paczki nuget zbudowane i dostępne w `./nuget` (FastFsm.Net, FastFsm.Net.Logging, FastFsm.Net.DependencyInjection) zgodnie z podniesionymi wersjami.
-- [ ] (Opcjonalnie) Usunięto `LogAdapter.cs` z `contentFiles` w `.Logging` i `.DependencyInjection`.
+## Zadania do wykonania (checklista)
 
----
+1) FullVariant_CompleteScenario_AllLogsPresent (Extensions + payload):
+   - Zbuduj 0.8.0.11 i oczyść cache NuGet (patrz wyżej).
+   - Uruchom selektywnie test: `dotnet test -c Release --filter "FullyQualifiedName~FullVariant_CompleteScenario_AllLogsPresent"`.
+   - Jeśli asercja `transitionLog.ShouldNotBe(default)` nadal pada, wydrukuj `LoggedMessages` i potwierdź obecność:
+     - Debug: `ActionExecuted`, Debug: `OnEntryExecuted`, Information: `TransitionSucceeded`.
+   - Jeśli brakuje któregoś z powyższych, otwórz wygenerowany plik `global__FastFsm.Logging.Tests.FullStateMachine.Generated.cs` i sprawdź, czy odpowiednie wywołania są na swoich miejscach (OnExit→Action→StateChange→OnEntry, a na końcu `TransitionSucceeded`).
+   - W razie braku: popraw `WriteTransitionLogicSyncWithExtensions(...)` (Generator/SourceGenerators/UnifiedStateMachineGenerator.cs). Obecnie mamy już komplet logów – spodziewamy się, że problemem będą artefakty cache lub różnica asercji.
 
-## Potencjalne pułapki i wskazówki
-- Spójność nazw:
-  - `LoggingClassGenerator` używa `model.ClassName` oraz `model.Namespace`. Wywołania w wygenerowanym kodzie używają `Model.ClassName` – musi się to zgrywać z zadeklarowaną klasą w AddSource (w tym `namespace`).
-  - `hintName` (pod jaką nazwą AddSource dodaje plik) jest niezależny od nazwy typu – ale w razie kolizji (wiele maszyn) używamy `GetUniqueHintName`.
-- Warunek `GenerateLogging`:
-  - Pochodzi z `build_property.FsmGenerateLogging`. Upewnij się, że `FastFsm.Net.Logging` (i `.DependencyInjection`) ustawiają tę właściwość w `build` oraz `buildTransitive` (props), a `FastFsm.Net` eksportuje ją jako `CompilerVisibleProperty`.
-- Zmiany w generatorze a cache nuget:
-  - Po każdej zmianie generatora (zawartego w paczce `FastFsm.Net`) trzeba podbić wersję i wyczyścić cache `~/.nuget`, inaczej projekt testowy może mieć stare analyzery.
-- Dublowanie `ExtensionRunner.cs`:
-  - `.Logging` i `.DependencyInjection` mogą pakować `ExtensionRunner.cs` (contentFiles), co powoduje warning CS2002. Nie jest to krytyczne, ale można przenieść plik tylko do jednego pakietu, aby wyciszyć ostrzeżenie.
+2) StateMachine_WithStructTypes_LogsCorrectly (struct enum):
+   - Uruchom selektywnie test i w razie potrzeby dodaj dump `LoggedMessages`.
+   - Potwierdź, że `PureStateMachine` (lub odpowiednia maszyna) w `*.Generated.cs` loguje `TransitionSucceeded` w ścieżce fast‑path (wygenerowano to w `WriteTransitionLogicForFlatNonPayload`).
+   - Jeśli log jest w kodzie, a test go nie widzi – sprawdź poziomy `IsEnabled` i ewentualnie asercję po `EventId.Id`.
 
----
+3) PayloadStateMachine_NullPayloadWithExpectedType_HandledGracefully:
+   - Po `machine.Start()` i `TryFire(Start, null)` powinien pojawić się `TransitionSucceeded`.
+   - Zweryfikuj w wygenerowanym kodzie, że guard/action/onEntry przyjmują parametry opcjonalne i logi są emitowane po zmianie stanu.
+   - W razie braku – lokalizuj ścieżkę w `StateMachineCodeGenerator` (payload branch) i dopisz brakujący log (ale wg aktualnego stanu powinno być OK).
 
-## Zmiany do wykonania (checklista techniczna)
-1) W `Generator.Logger/LoggingClassGenerator.cs` przywrócić `WriteLogStatement` do formy:
-   ```csharp
-   sb.AppendLine($"{className}Log.{logMethodCall}");
-   ```
-   (zamiast wywołań `LogAdapter`)
+4) Posprzątać tymczasowe dumpy z testów (jeżeli były dodane) po domknięciu sprawy.
 
-2) W `Generator/Generator.cs` upewnić się, że blok:
-   ```csharp
-   if (model.GenerateLogging)
-   {
-       var loggingGenerator = new Generator.Log.LoggingClassGenerator(model.ClassName, model.Namespace);
-       var loggingSource = loggingGenerator.Generate();
-       var loggingHintName = GetUniqueHintName($"{fqn}Log", usedHintNames);
-       context.AddSource(loggingHintName, SourceText.From(loggingSource, Encoding.UTF8));
-   }
-   ```
-   jest wykonywany dla każdego kandydata z `GenerateLogging==true` (bez dodatkowych ukrytych warunków)
-   i że `fqn` odpowiada typowi, dla którego powstał kod (namespace/nesting zgodne).
+## Uwagi i dobre praktyki
 
-3) Usunąć/wycofać dodawanie `shared/LogAdapter.cs` z pakietów:
-   - `FastFsm.Logging/FastFsm.Logging.csproj`
-   - `FastFsm.DependencyInjection/FastFsm.DependencyInjection.csproj`
+- Po każdej zmianie generatora bumpuj wersję `FastFsm.Net` i zależnych paczek. Konsument (testy) inaczej może widzieć starą wersję analizerów (brak efektu zmian).
+- Gdy coś „powinno działać”, ale w testach nadal widać stary efekt – sprawdzaj `obj/GeneratedFiles/...` i printy `FSM996`. Często to tylko cache.
+- Jeżeli asercje opierają się na `EventId.Name` i to pole bywa puste w środowisku docelowym – rozważ asercje na `EventId.Id` albo migrację do LoggerMessage.Define (stabilna nazwa/ID bez formatowania stringów w runtime).
 
-4) Podbić wersje paczek i zbudować pipeline (jak w sekcji „Testowanie”).
+## Szybkie komendy
 
-5) Zweryfikować w `obj/GeneratedFiles`, że klasy `{ClassName}Log` są generowane i używane w wygenerowanym kodzie.
+- Bump + pack:
+  - FastFsm: `dotnet build FastFsm/FastFsm.csproj -c Release`
+  - Logging: `dotnet build FastFsm.Logging/FastFsm.Logging.csproj -c Release`
+  - DI: `dotnet build FastFsm.DependencyInjection/FastFsm.DependencyInjection.csproj -c Release`
+- Cache flush (przykład):
+  - `rm -rf ~/.nuget/packages/fastfsm.net/0.8.0.11 ~/.nuget/packages/fastfsm.net.logging/0.8.0.11 ~/.nuget/packages/fastfsm.net.dependencyinjection/0.8.0.11`
+- Testy selektywne (triada):
+  - `dotnet test FastFsm.Logging.Tests/FastFsm.Logging.Tests.csproj -c Release --filter "FullyQualifiedName~FullVariant_CompleteScenario_AllLogsPresent|StateMachine_WithStructTypes_LogsCorrectly|PayloadStateMachine_NullPayloadWithExpectedType_HandledGracefully"`
 
----
+Powodzenia przy domykaniu testów – po wdrożonych zmianach gros przypadków powinno przechodzić; powyższa checklista i diagnostyka (dumpy, FSM996/FSM990*) pozwolą szybko namierzyć ewentualne różnice pomiędzy oczekiwaniami testów a rzeczywistą emisją logów w wygenerowanym kodzie.
 
-## Sugestie dalszych prac (po akceptacji naprawy)
-- Rozważyć mikro‑refaktor `Generator.Logger`:
-  - Wyodrębnić tylko potrzebne helpery do wspólnego projektu (zmniejszyć rozmiar analyzera).
-- Dodać test snapshot/kompilacyjny w `Generator.Tests`, który sprawdza, że dla maszyny z loggingiem generator emituje:
-  - odwołanie do `{ClassName}Log.*(...)` oraz
-  - plik klasy `{ClassName}Log`.
+## Mapa kodu (gdzie szukać czego)
 
----
+- Generator/Generator.cs
+  - Rejestracja pipeline Roslyn, AddSource dla plików maszyn i klas `{ClassName}Log`.
+  - `GenerateLoggingHelper(ns, className)` – awaryjne generowanie klasy logującej inline.
+  - Diagnostyki: `FSM996_AddSourceOk`, `FSM990_PRE`, `FSM990_PROP` i inne pomocne w śledzeniu działania generatora.
 
-## Kontakt i wsparcie
-W razie wątpliwości: sprawdź różnice w commitach, w szczególności pliki:
-- `Generator/Generator.cs`
-- `Generator.Logger/LoggingClassGenerator.cs`
-- `Generator/SourceGenerators/StateMachineCodeGenerator.cs`
-- `Generator/SourceGenerators/UnifiedStateMachineGenerator.cs`
-- `FastFsm/build/FastFsm.Net.props`
-- `FastFsm.Logging/build/FastFsm.Net.Logging.props`
+- Generator/Helpers/BuildProperties.cs
+  - Odczyt MSBuild properties: `GetGenerateLogging(...)`, `GetGenerateDI(...)` z `AnalyzerConfigOptions` (prefiks `build_property.`).
 
-Powodzenia przy przywracaniu poprzedniego modelu generowania!
+- Generator.Logger/LoggingClassGenerator.cs
+  - Konstrukcja klasy `{ClassName}Log` (gdy używamy helpera), reguły `WriteLogStatement(...)` – formuła wywołań do `ILogger.Log(...)` i `EventId`.
+
+- Generator/SourceGenerators/StateMachineCodeGenerator.cs (ścieżka bazowa/flat)
+  - `WriteTransitionLogicForFlatNonPayload(...)` – ścieżka sukcesu: OnExit → Action → StateChange → OnEntry → TransitionSucceeded.
+  - `WriteGuardCheck(...)` – ścieżka porażki guarda: `GuardFailed` + `TransitionFailed` + return false.
+  - `WriteTryFireStructure(...)`/`WriteTryFireStructureFlat(...)`/`WriteTryFireStructureHierarchical(...)` – dyspozycja po stanie/triggerze; dopisane `TransitionFailed` przy braku dopasowania.
+  - `WriteOnEntryCall(...)`, `WriteOnExitCall(...)`, `WriteActionCall(...)` – emisja wywołań callbacków i otuliny try/catch (SAFE_ACTIONS) oraz logów `OnEntryExecuted`/`OnExitExecuted`/`ActionExecuted` (w wybranych miejscach).
+  - `WriteStartMethod()` – generowanie `Start()`/`StartAsync(...)` z HSM `DescendToInitialIfComposite()` przed wywołaniem base.
+
+- Generator/SourceGenerators/UnifiedStateMachineGenerator.cs (ścieżka unified/Extensions)
+  - `WriteTransitionLogicSyncWithExtensions(...)` – pełna ścieżka z rozszerzeniami (Before/AfterTransition + Action/OnExit/OnEntry) oraz logami:
+    - sukces: `OnExitExecuted`, `ActionExecuted`, `OnEntryExecuted`, `TransitionSucceeded`;
+    - porażka guarda: `GuardFailed` + `TransitionFailed`;
+    - porażka/brak dopasowania: `RunAfterTransition(..., false)` i powrót.
+  - `WriteOnInitialEntryMethod(...)`, `WriteOnInitialEntryAsyncMethod(...)` – dodane `OnEntryExecuted` przy starcie.
+  - `WriteTryFireMethodSync(...)`, `WriteTryFireMethodAsync(...)` – bramki wejściowe TryFire, w async wariantach dopisywane logi `TransitionFailed` na końcu (gdy `SuccessVar=false`).
+  - `WriteTryFireStructureWithExtensions(...)` – wariant struktury TryFire dla Extensions (powiadomienie AfterTransition również przy „no transition”).
+
+- FastFsm/build/FastFsm.Net.props
+  - Eksport `FsmGenerateLogging`, `FsmGenerateDI` do kompilatora (CompilerVisibleProperty).
+
+- FastFsm.Logging/build/FastFsm.Net.Logging.props
+  - Włącza `FsmGenerateLogging=true` i `FSM_LOGGING_ENABLED` po stronie konsumenta.
+
+- Ścieżki wygenerowanych plików (do inspekcji):
+  - `obj/GeneratedFiles/Generator/Generator.StateMachineGenerator/global__{Namespace}.{Class}.Generated.cs` – maszyny.
+  - `obj/GeneratedFiles/Generator/Generator.StateMachineGenerator/{Namespace}.{Class}.Log.g.cs` – klasy logujące.
+
+## Przykłady weryfikacji (grep + snippet)
+
+- Sprawdzenie, że AddSource dodał klasy logujące:
+  - `dotnet test -v diag > build.log 2>&1`
+  - `rg -n "FSM996: AddSource ok: .*\.Log\.g\.cs" build.log`
+
+- Wymuszenie pełnej regeneracji i czystego builda testów logowania:
+  - `rm -rf FastFsm.Logging.Tests/obj/GeneratedFiles/Generator/Generator.StateMachineGenerator`
+  - `dotnet clean FastFsm.Logging.Tests/FastFsm.Logging.Tests.csproj -c Release`
+  - `dotnet restore FastFsm.Logging.Tests/FastFsm.Logging.Tests.csproj`
+  - `dotnet build FastFsm.Logging.Tests/FastFsm.Logging.Tests.csproj -c Release`
+
+- Sprawdzenie obecności TransitionSucceeded w maszynach (flat/struct):
+  - `rg -n "\.TransitionSucceeded\(" FastFsm.Logging.Tests/obj/GeneratedFiles/Generator/Generator.StateMachineGenerator`
+  - Oczekiwany fragment (snippet):
+    - `if (_logger?.IsEnabled(LogLevel.Information) == true) { PureStateMachineLog.TransitionSucceeded(_logger, _instanceId, "Initial", "Processing", "Start"); }`
+
+- Wariant Extensions – weryfikacja kompletu logów w ścieżce sukcesu:
+  - `rg -n "ExtensionsStateMachineLog\.(OnExitExecuted|ActionExecuted|OnEntryExecuted|TransitionSucceeded)\(" FastFsm.Logging.Tests/obj/GeneratedFiles/Generator/Generator.StateMachineGenerator`
+  - Oczekiwane fragmenty (snippety):
+    - `ExtensionsStateMachineLog.OnExitExecuted(_logger, _instanceId, "OnInitialExit", "Initial");`
+    - `ExtensionsStateMachineLog.ActionExecuted(_logger, _instanceId, "StartAction", "Initial", "Processing", "Start");`
+    - `ExtensionsStateMachineLog.OnEntryExecuted(_logger, _instanceId, "OnProcessingEntry", "Processing");`
+    - `ExtensionsStateMachineLog.TransitionSucceeded(_logger, _instanceId, "Initial", "Processing", "Start");`
+
+- Weryfikacja TransitionFailed przy braku dopasowania:
+  - `rg -n "\.TransitionFailed\(" FastFsm.Logging.Tests/obj/GeneratedFiles/Generator/Generator.StateMachineGenerator`
+  - Oczekiwany fragment (snippet):
+    - `ExtensionsStateMachineLog.TransitionFailed(_logger, _instanceId, "Completed", "Reset");`
+
+- Weryfikacja OnInitialEntry – log przy starcie (maszyna z `[State(..., OnEntry=...)]` dla stanu początkowego):
+  - `rg -n "OnInitialEntry\(|OnInitialEntryAsync\(" Generator/SourceGenerators/UnifiedStateMachineGenerator.cs`
+  - `rg -n "\.OnEntryExecuted\(" FastFsm.Logging.Tests/obj/GeneratedFiles/Generator/Generator.StateMachineGenerator | head`
+  - Oczekiwany fragment (snippet):
+    - `InitialOnEntryStateMachineActionsLog.OnEntryExecuted(_logger, _instanceId, "OnReadyEntry", "Ready");`
+
+- Szybkie sprawdzenie EventId (jeżeli testy asercji patrzą po `Name` i jest wątpliwość co do środowiska):
+  - W klasach `*.Log.g.cs` zdarzenia mają przypisane stałe `EventId`:
+    - `new EventId(1, nameof(TransitionSucceeded))`, `2` – GuardFailed, `3` – TransitionFailed, `4` – OnEntryExecuted, `5` – OnExitExecuted, `6` – ActionExecuted.
+  - W razie potrzeby asercje można oprzeć o `EventId.Id`.

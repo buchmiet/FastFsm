@@ -1,0 +1,83 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  FastFsm.Logging.Tests -> /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/FastFsm.Logging.Tests/bin/Release/net9.0/FastFsm.Logging.Tests.dll
+Test run for /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/FastFsm.Logging.Tests/bin/Release/net9.0/FastFsm.Logging.Tests.dll (.NETCoreApp,Version=v9.0)
+VSTest version 17.14.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.22]     FastFsm.Logging.Tests.LoggingIntegrationTests.FullVariant_CompleteScenario_AllLogsPresent [FAIL]
+[xUnit.net 00:00:00.22]     FastFsm.Logging.Tests.SpecialCasesLoggingTests.StateMachine_WithStructTypes_LogsCorrectly [FAIL]
+  Failed FastFsm.Logging.Tests.LoggingIntegrationTests.FullVariant_CompleteScenario_AllLogsPresent [25 ms]
+  Error Message:
+   Shouldly.ShouldAssertException : transitionLog
+    should not be
+(Trace, 0, )
+    but was
+  Stack Trace:
+     at FastFsm.Logging.Tests.LoggingIntegrationTests.FullVariant_CompleteScenario_AllLogsPresent() in /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/FastFsm.Logging.Tests/LoggingIntegrationTests.cs:line 164
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed FastFsm.Logging.Tests.SpecialCasesLoggingTests.StateMachine_WithStructTypes_LogsCorrectly [80 ms]
+  Error Message:
+   Shouldly.ShouldAssertException : matchingLog
+    should not be
+(Trace, 0, )
+    but was
+  Stack Trace:
+     at FastFsm.Logging.Tests.LoggingTestBase.VerifyLogMessage(LogLevel expectedLevel, String expectedEventName, String[] expectedMessageParts) in /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/FastFsm.Logging.Tests/LoggingTestBase.cs:line 97
+   at FastFsm.Logging.Tests.SpecialCasesLoggingTests.StateMachine_WithStructTypes_LogsCorrectly() in /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/FastFsm.Logging.Tests/SpecialCasesLoggingTests.cs:line 131
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.22]     FastFsm.Logging.Tests.LoggingIntegrationTests.MultipleTransitions_LogsAccumulate [FAIL]
+[xUnit.net 00:00:00.22]     FastFsm.Logging.Tests.LoggingIntegrationTests.InitialStateOnEntry_LoggedDuringConstruction_Machine_with_Actions [FAIL]
+  Failed FastFsm.Logging.Tests.LoggingIntegrationTests.MultipleTransitions_LogsAccumulate [5 ms]
+  Error Message:
+   Shouldly.ShouldAssertException : LoggedMessages.Count
+    should be
+3
+    but was
+2
+  Stack Trace:
+     at FastFsm.Logging.Tests.LoggingIntegrationTests.MultipleTransitions_LogsAccumulate() in /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/FastFsm.Logging.Tests/LoggingIntegrationTests.cs:line 103
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed FastFsm.Logging.Tests.LoggingIntegrationTests.InitialStateOnEntry_LoggedDuringConstruction_Machine_with_Actions [2 ms]
+  Error Message:
+   Shouldly.ShouldAssertException : LoggedMessages.Count
+    should be
+1
+    but was
+0
+  Stack Trace:
+     at FastFsm.Logging.Tests.LoggingTestBase.VerifyLogCount(Int32 expectedCount) in /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/FastFsm.Logging.Tests/LoggingTestBase.cs:line 108
+   at FastFsm.Logging.Tests.LoggingIntegrationTests.InitialStateOnEntry_LoggedDuringConstruction_Machine_with_Actions() in /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/FastFsm.Logging.Tests/LoggingIntegrationTests.cs:line 54
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.23]     FastFsm.Logging.Tests.LoggingIntegrationTests.InitialStateOnEntry_LoggedDuringConstruction_Machine_with_Payload [FAIL]
+[xUnit.net 00:00:00.23]     FastFsm.Logging.Tests.SpecialCasesLoggingTests.PayloadStateMachine_NullPayloadWithExpectedType_HandledGracefully [FAIL]
+  Failed FastFsm.Logging.Tests.LoggingIntegrationTests.InitialStateOnEntry_LoggedDuringConstruction_Machine_with_Payload [3 ms]
+  Error Message:
+   Shouldly.ShouldAssertException : LoggedMessages.Count
+    should be
+1
+    but was
+0
+  Stack Trace:
+     at FastFsm.Logging.Tests.LoggingTestBase.VerifyLogCount(Int32 expectedCount) in /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/FastFsm.Logging.Tests/LoggingTestBase.cs:line 108
+   at FastFsm.Logging.Tests.LoggingIntegrationTests.InitialStateOnEntry_LoggedDuringConstruction_Machine_with_Payload() in /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/FastFsm.Logging.Tests/LoggingIntegrationTests.cs:line 71
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed FastFsm.Logging.Tests.SpecialCasesLoggingTests.PayloadStateMachine_NullPayloadWithExpectedType_HandledGracefully [4 ms]
+  Error Message:
+   Shouldly.ShouldAssertException : matchingLog
+    should not be
+(Trace, 0, )
+    but was
+  Stack Trace:
+     at FastFsm.Logging.Tests.LoggingTestBase.VerifyLogMessage(LogLevel expectedLevel, String expectedEventName, String[] expectedMessageParts) in /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/FastFsm.Logging.Tests/LoggingTestBase.cs:line 97
+   at FastFsm.Logging.Tests.SpecialCasesLoggingTests.PayloadStateMachine_NullPayloadWithExpectedType_HandledGracefully() in /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/FastFsm.Logging.Tests/SpecialCasesLoggingTests.cs:line 77
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+
+Failed!  - Failed:     6, Passed:    22, Skipped:     0, Total:    28, Duration: 98 ms - FastFsm.Logging.Tests.dll (net9.0)

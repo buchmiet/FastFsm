@@ -34,7 +34,7 @@
 
 	<!-- zależności -->
 		<ItemGroup>
-			<PackageReference Include="FastFsm.Net" Version="0.8.0.4" />
+			<PackageReference Include="FastFsm.Net" Version="0.8.0.11" />
 			<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
 		</ItemGroup>
 
@@ -53,13 +53,12 @@
 		        Visible="false" />
 		  <None Include="shared/Compatibility.FastFsm.Extensions.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
 		  <None Include="shared/Compatibility.FastFsm.Extensions.cs" Pack="true" PackagePath="build" BuildAction="Compile" Visible="false" />
-		  <None Include="shared/LogAdapter.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
 		  <Folder Include="shared\" />
 		</ItemGroup>
 
 		<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
 			<PropertyGroup>
-			<Version>0.8.0.5</Version>
+			<Version>0.8.0.11</Version>
 			<PackageVersion>$(Version)</PackageVersion>
 			</PropertyGroup>
 		</Target>

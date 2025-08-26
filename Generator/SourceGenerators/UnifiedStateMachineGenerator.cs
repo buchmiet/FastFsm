@@ -458,6 +458,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 catch (System.OperationCanceledException) { }
                 catch (System.Exception) { }
 #endif
+                            if (ShouldGenerateLogging)
+                            {
+                                WriteLogStatement("Debug",
+                                    $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
+                            }
                             Sb.AppendLine("break;");
                         }
                     }
@@ -501,6 +506,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 catch (System.OperationCanceledException) { }
                 catch (System.Exception) { }
                 #endif
+                    if (ShouldGenerateLogging)
+                    {
+                        WriteLogStatement("Debug",
+                            $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
+                    }
                     Sb.AppendLine("break;");
                 }
             }
@@ -549,9 +559,19 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                     Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
                     Sb.AppendLine("try { ");
                     Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                    if (ShouldGenerateLogging)
+                    {
+                        WriteLogStatement("Debug",
+                            $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
+                    }
                     Sb.AppendLine($"}} catch (System.OperationCanceledException oce) {{ OnActionException(\"OnInitialEntry:{stateEntry.OnEntryMethod}\", oce); return; }} catch (System.Exception ex) {{ OnActionException(\"OnInitialEntry:{stateEntry.OnEntryMethod}\", ex); return; }}");
                     Sb.AppendLine("#else");
                     Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                    if (ShouldGenerateLogging)
+                    {
+                        WriteLogStatement("Debug",
+                            $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
+                    }
                     Sb.AppendLine("#endif");
                     Sb.AppendLine("break;");
                 }
@@ -571,9 +591,19 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                     Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
                     Sb.AppendLine("try { ");
                     Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                    if (ShouldGenerateLogging)
+                    {
+                        WriteLogStatement("Debug",
+                            $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
+                    }
                     Sb.AppendLine($"}} catch (System.OperationCanceledException oce) {{ OnActionException(\"OnInitialEntry:{stateEntry.OnEntryMethod}\", oce); return; }} catch (System.Exception ex) {{ OnActionException(\"OnInitialEntry:{stateEntry.OnEntryMethod}\", ex); return; }}");
                     Sb.AppendLine("#else");
                     Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                    if (ShouldGenerateLogging)
+                    {
+                        WriteLogStatement("Debug",
+                            $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
+                    }
                     Sb.AppendLine("#endif");
                     Sb.AppendLine("break;");
                 }
@@ -1159,7 +1189,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
     // Special sync transition logic for WithExtensions variant
     // Wraps entire transition in try-catch to handle exceptions properly
     private void WriteTransitionLogicSyncWithExtensions(TransitionModel transition, string stateTypeForUsage, string triggerTypeForUsage)
-{
+    {
         var hasOnEntryExit = ShouldGenerateOnEntryExit();
 
         // Create context for hooks
@@ -1185,13 +1215,21 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
         // Guard check (if present)
         if (!string.IsNullOrEmpty(transition.GuardMethod))
-    {
+        {
             // Notify extensions about guard evaluation
             Sb.AppendLine($"    _extensionRunner.RunGuardEvaluation(_extensions, smCtx, \"{transition.GuardMethod}\");");
             Sb.AppendLine($"    var guardResult = {transition.GuardMethod}();");
             Sb.AppendLine($"    _extensionRunner.RunGuardEvaluated(_extensions, smCtx, \"{transition.GuardMethod}\", guardResult);");
             Sb.AppendLine("    if (!guardResult)");
             Sb.AppendLine("    {");
+            // Emit logging for guard failure and failed transition (parity with base path)
+            if (ShouldGenerateLogging)
+            {
+                WriteLogStatement("Warning",
+                    $"GuardFailed(_logger, _instanceId, \"{transition.GuardMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+                WriteLogStatement("Warning",
+                    $"TransitionFailed(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\");");
+            }
             Sb.AppendLine("        _extensionRunner.RunAfterTransition(_extensions, smCtx, false);");
             Sb.AppendLine("        return false;");
             Sb.AppendLine("    }");
@@ -1204,19 +1242,29 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         if (!transition.IsInternal && hasOnEntryExit &&
             Model.States.TryGetValue(transition.FromState, out var fromStateDef) &&
             !string.IsNullOrEmpty(fromStateDef.OnExitMethod))
-    {
+        {
             Sb.AppendLine($"    {fromStateDef.OnExitMethod}();");
+            if (ShouldGenerateLogging)
+            {
+                WriteLogStatement("Debug",
+                    $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
+            }
         }
 
         // Action (if present) - BEFORE OnEntry (Extensions order)
         if (!string.IsNullOrEmpty(transition.ActionMethod))
-    {
+        {
             Sb.AppendLine($"    {transition.ActionMethod}();");
+            if (ShouldGenerateLogging)
+            {
+                WriteLogStatement("Debug",
+                    $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+            }
         }
 
         // State change BEFORE OnEntry (so OnEntry runs in target state)
         if (!transition.IsInternal)
-    {
+        {
             Sb.AppendLine($"    {CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
         }
 
@@ -1224,8 +1272,13 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         if (!transition.IsInternal && hasOnEntryExit &&
             Model.States.TryGetValue(transition.ToState, out var toStateDef) &&
             !string.IsNullOrEmpty(toStateDef.OnEntryMethod))
-    {
+        {
             Sb.AppendLine($"    {toStateDef.OnEntryMethod}();");
+            if (ShouldGenerateLogging)
+            {
+                WriteLogStatement("Debug",
+                    $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
+            }
         }
 
         Sb.AppendLine("}");
@@ -1236,8 +1289,13 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
         // Success
         Sb.AppendLine("_extensionRunner.RunAfterTransition(_extensions, smCtx, true);");
+        if (ShouldGenerateLogging)
+        {
+            WriteLogStatement("Information",
+                $"TransitionSucceeded(_logger, _instanceId, \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+        }
         Sb.AppendLine("return true;");
-}
+    }
 
     private void WriteTryFireStructureDispatcher(string stateType, string triggerType, Action<TransitionModel, string, string> writeTransitionLogic)
 {

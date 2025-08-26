@@ -1,0 +1,22 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  FastFsm.Logging.Tests -> /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/FastFsm.Logging.Tests/bin/Release/net9.0/FastFsm.Logging.Tests.dll
+Test run for /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/FastFsm.Logging.Tests/bin/Release/net9.0/FastFsm.Logging.Tests.dll (.NETCoreApp,Version=v9.0)
+VSTest version 17.14.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.20]     FastFsm.Logging.Tests.ExtensionLoggingTests.Extension_FailedTransition_AfterTransitionReceivesFalse [FAIL]
+  Failed FastFsm.Logging.Tests.ExtensionLoggingTests.Extension_FailedTransition_AfterTransitionReceivesFalse [82 ms]
+  Error Message:
+   Shouldly.ShouldAssertException : matchingLog
+    should not be
+(Trace, 0, )
+    but was
+  Stack Trace:
+     at FastFsm.Logging.Tests.LoggingTestBase.VerifyLogMessage(LogLevel expectedLevel, String expectedEventName, String[] expectedMessageParts) in /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/FastFsm.Logging.Tests/LoggingTestBase.cs:line 97
+   at FastFsm.Logging.Tests.ExtensionLoggingTests.Extension_FailedTransition_AfterTransitionReceivesFalse() in /mnt/c/Users/Lukasz.Buchmiet/source/repos/FastFsm/FastFsm.Logging.Tests/ExtensionLoggingTests.cs:line 194
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+
+Failed!  - Failed:     1, Passed:     0, Skipped:     0, Total:     1, Duration: 82 ms - FastFsm.Logging.Tests.dll (net9.0)

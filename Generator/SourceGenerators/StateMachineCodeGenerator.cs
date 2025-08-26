@@ -504,6 +504,12 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         }
         
         Sb.AppendLine();
+        // No matching transition at this point
+        if (ShouldGenerateLogging)
+        {
+            WriteLogStatement("Warning",
+                $"TransitionFailed(_logger, _instanceId, {CurrentStateField}.ToString(), trigger.ToString());");
+        }
         Sb.AppendLine("return false;");
     }
     
@@ -918,8 +924,14 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine("// Apply winner");
         using (Sb.Block("if (!found)"))
         {
-            Sb.AppendLine("return false;");
+        // No matching transition - failure
+        if (ShouldGenerateLogging)
+        {
+            WriteLogStatement("Warning",
+                $"TransitionFailed(_logger, _instanceId, {CurrentStateField}.ToString(), trigger.ToString());");
         }
+        Sb.AppendLine("return false;");
+    }
         Sb.AppendLine();
         
         using (Sb.Block("if (bestIsInternal)"))
