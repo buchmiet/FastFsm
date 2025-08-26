@@ -842,6 +842,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine("int bestDeclOrder = int.MaxValue;");
         Sb.AppendLine("bool bestIsInternal = false;");
         Sb.AppendLine("int bestDestIndex = -1;");
+        Sb.AppendLine("int bestAncestorIndex = -1;");
         
         if (IsAsyncMachine)
         {
@@ -922,6 +923,8 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         
         // Apply the best candidate if found
         Sb.AppendLine("// Apply winner");
+        // Capture from-state for diagnostics
+        Sb.AppendLine("var __fromName = _currentState.ToString();");
         using (Sb.Block("if (!found)"))
         {
         // No matching transition - failure
@@ -946,6 +949,11 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             else
             {
                 GenerateActionSwitch("bestActionId", isInternal: true);
+            }
+            if (ShouldGenerateLogging)
+            {
+                WriteLogStatement("Debug",
+                    $"InternalTransitionOnAncestor(_logger, _instanceId, (({stateTypeForUsage})bestAncestorIndex).ToString(), __fromName, trigger.ToString());");
             }
             Sb.AppendLine("return true; // state unchanged, no history recording");
         }
@@ -976,6 +984,9 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             
             // Record history before state change
             Sb.AppendLine("RecordHistoryForCurrentPath();");
+            // Precompute exit count for diagnostics
+            Sb.AppendLine("int __exitCount = 0;");
+            Sb.AppendLine("for (int s = srcLeaf; s != lca && s >= 0; s = g_parent[s]) { __exitCount++; }");
             Sb.AppendLine();
             
             // Generate exit chain
@@ -1006,7 +1017,29 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             // Change state and resolve composite
             Sb.AppendLine("// Assign state and resolve composite target");
             Sb.AppendLine($"_currentState = ({stateTypeForUsage})destLeaf;");
-            Sb.AppendLine($"_currentState = ({stateTypeForUsage})GetCompositeEntryTarget((int)_currentState);");
+            // Resolve composite entry and log diagnostics
+            Sb.AppendLine("int __compositeIndex = (int)_currentState;");
+            Sb.AppendLine("int __resolvedIndex = GetCompositeEntryTarget(__compositeIndex);");
+            Sb.AppendLine($"var __histMode = HistoryArray[(int)((int)__compositeIndex)];");
+            Sb.AppendLine("string __resolution = (__histMode == Abstractions.Attributes.HistoryMode.None ? \"Initial\" : \"History\");");
+            if (ShouldGenerateLogging)
+            {
+                WriteLogStatement("Debug",
+                    $"CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                WriteLogStatement("Debug",
+                    $"HistoryRestored(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __histMode.ToString());");
+            }
+            Sb.AppendLine($"_currentState = ({stateTypeForUsage})__resolvedIndex;");
+            // Precompute entry count (top-down) for diagnostics
+            Sb.AppendLine("int __entryCount = 0;");
+            Sb.AppendLine("for (int s = (int)_currentState; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) { __entryCount++; }");
+            if (ShouldGenerateLogging)
+            {
+                WriteLogStatement("Debug",
+                    $"HierarchicalTransition(_logger, _instanceId, __fromName, _currentState.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
+                WriteLogStatement("Trace",
+                    $"ActivePath(_logger, _instanceId, DumpActivePath());");
+            }
             Sb.AppendLine();
             
             // Generate enter chain
@@ -1167,6 +1200,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             Sb.AppendLine("bestDepthFromCurrent = depthFromCurrent;");
             Sb.AppendLine("bestDeclOrder = declOrder;");
             Sb.AppendLine($"bestIsInternal = {(transition.IsInternal ? "true" : "false")};");
+            Sb.AppendLine("bestAncestorIndex = check;");
             
             if (!transition.IsInternal)
             {
@@ -1218,7 +1252,19 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         // This ensures proper history handling even for leaf destinations
         Sb.AppendLine($"// Set destination and resolve through GetCompositeEntryTarget");
         Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(targetState)};");
-        Sb.AppendLine($"{CurrentStateField} = ({stateTypeForUsage})GetCompositeEntryTarget((int){CurrentStateField});");
+        // Diagnostics for composite resolution
+        Sb.AppendLine("int __compositeIndex = (int)" + CurrentStateField + ";");
+        Sb.AppendLine("int __resolvedIndex = GetCompositeEntryTarget(__compositeIndex);");
+        Sb.AppendLine($"var __histMode = HistoryArray[(int)((int)__compositeIndex)];");
+        Sb.AppendLine("string __resolution = (__histMode == Abstractions.Attributes.HistoryMode.None ? \"Initial\" : \"History\");");
+        if (ShouldGenerateLogging)
+        {
+            WriteLogStatement("Debug",
+                $"CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+            WriteLogStatement("Debug",
+                $"HistoryRestored(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __histMode.ToString());");
+        }
+        Sb.AppendLine($"{CurrentStateField} = ({stateTypeForUsage})__resolvedIndex;");
     }
 
     #endregion

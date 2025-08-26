@@ -113,6 +113,9 @@ namespace FastFsm.Logging.Tests
             errorLogs.Any(l => l.Message.Contains("OnAfterTransition")).ShouldBeTrue();
             errorLogs.Any(l => l.Message.Contains("OnGuardEvaluation")).ShouldBeTrue();
             errorLogs.Any(l => l.Message.Contains("OnGuardEvaluated")).ShouldBeTrue();
+
+            // Verify EventId for extension errors
+            errorLogs.All(l => l.EventId.Id == 1001 && l.EventId.Name == "ExtensionError").ShouldBeTrue();
         }
 
         [Fact]

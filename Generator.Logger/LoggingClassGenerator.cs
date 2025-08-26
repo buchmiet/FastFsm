@@ -230,14 +230,14 @@ namespace Generator.Log
             _sb.WriteSummary("Logs internal transition executed on ancestor state");
             using (_sb.Block("public static void InternalTransitionOnAncestor(this ILogger logger, string instanceId, string ancestorState, string currentState, string trigger)"))
             {
-                using (_sb.Block("if (logger.IsEnabled(LogLevel.Information))"))
+                using (_sb.Block("if (logger.IsEnabled(LogLevel.Debug))"))
                 {
                     _sb.AppendLine("logger.Log(");
                     using (_sb.Indent())
                     {
-                        _sb.AppendLine("LogLevel.Information,");
+                        _sb.AppendLine("LogLevel.Debug,");
                         _sb.AppendLine("new EventId(10, nameof(InternalTransitionOnAncestor)),");
-                        _sb.AppendLine("\"State machine {InstanceId} executed internal transition on ancestor {AncestorState} while in {CurrentState} on trigger {Trigger}\",");
+                        _sb.AppendLine("\"State machine {InstanceId} internal transition on ancestor {AncestorState} from state {CurrentState} on trigger {Trigger}\",");
                         _sb.AppendLine("instanceId, ancestorState, currentState, trigger);");
                     }
                 }

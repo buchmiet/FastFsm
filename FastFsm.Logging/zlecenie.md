@@ -1,47 +1,89 @@
-# Zlecenie: domknięcie testów logowania i dopracowanie generatora (FastFsm.Net 0.8.0.11)
+# Zlecenie: domknięcie testów logowania i dopracowanie generatora (FastFsm.Net 0.8.0.16)
 
-Dokument opisuje aktualny stan, kontekst działania generatora i loggera, proces bumpowania pakietów oraz listę prac do wykonania, aby domknąć pozostałe testy w `FastFsm.Logging.Tests`.
+Dokument opisuje aktualny stan, kontekst działania generatora i loggera, proces bumpowania pakietów oraz listę prac do wykonania, aby domknąć pozostałe testy i emisje logów HSM.
 
 ## Kontekst i architektura
 
 - Generator źródeł (Roslyn, projekt `Generator`) emituje kod maszyn stanów na podstawie atrybutów z przestrzeni `Abstractions.Attributes` (`[StateMachine]`, `[Transition]`, `[State]`, itd.).
 - Emisja kodu odbywa się dwiema drogami:
-  - „Ścieżka bazowa/flat” (klasa bazowa `StateMachineCodeGenerator`) – bez rozszerzeń,
-  - „Ścieżka unified/Extensions” (`UnifiedStateMachineGenerator`) – wariant z rozszerzeniami (GenerateExtensibleVersion = true), a także agregacja wspólnych ścieżek.
-- Logowanie jest realizowane przez per‑maszynowe klasy `{ClassName}Log` dodawane przez `context.AddSource(...)` (AddSource). Nazwa pliku: `Namespace.ClassName.Log.g.cs`. Klasa jest `internal static` i udostępnia metody:
-  - `TransitionSucceeded`, `GuardFailed`, `TransitionFailed`,
-  - `OnEntryExecuted`, `OnExitExecuted`, `ActionExecuted`,
-  - oraz pomocnicze dla HSM/payload (np. `PayloadValidationFailed`, `HierarchicalTransition`, `ActivePath`, itp.).
-- Warunek generowania logowania: MSBuild property `FsmGenerateLogging=true` (eksportowane w `FastFsm/build/FastFsm.Net.props`, włączane przez pakiet `FastFsm.Net.Logging`). Flaga `FSM_LOGGING_ENABLED` umożliwia ewentualne warunkowanie kompilacji.
+  - „Ścieżka bazowa/flat” (klasa bazowa `StateMachineCodeGenerator`),
+  - „Ścieżka unified/Extensions” (`UnifiedStateMachineGenerator`) – m.in. dla GenerateExtensibleVersion.
+- Logowanie: per‑maszynowe klasy `{ClassName}Log` dodawane przez `AddSource(...)` (plik `Namespace.ClassName.Log.g.cs`) – aktualnie generowane wyłącznie przez `Generator.Logger/LoggingClassGenerator` (single source of truth).
+- Warunek generowania logowania: `FsmGenerateLogging=true` (props) i kompilacyjna flaga `FSM_LOGGING_ENABLED`.
 
-## Co zostało już zrobione (0.8.0.10 → 0.8.0.11)
+## Co zostało już zrobione (0.8.0.10 → 0.8.0.16)
 
-- Przywrócono model `{ClassName}Log.*(...)` (bez LogAdapter) i uproszczono hint name AddSource.
-- Dodano brakujące logi w krytycznych miejscach:
-  - Extensions path: w `WriteTransitionLogicSyncWithExtensions(...)` logujemy teraz:
-    - `OnExitExecuted` (po OnExit), `ActionExecuted` (po Action), `OnEntryExecuted` (po OnEntry),
-    - `TransitionSucceeded` (na końcu ścieżki sukcesu),
-    - `GuardFailed` + `TransitionFailed` przy porażce guarda.
-  - Brak dopasowania przejścia (flat/HSM): dopisano `TransitionFailed` tuż przed `return false`.
-  - OnInitialEntry/OnInitialEntryAsync: dopisano `OnEntryExecuted` (Debug) dla OnEntry wykonywanych przy starcie.
-- Dodane diagnostyki generatora (FSM99x) ułatwiające śledzenie AddSource i MSBuild properties.
-- Bump do 0.8.0.11: `FastFsm.Net`, `FastFsm.Net.Logging`, `FastFsm.Net.DependencyInjection`; testy zaktualizowano do nowych wersji.
+- Ujednolicenie i centralizacja klasy logującej: przejście na `LoggingClassGenerator` (zamiast inline `GenerateLoggingHelper`).
+- Ujednolicenie szablonów/poziomów/EventId (np. `InternalTransitionOnAncestor` → Debug spójnie w całym projekcie).
+- Naprawy core logowania:
+  - Extensions sync: pełna sekwencja `OnExitExecuted` → `ActionExecuted` → `OnEntryExecuted` → `TransitionSucceeded`; przy porażce guarda: `GuardFailed` + `TransitionFailed`.
+  - Brak dopasowania (flat/HSM): `TransitionFailed` przed `return false`.
+  - OnInitialEntry/OnInitialEntryAsync: `OnEntryExecuted` (Debug).
+  - Wariant payload sync direct: dodano brakujące `TransitionSucceeded`.
+  - Fast‑path (flat, bez guardów/akcji): dodano `TransitionSucceeded` (wcześniej brak logów).
+- HSM diagnostyka (częściowo w bazowym generatorze):
+  - Emisje: `CompositeStateEntry`, `HistoryRestored`, `HierarchicalTransition` (z LCA i licznikami exit/entry), `ActivePath`.
+  - Wyłączono HSM fast‑path przy włączonym logowaniu, aby nie tracić diagnostyki.
+- Testy:
+  - Trzy pierwotnie padające testy – naprawione poprzez emisję brakujących logów.
+  - Dodano testy helperów HSM (10–14) – `HsmLoggingTests` (bez runtime).
+  - Dodano szkice testów end‑to‑end HSM – `HsmRuntimeLoggingTests` (A/A1/A2 ↔ B/B1, Shallow history) – patrz „Do zrobienia”.
+- Wersjonowanie: kolejne bump’y do 0.8.0.12…0.8.0.16 (lokalny feed `./nuget`).
 
 ## Obecny stan testów i luki do domknięcia
 
-Po przejściu na 0.8.0.11 trzy testy nadal nie przechodzą:
+- Core logi (1–7, 1001) – ZIELONE: runtime pokryty testami (w tym doprecyzowany `ExtensionError`).
+- Helpery HSM (10–14) – ZIELONE: testy wywołujące `{ClassName}Log.*`.
+- Runtime HSM – CZĘŚCIOWO: 
+  - W bazowym generatorze pojawiają się `CompositeStateEntry`, `HistoryRestored`, `HierarchicalTransition`, `ActivePath`.
+  - `InternalTransitionOnAncestor` – brak emisji w wygenerowanej maszynie (wymagane dociągnięcie indeksu przodka i logu w unified/general HSM path).
+  - Unified‑path (Extensions) wymaga dopisania emisji HSM (analogicznych do bazowego).
 
-1) `LoggingIntegrationTests.FullVariant_CompleteScenario_AllLogsPresent`
-   - Oczekuje obecności: `ActionExecuted`, `OnEntryExecuted`, `TransitionSucceeded` dla maszyny z rozszerzeniami i payloadem.
-   - Generator w ścieżce Extensions emituje już te logi – podejrzenie: test nadal korzysta z nieświeżych plików wygenerowanych / cache NuGet lub występuje różnica co do poziomu/filtrów (IsEnabled).
+## Zadania do wykonania (checklista)
 
-2) `SpecialCasesLoggingTests.StateMachine_WithStructTypes_LogsCorrectly`
-   - Oczekuje `TransitionSucceeded` dla wariantu strukturalnego (enumy o typach wartościowych).
-   - Dla płaskiego wariantu non‑payload generator emituje `TransitionSucceeded`; należy zweryfikować, czy fast‑path lub zwykła ścieżka jest w użyciu i czy log jest faktycznie wywoływany.
+1) Dokończyć emisje HSM w unified‑path (`UnifiedStateMachineGenerator`):
+   - `CompositeStateEntry` + `HistoryRestored` tuż po `GetCompositeEntryTarget`.
+   - `HierarchicalTransition` (po wyznaczeniu LCA) + `ActivePath` (po ustaleniu `_currentState`).
+   - Zostawić wyłączony fast‑path HSM, jeśli `ShouldGenerateLogging`.
 
-3) `SpecialCasesLoggingTests.PayloadStateMachine_NullPayloadWithExpectedType_HandledGracefully`
-   - Oczekuje `TransitionSucceeded` po `TryFire(Start, payload: null)` (zastępowalność parametrem bezpayloadowym).
-   - W ścieżce płaskiej/payload log powinien się pojawić; do potwierdzenia, czy guard/action/OnEntry nie krótką drogą nie kończą przed emisją logu.
+2) `InternalTransitionOnAncestor` (Id=10, Debug):
+   - W general HSM selection (bazowy/unified) dodać śledzenie indeksu zwycięskiego przodka (np. `bestAncestorIndex = check;`).
+   - W gałęzi `bestIsInternal` – wyemitować
+     `InternalTransitionOnAncestor(_logger, _instanceId, ((TState)bestAncestorIndex).ToString(), __fromName, trigger.ToString())`.
+
+3) Zweryfikować runtime testy HSM (`HsmRuntimeLoggingTests`) – powinny przejść po pkt 1–2:
+   - `HierarchicalTransition_CompositeEntry_ActivePath_AreLogged` – Composite→B1, HierarchicalTransition A1→B1, ActivePath B/B1.
+   - `HistoryRestored_WhenReturningToA_IsLogged` – powrót B→A: CompositeEntry A→A2 + HistoryRestored Shallow (A2).
+   - `InternalTransitionOnAncestor_IsLogged` – Refresh w A z poziomu A1/A2.
+
+4) (Opcjonalnie) Ujednolicić emisje w helperze `WriteStateChangeWithCompositeHandling(...)` z innymi ścieżkami, aby nie dublować logów, a zachować spójność.
+
+5) Po każdej zmianie generatora:
+   - Bump pakietów (FastFsm.Net, FastFsm.Net.Logging) – ten sam numer.
+   - W testach czyścić cache NuGet: `~/.nuget/packages/fastfsm.net/<ver>` i `fastfsm.net.logging/<ver>`.
+   - Sprawdzić, czy Analyzer (Generator.dll) z paczki ma tę samą sumę SHA co lokalny build.
+
+## Wskazówki diagnostyczne
+
+- Wygenerowane pliki: `obj/GeneratedFiles/Generator/Generator.StateMachineGenerator` – zarówno `*.Generated.cs`, jak i `*.Log.g.cs`.
+- Diagnostyki FSM99x: `FSM996 AddSource ok`, `FSM990_PRE/PROP` – podgląd AddSource i wykrytych właściwości MSBuild.
+- W testach dumpuj `LoggedMessages` (poziom, `EventId.Id/Name`, `Message`), gdy asercja nie przechodzi.
+- Jeśli asercje opierają się na `EventId.Name`, a środowisko nie ustawia nazw – dopuszczalne są asercje po `EventId.Id`.
+
+## Szybkie komendy
+
+- Pakowanie lokalnego feedu:
+  - `dotnet build FastFsm/FastFsm.csproj -c Release`
+  - `dotnet build FastFsm.Logging/FastFsm.Logging.csproj -c Release`
+  - (opcjonalnie) `dotnet build FastFsm.DependencyInjection/FastFsm.DependencyInjection.csproj -c Release`
+- Cache flush (przykład):
+  - `rm -rf ~/.nuget/packages/fastfsm.net/<ver> ~/.nuget/packages/fastfsm.net.logging/<ver> ~/.nuget/packages/fastfsm.net.dependencyinjection/<ver>`
+- Testy selektywne:
+  - triada core: `dotnet test FastFsm.Logging.Tests/FastFsm.Logging.Tests.csproj -c Release --filter "FullyQualifiedName~FullVariant_CompleteScenario_AllLogsPresent|StateMachine_WithStructTypes_LogsCorrectly|PayloadStateMachine_NullPayloadWithExpectedType_HandledGracefully"`
+  - HSM helpery: `--filter "FullyQualifiedName~HsmLoggingTests"`
+  - HSM runtime: `--filter "FullyQualifiedName~HsmRuntimeLoggingTests"`
+
+Powodzenia – obecnie gros przypadków jest zielonych; do domknięcia pozostała emisja `InternalTransitionOnAncestor` i synchronizacja emisji HSM w unified‑path. Po wdrożeniu tych punktów komplet testów HSM runtime powinien przejść.
 
 ## Jak zbudować i bumpować pakiety (procedura powtarzalna)
 

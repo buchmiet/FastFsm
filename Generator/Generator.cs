@@ -631,10 +631,10 @@ public class StateMachineGenerator : IIncrementalGenerator
                 hintName,
                 source.Length));
 
-            // Add logging helper if enabled (inline to avoid cross-assembly dependency)
+            // Add logging helper if enabled (now using LoggingClassGenerator as single source of truth)
             if (model.GenerateLogging)
             {
-                var loggingSource = GenerateLoggingHelper(model.Namespace ?? string.Empty, model.ClassName);
+                var loggingSource = new Generator.Log.LoggingClassGenerator(model.ClassName, model.Namespace ?? string.Empty).Generate();
                 // Prefer simple, stable hint name: Namespace.Class.Log.g.cs
                 var nsPrefix2 = string.IsNullOrEmpty(model.Namespace) ? string.Empty : (model.Namespace + ".");
                 var simpleLoggingHint2 = SanitizeHintName($"{nsPrefix2}{model.ClassName}.Log.g.cs");
@@ -1086,7 +1086,7 @@ public class StateMachineGenerator : IIncrementalGenerator
                     // 3) Logging helpers (opcjonalnie)
                     if (model.GenerateLogging)
                     {
-                        var loggingSource = GenerateLoggingHelper(model.Namespace ?? string.Empty, model.ClassName);
+                        var loggingSource = new Generator.Log.LoggingClassGenerator(model.ClassName, model.Namespace ?? string.Empty).Generate();
                         // Prefer simple, stable hint name: Namespace.Class.Log.g.cs
                         var nsPrefix = string.IsNullOrEmpty(model.Namespace) ? string.Empty : (model.Namespace + ".");
                         var simpleLoggingHint = SanitizeHintName($"{nsPrefix}{model.ClassName}.Log.g.cs");
