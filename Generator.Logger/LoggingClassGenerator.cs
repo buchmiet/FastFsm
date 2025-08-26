@@ -349,7 +349,8 @@ namespace Generator.Log
         {
             using (sb.Block($"if (_logger?.IsEnabled(LogLevel.{logLevel}) == true)"))
             {
-                sb.AppendLine($"{className}Log.{logMethodCall}");
+                // Use generic adapter from Logging package contentFiles to avoid per-class helpers
+                sb.AppendLine($"global::FastFsm.Runtime.Logging.LogAdapter.{logMethodCall}");
             }
         }
     }

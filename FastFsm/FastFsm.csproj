@@ -159,7 +159,7 @@
 
   <Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
     <PropertyGroup>
-      <Version>0.8.0.2</Version>
+      <Version>0.8.0.4</Version>
       <PackageVersion>$(Version)</PackageVersion>
     </PropertyGroup>
   </Target>

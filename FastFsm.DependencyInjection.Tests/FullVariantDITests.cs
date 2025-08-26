@@ -1,8 +1,10 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using StateMachine.Contracts;
+using FastFsm.Contracts;
 using StateMachine.Tests.DI.TestMachines;
+using StateMachine.DependencyInjection;
 using System.Collections.Generic;
 using Xunit;
+using FastFsm.DependencyInjection;
 
 
 namespace StateMachine.Tests.DI;

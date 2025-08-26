@@ -1,6 +1,7 @@
 <Solution>
   <Project Path="Abstractions/Abstractions.csproj" />
   <Project Path="FastFsm.Async.Tests/FastFsm.Async.Tests.csproj" />
+  <Project Path="FastFsm.DependencyInjection.Tests/FastFsm.DependencyInjection.Tests.csproj" />
   <Project Path="FastFsm.Logging.Tests/FastFsm.Logging.Tests.csproj" />
   <Project Path="FastFsm.Logging/FastFsm.Logging.csproj" />
   <Project Path="FastFsm.Tests/FastFsm.Tests.csproj" />

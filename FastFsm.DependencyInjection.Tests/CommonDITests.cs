@@ -1,7 +1,9 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using StateMachine.Contracts;
+using FastFsm.Contracts;
 using StateMachine.Tests.DI;
 using StateMachine.Tests.DI.TestMachines;
+using StateMachine.DependencyInjection;
+using FastFsm.DependencyInjection;
 
 namespace StateMachine.DependencyInjection.Tests;
 

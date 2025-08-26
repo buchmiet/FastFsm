@@ -1,9 +1,9 @@
 #if FSM_DI_ENABLED
 using Microsoft.Extensions.DependencyInjection;
-using StateMachine.Contracts;
+using FastFsm.Contracts;
 using System;
 
-namespace StateMachine.DependencyInjection;
+namespace FastFsm.DependencyInjection;
 
 public static class FsmServiceCollectionExtensions
 {
