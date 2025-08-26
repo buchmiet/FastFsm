@@ -2,6 +2,7 @@
 using Abstractions.Attributes;
 using FastFsm.Contracts;
 using Xunit;
+using FastFsm.Runtime.Extensions;
 
 namespace FastFsm.Tests.Features.Extensions
 {
