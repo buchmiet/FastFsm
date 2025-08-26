@@ -1,4 +1,5 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<?xml version='1.0' encoding='utf-8'?>
+<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<TargetFramework>net9.0</TargetFramework>
 		<LangVersion>latest</LangVersion>
@@ -12,14 +13,14 @@
 		<PackageOutputPath>../nuget</PackageOutputPath>
 		<IncludeBuildOutput>false</IncludeBuildOutput>
 
-		<!-- Włącz DI i Logging -->
+		
 		<FsmGenerateDI>true</FsmGenerateDI>
 		<FsmGenerateLogging>true</FsmGenerateLogging>
 		<DefineConstants>$(DefineConstants);FSM_DI_ENABLED</DefineConstants>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="FastFsm.Net" Version="0.8.0.11" />
+		<PackageReference Include="FastFsm.Net" Version="0.8.0.18" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.7" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
 	</ItemGroup>
@@ -31,41 +32,29 @@
 
 	<ItemGroup>
 
-		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
-		<None Include="..\FastFsm\Runtime\Extensions\ExtensionRunner.cs"
-		      Pack="true"
-		      PackagePath="contentFiles/cs/any"
-		      BuildAction="Compile"
-		      Visible="false" />
+		
+		<None Include="..\FastFsm\Runtime\Extensions\ExtensionRunner.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
 
 
-		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
-		<None Include="..\FastFsm\DependencyInjection\FsmServiceCollectionExtensions.cs"
-		      Pack="true"
-		      PackagePath="contentFiles/cs/any"
-		      BuildAction="Compile"
-		      Visible="false" />
+		
+		<None Include="..\FastFsm\DependencyInjection\FsmServiceCollectionExtensions.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
 
 	
 
-		<!-- 2️⃣ pakujemy do nupkg; w projekcie konsumenta stanie się Compile -->
-		<None Include="..\FastFsm\DependencyInjection\StateMachineFactory.cs"
-		      Pack="true"
-		      PackagePath="contentFiles/cs/any"
-		      BuildAction="Compile"
-		      Visible="false" />
+		
+		<None Include="..\FastFsm\DependencyInjection\StateMachineFactory.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
 
-		<!-- Log adapter for logging-enabled generation -->
+		
 
 
 	</ItemGroup>
 
-	<!-- Version stamping for nupkg -->
+	
 	<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
 		<PropertyGroup>
 			<Version>0.8.0.11</Version>
 			<PackageVersion>$(Version)</PackageVersion>
-		</PropertyGroup>
+		<Version>0.8.0.18</Version><PackageVersion>$(Version)</PackageVersion></PropertyGroup>
 	</Target>
 
 
