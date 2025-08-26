@@ -1,6 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<?xml version='1.0' encoding='utf-8'?>
+<Project Sdk="Microsoft.NET.Sdk">
 
-	<!-- ───────────  podstawowe ustawienia  ─────────── -->
+	
 	<PropertyGroup>
 		<TargetFramework>net9.0</TargetFramework>
 
@@ -11,17 +12,17 @@
 		<Deterministic>true</Deterministic>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<PackageOutputPath>../nuget</PackageOutputPath>
-		<!-- brak własnego DLL-a -->
+		
 		<IncludeBuildOutput>false</IncludeBuildOutput>
 
-		<!-- globalna flaga i #if -->
+		
 		<FsmGenerateLogging>true</FsmGenerateLogging>
 		<DefineConstants>$(DefineConstants);FSM_LOGGING_ENABLED</DefineConstants>
 
 		<LangVersion>latest</LangVersion>
 
 
-		<!-- NuGet Package Metadata -->
+		
 		<PackageId>FastFsm.Net.Logging</PackageId>
 		<Authors>Lukasz Buchmiet</Authors>
 		<Description>High-performance state machine using source generators with support for ILogger</Description>
@@ -32,25 +33,21 @@
 		<PackageTags>fsm;state machine;source generator;roslyn;dotnet</PackageTags>
 	</PropertyGroup>
 
-	<!-- zależności -->
+	
 		<ItemGroup>
-			<PackageReference Include="FastFsm.Net" Version="0.8.0.17" />
+			<PackageReference Include="FastFsm.Net" Version="0.8.0.18" />
 			<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
 		</ItemGroup>
 
-	<!-- build and buildTransitive props -->
+	
 	<ItemGroup>
 		<None Include="build\FastFsm.Net.Logging.props" Pack="true" PackagePath="build" />
 		<None Include="build\FastFsm.Net.Logging.props" Pack="true" PackagePath="buildTransitive" />
 	</ItemGroup>
 
-	<!-- Repackage ExtensionRunner.cs so consumers of Logging get it without direct FastFsm.Net reference -->
+	
 		<ItemGroup>
-		  <None Include="..\FastFsm\Runtime\Extensions\ExtensionRunner.cs"
-		        Pack="true"
-		        PackagePath="contentFiles/cs/any"
-		        BuildAction="Compile"
-		        Visible="false" />
+		  <None Include="..\FastFsm\Runtime\Extensions\ExtensionRunner.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
 		  <None Include="shared/Compatibility.FastFsm.Extensions.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
 		  <None Include="shared/Compatibility.FastFsm.Extensions.cs" Pack="true" PackagePath="build" BuildAction="Compile" Visible="false" />
 		  <Folder Include="shared\" />
@@ -60,7 +57,7 @@
 			<PropertyGroup>
 			<Version>0.8.0.17</Version>
 			<PackageVersion>$(Version)</PackageVersion>
-			</PropertyGroup>
+			<Version>0.8.0.18</Version><PackageVersion>$(Version)</PackageVersion></PropertyGroup>
 		</Target>
 
 
