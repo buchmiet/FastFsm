@@ -380,7 +380,12 @@ Osobny komponent używany gdy `ExtensionsOn == true`:
    - Runtime'owe pola i metody są w klasie bazowej runtime'u (np. `HierarchicalStateMachineBase`)
    - Generator tylko emituje tablice statyczne i overrides właściwości
 
-3. **Inicjalizacja HSM**:
+3. **LCA (Lowest Common Ancestor)** - **ZAKTUALIZOWANE 2025-08-27**:
+   - Generator **nie implementuje już ręcznego algorytmu** opartego o `g_parent/g_depth`
+   - Zawsze wywołuje metodę runtime: `int lca = FindLowestCommonAncestor(srcLeaf, destLeaf);`
+   - Dalsza logika (liczba EXIT/ENTER, `RecordHistoryForCurrentPath()`, wejście do kompozytu, logi) pozostaje bez zmian
+
+4. **Inicjalizacja HSM**:
    - `DescendToInitialIfComposite()` - zstąpienie do liścia przed OnInitialEntry
    - Zapewnia prawidłowy stan początkowy dla stanów kompozytowych
 
@@ -392,6 +397,20 @@ Osobny komponent używany gdy `ExtensionsOn == true`:
 2. **Przeciążenia API**:
    - Generowanie typowanych przeciążeń dla single-payload
    - Generyczne przeciążenia dla multi-payload
+
+## Mapa odpowiedzialności - kto co robi
+
+### Podział odpowiedzialności w HSM:
+
+| Funkcjonalność | Odpowiedzialność | Szczegóły |
+|----------------|------------------|------------|
+| **LCA (Lowest Common Ancestor)** | Runtime (klasa bazowa) | Generator wywołuje `FindLowestCommonAncestor(srcLeaf, destLeaf)` |
+| **Tablice HSM** | Generator | `g_parent`, `g_depth`, `g_initialChild`, `g_history` - statyczne tablice |
+| **EXIT/ENTER chains** | Wygenerowany kod + runtime | Generator emituje pętle, runtime dostarcza helpery |
+| **RecordHistory** | Runtime helper | Generator wywołuje `RecordHistoryForCurrentPath()` |
+| **Composite entry** | Wygenerowany kod | Generator emituje logikę `GetCompositeEntryTarget()` |
+| **GetPermittedTriggers (Flat)** | Generator (UnifiedStateMachineGenerator) | Tablice per stan |
+| **GetPermittedTriggers (HSM)** | Generator (StateMachineCodeGenerator) | Tablice masek |
 
 ## Kluczowe zależności między metodami
 
@@ -470,3 +489,14 @@ Osobny komponent używany gdy `ExtensionsOn == true`:
 2. Złożona logika warunkowa oparta na flagach
 3. Możliwość dekompozycji na mniejsze komponenty pomocnicze
 4. Część fast-path mogłaby być wydzielona do osobnych emiterów
+5. ~~Ujednolicić obliczanie LCA w HSM~~ **✅ ZROBIONE (2025-08-27)**
+
+---
+
+## Changelog
+
+### 2025-08-27 - Ujednolicenie LCA
+- Generator nie emituje już ręcznych pętli do obliczania LCA
+- Wszędzie używane jest `FindLowestCommonAncestor(...)` z runtime
+- Brak zmian funkcjonalnych i wydajnościowych; uproszczenie wygenerowanego kodu
+- Redukcja: 13 linii ręcznego kodu → 2 linie wywołania metody (-85%)
