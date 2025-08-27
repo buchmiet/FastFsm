@@ -418,18 +418,18 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 Sb.AppendLine("int depth = 0;");
                 Sb.AppendLine("for (int i = leafIdx; i >= 0; i = g_parent[i]) depth++;");
                 Sb.AppendLine();
-                Sb.AppendLine("// Rent path buffer and fill from leaf to root");
-                Sb.AppendLine("var pool = System.Buffers.ArrayPool<int>.Shared;");
-                Sb.AppendLine("int[] path = pool.Rent(depth);");
+                Sb.AppendLine("// Get path from root to leaf using runtime helper with ArrayPool");
+                Sb.AppendLine($"var pool = System.Buffers.ArrayPool<{stateTypeForUsage}>.Shared;");
+                Sb.AppendLine($"{stateTypeForUsage}[] rented = pool.Rent(depth);");
                 Sb.AppendLine("try");
                 using (Sb.Block(""))
                 {
-                    Sb.AppendLine("int k = depth - 1;");
-                    Sb.AppendLine("for (int i = leafIdx; i >= 0; i = g_parent[i]) path[k--] = i;");
+                    Sb.AppendLine("var span = rented.AsSpan(0, depth);");
+                    Sb.AppendLine("int written = GetActivePath(span);");
                     Sb.AppendLine();
                     Sb.AppendLine("// Execute OnEntry from root to leaf");
-                    using (Sb.Block("for (int i = 0; i < depth; i++)"))
-                    using (Sb.Block($"switch (({stateTypeForUsage})path[i])"))
+                    using (Sb.Block("for (int i = 0; i < written; i++)"))
+                    using (Sb.Block($"switch (span[i])"))
                 {
                     foreach (var stateEntry in statesWithParameterlessOnEntry)
                     {
@@ -472,7 +472,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 Sb.AppendLine("finally");
                 using (Sb.Block(""))
                 {
-                    Sb.AppendLine("pool.Return(path, clearArray: false);");
+                    Sb.AppendLine("pool.Return(rented, clearArray: false);");
                 }
             }
             else
@@ -542,14 +542,13 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             Sb.AppendLine("int depth = 0;");
             Sb.AppendLine("for (int i = leafIdx; i >= 0; i = g_parent[i]) depth++;");
             Sb.AppendLine();
-            Sb.AppendLine("// Build path from root to leaf without allocations");
-            Sb.AppendLine("Span<int> path = depth <= 128 ? stackalloc int[depth] : new int[depth];");
-            Sb.AppendLine("int k = depth - 1;");
-            Sb.AppendLine("for (int i = leafIdx; i >= 0; i = g_parent[i]) path[k--] = i;");
+            Sb.AppendLine("// Get path from root to leaf using runtime helper");
+            Sb.AppendLine($"Span<{stateTypeForUsage}> path = depth <= 128 ? stackalloc {stateTypeForUsage}[depth] : new {stateTypeForUsage}[depth];");
+            Sb.AppendLine("int written = GetActivePath(path);");
             Sb.AppendLine();
             Sb.AppendLine("// Execute OnEntry from root to leaf");
-            using (Sb.Block("for (int i = 0; i < path.Length; i++)"))
-            using (Sb.Block($"switch (({stateTypeForUsage})path[i])"))
+            using (Sb.Block("for (int i = 0; i < written; i++)"))
+            using (Sb.Block($"switch (path[i])"))
         {
             foreach (var stateEntry in statesWithParameterlessOnEntry)
         {
