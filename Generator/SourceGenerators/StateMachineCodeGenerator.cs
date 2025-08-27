@@ -967,19 +967,8 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             Sb.AppendLine("int srcLeaf = (int)_currentState;");
             Sb.AppendLine("int destLeaf = bestDestIndex;");
             Sb.AppendLine();
-            Sb.AppendLine("// Calculate LCA using g_parent and g_depth");
-            Sb.AppendLine("int lca = -1;");
-            Sb.AppendLine("if (srcLeaf == destLeaf) { lca = srcLeaf; }");
-            Sb.AppendLine("else {");
-            Sb.AppendLine("    int src = srcLeaf;");
-            Sb.AppendLine("    int dst = destLeaf;");
-            Sb.AppendLine("    // Bring both to same depth");
-            Sb.AppendLine("    while (g_depth[src] > g_depth[dst]) { src = g_parent[src]; }");
-            Sb.AppendLine("    while (g_depth[dst] > g_depth[src]) { dst = g_parent[dst]; }");
-            Sb.AppendLine("    // Walk up together until common ancestor");
-            Sb.AppendLine("    while (src != dst) { src = g_parent[src]; dst = g_parent[dst]; }");
-            Sb.AppendLine("    lca = src;");
-            Sb.AppendLine("}");
+            Sb.AppendLine("// LCA via runtime helper");
+            Sb.AppendLine("int lca = FindLowestCommonAncestor(srcLeaf, destLeaf);");
             Sb.AppendLine();
             
             // Record history before state change
