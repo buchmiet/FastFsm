@@ -416,8 +416,9 @@ Osobny komponent używany gdy `ExtensionsOn == true`:
 | **EXIT/ENTER chains** | Wygenerowany kod + runtime | Generator emituje pętle, runtime dostarcza helpery |
 | **RecordHistory** | Runtime helper | Generator wywołuje `RecordHistoryForCurrentPath()` |
 | **Composite entry** | Wygenerowany kod | Generator emituje logikę `GetCompositeEntryTarget()` |
-| **GetPermittedTriggers (Flat)** | Generator (UnifiedStateMachineGenerator) | Tablice per stan |
-| **GetPermittedTriggers (HSM)** | Generator (StateMachineCodeGenerator) | Tablice masek |
+| **GetPermittedTriggers (Flat)** | Generator (UnifiedStateMachineGenerator) | Tablice per stan + guard mask |
+| **GetPermittedTriggers (HSM List)** | Generator (StateMachineCodeGenerator) | Buduje maskę, zwraca `s_perm__Mask[mask]` |
+| **GetPermittedTriggers (HSM Span)** | Generator (StateMachineCodeGenerator) | Buduje maskę, kopiuje `s_perm__Mask[mask]` do Span |
 
 ## Kluczowe zależności między metodami
 
@@ -497,6 +498,8 @@ Osobny komponent używany gdy `ExtensionsOn == true`:
 3. Możliwość dekompozycji na mniejsze komponenty pomocnicze
 4. Część fast-path mogłaby być wydzielona do osobnych emiterów
 5. ~~Ujednolicić obliczanie LCA w HSM~~ **✅ ZROBIONE (2025-08-27)**
+6. ~~Ujednolicić budowanie ścieżki OnInitialEntry~~ **✅ ZROBIONE (2025-08-27)**
+7. ~~Ujednolicić GetPermittedTriggers dla HSM~~ **✅ ZROBIONE (2025-08-27)**
 
 ---
 
@@ -515,3 +518,10 @@ Osobny komponent używany gdy `ExtensionsOn == true`:
 - Async: Używa `ArrayPool<TState>` zamiast `ArrayPool<int>`
 - Eliminacja rzutowań z `int` na `TState` w switch
 - Brak zmian funkcjonalnych i wydajnościowych; uproszczenie kodu
+
+#### Refaktoryzacja HSM GetPermittedTriggers(Span<TTrigger>):
+- Usunięto ręczny spacer z deduplikacją (`Span<bool> seen`)
+- Budowanie maski identycznie jak w `GetPermittedTriggersInternal()`
+- Kopiowanie wyniku z prekomputowanej tablicy `s_perm__Mask[mask]` do Span
+- Redukcja: 55 linii → 23 linie (-58%)
+- Ujednolicenie logiki z wersją listową
