@@ -1778,15 +1778,13 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             Sb.WriteReturns("The number of triggers written to the span, or -1 if the buffer is too small");
             using (Sb.Block($"public int GetPermittedTriggers(Span<{triggerTypeForUsage}> destination)"))
             {
-                Sb.AppendLine("int writeIndex = 0;");
+                // Get unique triggers for bit mapping
+                var uniqueTriggers = Model.Transitions.Select(t => t.Trigger).Distinct().OrderBy(t => t).ToList();
+                
+                Sb.AppendLine("// Build mask identically to GetPermittedTriggersInternal");
+                Sb.AppendLine("int mask = 0;");
                 Sb.AppendLine($"int currentIndex = (int){CurrentStateField};");
                 Sb.AppendLine("int check = currentIndex;");
-                Sb.AppendLine();
-                
-                // Get unique triggers count for the seen array
-                var uniqueTriggers = Model.Transitions.Select(t => t.Trigger).Distinct().OrderBy(t => t).ToList();
-                Sb.AppendLine($"// Track seen triggers to avoid duplicates ({uniqueTriggers.Count} unique triggers)");
-                Sb.AppendLine($"Span<bool> seen = stackalloc bool[{uniqueTriggers.Count}];");
                 Sb.AppendLine();
                 
                 using (Sb.Block("while (check >= 0)"))
@@ -1804,55 +1802,18 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                             Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}:");
                             using (Sb.Block(""))
                             {
-                                // Group by trigger to avoid duplicates within same state
-                                var triggersInState = stateGroup.GroupBy(t => t.Trigger).OrderBy(g => g.Key);
-                                
-                                foreach (var triggerGroup in triggersInState)
+                                foreach (var transition in stateGroup)
                                 {
-                                    var trigger = triggerGroup.Key;
-                                    var triggerIndex = uniqueTriggers.IndexOf(trigger);
-                                    
-                                    using (Sb.Block($"if (!seen[{triggerIndex}])"))
+                                    var triggerBit = uniqueTriggers.IndexOf(transition.Trigger);
+                                    if (!string.IsNullOrEmpty(transition.GuardMethod))
                                     {
-                                        // Check if any transition for this trigger has no guard or passing guard
-                                        var transitionsForTrigger = triggerGroup.ToList();
-                                        var hasUnguarded = transitionsForTrigger.Any(t => string.IsNullOrEmpty(t.GuardMethod));
-                                        
-                                        if (hasUnguarded)
-                                        {
-                                            // At least one unguarded transition - trigger is always available
-                                            Sb.AppendLine($"if (writeIndex >= destination.Length) return -1;");
-                                            Sb.AppendLine($"destination[writeIndex++] = {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(trigger)};");
-                                            Sb.AppendLine($"seen[{triggerIndex}] = true;");
-                                        }
-                                        else
-                                        {
-                                            // All transitions are guarded - need runtime check.
-                                            // For Span-based API, we pass null for payload guards
-                                            var guardedTransitions = transitionsForTrigger
-                                                .Where(t => !string.IsNullOrEmpty(t.GuardMethod))
-                                                .ToList();
-
-                                            if (guardedTransitions.Count > 0)
-                                            {
-                                                bool first = true;
-                                                foreach (var transition in guardedTransitions)
-                                                {
-                                                    var from = TypeHelper.EscapeIdentifier(transition.FromState);
-                                                    var trig = TypeHelper.EscapeIdentifier(transition.Trigger);
-                                                    // Use EvaluateGuard which handles both payload and non-payload guards
-                                                    Sb.AppendLine($"{(first ? "if" : "else if")} (EvaluateGuard__{from}__{trig}(null))");
-                                                    using (Sb.Block(""))
-                                                    {
-                                                        Sb.AppendLine($"if (writeIndex >= destination.Length) return -1;");
-                                                        Sb.AppendLine($"destination[writeIndex++] = {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(trigger)};");
-                                                        Sb.AppendLine($"seen[{triggerIndex}] = true;");
-                                                    }
-                                                    first = false;
-                                                }
-                                            }
-                                            // If no guards can be evaluated, skip this trigger
-                                        }
+                                        var from = TypeHelper.EscapeIdentifier(transition.FromState);
+                                        var trig = TypeHelper.EscapeIdentifier(transition.Trigger);
+                                        Sb.AppendLine($"if (EvaluateGuard__{from}__{trig}(null)) mask |= (1 << {triggerBit});");
+                                    }
+                                    else
+                                    {
+                                        Sb.AppendLine($"mask |= (1 << {triggerBit}); // {transition.Trigger} (no guard)");
                                     }
                                 }
                                 Sb.AppendLine("break;");
@@ -1863,7 +1824,14 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                     Sb.AppendLine("check = (uint)check < (uint)g_parent.Length ? g_parent[check] : -1;");
                 }
                 Sb.AppendLine();
-                Sb.AppendLine("return writeIndex;");
+                Sb.AppendLine("// Copy from precomputed array to destination span");
+                Sb.AppendLine($"var result = s_perm__Mask[mask];");
+                Sb.AppendLine("if (result.Count > destination.Length) return -1;");
+                Sb.AppendLine("for (int i = 0; i < result.Count; i++)");
+                Sb.AppendLine("{");
+                Sb.AppendLine("    destination[i] = result[i];");
+                Sb.AppendLine("}");
+                Sb.AppendLine("return result.Count;");
             }
             Sb.AppendLine();
         }
