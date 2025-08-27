@@ -385,7 +385,13 @@ Osobny komponent używany gdy `ExtensionsOn == true`:
    - Zawsze wywołuje metodę runtime: `int lca = FindLowestCommonAncestor(srcLeaf, destLeaf);`
    - Dalsza logika (liczba EXIT/ENTER, `RecordHistoryForCurrentPath()`, wejście do kompozytu, logi) pozostaje bez zmian
 
-4. **Inicjalizacja HSM**:
+4. **Budowanie ścieżki w OnInitialEntry** - **ZAKTUALIZOWANE 2025-08-27**:
+   - Generator **nie buduje już ręcznie ścieżki** root→leaf (usunięto pętle leaf→root i odwracanie)
+   - **Sync**: Używa `GetActivePath(Span<TState>)` z runtime do wypełnienia bufora
+   - **Async**: Używa `GetActivePath(span)` z `ArrayPool<TState>` (zmiana z `int[]` na `TState[]`)
+   - Eliminacja rzutowań - switch operuje bezpośrednio na `TState` zamiast `(TState)int`
+
+5. **Inicjalizacja HSM**:
    - `DescendToInitialIfComposite()` - zstąpienie do liścia przed OnInitialEntry
    - Zapewnia prawidłowy stan początkowy dla stanów kompozytowych
 
@@ -405,6 +411,7 @@ Osobny komponent używany gdy `ExtensionsOn == true`:
 | Funkcjonalność | Odpowiedzialność | Szczegóły |
 |----------------|------------------|------------|
 | **LCA (Lowest Common Ancestor)** | Runtime (klasa bazowa) | Generator wywołuje `FindLowestCommonAncestor(srcLeaf, destLeaf)` |
+| **GetActivePath (root→leaf)** | Runtime (klasa bazowa) | Generator wywołuje `GetActivePath(Span<TState>)` w OnInitialEntry |
 | **Tablice HSM** | Generator | `g_parent`, `g_depth`, `g_initialChild`, `g_history` - statyczne tablice |
 | **EXIT/ENTER chains** | Wygenerowany kod + runtime | Generator emituje pętle, runtime dostarcza helpery |
 | **RecordHistory** | Runtime helper | Generator wywołuje `RecordHistoryForCurrentPath()` |
@@ -495,8 +502,16 @@ Osobny komponent używany gdy `ExtensionsOn == true`:
 
 ## Changelog
 
-### 2025-08-27 - Ujednolicenie LCA
+### 2025-08-27 - Ujednolicenie LCA i OnInitialEntry path building
+
+#### Refaktoryzacja LCA:
 - Generator nie emituje już ręcznych pętli do obliczania LCA
 - Wszędzie używane jest `FindLowestCommonAncestor(...)` z runtime
-- Brak zmian funkcjonalnych i wydajnościowych; uproszczenie wygenerowanego kodu
 - Redukcja: 13 linii ręcznego kodu → 2 linie wywołania metody (-85%)
+
+#### Refaktoryzacja OnInitialEntry:
+- Usunięto ręczne budowanie ścieżki (pętle leaf→root, odwracanie kolejności)
+- Sync: Używa `GetActivePath(Span<TState>)` z runtime
+- Async: Używa `ArrayPool<TState>` zamiast `ArrayPool<int>`
+- Eliminacja rzutowań z `int` na `TState` w switch
+- Brak zmian funkcjonalnych i wydajnościowych; uproszczenie kodu
