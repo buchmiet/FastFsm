@@ -1005,21 +1005,47 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             
             // Change state and resolve composite
             Sb.AppendLine("// Assign state and resolve composite target");
-            Sb.AppendLine($"_currentState = ({stateTypeForUsage})destLeaf;");
-            // Resolve composite entry and log diagnostics
-            Sb.AppendLine("int __compositeIndex = (int)_currentState;");
-            Sb.AppendLine("int __resolvedIndex = GetCompositeEntryTarget(__compositeIndex);");
-            Sb.AppendLine($"var __histMode = HistoryArray[(int)((int)__compositeIndex)];");
-            Sb.AppendLine("string __resolution = (__histMode == Abstractions.Attributes.HistoryMode.None ? \"Initial\" : \"History\");");
-            if (ShouldGenerateLogging)
+            
+            // SAVE COMPOSITE BEFORE ASSIGNING _currentState
+            Sb.AppendLine("int __targetComposite = bestDestIndex;");
+            Sb.AppendLine();
+            
+            // Check if target is composite (has initial child)
+            Sb.AppendLine("// Check if target is composite (has initial child)");
+            Sb.AppendLine("bool __isComposite = (uint)__targetComposite < (uint)g_initialChild.Length && g_initialChild[__targetComposite] >= 0;");
+            Sb.AppendLine();
+            
+            using (Sb.Block("if (__isComposite)"))
             {
-                WriteLogStatement("Debug",
-                    $"CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
-                WriteLogStatement("Debug",
-                    $"HistoryRestored(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __histMode.ToString());");
+                Sb.AppendLine("// Resolve entry into composite (Initial vs History)");
+                Sb.AppendLine("int __resolvedIndex = GetCompositeEntryTarget(__targetComposite);");
+                Sb.AppendLine("var __histMode = HistoryArray[__targetComposite];");
+                Sb.AppendLine("string __resolution = (__histMode == Abstractions.Attributes.HistoryMode.None ? \"Initial\" : \"History\");");
+                Sb.AppendLine();
+                
+                if (ShouldGenerateLogging)
+                {
+                    using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
+                    {
+                        Sb.AppendLine($"{Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                    }
+                    using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)"))
+                    {
+                        Sb.AppendLine($"{Model.ClassName}Log.HistoryRestored(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __histMode.ToString());");
+                    }
+                }
+                
+                Sb.AppendLine($"_currentState = ({stateTypeForUsage})__resolvedIndex;");
             }
-            Sb.AppendLine($"_currentState = ({stateTypeForUsage})__resolvedIndex;");
-            // Precompute entry count (top-down) for diagnostics
+            using (Sb.Block("else"))
+            {
+                Sb.AppendLine("// Target is not composite - simple assignment");
+                Sb.AppendLine($"_currentState = ({stateTypeForUsage})__targetComposite;");
+            }
+            Sb.AppendLine();
+            
+            // NOW count __entryCount (top-down) from resolved leaf
+            Sb.AppendLine("// Count entries from resolved state");
             Sb.AppendLine("int __entryCount = 0;");
             Sb.AppendLine("for (int s = (int)_currentState; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) { __entryCount++; }");
             if (ShouldGenerateLogging)
@@ -1240,20 +1266,43 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         // Always use GetCompositeEntryTarget for all external transitions
         // This ensures proper history handling even for leaf destinations
         Sb.AppendLine($"// Set destination and resolve through GetCompositeEntryTarget");
-        Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(targetState)};");
-        // Diagnostics for composite resolution
-        Sb.AppendLine("int __compositeIndex = (int)" + CurrentStateField + ";");
-        Sb.AppendLine("int __resolvedIndex = GetCompositeEntryTarget(__compositeIndex);");
-        Sb.AppendLine($"var __histMode = HistoryArray[(int)((int)__compositeIndex)];");
-        Sb.AppendLine("string __resolution = (__histMode == Abstractions.Attributes.HistoryMode.None ? \"Initial\" : \"History\");");
-        if (ShouldGenerateLogging)
+        
+        // SAVE COMPOSITE BEFORE ASSIGNING _currentState
+        Sb.AppendLine($"int __targetComposite = (int){stateTypeForUsage}.{TypeHelper.EscapeIdentifier(targetState)};");
+        Sb.AppendLine();
+        
+        // Check if target is composite (has initial child)
+        Sb.AppendLine("// Check if target is composite (has initial child)");
+        Sb.AppendLine("bool __isComposite = (uint)__targetComposite < (uint)g_initialChild.Length && g_initialChild[__targetComposite] >= 0;");
+        Sb.AppendLine();
+        
+        using (Sb.Block("if (__isComposite)"))
         {
-            WriteLogStatement("Debug",
-                $"CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
-            WriteLogStatement("Debug",
-                $"HistoryRestored(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __histMode.ToString());");
+            Sb.AppendLine("// Resolve entry into composite (Initial vs History)");
+            Sb.AppendLine("int __resolvedIndex = GetCompositeEntryTarget(__targetComposite);");
+            Sb.AppendLine("var __histMode = HistoryArray[__targetComposite];");
+            Sb.AppendLine("string __resolution = (__histMode == Abstractions.Attributes.HistoryMode.None ? \"Initial\" : \"History\");");
+            Sb.AppendLine();
+            
+            if (ShouldGenerateLogging)
+            {
+                using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
+                {
+                    Sb.AppendLine($"{Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                }
+                using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)"))
+                {
+                    Sb.AppendLine($"{Model.ClassName}Log.HistoryRestored(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __histMode.ToString());");
+                }
+            }
+            
+            Sb.AppendLine($"{CurrentStateField} = ({stateTypeForUsage})__resolvedIndex;");
         }
-        Sb.AppendLine($"{CurrentStateField} = ({stateTypeForUsage})__resolvedIndex;");
+        using (Sb.Block("else"))
+        {
+            Sb.AppendLine("// Target is not composite - simple assignment");
+            Sb.AppendLine($"{CurrentStateField} = ({stateTypeForUsage})__targetComposite;");
+        }
     }
 
     #endregion
