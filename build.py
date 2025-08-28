@@ -1,9 +1,24 @@
 #!/usr/bin/env python3
 import argparse, re, subprocess, sys
+import time, threading, shutil
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
 SEMVER_RE = re.compile(r'^(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?(?:-([0-9A-Za-z\-\.]+))?$')
+
+# Warning/error detection patterns
+_WARN_RE = re.compile(r'\bwarning\b', re.IGNORECASE)
+_MS_WARN_RE = re.compile(r'\bwarning\s+(CS|NU|NETSDK|MSB)\w*[: ]', re.IGNORECASE)
+_ERR_RE = re.compile(r'\berror\b', re.IGNORECASE)
+_MS_ERR_RE = re.compile(r'\berror\s+(CS|NU|NETSDK|MSB)\w*[: ]', re.IGNORECASE)
+
+def _is_warning_line(s: str) -> bool:
+    """Detect MSBuild/dotnet warning lines"""
+    return bool(_MS_WARN_RE.search(s) or (_WARN_RE.search(s) and ': warning ' in s.lower()))
+
+def _is_error_line(s: str) -> bool:
+    """Detect MSBuild/dotnet error lines"""
+    return bool(_MS_ERR_RE.search(s) or ': error ' in s.lower() or _ERR_RE.search(s))
 
 ROOT = Path(__file__).resolve().parent
 NUGET_DIR = ROOT / "nuget"
@@ -18,15 +33,62 @@ PACKAGE_IDS = {
     "di":    ("FastFsm.Net.DependencyInjection", DI_PROJ),
 }
 
-def run(cmd, cwd=ROOT, fatal=True):
-    # Wypisz komendę, przepuść pełny stdout/stderr polecenia (w tym .NET warningi/błędy),
-    # ale bez Pythonowych tracebacków. Przy błędzie zakończ elegancko.
-    print(">>", " ".join(cmd))
-    proc = subprocess.run(cmd, cwd=cwd)
-    if fatal and proc.returncode != 0:
-        print(f"ERROR: command failed (exit {proc.returncode}): {' '.join(cmd)}")
-        sys.exit(proc.returncode)
-    return proc.returncode
+# Global TUI settings
+SHOW_WARNINGS = False
+USE_TUI = True
+_ui = None  # Will be initialized in main()
+
+def run(cmd, cwd=ROOT, fatal=True, label=None):
+    """
+    Run command with line-by-line streaming:
+    - errors are always printed
+    - warnings are counted, printed only if SHOW_WARNINGS
+    - other lines printed only if USE_TUI==False
+    """
+    lbl = label or " ".join(cmd[:2] if len(cmd) >= 2 else cmd)
+    start = time.time()
+    warn_count = 0
+    err_count = 0
+
+    # Print command in non-TUI mode
+    if not USE_TUI:
+        print(">>", " ".join(cmd))
+
+    proc = subprocess.Popen(
+        cmd, cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True, bufsize=1
+    )
+
+    # Stream output line by line
+    assert proc.stdout is not None
+    for raw in proc.stdout:
+        line = raw.rstrip("\n")
+        if _is_error_line(line):
+            err_count += 1
+            print(line)
+        elif _is_warning_line(line):
+            warn_count += 1
+            if SHOW_WARNINGS:
+                print(line)
+        else:
+            if not USE_TUI:
+                print(line)
+        if USE_TUI and _ui:
+            _ui.update(lbl, warn_count, err_count)
+
+    proc.wait()
+    rc = proc.returncode
+
+    # Update final counts
+    if USE_TUI and _ui:
+        _ui.finish_task(lbl, warn_count, err_count)
+
+    if fatal and rc != 0:
+        print(f"ERROR: command failed (exit {rc}): {' '.join(cmd)}")
+        sys.exit(rc)
+    return rc
 
 def parse_version_from_stamp(csproj: Path) -> str:
     tree = ET.parse(csproj)
@@ -184,6 +246,42 @@ def next_branch_version_from(seed: str) -> str:
     rev = (rev or 0) + 1
     return f"{major}.{minor}.{patch}.{rev}-{pre}"
 
+class _BuildUI:
+    """Simple TUI status bar for build progress"""
+    def __init__(self, enabled: bool):
+        self.enabled = enabled and sys.stdout.isatty()
+        self.start_time = time.time()
+        self.lock = threading.Lock()
+        self.current = ""
+        self.tasks_done = 0
+        self.warn_total = 0
+        self.err_total = 0
+
+    def _line(self, label: str, warns: int, errs: int) -> str:
+        elapsed = time.time() - self.start_time
+        width = shutil.get_terminal_size((100, 20)).columns
+        msg = f"[{self.tasks_done} done] {label} | warn:{self.warn_total}+{warns} err:{self.err_total}+{errs} | {elapsed:5.1f}s"
+        if len(msg) > width:
+            msg = msg[:max(0, width-1)]
+        return msg.ljust(width)
+
+    def update(self, label: str, warns_running: int, errs_running: int):
+        if not self.enabled: 
+            return
+        with self.lock:
+            self.current = label
+            line = self._line(label, warns_running, errs_running)
+            print("\r" + line, end="", flush=True)
+
+    def finish_task(self, label: str, warns: int, errs: int):
+        self.warn_total += warns
+        self.err_total += errs
+        self.tasks_done += 1
+        if self.enabled:
+            line = self._line(label, 0, 0)
+            print("\r" + line, end="", flush=True)
+            print()  # New line after status bar
+
 def git_commit_and_tag(new_version: str, do_commit: bool, do_tag: bool):
     if not do_commit and not do_tag:
         return
@@ -204,20 +302,26 @@ def git_commit_and_tag(new_version: str, do_commit: bool, do_tag: bool):
             run(["git", "tag", "-a", f"v{new_version}", "-m", f"v{new_version}"])
 
 def dotnet_pack(csproj: Path, configuration: str):
-    run(["dotnet", "pack", str(csproj), "-c", configuration, "-o", str(NUGET_DIR)])
+    name = csproj.stem
+    run(["dotnet", "pack", str(csproj), "-c", configuration, "-o", str(NUGET_DIR)], 
+        label=f"pack {name}")
 
 def restore_tests_with_local():
     for csproj in find_csprojs():
         if is_test_project(csproj):
+            name = csproj.parent.name
             run(["dotnet", "restore", str(csproj),
                  "--source", str(NUGET_DIR),
-                 "--source", "https://api.nuget.org/v3/index.json"])
+                 "--source", "https://api.nuget.org/v3/index.json"],
+                label=f"restore {name}")
 
 def run_tests(configuration: str):
     failed = []
     for csproj in find_csprojs():
         if is_test_project(csproj):
-            rc = run(["dotnet", "test", str(csproj), "-c", configuration], fatal=False)
+            name = csproj.parent.name
+            rc = run(["dotnet", "test", str(csproj), "-c", configuration], 
+                    fatal=False, label=f"test {name}")
             if rc != 0:
                 failed.append(csproj)
     if failed:
@@ -239,7 +343,17 @@ def main():
     ap.add_argument("--no-branch-suffix", action="store_true",
                     help="Nie dołączaj nazwy gałęzi jako prerelease; klasyczne bump/--version.")
     ap.add_argument("--branch", help="Wymuś nazwę gałęzi (domyślnie pobierana z git).")
+    ap.add_argument("--show-warnings", action="store_true",
+                    help="Wypisuj wszystkie ostrzeżenia (domyślnie są tylko zliczane).")
+    ap.add_argument("--plain", action="store_true",
+                    help="Wyłącz prosty status bar (TUI).")
     args = ap.parse_args()
+
+    # Set global TUI settings
+    global SHOW_WARNINGS, USE_TUI, _ui
+    SHOW_WARNINGS = bool(args.show_warnings)
+    USE_TUI = not bool(args.plain)
+    _ui = _BuildUI(enabled=USE_TUI)
 
     # sanity
     for key, (_, proj) in PACKAGE_IDS.items():
@@ -305,6 +419,8 @@ def main():
         run_tests(args.configuration)
 
     print("\nGotowe. Paczki w:", NUGET_DIR)
+    if USE_TUI and _ui:
+        print(f"SUMMARY: tasks={_ui.tasks_done} warnings={_ui.warn_total} errors={_ui.err_total}")
 
 if __name__ == "__main__":
     main()
