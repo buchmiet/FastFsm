@@ -1,58 +1,124 @@
 #!/usr/bin/env python3
-"""Demo script to show Rich TUI in action"""
+"""
+Demo script for enhanced TUI with parallel rendering.
+"""
 
 import sys
 import time
-sys.path.insert(0, '.')
-from tui import create_tui
+import threading
+import random
 
-# Test different TUI modes
-def demo_tui(mode='rich'):
-    print(f"\n=== Testing {mode.upper()} TUI ===\n")
+# Add TUI module to path
+sys.path.insert(0, '.')
+
+from tui.richui_v2 import RichTuiV2, RICH_AVAILABLE
+from tui.base import TaskInfo
+
+def simulate_task(ui, task_id, duration=3.0):
+    """Simulate a task with warnings/errors."""
+    ui.start(task_id)
     
-    ui = create_tui(mode=mode, use_progress=True, use_color=True)
+    steps = 20
+    for i in range(steps):
+        time.sleep(duration / steps)
+        
+        # Random warnings/errors
+        if random.random() < 0.1:
+            ui.update(task_id, warning=True)
+        if random.random() < 0.05:
+            ui.update(task_id, error=True)
+        
+        # Update progress
+        ui.update(task_id, line=f"Processing step {i+1}/{steps}")
     
-    # Register tasks
-    tasks = [
-        "Initialize project",
-        "Download dependencies", 
-        "Compile sources",
-        "Run unit tests",
-        "Package artifacts",
-        "Deploy to server"
+    # Complete with random success
+    success = random.random() > 0.2
+    ui.complete(task_id, failed=not success)
+
+def main():
+    """Run the demo."""
+    if not RICH_AVAILABLE:
+        print("Rich library not available. Install with: pip install rich")
+        return
+    
+    # Create UI
+    ui = RichTuiV2(use_progress=True, use_color=True)
+    ui.set_metadata('develop', 'v0.6.2.21-develop')
+    
+    # Create tasks
+    tasks = []
+    task_names = [
+        ('pack FastFsm', 2.0),
+        ('pack FastFsm.DependencyInjection', 2.5),
+        ('pack FastFsm.Logging', 2.0),
+        ('restore FastFsm.Tests', 3.0),
+        ('restore FastFsm.DependencyInjection.Tests', 3.5),
+        ('restore FastFsm.Logging.Tests', 3.0),
+        ('test FastFsm.Tests', 5.0),
+        ('test FastFsm.DependencyInjection.Tests', 4.0),
+        ('test FastFsm.Logging.Tests', 4.5),
     ]
+    
+    for name, duration in task_names:
+        task = TaskInfo(name, estimated_time=duration)
+        task.id = name.replace(' ', '_').replace('.', '_')
+        task.name = name
+        tasks.append(task)
     
     ui.register(tasks)
     
-    # Simulate task execution
-    for i, task in enumerate(tasks):
-        ui.start(task)
-        
-        # Simulate work with progress updates
-        for progress in range(0, 100, 20):
-            time.sleep(0.3)  # Simulate work
-            
-            # Add some warnings/errors randomly
-            warns = (i % 2) * 2  # Even tasks have warnings
-            errs = 1 if i == 3 else 0  # Task 3 has an error
-            
-            ui.update(task, warns, errs, progress)
-        
-        # Finish task
-        success = (i != 3)  # Task 3 fails
-        ui.finish(task, success, warns, errs)
+    # Start UI thread
+    ui_thread = threading.Thread(target=ui.run)
+    ui_thread.daemon = True
+    ui_thread.start()
     
-    # Show summary
+    # Simulate tasks in parallel
+    threads = []
+    for task in tasks[:3]:  # Start first 3 in parallel
+        t = threading.Thread(
+            target=simulate_task,
+            args=(ui, task.id, task.estimated_time)
+        )
+        t.start()
+        threads.append(t)
+    
+    # Wait for first batch
+    for t in threads:
+        t.join()
+    
+    # Start next batch
+    threads = []
+    for task in tasks[3:6]:  # Next 3 in parallel
+        t = threading.Thread(
+            target=simulate_task,
+            args=(ui, task.id, task.estimated_time)
+        )
+        t.start()
+        threads.append(t)
+    
+    for t in threads:
+        t.join()
+    
+    # Final batch
+    threads = []
+    for task in tasks[6:]:  # Last tasks
+        t = threading.Thread(
+            target=simulate_task,
+            args=(ui, task.id, task.estimated_time)
+        )
+        t.start()
+        threads.append(t)
+    
+    for t in threads:
+        t.join()
+    
+    # Let UI finish
+    time.sleep(1)
+    ui.stop()
+    ui_thread.join(timeout=2)
+    
+    # Summary
     ui.summary()
-    ui.close()
-    
-    print(f"\n=== {mode.upper()} TUI Demo Complete ===\n")
 
 if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description="Demo TUI modes")
-    parser.add_argument("--mode", choices=['rich', 'ansi', 'plain'], default='rich',
-                       help="TUI mode to demonstrate")
-    args = parser.parse_args()
-    
-    demo_tui(args.mode)
+    main()

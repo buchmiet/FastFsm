@@ -147,6 +147,15 @@ class RichTui(ITui):
         with self._lock:
             super().finish(label, success, warnings, errors)
     
+    def complete(self, task_id: str, failed=False):
+        """Complete a task (compatibility alias)."""
+        # Find task by id/label
+        for task in self.tasks:
+            if getattr(task, 'id', task.label) == task_id:
+                self.finish(task.label, success=not failed, 
+                           warnings=task.warnings, errors=task.errors)
+                break
+    
     def summary(self):
         """Show final summary and cleanup"""
         self.running = False
