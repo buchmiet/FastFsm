@@ -3,6 +3,8 @@ import argparse, re, subprocess, sys
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
+SEMVER_RE = re.compile(r'^(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?(?:-([0-9A-Za-z\-\.]+))?$')
+
 ROOT = Path(__file__).resolve().parent
 NUGET_DIR = ROOT / "nuget"
 
@@ -116,6 +118,72 @@ def update_tests_versions(new_version: str):
         for p in touched:
             print("  -", p.relative_to(ROOT))
 
+def get_current_branch() -> str:
+    try:
+        out = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=ROOT, text=True
+        ).strip()
+        return out
+    except subprocess.CalledProcessError:
+        return "unknown"
+
+def sanitize_branch_for_prerelease(name: str) -> str:
+    name = name.replace('/', '-').replace('_', '-').replace(' ', '-')
+    name = re.sub(r'[^0-9A-Za-z\-.]', '-', name)
+    name = re.sub(r'-{2,}', '-', name)
+    name = name.strip('-.')
+    return name or "branch"
+
+def parse_semver(version: str):
+    m = SEMVER_RE.match(version)
+    if not m: 
+        return None
+    major, minor, patch, rev, pre = m.groups()
+    return (int(major), int(minor), int(patch), int(rev) if rev else 0, pre or "")
+
+def compare_versions(a: str, b: str) -> int:
+    pa = parse_semver(a); pb = parse_semver(b)
+    if pa is None and pb is None: return 0
+    if pa is None: return -1
+    if pb is None: return 1
+    na = pa[:4]; nb = pb[:4]
+    return (na > nb) - (na < nb)
+
+def iter_local_nupkgs_for_id(package_id: str):
+    if not NUGET_DIR.exists():
+        return
+    prefix = f"{package_id}."
+    for p in NUGET_DIR.glob("*.nupkg"):
+        name = p.name
+        if not name.startswith(prefix):
+            continue
+        ver = name[len(prefix):]
+        if ver.lower().endswith(".nupkg"):
+            ver = ver[:-6]
+        yield (ver, p)
+
+def find_highest_version_for_branch(package_ids, branch_label: str) -> str:
+    best = None
+    for pkg_id in package_ids:
+        for ver, _ in iter_local_nupkgs_for_id(pkg_id):
+            parsed = parse_semver(ver)
+            if not parsed:
+                continue
+            *nums, pre = parsed
+            if pre == branch_label:
+                if best is None or compare_versions(ver, best) > 0:
+                    best = ver
+    return best
+
+def next_branch_version_from(seed: str) -> str:
+    parsed = parse_semver(seed)
+    if not parsed:
+        return f"0.0.0.1-{seed}"
+    major, minor, patch, rev, pre = parsed
+    rev = (rev or 0) + 1
+    return f"{major}.{minor}.{patch}.{rev}-{pre}"
+
 def git_commit_and_tag(new_version: str, do_commit: bool, do_tag: bool):
     if not do_commit and not do_tag:
         return
@@ -168,6 +236,9 @@ def main():
     ap.add_argument("--no-commit", action="store_true")
     ap.add_argument("--no-tag", action="store_true")
     ap.add_argument("--no-tests", action="store_true", help="Nie uruchamiaj dotnet test (po restore).")
+    ap.add_argument("--no-branch-suffix", action="store_true",
+                    help="Nie dołączaj nazwy gałęzi jako prerelease; klasyczne bump/--version.")
+    ap.add_argument("--branch", help="Wymuś nazwę gałęzi (domyślnie pobierana z git).")
     args = ap.parse_args()
 
     # sanity
@@ -177,7 +248,32 @@ def main():
             sys.exit(1)
 
     current = parse_version_from_stamp(FASTFSM_PROJ)
-    new_version = args.version.strip() if args.version else bump(current, args.bump or "patch")
+
+    branch_name = args.branch.strip() if getattr(args, "branch", None) else get_current_branch()
+    branch_label = sanitize_branch_for_prerelease(branch_name)
+    use_branch_suffix = not args.no_branch_suffix
+
+    if not use_branch_suffix:
+        new_version = args.version.strip() if args.version else bump(current, args.bump or "patch")
+    else:
+        if args.version:
+            base = args.version.strip()
+            bparsed = parse_semver(base)
+            if not bparsed:
+                print(f"ERROR: Niepoprawna wersja: {base}", file=sys.stderr)
+                sys.exit(2)
+            major, minor, patch, rev, _ = bparsed
+            rev = rev or 1
+            new_version = f"{major}.{minor}.{patch}.{rev}-{branch_label}"
+        else:
+            ids = [PACKAGE_IDS["core"][0], PACKAGE_IDS["log"][0], PACKAGE_IDS["di"][0]]
+            highest = find_highest_version_for_branch(ids, branch_label)
+            if highest:
+                new_version = next_branch_version_from(highest)
+            else:
+                new_version = f"0.0.0.1-{branch_label}"
+
+    print(f"Gałąź: {branch_name}  → suffix: {branch_label}")
     print(f"Wersja: {current} -> {new_version}")
 
     # 1) ustaw wersję w 3 paczkach
