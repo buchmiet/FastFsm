@@ -503,6 +503,109 @@ Osobny komponent używany gdy `ExtensionsOn == true`:
 
 ---
 
+## Logowanie w generatorach FastFSM
+
+### LoggingClassGenerator
+**Lokalizacja:** `/Generator.Logger/LoggingClassGenerator.cs`
+**Przestrzeń nazw:** `Generator.Log`
+**Typ:** Klasa generująca statyczną klasę logowania dla maszyn stanów
+
+#### Charakterystyka:
+- Generuje statyczną klasę `{ClassName}Log` z metodami rozszerzającymi `ILogger`
+- Każda metoda logowania jest optymalizowana pod kątem wydajności (sprawdzanie `IsEnabled` przed konstrukcją komunikatu)
+- Używa strukturalnego logowania z parametrami dla lepszej integracji z systemami logowania
+
+#### Metody pomocnicze używane przez generatory:
+1. **WriteLoggerField** - emituje pola `_logger` i `_instanceId` w klasie maszyny stanów
+2. **GetLoggerConstructorParameter** - generuje parametr konstruktora dla loggera
+3. **WriteLoggerAssignment** - emituje przypisanie loggera w konstruktorze
+4. **WriteLogStatement** - emituje warunkowe wywołanie logowania z sprawdzeniem poziomu
+
+#### Wygenerowane metody logowania:
+
+| Metoda | EventId | LogLevel | Opis |
+|--------|---------|----------|------|
+| `TransitionSucceeded` | 1 | Information | Loguje udane przejście między stanami |
+| `GuardFailed` | 2 | Warning | Loguje gdy guard blokuje przejście |
+| `TransitionFailed` | 3 | Warning | Loguje brak możliwego przejścia |
+| `OnEntryExecuted` | 4 | Debug | Loguje wykonanie metody OnEntry |
+| `OnExitExecuted` | 5 | Debug | Loguje wykonanie metody OnExit |
+| `ActionExecuted` | 6 | Debug | Loguje wykonanie akcji podczas przejścia |
+| `PayloadValidationFailed` | 7 | Warning | Loguje błąd walidacji typu payload |
+| `InternalTransitionOnAncestor` | 10 | Debug | Loguje przejście wewnętrzne na stanie-przodku (HSM) |
+| `HierarchicalTransition` | 11 | Debug | Loguje przejście hierarchiczne z informacją o LCA |
+| `CompositeStateEntry` | 12 | Debug | Loguje wejście do stanu kompozytowego |
+| `HistoryRestored` | 13 | Debug | Loguje przywrócenie historii stanu |
+| `ActivePath` | 14 | Trace | Loguje aktywną ścieżkę stanów (HSM) |
+
+### Użycie metod logowania w generatorach
+
+#### Statystyka wywołań w kodzie generatorów:
+
+| Metoda logowania | Liczba wywołań | Klasy używające |
+|------------------|----------------|-----------------|
+| `ActivePath` | 22 | UnifiedStateMachineGenerator, StateMachineCodeGenerator |
+| `OnEntryExecuted` | 17 | UnifiedStateMachineGenerator, StateMachineCodeGenerator |
+| `ActionExecuted` | 10 | UnifiedStateMachineGenerator, StateMachineCodeGenerator |
+| `TransitionFailed` | 9 | UnifiedStateMachineGenerator, StateMachineCodeGenerator |
+| `OnExitExecuted` | 8 | UnifiedStateMachineGenerator, StateMachineCodeGenerator |
+| `HierarchicalTransition` | 8 | UnifiedStateMachineGenerator, StateMachineCodeGenerator |
+| `TransitionSucceeded` | 6 | UnifiedStateMachineGenerator, StateMachineCodeGenerator |
+| `GuardFailed` | 6 | UnifiedStateMachineGenerator, StateMachineCodeGenerator |
+| `HistoryRestored` | 5 | UnifiedStateMachineGenerator, StateMachineCodeGenerator |
+| `CompositeStateEntry` | 5 | UnifiedStateMachineGenerator, StateMachineCodeGenerator |
+| `InternalTransitionOnAncestor` | 3 | UnifiedStateMachineGenerator, StateMachineCodeGenerator |
+| `PayloadValidationFailed` | 2 | UnifiedStateMachineGenerator |
+
+#### Wzorce użycia:
+
+1. **Logowanie warunkowe** - wszystkie wywołania są otoczone sprawdzeniem `if (_logger?.IsEnabled(LogLevel.X) == true)`
+2. **Strukturalne logowanie** - używane są parametry zamiast interpolacji stringów
+3. **Poziomy logowania**:
+   - `Information` - kluczowe zdarzenia (udane przejścia)
+   - `Warning` - problemy (guard failed, brak przejścia, błąd walidacji)
+   - `Debug` - szczegóły wykonania (OnEntry/OnExit, akcje, HSM)
+   - `Trace` - bardzo szczegółowe informacje (aktywna ścieżka)
+
+#### Integracja z wygenerowaną maszyną stanów:
+
+1. **Opcjonalność** - logger jest opcjonalnym parametrem konstruktora (`ILogger<TStateMachine>? logger = null`)
+2. **Instance ID** - każda instancja maszyny stanów ma unikalny `_instanceId` (GUID) do śledzenia
+3. **Zero-overhead gdy wyłączone** - sprawdzanie `IsEnabled` zapobiega konstrukcji komunikatów gdy logowanie jest wyłączone
+4. **Kontekstowe informacje** - każdy log zawiera:
+   - Instance ID maszyny stanów
+   - Nazwy stanów/triggerów
+   - Nazwy metod (guard, action, OnEntry/OnExit)
+   - Dodatkowe metryki (liczba exit/enter dla HSM)
+
+### Przykład wygenerowanego kodu logowania:
+
+```csharp
+// W klasie maszyny stanów:
+private readonly ILogger<MyStateMachine>? _logger;
+private readonly string _instanceId = Guid.NewGuid().ToString();
+
+// W metodzie przejścia:
+if (_logger?.IsEnabled(LogLevel.Information) == true)
+{
+    MyStateMachineLog.TransitionSucceeded(_logger, _instanceId, "Idle", "Working", "Start");
+}
+
+// W klasie MyStateMachineLog:
+public static void TransitionSucceeded(this ILogger logger, string instanceId, 
+    string fromState, string toState, string trigger)
+{
+    if (logger.IsEnabled(LogLevel.Information))
+    {
+        logger.Log(
+            LogLevel.Information,
+            new EventId(1, nameof(TransitionSucceeded)),
+            "State machine {InstanceId} transitioned from {FromState} to {ToState} on trigger {Trigger}",
+            instanceId, fromState, toState, trigger);
+    }
+}
+```
+
 ## Changelog
 
 ### 2025-08-27 - Ujednolicenie LCA i OnInitialEntry path building

@@ -1285,21 +1285,20 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 
                 // Inline the composite handling with proper indentation
                 Sb.AppendLine($"    // Set destination and resolve through GetCompositeEntryTarget");
-                Sb.AppendLine($"    {CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
-                Sb.AppendLine("    int __compositeIndex = (int)" + CurrentStateField + ";");
-                Sb.AppendLine("    int __resolvedIndex = GetCompositeEntryTarget(__compositeIndex);");
-                Sb.AppendLine($"    var __histMode = HistoryArray[(int)((int)__compositeIndex)];");
+                Sb.AppendLine($"    int __targetComposite = (int){stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+                Sb.AppendLine("    int __resolvedIndex = GetCompositeEntryTarget(__targetComposite);");
+                Sb.AppendLine($"    var __histMode = HistoryArray[__targetComposite];");
                 Sb.AppendLine("    string __resolution = (__histMode == Abstractions.Attributes.HistoryMode.None ? \"Initial\" : \"History\");");
                 
                 if (ShouldGenerateLogging)
                 {
                     using (Sb.Block("    if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
                     {
-                        Sb.AppendLine($"{Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                        Sb.AppendLine($"{Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
                     }
-                    using (Sb.Block("    if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
+                    using (Sb.Block("    if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)"))
                     {
-                        Sb.AppendLine($"{Model.ClassName}Log.HistoryRestored(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __histMode.ToString());");
+                        Sb.AppendLine($"{Model.ClassName}Log.HistoryRestored(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __histMode.ToString());");
                     }
                 }
                 
@@ -2447,21 +2446,20 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 var indent = "                        ";
                 Sb.AppendLine($"{indent}string __fromName = {CurrentStateField}.ToString();");
                 Sb.AppendLine($"{indent}// Set destination and resolve through GetCompositeEntryTarget");
-                Sb.AppendLine($"{indent}{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
-                Sb.AppendLine($"{indent}int __compositeIndex = (int)" + CurrentStateField + ";");
-                Sb.AppendLine($"{indent}int __resolvedIndex = GetCompositeEntryTarget(__compositeIndex);");
-                Sb.AppendLine($"{indent}var __histMode = HistoryArray[(int)((int)__compositeIndex)];");
+                Sb.AppendLine($"{indent}int __targetComposite = (int){stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+                Sb.AppendLine($"{indent}int __resolvedIndex = GetCompositeEntryTarget(__targetComposite);");
+                Sb.AppendLine($"{indent}var __histMode = HistoryArray[__targetComposite];");
                 Sb.AppendLine($"{indent}string __resolution = (__histMode == Abstractions.Attributes.HistoryMode.None ? \"Initial\" : \"History\");");
                 
                 if (ShouldGenerateLogging)
                 {
                     Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true)");
                     Sb.AppendLine($"{indent}{{");
-                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
                     Sb.AppendLine($"{indent}}}");
-                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true)");
+                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)");
                     Sb.AppendLine($"{indent}{{");
-                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.HistoryRestored(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __histMode.ToString());");
+                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.HistoryRestored(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __histMode.ToString());");
                     Sb.AppendLine($"{indent}}}");
                 }
                 
@@ -2928,21 +2926,20 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 var indent = "                        ";
                 Sb.AppendLine($"{indent}string __fromName = {CurrentStateField}.ToString();");
                 Sb.AppendLine($"{indent}// Set destination and resolve through GetCompositeEntryTarget");
-                Sb.AppendLine($"{indent}{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
-                Sb.AppendLine($"{indent}int __compositeIndex = (int)" + CurrentStateField + ";");
-                Sb.AppendLine($"{indent}int __resolvedIndex = GetCompositeEntryTarget(__compositeIndex);");
-                Sb.AppendLine($"{indent}var __histMode = HistoryArray[(int)((int)__compositeIndex)];");
+                Sb.AppendLine($"{indent}int __targetComposite = (int){stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+                Sb.AppendLine($"{indent}int __resolvedIndex = GetCompositeEntryTarget(__targetComposite);");
+                Sb.AppendLine($"{indent}var __histMode = HistoryArray[__targetComposite];");
                 Sb.AppendLine($"{indent}string __resolution = (__histMode == Abstractions.Attributes.HistoryMode.None ? \"Initial\" : \"History\");");
                 
                 if (ShouldGenerateLogging)
                 {
                     Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true)");
                     Sb.AppendLine($"{indent}{{");
-                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
                     Sb.AppendLine($"{indent}}}");
-                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true)");
+                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)");
                     Sb.AppendLine($"{indent}{{");
-                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.HistoryRestored(_logger, _instanceId, (({stateTypeForUsage})__compositeIndex).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __histMode.ToString());");
+                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.HistoryRestored(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __histMode.ToString());");
                     Sb.AppendLine($"{indent}}}");
                 }
                 
