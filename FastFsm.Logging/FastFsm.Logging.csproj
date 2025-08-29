@@ -35,7 +35,7 @@
 
 	
 		<ItemGroup>
-			<PackageReference Include="FastFsm.Net" Version="0.6.2.23-develop" />
+			<PackageReference Include="FastFsm.Net" Version="0.6.2.24-develop" />
 			<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
 		</ItemGroup>
 
@@ -55,7 +55,7 @@
 
 		<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
 			<PropertyGroup>
-				<Version>0.6.2.23-develop</Version>
+				<Version>0.6.2.24-develop</Version>
 				<PackageVersion>$(Version)</PackageVersion>
 			</PropertyGroup>
 		</Target>
