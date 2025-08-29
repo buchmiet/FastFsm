@@ -305,6 +305,23 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         // DumpActivePath and IsInHierarchy are now provided by the base class
         // No need to generate them here
         Sb.AppendLine();
+        
+        // Emit FindLowestCommonAncestor helper — only for HSM
+        Sb.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        using (Sb.Block("protected int FindLowestCommonAncestor(int srcLeaf, int destLeaf)"))
+        {
+            Sb.AppendLine("if (srcLeaf == destLeaf) return srcLeaf;");
+            Sb.AppendLine("var parent = ParentArray;");
+            Sb.AppendLine("var depth  = DepthArray;");
+            Sb.AppendLine("int a = srcLeaf, b = destLeaf;");
+            Sb.AppendLine("// Bring both to the same depth");
+            Sb.AppendLine("while (depth[a] > depth[b]) a = parent[a];");
+            Sb.AppendLine("while (depth[b] > depth[a]) b = parent[b];");
+            Sb.AppendLine("// Walk up together until common ancestor");
+            Sb.AppendLine("while (a != b) { a = parent[a]; b = parent[b]; }");
+            Sb.AppendLine("return a;");
+        }
+        Sb.AppendLine();
     }
     
     /// <summary>
