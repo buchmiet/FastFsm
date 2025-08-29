@@ -237,6 +237,12 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             WritePayloadMap(GetTypeNameForUsage(Model.TriggerType));
         }
 
+        // State and trigger name arrays for zero-allocation logging
+        if (ShouldGenerateLogging)
+        {
+            WriteStateAndTriggerNameArrays(GetTypeNameForUsage(Model.StateType), GetTypeNameForUsage(Model.TriggerType));
+        }
+        
         // HSM arrays
         if (IsHierarchical)
     {

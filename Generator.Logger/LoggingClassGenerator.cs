@@ -70,6 +70,8 @@ namespace Generator.Log
 
             using (_sb.Block($"internal static class {_className}Log"))
             {
+                WriteLoggerMessageDelegates();
+                _sb.AppendLine();
                 WriteTransitionSucceededMethod();
                 WriteGuardFailedMethod();
                 WriteTransitionFailedMethod();
@@ -85,21 +87,102 @@ namespace Generator.Log
             }
         }
 
+        private void WriteLoggerMessageDelegates()
+        {
+            _sb.AppendLine("// Static LoggerMessage.Define delegates for zero-allocation logging");
+            
+            // TransitionSucceeded
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, string, string, Exception?> s_TransitionSucceeded = LoggerMessage.Define<string, string, string, string>(");
+            _sb.AppendLine("    LogLevel.Information,");
+            _sb.AppendLine("    new EventId(1, nameof(TransitionSucceeded)),");
+            _sb.AppendLine("    \"State machine {InstanceId} transitioned from {FromState} to {ToState} on trigger {Trigger}\");");
+            _sb.AppendLine();
+
+            // GuardFailed
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, string, string, string, Exception?> s_GuardFailed = LoggerMessage.Define<string, string, string, string, string>(");
+            _sb.AppendLine("    LogLevel.Warning,");
+            _sb.AppendLine("    new EventId(2, nameof(GuardFailed)),");
+            _sb.AppendLine("    \"State machine {InstanceId} guard {GuardName} prevented transition from {FromState} to {ToState} on trigger {Trigger}\");");
+            _sb.AppendLine();
+
+            // TransitionFailed
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, string, Exception?> s_TransitionFailed = LoggerMessage.Define<string, string, string>(");
+            _sb.AppendLine("    LogLevel.Warning,");
+            _sb.AppendLine("    new EventId(3, nameof(TransitionFailed)),");
+            _sb.AppendLine("    \"State machine {InstanceId} failed to transition from {FromState} on trigger {Trigger} - no valid transition found\");");
+            _sb.AppendLine();
+
+            // OnEntryExecuted
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, string, Exception?> s_OnEntryExecuted = LoggerMessage.Define<string, string, string>(");
+            _sb.AppendLine("    LogLevel.Debug,");
+            _sb.AppendLine("    new EventId(4, nameof(OnEntryExecuted)),");
+            _sb.AppendLine("    \"State machine {InstanceId} executed OnEntry {MethodName} for state {State}\");");
+            _sb.AppendLine();
+
+            // OnExitExecuted
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, string, Exception?> s_OnExitExecuted = LoggerMessage.Define<string, string, string>(");
+            _sb.AppendLine("    LogLevel.Debug,");
+            _sb.AppendLine("    new EventId(5, nameof(OnExitExecuted)),");
+            _sb.AppendLine("    \"State machine {InstanceId} executed OnExit {MethodName} for state {State}\");");
+            _sb.AppendLine();
+
+            // ActionExecuted
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, string, string, string, Exception?> s_ActionExecuted = LoggerMessage.Define<string, string, string, string, string>(");
+            _sb.AppendLine("    LogLevel.Debug,");
+            _sb.AppendLine("    new EventId(6, nameof(ActionExecuted)),");
+            _sb.AppendLine("    \"State machine {InstanceId} executed action {ActionName} during transition from {FromState} to {ToState} on trigger {Trigger}\");");
+            _sb.AppendLine();
+
+            // PayloadValidationFailed
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, string, string, Exception?> s_PayloadValidationFailed = LoggerMessage.Define<string, string, string, string>(");
+            _sb.AppendLine("    LogLevel.Warning,");
+            _sb.AppendLine("    new EventId(7, nameof(PayloadValidationFailed)),");
+            _sb.AppendLine("    \"State machine {InstanceId} payload validation failed for trigger {Trigger} - expected {ExpectedType}, got {ActualType}\");");
+            _sb.AppendLine();
+
+            // InternalTransitionOnAncestor
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, string, string, Exception?> s_InternalTransitionOnAncestor = LoggerMessage.Define<string, string, string, string>(");
+            _sb.AppendLine("    LogLevel.Debug,");
+            _sb.AppendLine("    new EventId(10, nameof(InternalTransitionOnAncestor)),");
+            _sb.AppendLine("    \"State machine {InstanceId} internal transition on ancestor {AncestorState} from state {CurrentState} on trigger {Trigger}\");");
+            _sb.AppendLine();
+
+            // HierarchicalTransition
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, string, string, int, int, Exception?> s_HierarchicalTransition = LoggerMessage.Define<string, string, string, string, int, int>(");
+            _sb.AppendLine("    LogLevel.Debug,");
+            _sb.AppendLine("    new EventId(11, nameof(HierarchicalTransition)),");
+            _sb.AppendLine("    \"State machine {InstanceId} hierarchical transition from {FromState} to {ToState} via LCA {LcaState} - exiting {ExitCount} states, entering {EntryCount} states\");");
+            _sb.AppendLine();
+
+            // CompositeStateEntry
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, string, string, Exception?> s_CompositeStateEntry = LoggerMessage.Define<string, string, string, string>(");
+            _sb.AppendLine("    LogLevel.Debug,");
+            _sb.AppendLine("    new EventId(12, nameof(CompositeStateEntry)),");
+            _sb.AppendLine("    \"State machine {InstanceId} entering composite state {CompositeState}, resolved to {ResolvedTarget} using {ResolutionMethod}\");");
+            _sb.AppendLine();
+
+            // HistoryRestored
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, string, string, Exception?> s_HistoryRestored = LoggerMessage.Define<string, string, string, string>(");
+            _sb.AppendLine("    LogLevel.Debug,");
+            _sb.AppendLine("    new EventId(13, nameof(HistoryRestored)),");
+            _sb.AppendLine("    \"State machine {InstanceId} restored {HistoryType} history for composite {CompositeState} to state {RestoredState}\");");
+            _sb.AppendLine();
+
+            // ActivePath
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, Exception?> s_ActivePath = LoggerMessage.Define<string, string>(");
+            _sb.AppendLine("    LogLevel.Trace,");
+            _sb.AppendLine("    new EventId(14, nameof(ActivePath)),");
+            _sb.AppendLine("    \"State machine {InstanceId} active path: {Path}\");");
+        }
+
         private void WriteTransitionSucceededMethod()
         {
             _sb.WriteSummary("Logs successful state transition");
-            using (_sb.Block("public static void TransitionSucceeded(this ILogger logger, string instanceId, string fromState, string toState, string trigger)"))
+            using (_sb.Block("public static void TransitionSucceeded(ILogger? logger, string instanceId, string fromState, string toState, string trigger)"))
             {
-                using (_sb.Block("if (logger.IsEnabled(LogLevel.Information))"))
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Information) == true)"))
                 {
-                    _sb.AppendLine("logger.Log(");
-                    using (_sb.Indent())
-                    {
-                        _sb.AppendLine("LogLevel.Information,");
-                        _sb.AppendLine("new EventId(1, nameof(TransitionSucceeded)),");
-                        _sb.AppendLine("\"State machine {InstanceId} transitioned from {FromState} to {ToState} on trigger {Trigger}\",");
-                        _sb.AppendLine("instanceId, fromState, toState, trigger);");
-                    }
+                    _sb.AppendLine("s_TransitionSucceeded(logger, instanceId, fromState, toState, trigger, null);");
                 }
             }
             _sb.AppendLine();
@@ -108,18 +191,11 @@ namespace Generator.Log
         private void WriteGuardFailedMethod()
         {
             _sb.WriteSummary("Logs when guard prevents transition");
-            using (_sb.Block("public static void GuardFailed(this ILogger logger, string instanceId, string guardName, string fromState, string toState, string trigger)"))
+            using (_sb.Block("public static void GuardFailed(ILogger? logger, string instanceId, string guardName, string fromState, string toState, string trigger)"))
             {
-                using (_sb.Block("if (logger.IsEnabled(LogLevel.Warning))"))
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Warning) == true)"))
                 {
-                    _sb.AppendLine("logger.Log(");
-                    using (_sb.Indent())
-                    {
-                        _sb.AppendLine("LogLevel.Warning,");
-                        _sb.AppendLine("new EventId(2, nameof(GuardFailed)),");
-                        _sb.AppendLine("\"State machine {InstanceId} guard {GuardName} prevented transition from {FromState} to {ToState} on trigger {Trigger}\",");
-                        _sb.AppendLine("instanceId, guardName, fromState, toState, trigger);");
-                    }
+                    _sb.AppendLine("s_GuardFailed(logger, instanceId, guardName, fromState, toState, trigger, null);");
                 }
             }
             _sb.AppendLine();
@@ -128,18 +204,11 @@ namespace Generator.Log
         private void WriteTransitionFailedMethod()
         {
             _sb.WriteSummary("Logs when no valid transition found");
-            using (_sb.Block("public static void TransitionFailed(this ILogger logger, string instanceId, string fromState, string trigger)"))
+            using (_sb.Block("public static void TransitionFailed(ILogger? logger, string instanceId, string fromState, string trigger)"))
             {
-                using (_sb.Block("if (logger.IsEnabled(LogLevel.Warning))"))
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Warning) == true)"))
                 {
-                    _sb.AppendLine("logger.Log(");
-                    using (_sb.Indent())
-                    {
-                        _sb.AppendLine("LogLevel.Warning,");
-                        _sb.AppendLine("new EventId(3, nameof(TransitionFailed)),");
-                        _sb.AppendLine("\"State machine {InstanceId} failed to transition from {FromState} on trigger {Trigger} - no valid transition found\",");
-                        _sb.AppendLine("instanceId, fromState, trigger);");
-                    }
+                    _sb.AppendLine("s_TransitionFailed(logger, instanceId, fromState, trigger, null);");
                 }
             }
             _sb.AppendLine();
@@ -148,18 +217,11 @@ namespace Generator.Log
         private void WriteOnEntryExecutedMethod()
         {
             _sb.WriteSummary("Logs OnEntry method execution");
-            using (_sb.Block("public static void OnEntryExecuted(this ILogger logger, string instanceId, string methodName, string state)"))
+            using (_sb.Block("public static void OnEntryExecuted(ILogger? logger, string instanceId, string methodName, string state)"))
             {
-                using (_sb.Block("if (logger.IsEnabled(LogLevel.Debug))"))
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Debug) == true)"))
                 {
-                    _sb.AppendLine("logger.Log(");
-                    using (_sb.Indent())
-                    {
-                        _sb.AppendLine("LogLevel.Debug,");
-                        _sb.AppendLine("new EventId(4, nameof(OnEntryExecuted)),");
-                        _sb.AppendLine("\"State machine {InstanceId} executed OnEntry {MethodName} for state {State}\",");
-                        _sb.AppendLine("instanceId, methodName, state);");
-                    }
+                    _sb.AppendLine("s_OnEntryExecuted(logger, instanceId, methodName, state, null);");
                 }
             }
             _sb.AppendLine();
@@ -168,18 +230,11 @@ namespace Generator.Log
         private void WriteOnExitExecutedMethod()
         {
             _sb.WriteSummary("Logs OnExit method execution");
-            using (_sb.Block("public static void OnExitExecuted(this ILogger logger, string instanceId, string methodName, string state)"))
+            using (_sb.Block("public static void OnExitExecuted(ILogger? logger, string instanceId, string methodName, string state)"))
             {
-                using (_sb.Block("if (logger.IsEnabled(LogLevel.Debug))"))
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Debug) == true)"))
                 {
-                    _sb.AppendLine("logger.Log(");
-                    using (_sb.Indent())
-                    {
-                        _sb.AppendLine("LogLevel.Debug,");
-                        _sb.AppendLine("new EventId(5, nameof(OnExitExecuted)),");
-                        _sb.AppendLine("\"State machine {InstanceId} executed OnExit {MethodName} for state {State}\",");
-                        _sb.AppendLine("instanceId, methodName, state);");
-                    }
+                    _sb.AppendLine("s_OnExitExecuted(logger, instanceId, methodName, state, null);");
                 }
             }
             _sb.AppendLine();
@@ -188,18 +243,11 @@ namespace Generator.Log
         private void WriteActionExecutedMethod()
         {
             _sb.WriteSummary("Logs action execution during transition");
-            using (_sb.Block("public static void ActionExecuted(this ILogger logger, string instanceId, string actionName, string fromState, string toState, string trigger)"))
+            using (_sb.Block("public static void ActionExecuted(ILogger? logger, string instanceId, string actionName, string fromState, string toState, string trigger)"))
             {
-                using (_sb.Block("if (logger.IsEnabled(LogLevel.Debug))"))
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Debug) == true)"))
                 {
-                    _sb.AppendLine("logger.Log(");
-                    using (_sb.Indent())
-                    {
-                        _sb.AppendLine("LogLevel.Debug,");
-                        _sb.AppendLine("new EventId(6, nameof(ActionExecuted)),");
-                        _sb.AppendLine("\"State machine {InstanceId} executed action {ActionName} during transition from {FromState} to {ToState} on trigger {Trigger}\",");
-                        _sb.AppendLine("instanceId, actionName, fromState, toState, trigger);");
-                    }
+                    _sb.AppendLine("s_ActionExecuted(logger, instanceId, actionName, fromState, toState, trigger, null);");
                 }
             }
             _sb.AppendLine();
@@ -208,18 +256,11 @@ namespace Generator.Log
         private void WritePayloadValidationFailedMethod()
         {
             _sb.WriteSummary("Logs payload validation failure");
-            using (_sb.Block("public static void PayloadValidationFailed(this ILogger logger, string instanceId, string trigger, string expectedType, string actualType)"))
+            using (_sb.Block("public static void PayloadValidationFailed(ILogger? logger, string instanceId, string trigger, string expectedType, string actualType)"))
             {
-                using (_sb.Block("if (logger.IsEnabled(LogLevel.Warning))"))
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Warning) == true)"))
                 {
-                    _sb.AppendLine("logger.Log(");
-                    using (_sb.Indent())
-                    {
-                        _sb.AppendLine("LogLevel.Warning,");
-                        _sb.AppendLine("new EventId(7, nameof(PayloadValidationFailed)),");
-                        _sb.AppendLine("\"State machine {InstanceId} payload validation failed for trigger {Trigger} - expected {ExpectedType}, got {ActualType}\",");
-                        _sb.AppendLine("instanceId, trigger, expectedType, actualType);");
-                    }
+                    _sb.AppendLine("s_PayloadValidationFailed(logger, instanceId, trigger, expectedType, actualType, null);");
                 }
             }
             _sb.AppendLine();
@@ -228,18 +269,11 @@ namespace Generator.Log
         private void WriteInternalTransitionOnAncestorMethod()
         {
             _sb.WriteSummary("Logs internal transition executed on ancestor state");
-            using (_sb.Block("public static void InternalTransitionOnAncestor(this ILogger logger, string instanceId, string ancestorState, string currentState, string trigger)"))
+            using (_sb.Block("public static void InternalTransitionOnAncestor(ILogger? logger, string instanceId, string ancestorState, string currentState, string trigger)"))
             {
-                using (_sb.Block("if (logger.IsEnabled(LogLevel.Debug))"))
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Debug) == true)"))
                 {
-                    _sb.AppendLine("logger.Log(");
-                    using (_sb.Indent())
-                    {
-                        _sb.AppendLine("LogLevel.Debug,");
-                        _sb.AppendLine("new EventId(10, nameof(InternalTransitionOnAncestor)),");
-                        _sb.AppendLine("\"State machine {InstanceId} internal transition on ancestor {AncestorState} from state {CurrentState} on trigger {Trigger}\",");
-                        _sb.AppendLine("instanceId, ancestorState, currentState, trigger);");
-                    }
+                    _sb.AppendLine("s_InternalTransitionOnAncestor(logger, instanceId, ancestorState, currentState, trigger, null);");
                 }
             }
             _sb.AppendLine();
@@ -248,18 +282,11 @@ namespace Generator.Log
         private void WriteHierarchicalTransitionMethod()
         {
             _sb.WriteSummary("Logs hierarchical transition with LCA information");
-            using (_sb.Block("public static void HierarchicalTransition(this ILogger logger, string instanceId, string fromState, string toState, string lcaState, int exitCount, int entryCount)"))
+            using (_sb.Block("public static void HierarchicalTransition(ILogger? logger, string instanceId, string fromState, string toState, string lcaState, int exitCount, int entryCount)"))
             {
-                using (_sb.Block("if (logger.IsEnabled(LogLevel.Debug))"))
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Debug) == true)"))
                 {
-                    _sb.AppendLine("logger.Log(");
-                    using (_sb.Indent())
-                    {
-                        _sb.AppendLine("LogLevel.Debug,");
-                        _sb.AppendLine("new EventId(11, nameof(HierarchicalTransition)),");
-                        _sb.AppendLine("\"State machine {InstanceId} hierarchical transition from {FromState} to {ToState} via LCA {LcaState} - exiting {ExitCount} states, entering {EntryCount} states\",");
-                        _sb.AppendLine("instanceId, fromState, toState, lcaState, exitCount, entryCount);");
-                    }
+                    _sb.AppendLine("s_HierarchicalTransition(logger, instanceId, fromState, toState, lcaState, exitCount, entryCount, null);");
                 }
             }
             _sb.AppendLine();
@@ -268,18 +295,11 @@ namespace Generator.Log
         private void WriteCompositeStateEntryMethod()
         {
             _sb.WriteSummary("Logs entry into composite state with resolution");
-            using (_sb.Block("public static void CompositeStateEntry(this ILogger logger, string instanceId, string compositeState, string resolvedTarget, string resolutionMethod)"))
+            using (_sb.Block("public static void CompositeStateEntry(ILogger? logger, string instanceId, string compositeState, string resolvedTarget, string resolutionMethod)"))
             {
-                using (_sb.Block("if (logger.IsEnabled(LogLevel.Debug))"))
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Debug) == true)"))
                 {
-                    _sb.AppendLine("logger.Log(");
-                    using (_sb.Indent())
-                    {
-                        _sb.AppendLine("LogLevel.Debug,");
-                        _sb.AppendLine("new EventId(12, nameof(CompositeStateEntry)),");
-                        _sb.AppendLine("\"State machine {InstanceId} entering composite state {CompositeState}, resolved to {ResolvedTarget} using {ResolutionMethod}\",");
-                        _sb.AppendLine("instanceId, compositeState, resolvedTarget, resolutionMethod);");
-                    }
+                    _sb.AppendLine("s_CompositeStateEntry(logger, instanceId, compositeState, resolvedTarget, resolutionMethod, null);");
                 }
             }
             _sb.AppendLine();
@@ -288,18 +308,11 @@ namespace Generator.Log
         private void WriteHistoryRestoredMethod()
         {
             _sb.WriteSummary("Logs history restoration");
-            using (_sb.Block("public static void HistoryRestored(this ILogger logger, string instanceId, string compositeState, string restoredState, string historyType)"))
+            using (_sb.Block("public static void HistoryRestored(ILogger? logger, string instanceId, string compositeState, string restoredState, string historyType)"))
             {
-                using (_sb.Block("if (logger.IsEnabled(LogLevel.Debug))"))
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Debug) == true)"))
                 {
-                    _sb.AppendLine("logger.Log(");
-                    using (_sb.Indent())
-                    {
-                        _sb.AppendLine("LogLevel.Debug,");
-                        _sb.AppendLine("new EventId(13, nameof(HistoryRestored)),");
-                        _sb.AppendLine("\"State machine {InstanceId} restored {HistoryType} history for composite {CompositeState} to state {RestoredState}\",");
-                        _sb.AppendLine("instanceId, historyType, compositeState, restoredState);");
-                    }
+                    _sb.AppendLine("s_HistoryRestored(logger, instanceId, historyType, compositeState, restoredState, null);");
                 }
             }
             _sb.AppendLine();
@@ -308,18 +321,11 @@ namespace Generator.Log
         private void WriteActivePathMethod()
         {
             _sb.WriteSummary("Logs the active state path");
-            using (_sb.Block("public static void ActivePath(this ILogger logger, string instanceId, string path)"))
+            using (_sb.Block("public static void ActivePath(ILogger? logger, string instanceId, string path)"))
             {
-                using (_sb.Block("if (logger.IsEnabled(LogLevel.Trace))"))
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Trace) == true)"))
                 {
-                    _sb.AppendLine("logger.Log(");
-                    using (_sb.Indent())
-                    {
-                        _sb.AppendLine("LogLevel.Trace,");
-                        _sb.AppendLine("new EventId(14, nameof(ActivePath)),");
-                        _sb.AppendLine("\"State machine {InstanceId} active path: {Path}\",");
-                        _sb.AppendLine("instanceId, path);");
-                    }
+                    _sb.AppendLine("s_ActivePath(logger, instanceId, path, null);");
                 }
             }
             _sb.AppendLine();
@@ -347,10 +353,7 @@ namespace Generator.Log
 
         public static void WriteLogStatement(string className, string logLevel, string logMethodCall, ref IndentedStringBuilder.IndentedStringBuilder sb)
         {
-            using (sb.Block($"if (_logger?.IsEnabled(LogLevel.{logLevel}) == true)"))
-            {
-                sb.AppendLine($"{className}Log.{logMethodCall}");
-            }
+            sb.AppendLine($"{className}Log.{logMethodCall}");
         }
     }
 }
