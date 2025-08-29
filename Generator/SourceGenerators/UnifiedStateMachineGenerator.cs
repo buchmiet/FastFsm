@@ -873,7 +873,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
     private bool IsPureBasicFastPath()
     {
-        // Musi być: flat (brak HSM), sync, bez payloadu, bez extensions i bez OnEntry/OnExit
+        // Must be: flat (no HSM), sync, no payload, no extensions and no OnEntry/OnExit
         if (IsHierarchical) return false;
         if (HasPayload || HasMultiPayload) return false;
         if (ExtensionsOn) return false;
@@ -883,24 +883,24 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         var transitions = Model.Transitions;
         if (transitions == null || transitions.Count == 0) return false;
 
-        // Brak guardów i akcji, brak internal transitions
+        // No guards and actions, no internal transitions
         if (transitions.Any(t =>
             !string.IsNullOrEmpty(t.GuardMethod) ||
             !string.IsNullOrEmpty(t.ActionMethod) ||
             t.IsInternal))
             return false;
 
-        // Wszystkie przejścia muszą mieć dokładnie jeden trigger – ten sam
+        // All transitions must have exactly one trigger – the same one
         var distinctTriggers = transitions.Select(t => t.Trigger).Distinct().ToList();
         if (distinctTriggers.Count != 1) return false;
 
-        // Każdy stan musi mieć co najwyżej jedno przejście (Basic sekwencja)
+        // Each state must have at most one transition (Basic sequence)
         var multiplePerState = transitions
             .GroupBy(t => t.FromState)
             .Any(g => g.Count() > 1);
         if (multiplePerState) return false;
 
-        // Sprawdzamy, że to rzeczywiście „łańcuch" (From -> To) bez dziur
+        // Check that it's really a "chain" (From -> To) without gaps
         // Nie wymuszamy cyklu, ale dopuszczamy go (A->B, B->C, C->A)
         var fromSet = new HashSet<string>(transitions.Select(t => t.FromState));
         var toSet   = new HashSet<string>(transitions.Select(t => t.ToState));
@@ -917,7 +917,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
     private List<(string fromState, string toState)> GetOrderedStateMapping()
     {
-        // Uporządkuj deterministycznie po ordinalu stanu źródłowego, aby switch był stabilny
+        // Order deterministically by source state ordinal, so switch is stable
         // (Model.States zawiera definicje z OrdinalValue)
         var ord = Model.States; // Dictionary<string, StateDef> (Name -> Def z OrdinalValue)
         var list = Model.Transitions
@@ -1111,13 +1111,13 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             return;
         }
 
-        // >>> FAST-PATH: prosty wariant Basic A->B->C->A, jeden trigger, brak payload/guardów/akcji/onEntry/onExit/extensions/hsm
+        // >>> FAST-PATH: simple Basic A->B->C->A variant, one trigger, no payload/guards/actions/onEntry/onExit/extensions/hsm
         if (IsPureBasicFastPath())
         {
             EmitTryFireInternalFastPath(stateType, triggerType);
-            Sb.AppendLine(); // odstęp
+            Sb.AppendLine(); // spacing
             Sb.AppendLine("// (fast-path) end");
-            return; // ważne: kończymy generowanie TryFireInternal tutaj
+            return; // important: we finish TryFireInternal generation here
         }
 
         // >>> HSM FAST-PATH: hierarchical without guards and equal priority
@@ -1127,7 +1127,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             return; // important: end TryFireInternal generation here
         }
 
-        // --- dotychczasowa ścieżka ---
+        // --- existing path ---
         // For sync: choose writer depending on features
         if (HasPayload && HasMultiPayload)
     {

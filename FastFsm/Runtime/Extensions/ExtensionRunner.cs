@@ -51,13 +51,13 @@ namespace FastFsm.Runtime.Extensions
 
     /// <summary>
     /// Executes extension hooks and – when <c>FSM_LOGGING_ENABLED</c> is defined –
-    /// zapisuje błędy do <see cref="ILogger"/>.
+    /// logs errors to <see cref="ILogger"/>.
     /// </summary>
     public sealed partial class ExtensionRunner
     {
         /// <summary>
-        /// Wspólna, bez-loggerowa instancja do użycia tam,
-        /// gdzie dodatkowe obiekty nie są potrzebne.
+        /// Common, logger-less instance for use where
+        /// additional objects are not needed.
         /// </summary>
         public static ExtensionRunner Default { get; } = new();
 
@@ -83,7 +83,7 @@ namespace FastFsm.Runtime.Extensions
             {
                 action(extension, context);
             }
-            // Uwaga: nagłówek catch zależny od kompilacji eliminujący CS0168 przy wyłączonym logowaniu
+            // Note: compilation-dependent catch header eliminating CS0168 when logging is disabled
 #if FSM_LOGGING_ENABLED
             catch (Exception ex)
 #else
@@ -103,12 +103,12 @@ namespace FastFsm.Runtime.Extensions
                         ex);
                 }
 #endif
-                // Błąd w rozszerzeniu nie powinien przerwać działania maszyny.
+                // Extension error should not interrupt state machine operation.
             }
         }
 
         /// <summary>
-        /// Wywołuje <see cref="IStateMachineExtension.OnBeforeTransition"/> dla wszystkich rozszerzeń.
+        /// Calls <see cref="IStateMachineExtension.OnBeforeTransition"/> for all extensions.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RunBeforeTransition<TContext>(
@@ -127,7 +127,7 @@ namespace FastFsm.Runtime.Extensions
         }
 
         /// <summary>
-        /// Wywołuje <see cref="IStateMachineExtension.OnAfterTransition"/> dla wszystkich rozszerzeń.
+        /// Calls <see cref="IStateMachineExtension.OnAfterTransition"/> for all extensions.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RunAfterTransition<TContext>(
@@ -147,7 +147,7 @@ namespace FastFsm.Runtime.Extensions
         }
 
         /// <summary>
-        /// Wywołuje <see cref="IStateMachineExtension.OnGuardEvaluation"/> dla wszystkich rozszerzeń.
+        /// Calls <see cref="IStateMachineExtension.OnGuardEvaluation"/> for all extensions.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RunGuardEvaluation<TContext>(
@@ -167,7 +167,7 @@ namespace FastFsm.Runtime.Extensions
         }
 
         /// <summary>
-        /// Wywołuje <see cref="IStateMachineExtension.OnGuardEvaluated"/> dla wszystkich rozszerzeń.
+        /// Calls <see cref="IStateMachineExtension.OnGuardEvaluated"/> for all extensions.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RunGuardEvaluated<TContext>(

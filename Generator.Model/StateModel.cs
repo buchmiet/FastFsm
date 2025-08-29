@@ -1,14 +1,14 @@
 ﻿namespace Generator.Model;
 
 /// <summary>
-/// Model reprezentujący stan w maszynie stanów wraz z jego callbackami.
+/// Model representing state in state machine along with its callbacks.
 /// </summary>
 public sealed class StateModel
 {
     #region Core Properties
 
     /// <summary>
-    /// Nazwa stanu
+    /// State name
     /// </summary>
     public string Name { get; set; } = "";
 
@@ -18,12 +18,12 @@ public sealed class StateModel
     public int OrdinalValue { get; set; } = 0;
 
     /// <summary>
-    /// Nazwa metody OnEntry (wykonywana przy wejściu do stanu)
+    /// Name of OnEntry method (executed on state entry)
     /// </summary>
     public string? OnEntryMethod { get; set; }
 
     /// <summary>
-    /// Nazwa metody OnExit (wykonywana przy wyjściu ze stanu)
+    /// Name of OnExit method (executed on state exit)
     /// </summary>
     public string? OnExitMethod { get; set; }
 

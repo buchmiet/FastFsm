@@ -11,18 +11,18 @@ namespace Generator.Helpers
         private static TypeSystemHelper TypeHelper = new();
 
         /// <summary>
-        /// Generuje kompletny blok sprawdzenia guarda z obsługą wszystkich wariantów.
+        /// Generates complete guard check block with handling of all variants.
         /// </summary>
-        /// <param name="sb">String builder do generowania kodu</param>
-        /// <param name="transition">Model przejścia zawierający informacje o guard</param>
-        /// <param name="resultVar">Nazwa zmiennej wynikowej (np. "guardResult")</param>
-        /// <param name="payloadVar">Nazwa zmiennej z payloadem lub "null"</param>
-        /// <param name="isAsync">Czy wywołujący jest metodą async</param>
-        /// <param name="wrapInTryCatch">Czy owinąć w try-catch (dla CanFire/GetPermittedTriggers)</param>
-        /// <param name="continueOnCapturedContext">Wartość dla ConfigureAwait (tylko dla async)</param>
-        /// <param name="handleResultAfterTry">Czy wynik guarda będzie używany po bloku try/catch</param>
-        /// <param name="cancellationTokenVar">Nazwa zmiennej z CancellationToken (null = brak przekazywania)</param>
-        /// <param name="treatCancellationAsFailure">Czy traktować anulowanie jako błąd</param>
+        /// <param name="sb">String builder for code generation</param>
+        /// <param name="transition">Transition model containing guard information</param>
+        /// <param name="resultVar">Name of result variable (e.g. "guardResult")</param>
+        /// <param name="payloadVar">Name of payload variable or "null"</param>
+        /// <param name="isAsync">Whether caller is async method</param>
+        /// <param name="wrapInTryCatch">Whether to wrap in try-catch (for CanFire/GetPermittedTriggers)</param>
+        /// <param name="continueOnCapturedContext">Value for ConfigureAwait (async only)</param>
+        /// <param name="handleResultAfterTry">Whether guard result will be used after try/catch block</param>
+        /// <param name="cancellationTokenVar">Name of CancellationToken variable (null = no passing)</param>
+        /// <param name="treatCancellationAsFailure">Whether to treat cancellation as failure</param>
         public static void EmitGuardCheck(
             IndentedStringBuilder.IndentedStringBuilder sb,
             TransitionModel transition,

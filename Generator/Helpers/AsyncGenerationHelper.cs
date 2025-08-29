@@ -5,13 +5,13 @@ using IndentedStringBuilder;
 namespace Generator.Helpers
 {
     /// <summary>
-    /// Centralizuje transformacje sync→async dla generowania kodu maszyn stanów.
-    /// Eliminuje if(IsAsync) rozproszone po kodzie.
+    /// Centralizes sync→async transformations for state machine code generation.
+    /// Eliminates if(IsAsync) scattered throughout the code.
     /// </summary>
     public static class AsyncGenerationHelper
     {
         /// <summary>
-        /// Zwraca odpowiedni typ zwracany dla metody w zależności od trybu sync/async.
+        /// Returns the appropriate return type for a method depending on sync/async mode.
         /// </summary>
         public static string GetReturnType(string syncType, bool isAsync)
         {
@@ -28,7 +28,7 @@ namespace Generator.Helpers
         }
 
         /// <summary>
-        /// Zwraca modyfikatory metody (async keyword).
+        /// Returns method modifiers (async keyword).
         /// </summary>
         public static string GetMethodModifiers(bool isAsync)
         {
@@ -36,7 +36,7 @@ namespace Generator.Helpers
         }
 
         /// <summary>
-        /// Zwraca await keyword jeśli potrzebny.
+        /// Returns await keyword if needed.
         /// </summary>
         public static string GetAwaitKeyword(bool targetMethodIsAsync, bool callerIsAsync)
         {
@@ -44,7 +44,7 @@ namespace Generator.Helpers
         }
 
         /// <summary>
-        /// Zwraca ConfigureAwait call jeśli potrzebny.
+        /// Returns ConfigureAwait call if needed.
         /// </summary>
         public static string GetConfigureAwait(bool isAsync, bool continueOnCapturedContext)
         {
@@ -54,7 +54,7 @@ namespace Generator.Helpers
         }
 
         /// <summary>
-        /// Generuje wywołanie metody z obsługą await i ConfigureAwait.
+        /// Generates method invocation with await and ConfigureAwait handling.
         /// </summary>
         public static void EmitMethodInvocation(
             IndentedStringBuilder.IndentedStringBuilder sb,
@@ -78,13 +78,13 @@ namespace Generator.Helpers
         }
 
         /// <summary>
-        /// Zwraca odpowiednią nazwę metody z sufiksem Async jeśli potrzebny.
+        /// Returns the appropriate method name with Async suffix if needed.
         /// </summary>
         public static string GetMethodName(string baseName, bool isAsync, bool addAsyncSuffix = true)
         {
             if (!isAsync || !addAsyncSuffix) return baseName;
 
-            // Sprawdź czy nazwa już kończy się na "Async"
+            // Check if name already ends with "Async"
             if (baseName.EndsWith("Async", StringComparison.Ordinal))
                 return baseName;
 
@@ -92,7 +92,7 @@ namespace Generator.Helpers
         }
 
         /// <summary>
-        /// Zwraca nazwę klasy bazowej dla maszyny stanów.
+        /// Returns the base class name for the state machine.
         /// </summary>
         public static string GetBaseClassName(string stateType, string triggerType, bool isAsync)
         {
@@ -102,7 +102,7 @@ namespace Generator.Helpers
         }
 
         /// <summary>
-        /// Zwraca nazwę interfejsu dla maszyny stanów.
+        /// Returns the interface name for the state machine.
         /// </summary>
         public static string GetInterfaceName(string stateType, string triggerType, bool isAsync)
         {
@@ -112,7 +112,7 @@ namespace Generator.Helpers
         }
 
         /// <summary>
-        /// Generuje fire-and-forget async call dla konstruktora (initial OnEntry).
+        /// Generates fire-and-forget async call for constructor (initial OnEntry).
         /// </summary>
         public static void EmitFireAndForgetAsyncCall(
             IndentedStringBuilder.IndentedStringBuilder sb,

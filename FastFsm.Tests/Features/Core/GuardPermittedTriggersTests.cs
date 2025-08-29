@@ -10,7 +10,7 @@ namespace FastFsm.Tests.Features.Core
         {
             var machine = new GuardPermittedMachine(State.Idle)
             {
-                // guard początkowo false
+                // guard initially false
                 Allow = false
             };
             machine.Start();
