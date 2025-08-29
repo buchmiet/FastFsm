@@ -50,6 +50,54 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
     #region Hierarchical State Machine Support
     
     /// <summary>
+    /// Writes state and trigger name arrays for zero-allocation logging
+    /// </summary>
+    protected virtual void WriteStateAndTriggerNameArrays(string stateTypeForUsage, string triggerTypeForUsage)
+    {
+        // Generate state names array for zero-allocation logging
+        var allStates = Model.States.Values
+            .OrderBy(s => s.OrdinalValue)
+            .ToList();
+        
+        Sb.AppendLine("// State and trigger name arrays for zero-allocation logging");
+        
+        // State names array
+        Sb.Append("        private static readonly string[] s_stateNames = new string[] { ");
+        var stateNames = allStates.Select(s => $"\"{s.Name}\"");
+        Sb.Append(string.Join(", ", stateNames));
+        Sb.AppendLine(" };");
+        
+        // Helper method for state name lookup
+        Sb.AppendLine("        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        Sb.AppendLine($"        private static string NameOf({stateTypeForUsage} s) => s_stateNames[(int)s];");
+        
+        // Trigger names array
+        var allTriggers = Model.Transitions.Select(t => t.Trigger).Distinct().OrderBy(t => t).ToList();
+        if (allTriggers.Count > 0)
+        {
+            // Get the trigger enum values from model
+            var triggerValues = Model.TriggerType?.Members
+                .Where(m => m.Kind == Microsoft.CodeAnalysis.SymbolKind.Field)
+                .OrderBy(m => m.Name)
+                .ToList();
+            
+            if (triggerValues != null && triggerValues.Count > 0)
+            {
+                Sb.Append("        private static readonly string[] s_triggerNames = new string[] { ");
+                var triggerNames = triggerValues.Select(t => $"\"{t.Name}\"");
+                Sb.Append(string.Join(", ", triggerNames));
+                Sb.AppendLine(" };");
+                
+                // Helper method for trigger name lookup
+                Sb.AppendLine("        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+                Sb.AppendLine($"        private static string NameOfTrigger({triggerTypeForUsage} t) => s_triggerNames[(int)t];");
+            }
+        }
+        
+        Sb.AppendLine();
+    }
+    
+    /// <summary>
     /// Writes static hierarchy arrays if HSM is enabled
     /// </summary>
     protected virtual void WriteHierarchyArrays(string stateTypeForUsage, string triggerTypeForUsage)
@@ -525,7 +573,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         if (ShouldGenerateLogging)
         {
             WriteLogStatement("Warning",
-                $"TransitionFailed(_logger, _instanceId, {CurrentStateField}.ToString(), trigger.ToString());");
+                $"TransitionFailed(_logger, _instanceId, NameOf({CurrentStateField}), NameOfTrigger(trigger));");
         }
         Sb.AppendLine("return false;");
     }
@@ -941,14 +989,14 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         // Apply the best candidate if found
         Sb.AppendLine("// Apply winner");
         // Capture from-state for diagnostics
-        Sb.AppendLine("var __fromName = _currentState.ToString();");
+        Sb.AppendLine("var __fromName = NameOf(_currentState);");
         using (Sb.Block("if (!found)"))
         {
         // No matching transition - failure
         if (ShouldGenerateLogging)
         {
             WriteLogStatement("Warning",
-                $"TransitionFailed(_logger, _instanceId, {CurrentStateField}.ToString(), trigger.ToString());");
+                $"TransitionFailed(_logger, _instanceId, NameOf({CurrentStateField}), NameOfTrigger(trigger));");
         }
         Sb.AppendLine("return false;");
     }
@@ -970,7 +1018,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             if (ShouldGenerateLogging)
             {
                 WriteLogStatement("Debug",
-                    $"InternalTransitionOnAncestor(_logger, _instanceId, (({stateTypeForUsage})bestAncestorIndex).ToString(), __fromName, trigger.ToString());");
+                    $"InternalTransitionOnAncestor(_logger, _instanceId, NameOf(({stateTypeForUsage})bestAncestorIndex), __fromName, NameOfTrigger(trigger));");
             }
             Sb.AppendLine("return true; // state unchanged, no history recording");
         }
@@ -1044,11 +1092,11 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                 {
                     using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
                     {
-                        Sb.AppendLine($"{Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                        Sb.AppendLine($"{Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, NameOf(({stateTypeForUsage})__targetComposite), NameOf(({stateTypeForUsage})__resolvedIndex), __resolution);");
                     }
                     using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)"))
                     {
-                        Sb.AppendLine($"{Model.ClassName}Log.HistoryRestored(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __histMode.ToString());");
+                        Sb.AppendLine($"{Model.ClassName}Log.HistoryRestored(_logger, _instanceId, NameOf(({stateTypeForUsage})__targetComposite), NameOf(({stateTypeForUsage})__resolvedIndex), __histMode.ToString());");
                     }
                 }
                 
@@ -1068,7 +1116,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             if (ShouldGenerateLogging)
             {
                 WriteLogStatement("Debug",
-                    $"HierarchicalTransition(_logger, _instanceId, __fromName, _currentState.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
+                    $"HierarchicalTransition(_logger, _instanceId, __fromName, NameOf(_currentState), NameOf(({stateTypeForUsage})lca), __exitCount, __entryCount);");
                 WriteLogStatement("Trace",
                     $"ActivePath(_logger, _instanceId, DumpActivePath());");
             }
