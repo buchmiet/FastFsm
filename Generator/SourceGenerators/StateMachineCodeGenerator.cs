@@ -71,27 +71,30 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine("        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
         Sb.AppendLine($"        private static string NameOf({stateTypeForUsage} s) => s_stateNames[(int)s];");
         
-        // Trigger names array
+        // Trigger names array - get unique triggers from transitions and sort them
         var allTriggers = Model.Transitions.Select(t => t.Trigger).Distinct().OrderBy(t => t).ToList();
         if (allTriggers.Count > 0)
         {
-            // Get the trigger enum values from model
-            var triggerValues = Model.TriggerType?.Members
-                .Where(m => m.Kind == Microsoft.CodeAnalysis.SymbolKind.Field)
-                .OrderBy(m => m.Name)
-                .ToList();
+            // For now, we'll use the trigger names from transitions
+            // In a more complete implementation, we'd need to get all enum values
+            // But for logging purposes, the transitions should cover the used triggers
+            Sb.Append("        private static readonly string[] s_triggerNames = new string[] { ");
+            var triggerNames = allTriggers.Select(t => $"\"{t}\"");
+            Sb.Append(string.Join(", ", triggerNames));
+            Sb.AppendLine(" };");
             
-            if (triggerValues != null && triggerValues.Count > 0)
+            // Create a dictionary for lookup
+            Sb.AppendLine("        private static readonly System.Collections.Generic.Dictionary<" + triggerTypeForUsage + ", string> s_triggerNameLookup = new System.Collections.Generic.Dictionary<" + triggerTypeForUsage + ", string>");
+            Sb.AppendLine("        {");
+            foreach (var trigger in allTriggers)
             {
-                Sb.Append("        private static readonly string[] s_triggerNames = new string[] { ");
-                var triggerNames = triggerValues.Select(t => $"\"{t.Name}\"");
-                Sb.Append(string.Join(", ", triggerNames));
-                Sb.AppendLine(" };");
-                
-                // Helper method for trigger name lookup
-                Sb.AppendLine("        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
-                Sb.AppendLine($"        private static string NameOfTrigger({triggerTypeForUsage} t) => s_triggerNames[(int)t];");
+                Sb.AppendLine($"            {{ {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(trigger)}, \"{trigger}\" }},");
             }
+            Sb.AppendLine("        };");
+            
+            // Helper method for trigger name lookup
+            Sb.AppendLine("        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+            Sb.AppendLine($"        private static string NameOfTrigger({triggerTypeForUsage} t) => s_triggerNameLookup.TryGetValue(t, out var name) ? name : t.ToString();");
         }
         
         Sb.AppendLine();
