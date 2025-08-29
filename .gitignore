@@ -346,3 +346,9 @@ Benchmark.Rust/Cargo.lock
 .lock
 CLAUDE.md
 .venv/
+.lib/
+.lib64/
+.nuget/
+bin/
+include/
+tui/__pycache__

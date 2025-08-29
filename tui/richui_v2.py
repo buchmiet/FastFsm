@@ -129,7 +129,7 @@ class RichTuiV2(ITui):
                     # Simulate progress based on time
                     elapsed = time.time() - task['start_time']
                     estimated = task['info'].estimated_time or 5.0
-                    task['progress'] = min(95, int(elapsed / estimated * 100))
+                    task['progress'] = min(99, int(elapsed / estimated * 100))
     
     def complete(self, task_id: str, failed=False):
         """Complete a task (alias for compatibility)."""
@@ -137,7 +137,8 @@ class RichTuiV2(ITui):
             if task_id in self.tasks_data:
                 self.tasks_data[task_id]['status'] = 'failed' if failed else 'completed'
                 self.tasks_data[task_id]['end_time'] = time.time()
-                self.tasks_data[task_id]['progress'] = 100 if not failed else self.tasks_data[task_id]['progress']
+                # Always set to 100% when completed
+                self.tasks_data[task_id]['progress'] = 100
     
     def _create_layout(self):
         """Create the layout structure."""
@@ -185,11 +186,18 @@ class RichTuiV2(ITui):
     
     def _render_table(self) -> Panel:
         """Render tasks table with progress."""
+        # Create table with simple header line
+        from rich.table import Table
+        from rich import box
+        
         table = Table(
             show_header=True,
             header_style="bold cyan",
-            box=box.SIMPLE,
-            expand=True
+            box=box.SIMPLE_HEAD,  # Only horizontal line under header
+            expand=True,
+            pad_edge=False,
+            show_lines=False,  # No lines between rows
+            padding=(0, 1)  # Horizontal padding for columns
         )
         
         table.add_column("Task", style="white", width=40)
@@ -233,14 +241,42 @@ class RichTuiV2(ITui):
                 # Warnings/Errors
                 w_e = f"{data['warnings']}/{data['errors']}"
                 
-                # Progress bar
+                # Progress bar with centered percentage
                 progress = data['progress']
-                bar_width = 15
+                bar_width = 20
                 filled = int(bar_width * progress / 100)
-                bar = "█" * filled + "░" * (bar_width - filled)
-                progress_text = f"{bar} {progress:3d}%"
+                empty = bar_width - filled
                 
-                table.add_row(task_text, time_text, w_e, progress_text)
+                # Build simple green bar with white percentage overlay
+                percentage_str = f"{progress:3d}%"
+                bar_str = "█" * filled + "░" * empty
+                
+                # Center the percentage text
+                pad_left = (bar_width - len(percentage_str)) // 2
+                pad_right = bar_width - pad_left - len(percentage_str)
+                
+                # Create the progress bar text with styling
+                progress_bar = Text()
+                for i, char in enumerate(bar_str):
+                    if i >= pad_left and i < pad_left + len(percentage_str):
+                        # Overlay percentage text
+                        percent_char = percentage_str[i - pad_left]
+                        if char == "█":
+                            progress_bar.append(percent_char, style="bold white on green")
+                        else:
+                            progress_bar.append(percent_char, style="bold white on dim")
+                    else:
+                        # Regular bar character
+                        if char == "█":
+                            progress_bar.append(char, style="green")
+                        else:
+                            progress_bar.append(char, style="dim")
+                
+                table.add_row(task_text, time_text, w_e, progress_bar)
+                
+                # Add empty row for spacing (except after last item)
+                if task_id != list(self.tasks_data.keys())[-1]:
+                    table.add_row("", "", "", "")
         
         # Add global progress bar
         completed = sum(1 for d in self.tasks_data.values() if d['status'] in ('completed', 'failed'))
@@ -250,17 +286,44 @@ class RichTuiV2(ITui):
         # Create a separate panel for global progress
         progress_bar_width = 50
         filled = int(progress_bar_width * global_progress / 100)
-        global_bar = "█" * filled + "░" * (progress_bar_width - filled)
+        empty = progress_bar_width - filled
+        
+        # Build global progress bar with centered percentage
+        percentage_str = f"{global_progress:3d}%"
+        bar_str = "█" * filled + "░" * empty
+        
+        # Center the percentage text
+        pad_left = (progress_bar_width - len(percentage_str)) // 2
+        
+        # Create styled global progress bar
+        global_bar = Text()
+        for i, char in enumerate(bar_str):
+            if i >= pad_left and i < pad_left + len(percentage_str):
+                # Overlay percentage text
+                percent_char = percentage_str[i - pad_left]
+                if char == "█":
+                    global_bar.append(percent_char, style="bold white on green")
+                else:
+                    global_bar.append(percent_char, style="bold white on dim")
+            else:
+                # Regular bar character
+                if char == "█":
+                    global_bar.append(char, style="green")
+                else:
+                    global_bar.append(char, style="dim")
         
         elapsed = time.time() - self.start_time
-        if global_progress > 0:
+        if global_progress > 0 and global_progress < 100:
             eta = elapsed * (100 - global_progress) / global_progress
-            eta_text = f"ETA {int(eta//60):02d}:{int(eta%60):02d}"
+            eta_text = f"  ETA {int(eta//60):02d}:{int(eta%60):02d}"
         else:
-            eta_text = "ETA --:--"
+            eta_text = "  ETA --:--"
+        
+        # Add ETA text to the bar
+        global_bar.append(eta_text, style="cyan")
         
         progress_panel = Panel(
-            f"{global_bar} {global_progress:3d}%  {eta_text}",
+            global_bar,
             box=box.SIMPLE,
             style="cyan"
         )
@@ -344,18 +407,26 @@ class RichTuiV2(ITui):
         """Stop the TUI."""
         self.running = False
     
-    def finish(self, label: str, success: bool, warnings: int, errors: int):
+    def finish(self, task_id_or_label: str, success: bool, warnings: int, errors: int):
         """Mark task as completed (required by base class)."""
-        # Find task by label
+        # Handle both task_id and label
         task_id = None
-        for tid, data in self.tasks_data.items():
-            if data['info'].label == label:
-                task_id = tid
-                break
+        with self.lock:
+            # First check if it's directly a task_id
+            if task_id_or_label in self.tasks_data:
+                task_id = task_id_or_label
+            else:
+                # Otherwise try to match by label
+                for tid, data in self.tasks_data.items():
+                    if data['info'].label == task_id_or_label:
+                        task_id = tid
+                        break
         
         if task_id:
-            self.complete(task_id, failed=not success)
             with self.lock:
+                self.tasks_data[task_id]['status'] = 'completed' if success else 'failed'
+                self.tasks_data[task_id]['end_time'] = time.time()
+                self.tasks_data[task_id]['progress'] = 100
                 self.tasks_data[task_id]['warnings'] = warnings
                 self.tasks_data[task_id]['errors'] = errors
     
