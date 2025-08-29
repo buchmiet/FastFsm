@@ -41,6 +41,9 @@ namespace FastFsm.Logging.Tests
             VerifyLogMessage(LogLevel.Trace, "ActivePath", "B", "B1");
         }
 
+
+
+
         [Fact]
         public void HistoryRestored_WhenReturningToA_IsLogged()
         {
