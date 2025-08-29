@@ -992,7 +992,10 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         // Apply the best candidate if found
         Sb.AppendLine("// Apply winner");
         // Capture from-state for diagnostics
-        Sb.AppendLine("var __fromName = NameOf(_currentState);");
+        if (ShouldGenerateLogging)
+        {
+            Sb.AppendLine("var __fromName = NameOf(_currentState);");
+        }
         using (Sb.Block("if (!found)"))
         {
         // No matching transition - failure
@@ -1021,7 +1024,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             if (ShouldGenerateLogging)
             {
                 WriteLogStatement("Debug",
-                    $"InternalTransitionOnAncestor(_logger, _instanceId, NameOf(({stateTypeForUsage})bestAncestorIndex), __fromName, NameOfTrigger(trigger));");
+                    $"InternalTransitionOnAncestor(_logger, _instanceId, NameOf(({stateTypeForUsage})bestAncestorIndex), NameOf(_currentState), NameOfTrigger(trigger));");
             }
             Sb.AppendLine("return true; // state unchanged, no history recording");
         }
@@ -1119,7 +1122,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             if (ShouldGenerateLogging)
             {
                 WriteLogStatement("Debug",
-                    $"HierarchicalTransition(_logger, _instanceId, __fromName, NameOf(_currentState), NameOf(({stateTypeForUsage})lca), __exitCount, __entryCount);");
+                    $"HierarchicalTransition(_logger, _instanceId, NameOf(({stateTypeForUsage})bestFromIndex), NameOf(_currentState), NameOf(({stateTypeForUsage})lca), __exitCount, __entryCount);");
                 WriteLogStatement("Trace",
                     $"ActivePath(_logger, _instanceId, DumpActivePath());");
             }
