@@ -15,8 +15,8 @@ using static Generator.Strings;
 namespace Generator.SourceGenerators;
 
 /// <summary>
-/// Baza dla wszystkich generatorów-wariantów.
-/// Posiada kompletny zestaw helperów sync/async oraz hooków.
+/// Base for all generator variants.
+/// Contains complete set of sync/async helpers and hooks.
 /// </summary>
 internal abstract class StateMachineCodeGenerator(StateMachineModel model)
 {
@@ -1348,7 +1348,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
     {
         if (string.IsNullOrEmpty(transition.GuardMethod)) return;
 
-        // Owijamy całą logikę guard w try-catch
+        // Wrap entire guard logic in try-catch
         using (Sb.Block("try"))
         {
             Sb.AddProperty($"bool {GuardResultVar}", $"{transition.GuardMethod}()");
@@ -1373,7 +1373,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         }
         using (Sb.Block("catch (Exception ex) when (ex is not System.OperationCanceledException)"))
         {
-            // Traktujemy wyjątek w guard jako false (guard nie przeszedł)
+            // Treat exception in guard as false (guard did not pass)
             WriteLogStatement("Warning",
                 $"GuardFailed(_logger, _instanceId, \"{transition.GuardMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
             WriteLogStatement("Warning",
@@ -1384,7 +1384,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             // Hook: After failed transition
             WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
 
-            // Skok do końca metody
+            // Jump to end of method
             Sb.AppendLine($"goto {EndOfTryFireLabel};");
         }
     }

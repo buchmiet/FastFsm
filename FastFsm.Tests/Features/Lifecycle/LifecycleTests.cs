@@ -16,7 +16,7 @@ namespace FastFsm.Tests.Features.Lifecycle
         {
             var machine = new CoreBenchmarkMachine(BenchmarkState.A);
 
-            // TryFire bez Start() powinien rzucać
+            // TryFire without Start() should throw
             Assert.Throws<InvalidOperationException>(
                 () => machine.TryFire(BenchmarkTrigger.Next));
         }

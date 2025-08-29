@@ -180,7 +180,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         if (isAsyncOce)
             report?.Invoke("[DEBUG AOE] Got class symbol");
 
-        // === SEKCJA 2: Tworzenie początkowego modelu ===
+        // === SECTION 2: Creating initial model ===
         report?.Invoke("Section 2: Creating initial model");
         var currentModel = new StateMachineModel
         {
@@ -208,7 +208,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         if (isAsyncOce)
             report?.Invoke($"[DEBUG AOE] StateMachine attribute found: {fsmAttribute != null}");
 
-        // === SEKCJA 4: Odczyt argumentów z atrybutu [StateMachine] ===
+        // === SECTION 4: Reading arguments from [StateMachine] attribute ===
         if (fsmAttribute is not null)
         {
             report?.Invoke("Section 4: Reading StateMachine attribute arguments");
@@ -359,7 +359,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             }
         }
 
-        // === SEKCJA 6: Walidacja typów State i Trigger ===
+        // === SECTION 6: State and Trigger type validation ===
         report?.Invoke("Section 6: Validating State and Trigger types");
         var stateTypeArg = fsmAttribute.ConstructorArguments[0].Value as INamedTypeSymbol;
         var triggerTypeArg = fsmAttribute.ConstructorArguments[1].Value as INamedTypeSymbol;
@@ -410,7 +410,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         }
         report?.Invoke($"Found {stateCount} states");
 
-        // === SEKCJA 8: Parsowanie atrybutów z memberów klasy ===
+        // === SECTION 8: Parsing attributes from class members ===
         report?.Invoke("Section 8: Parsing member attributes");
         report?.Invoke("Calling ParseMemberAttributes");
         if (isAsyncOce)
@@ -467,7 +467,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         BuildHierarchy(currentModel, ref criticalErrorOccurred, report);
         report?.Invoke($"Hierarchy built. HierarchyEnabled: {currentModel.HierarchyEnabled}");
 
-        // === SEKCJA 9: Określenie konfiguracji cech i wariantu (wewnętrznie) ===
+        // === SECTION 9: Determining feature configuration and variant (internally) ===
         report?.Invoke("Section 9: Determining feature configuration");
         // HasOnEntry/Exit
         currentModel.GenerationConfig.HasOnEntryExit = currentModel.States.Values.Any(s =>
@@ -500,7 +500,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             currentModel.GenerationConfig.HasExtensions,
             currentModel.GenerationConfig.HasOnEntryExit));
 
-        // === SEKCJA 10: Walidacje konfiguracji cech (bez wymuszania wariantów) ===
+        // === SECTION 10: Feature configuration validation (without forcing variants) ===
         report?.Invoke("Section 10: Feature configuration validations");
 
         if (criticalErrorOccurred)
@@ -509,7 +509,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             return false;
         }
 
-        // === SEKCJA 11: Walidacja osiągalności stanów ===
+        // === SECTION 11: State reachability validation ===
         report?.Invoke("Section 11: Validating state reachability");
         var allStateNames = currentModel.States.Keys.ToList();
         report?.Invoke($"Total states count: {allStateNames.Count}");
@@ -556,14 +556,14 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             return currentModel.States.Keys.FirstOrDefault() ?? string.Empty;
         }
 
-        // Podstawowe przejścia: NIE podmieniamy celu na "expanded"
+        // Basic transitions: do NOT replace target with "expanded"
         var transitionsForReachability = currentModel.Transitions
             .Where(t => !string.IsNullOrEmpty(t.ToState))
             .Select(t => new TransitionDefinition(t.FromState, t.Trigger, t.ToState!))
             .ToList();
 
-        // Dla HSM: dodaj pseudo-krawędzie Parent → InitialChild,
-        // aby BFS po dotarciu do rodzica schodził do jego stanu początkowego.
+        // For HSM: add pseudo-edges Parent → InitialChild,
+        // so BFS after reaching parent descends to its initial state.
         if (currentModel.HierarchyEnabled && currentModel.InitialChildOf.Count > 0)
         {
             foreach (var kv in currentModel.InitialChildOf)
@@ -605,8 +605,8 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         else if (externalCount > 0)
         {
             // Only validate reachability when there are external transitions
-            // Start from top-level initial (BEZ ekspansji do liścia),
-            // żeby rodzic (kompozyt) był osiągalny sam w sobie.
+            // Start from top-level initial (WITHOUT expansion to leaf),
+            // so parent (composite) is reachable in itself.
             var initialTop = DetermineInitialTopLevelState();
             string initialStateForReachability = initialTop;
             report?.Invoke($"Initial state: {initialStateForReachability}");
@@ -745,7 +745,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
 
                 if (fromState == null || trigger == null || toState == null)
                 {
-                    // GetEnumMemberName już zgłosił błąd i ustawił criticalErrorOccurred
+                    // GetEnumMemberName already reported error and set criticalErrorOccurred
                     continue;
                 }
 
@@ -1036,7 +1036,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
 
             foreach (var attrData in stateAttributesData)
             {
-                // [State] bez argumentu → błąd krytyczny
+                // [State] without argument → critical error
                 if (attrData.ConstructorArguments.Length < 1)
                 {
                     criticalErrorOccurred = true;
@@ -1051,7 +1051,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
                 if (stateName is null)
                     continue;
 
-                // Pobierz lub utwórz definicję stanu w modelu
+                // Get or create state definition in model
                 if (!model.States.TryGetValue(stateName, out var stateModel))
                 {
                     stateModel = new StateModel { Name = stateName };
@@ -1157,9 +1157,9 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
                         }
                         else if (parentValue != null)
                         {
-                            // Parent był podany ale nie jest valid - to błąd!
-                            // GetEnumMemberName już zgłosił błąd FSM002
-                            // criticalErrorOccurred jest już ustawione przez GetEnumMemberName
+                            // Parent was provided but is not valid - this is an error!
+                            // GetEnumMemberName already reported error FSM002
+                            // criticalErrorOccurred is already set by GetEnumMemberName
                         }
                     }
 
@@ -1188,15 +1188,15 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         string? expectedPayloadType = model.DefaultPayloadType;
         if (model.GenerationConfig.HasPayload && expectedPayloadType == null)
         {
-            // Maszyna multi-payload - OnEntry/OnExit może przyjąć dowolny payload
+            // Multi-payload machine - OnEntry/OnExit can accept any payload
             expectedPayloadType = "*";
         }
         return expectedPayloadType;
     }
 
     /// <summary>
-    /// Waliduje sygnaturę metody zwrotnej (callback) opisanej w atrybucie FSM.
-    /// Zwraca <c>true</c>, gdy nie wykryto błędów krytycznych.
+    /// Validates signature of callback method described in FSM attribute.
+    /// Returns <c>true</c> when no critical errors were detected.
     /// </summary>
     private bool ValidateCallbackMethodSignature(
         INamedTypeSymbol classSymbol,
@@ -1214,14 +1214,14 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         isAsync = false;
         expectsPayload = false;
 
-        // Lokalizacja dla wszystkich diagnostyk zgłaszanych w tej metodzie
+        // Location for all diagnostics reported in this method
         Location loc = attributeData.ApplicationSyntaxReference?
                            .GetSyntax(context.CancellationToken)
                            .GetLocation()
                        ?? Location.None;
 
         // ---------------------------------------------------------------------
-        // 1. Wyszukujemy wszystkie przeciążenia metody w klasie
+        // 1. Search for all method overloads in class
         // ---------------------------------------------------------------------
         var overloads = classSymbol.GetMembers(methodName)
                                    .OfType<IMethodSymbol>()
@@ -1229,7 +1229,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
 
         if (!overloads.Any())
         {
-            // Metoda nie znaleziona - FSM003 zgłosi błąd
+            // Method not found - FSM003 will report error
             var notFoundCtx = new MethodSignatureValidationContext(methodName, callbackType, "", false)
             {
                 MethodFound = false
@@ -1240,11 +1240,11 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         }
 
         // ---------------------------------------------------------------------
-        // 2. Analiza sygnatur i wybór najlepszego dopasowania
+        // 2. Signature analysis and best match selection
         // ---------------------------------------------------------------------
         IMethodSymbol? matching = null;
 
-        // a) preferuj wariant z 1 parametrem (payload), jeśli jest spodziewany
+        // a) prefer variant with 1 parameter (payload), if expected
         if (expectedPayloadType is not null && expectedPayloadType != "*")
         {
             var payloadSymbol = compilation.GetTypeByMetadataName(expectedPayloadType);
@@ -1257,11 +1257,11 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         }
         else if (expectedPayloadType == "*")
         {
-            // Multi-payload - akceptuj dowolny jednoparametrowy wariant
+            // Multi-payload - accept any single-parameter variant
             matching = overloads.FirstOrDefault(m => m.Parameters.Length == 1);
         }
 
-        // b) jeśli nic nie znaleziono, spróbuj bezparametrowego
+        // b) if nothing found, try parameterless
         matching ??= overloads.FirstOrDefault(m => m.Parameters.IsEmpty);
 
         // c) ostatecznie – pierwszy lepszy
@@ -1276,7 +1276,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         selectedMethod = matching;
 
         // -----------------------------------------------------------------
-        // Rozróżniamy CancellationToken od payloadu ------------------------
+        // Distinguish CancellationToken from payload ------------------------
         // -----------------------------------------------------------------
         var cancellationTokenType =
             compilation.GetTypeByMetadataName("System.Threading.CancellationToken");
@@ -1284,18 +1284,18 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
 
         matching.Parameters.Any(p =>_typeHelper.IsCancellationToken(p.Type,compilation));
 
-        // Jeśli jakikolwiek parametr ≠ CancellationToken → to payload
+        // If any parameter ≠ CancellationToken → it's payload
         expectsPayload =
             matching.Parameters.Any(p => !_typeHelper.IsCancellationToken(p.Type,compilation));
 
         // ---------------------------------------------------------------------
-        // 3. Analiza sygnatury wybranego przeciążenia
+        // 3. Selected overload signature analysis
         // ---------------------------------------------------------------------
         var signatureInfo = _asyncAnalyzer.AnalyzeCallback(matching, callbackType, compilation);
         isAsync = signatureInfo.IsAsync;
 
         // ---------------------------------------------------------------------
-        // 4. Spójność trybu maszyny (SYNC/ASYNC)
+        // 4. State machine mode consistency (SYNC/ASYNC)
         //    Dozwolone:
         //      • maszyna ASYNC  -> callback SYNC lub ASYNC
         //    Niedozwolone:
@@ -1303,12 +1303,12 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         // ---------------------------------------------------------------------
         if (isMachineAsyncMode is null)
         {
-            // Pierwszy napotkany callback definiuje tryb maszyny
+            // First encountered callback defines machine mode
             isMachineAsyncMode = signatureInfo.IsAsync;
         }
         else if (isMachineAsyncMode.Value == false && signatureInfo.IsAsync)
         {
-            // Maszyna była SYNC, a trafiliśmy na ASYNC callback → błąd FSM011
+            // Machine was SYNC, and we hit ASYNC callback → error FSM011
             var callbackMode = "asynchronous";
             var machineMode = "synchronous";
 
@@ -1316,7 +1316,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             ProcessRuleResults(_mixedModeRule.Validate(mixedModeCtx), loc, ref criticalErrorOccurred);
             return false;
         }
-        // jeśli maszyna jest ASYNC, sync callback jest OK – nic nie robimy
+        // if machine is ASYNC, sync callback is OK – do nothing
 
         // ---------------------------------------------------------------------
         // 5. Walidacja detali async (async void, Task<bool> dla guarda)
@@ -1368,12 +1368,12 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         }
 
         // ---------------------------------------------------------------------
-        // 6. Ogólna poprawność sygnatury (FSM003)
+        // 6. General signature correctness (FSM003)
         // ---------------------------------------------------------------------
         bool isReturnTypeCorrect = (callbackType == GuardCallbackType && signatureInfo.IsBoolEquivalent) ||
                                    (callbackType != GuardCallbackType && signatureInfo.IsVoidEquivalent);
 
-        // Dozwolone kombinacje parametrów:
+        // Allowed parameter combinations:
         // () | (CancellationToken) | (payload) | (payload, CancellationToken)
         int nonCtParamCount = matching.Parameters.Count(p => !_typeHelper.IsCancellationToken(p.Type,compilation));
         int ctParamCount = matching.Parameters.Count(p =>_typeHelper.IsCancellationToken(p.Type,compilation));
@@ -1382,7 +1382,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         bool hasTooManyParams =
             nonCtParamCount > 1           // >1 payload
             || ctParamCount   > 1         // >1 CancellationToken
-            || (nonCtParamCount + ctParamCount) > 2; // razem >2
+            || (nonCtParamCount + ctParamCount) > 2; // together >2
 
         if (!isReturnTypeCorrect || hasTooManyParams)
         {
@@ -1476,8 +1476,8 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
     }
 
     /// <summary>
-    ///  Odczytuje atrybuty <see cref="PayloadTypeAttribute"/> i wypełnia
-    ///  <c>model.DefaultPayloadType</c> oraz <c>model.TriggerPayloadTypes</c>.
+    ///  Reads <see cref="PayloadTypeAttribute"/> attributes and fills
+    ///  <c>model.DefaultPayloadType</c> and <c>model.TriggerPayloadTypes</c>.
     /// </summary>
     private void ParsePayloadTypeAttributes(
         INamedTypeSymbol classSymbol,
@@ -1550,7 +1550,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             }
         }
 
-        // ---------- 2. Atrybuty na poziomie metod (mogą nadpisać klasowe) ---------
+        // ---------- 2. Method-level attributes (can override class-level) ---------
         foreach (var methodSymbol in classSymbol.GetMembers().OfType<IMethodSymbol>())
         {
             var methodPayloadAttrs = methodSymbol.GetAttributes()
@@ -1583,7 +1583,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
                 {
                     string fqName = _typeHelper.BuildFullTypeName(payloadType);
 
-                    // Konflikt? – zgłoś diagnostykę.
+                    // Conflict? – report diagnostic.
                     if (model.TriggerPayloadTypes.TryGetValue(triggerName, out var existing) &&
                         existing != fqName)
                     {
@@ -1601,7 +1601,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             }
         }
 
-        // ---------- 3. Ustaw flagę HasPayload --------------------------------------
+        // ---------- 3. Set HasPayload flag --------------------------------------
         model.GenerationConfig.HasPayload =
             model.DefaultPayloadType is not null ||
             model.TriggerPayloadTypes.Count > 0;
@@ -2056,7 +2056,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
     private bool HasCircularDependency(string state, Dictionary<string, string?> parentOf, 
         HashSet<string> visited, HashSet<string> recursionStack, Action<string>? report, List<string> cyclePath)
     {
-        // Jeśli stan jest już w stosie rekursji, mamy cykl
+        // If state is already in recursion stack, we have a cycle
         if (recursionStack.Contains(state))
         {
             // Build the cycle path
@@ -2073,21 +2073,21 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             return true;
         }
             
-        // Jeśli już odwiedzony i nie było cyklu, skip
+        // If already visited and there was no cycle, skip
         if (visited.Contains(state))
             return false;
 
         visited.Add(state);
         recursionStack.Add(state);
 
-        // Sprawdź rodzica
+        // Check parent
         if (parentOf.TryGetValue(state, out var parent) && parent != null)
         {
             if (HasCircularDependency(parent, parentOf, visited, recursionStack, report, cyclePath))
                 return true;
         }
 
-        // Usuń ze stosu po przetworzeniu
+        // Remove from stack after processing
         recursionStack.Remove(state);
         return false;
     }

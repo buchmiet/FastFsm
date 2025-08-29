@@ -1,35 +1,35 @@
 ﻿namespace Generator.Model;
 
 /// <summary>
-/// Model reprezentujący pojedyncze przejście w maszynie stanów.
+/// Model representing single transition in state machine.
 /// </summary>
 public sealed class TransitionModel
 {
     #region Core Properties
 
     /// <summary>
-    /// Stan źródłowy przejścia
+    /// Source state of transition
     /// </summary>
     public string FromState { get; set; } = "";
 
     /// <summary>
-    /// Stan docelowy przejścia
+    /// Target state of transition
     /// </summary>
     public string ToState { get; set; } = "";
 
     /// <summary>
-    /// Wyzwalacz przejścia
+    /// Transition trigger
     /// </summary>
     public string Trigger { get; set; } = "";
 
     /// <summary>
-    /// Czy przejście jest wewnętrzne (nie zmienia stanu)
+    /// Whether transition is internal (does not change state)
     /// </summary>
     // Set explicitly only for [InternalTransition]. Self-transitions [Transition(A, T, A)] are NOT internal.
     public bool IsInternal { get; set; }
 
     /// <summary>
-    /// Priorytet przejścia (dla HSM)
+    /// Transition priority (for HSM)
     /// </summary>
     public int Priority { get; set; } = 0;
 
@@ -38,12 +38,12 @@ public sealed class TransitionModel
     #region Callback Methods
 
     /// <summary>
-    /// Nazwa metody guard (warunek przejścia)
+    /// Name of guard method (transition condition)
     /// </summary>
     public string? GuardMethod { get; set; }
 
     /// <summary>
-    /// Nazwa metody akcji wykonywanej podczas przejścia
+    /// Name of action method executed during transition
     /// </summary>
     public string? ActionMethod { get; set; }
 

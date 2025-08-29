@@ -11,7 +11,7 @@ using Xunit;
 
 namespace  FastFsm.Async.Tests.Features.Core;
 
-// Definicje dla testów
+// Test definitions
 public enum AsyncStates
 {
     Initial,
@@ -29,7 +29,7 @@ public enum AsyncTriggers
     Reset
 }
 
-// Prosta maszyna asynchroniczna
+// Simple asynchronous machine
 [StateMachine(typeof(AsyncStates), typeof(AsyncTriggers))]
 public partial class SimpleAsyncMachine
 {
@@ -41,7 +41,7 @@ public partial class SimpleAsyncMachine
     private async ValueTask<bool> CanStartAsync()
     {
         _executionLog.Add("CanStartAsync:Begin");
-        await Task.Delay(10); // Symulacja async operacji
+        await Task.Delay(10); // Simulate async operation
         _executionLog.Add("CanStartAsync:End");
         return true;
     }
@@ -55,7 +55,7 @@ public partial class SimpleAsyncMachine
         _executionLog.Add("ProcessAsync:End");
     }
 
-    // Sync action (dozwolone w async maszynie)
+    // Sync action (allowed in async machine)
     [Transition(AsyncStates.Processing, AsyncTriggers.Complete, AsyncStates.Completed, Action = nameof(Complete))]
     private void Complete()
     {
@@ -97,7 +97,7 @@ public class BasicAsyncStateMachineTests
         result.ShouldBeTrue();
         machine.CurrentState.ShouldBe(AsyncStates.Processing);
 
-        // Sprawdzamy kolejność wykonania
+        // Check execution order
         machine.ExecutionLog.ShouldBe(new[]
         {
             "CanStartAsync:Begin",
@@ -117,7 +117,7 @@ public class BasicAsyncStateMachineTests
         await machine.FireAsync(AsyncTriggers.Process);
 
         // Assert
-        machine.CurrentState.ShouldBe(AsyncStates.Processing); // Stan się nie zmienił
+        machine.CurrentState.ShouldBe(AsyncStates.Processing); // State did not change
         machine.ExecutionLog.ShouldContain("ProcessAsync:Begin");
         machine.ExecutionLog.ShouldContain("ProcessAsync:End");
         machine.ExecutionLog.IndexOf("ProcessAsync:Begin").ShouldBeLessThan(
@@ -137,7 +137,7 @@ public class BasicAsyncStateMachineTests
         machine.CurrentState.ShouldBe(AsyncStates.Completed);
         var log = machine.ExecutionLog;
 
-        // OnExit powinno być przed akcją
+        // OnExit should be before action
         log.IndexOf("OnProcessingExit:Begin").ShouldBeLessThan(log.IndexOf("Complete:Sync"));
     }
 
@@ -148,7 +148,7 @@ public class BasicAsyncStateMachineTests
         var machine = new SimpleAsyncMachine(AsyncStates.Initial);
         await machine.StartAsync();
 
-        // Act & Assert - wszystkie sync metody powinny rzucać wyjątek
+        // Act & Assert - all sync methods should throw exception
         Should.Throw<SyncCallOnAsyncMachineException>(() => machine.TryFire(AsyncTriggers.Start));
         Should.Throw<SyncCallOnAsyncMachineException>(() => machine.Fire(AsyncTriggers.Start));
         Should.Throw<SyncCallOnAsyncMachineException>(() => machine.CanFire(AsyncTriggers.Start));
@@ -163,7 +163,7 @@ public class BasicAsyncStateMachineTests
         await machine.StartAsync();
         using var cts = new CancellationTokenSource();
 
-        // Act - anuluj przed operacją
+        // Act - cancel before operation
         cts.Cancel();
 
         // Assert
@@ -174,7 +174,7 @@ public class BasicAsyncStateMachineTests
     [Fact]
     public async Task Initial_OnEntry_Is_FireAndForget_When_Constructed_In_Processing()
     {
-        // Arrange – stan startowy ma OnEntry async
+        // Arrange - initial state has OnEntry async
         var machine = new SimpleAsyncMachine(AsyncStates.Processing);
         await machine.StartAsync();
 
@@ -242,10 +242,10 @@ public class BasicAsyncStateMachineTests
         await Task.WhenAll(vtasks.Select(vt => vt.AsTask()));
 
 
-        // Assert – stan się nie zmienia (internal transition)
+        // Assert - state does not change (internal transition)
         machine.CurrentState.ShouldBe(AsyncStates.Processing);
 
-        // Powinno być tyle samo Begin/End co wywołań
+        // Should be the same number of Begin/End as calls
         machine.ExecutionLog.Count(s => s == "ProcessAsync:Begin").ShouldBe(fires);
         machine.ExecutionLog.Count(s => s == "ProcessAsync:End").ShouldBe(fires);
     }

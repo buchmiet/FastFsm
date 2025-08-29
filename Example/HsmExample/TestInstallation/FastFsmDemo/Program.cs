@@ -1,2 +1,2 @@
-﻿// See https://aka.ms/new-console-template for more information
+﻿// FastFsm Demo Application
 Console.WriteLine("Hello, World!");

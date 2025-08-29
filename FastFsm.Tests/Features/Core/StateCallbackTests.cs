@@ -123,13 +123,13 @@ public class StateCallbackTests(ITestOutputHelper output)
         // Act - Self transition (not internal)
         machine.Fire(SelfTrigger.Refresh);
 
-        // Assert - OnExit i OnEntry są wywołane, a następnie Action
+        // Assert - OnExit and OnEntry are called, then Action
         Assert.Equal(3, typedMachine.EventLog.Count);
         Assert.Equal("OnExit-Active", typedMachine.EventLog[0]);
         Assert.Equal("OnEntry-Active", typedMachine.EventLog[1]);
         Assert.Equal("RefreshAction", typedMachine.EventLog[2]);
 
-        // Stan pozostaje Active (self-transition)
+        // State remains Active (self-transition)
         Assert.Equal(SelfState.Active, machine.CurrentState);
     }
 
@@ -141,12 +141,12 @@ public class StateCallbackTests(ITestOutputHelper output)
         machine.Start();
         var typedMachine = machine;
 
-        // Act & Assert - OnExit throws -> wyjątek i stan BEZ zmiany
+        // Act & Assert - OnExit throws -> exception and state WITHOUT change
         typedMachine.ThrowInOnExit = true;
         Assert.Throws<InvalidOperationException>(() => machine.Fire(ExceptionTrigger.Go));
         Assert.Equal(ExceptionState.A, machine.CurrentState); // state unchanged
 
-        // Act & Assert - OnEntry throws -> wyjątek, ALE stan JUŻ zmieniony
+        // Act & Assert - OnEntry throws -> exception, BUT state ALREADY changed
         typedMachine.ThrowInOnExit = false;
         typedMachine.ThrowInOnEntry = true;
         Assert.Throws<InvalidOperationException>(() => machine.Fire(ExceptionTrigger.Go));

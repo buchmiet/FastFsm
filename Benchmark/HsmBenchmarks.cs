@@ -8,7 +8,7 @@ using Stateless;
 
 namespace Benchmark;
 
-// ===== 1) Wspólne enumy dla HSM =====
+// ===== 1) Common enums for HSM =====
 public enum HsmState { Outside, Parent, Parent_Child1, Parent_Child2, End }
 public enum HsmTrigger { EnterParent, LeaveParent, Toggle, Tick }
 
@@ -24,20 +24,20 @@ public partial class FastFsmHsmBasic
     [State(HsmState.Parent_Child2, Parent = HsmState.Parent)]
     private void SChildren() { }
 
-    // Outside -> Parent (auto-zjazd do Child1), Parent -> Outside
+    // Outside -> Parent (auto-descent to Child1), Parent -> Outside
     [Transition(HsmState.Outside, HsmTrigger.EnterParent, HsmState.Parent)]
     [Transition(HsmState.Parent, HsmTrigger.LeaveParent, HsmState.Outside)]
-    // Child1<->Child2 dla ruchu po hierarchii
+    // Child1<->Child2 for movement within hierarchy
     [Transition(HsmState.Parent_Child1, HsmTrigger.Toggle, HsmState.Parent_Child2)]
     [Transition(HsmState.Parent_Child2, HsmTrigger.Toggle, HsmState.Parent_Child1)]
     private void Configure() { }
 
-    // Internal na rodzicu — działa w obu childach, bez zmiany stanu
+    // Internal on parent — works in both children, without state change
     [InternalTransition(HsmState.Parent, HsmTrigger.Tick, Action = nameof(OnTick))]
     private void InternalOnParent() { }
 
     private void OnParentEntry() { /* nop */ }
-    private void OnParentExit() { /* zapisy historii robi generator gdy trzeba */ }
+    private void OnParentExit() { /* history recording is done by generator when needed */ }
     private void OnTick() { /* nop */ }
 }
 
@@ -49,10 +49,10 @@ public partial class FastFsmHsmAsync
     [State(HsmState.Parent_Child2, Parent = HsmState.Parent)]
     private void States() { }
 
-    // DWIE strony Toggle (oba z async action)
+    // TWO sides of Toggle (both with async action)
     [Transition(HsmState.Parent_Child1, HsmTrigger.Toggle, HsmState.Parent_Child2, Action = nameof(DoAsyncExit))]
     [Transition(HsmState.Parent_Child2, HsmTrigger.Toggle, HsmState.Parent_Child1, Action = nameof(DoAsyncExit))]
-    // Wejście/wyjście hierarchii
+    // Hierarchy entry/exit
     [Transition(HsmState.Outside, HsmTrigger.EnterParent, HsmState.Parent)]
     [Transition(HsmState.Parent, HsmTrigger.LeaveParent, HsmState.Outside)]
     private void Transitions() { }
@@ -63,7 +63,7 @@ public partial class FastFsmHsmAsync
     }
 }
 
-// Shallow history na rodzicu
+// Shallow history on parent
 [Abstractions.Attributes.StateMachine(typeof(HsmState), typeof(HsmTrigger), EnableHierarchy = true)]
 public partial class FastFsmHsmHistoryShallow
 {
@@ -91,7 +91,7 @@ public sealed class StatelessHsm
     {
         SM = new StateMachine<HsmState, HsmTrigger>(HsmState.Outside);
 
-        // Hierarchia
+        // Hierarchy
         SM.Configure(HsmState.Parent)
             .InitialTransition(HsmState.Parent_Child1);
         SM.Configure(HsmState.Parent_Child1)
@@ -99,19 +99,19 @@ public sealed class StatelessHsm
         SM.Configure(HsmState.Parent_Child2)
             .SubstateOf(HsmState.Parent);
 
-        // Wejście/wyjście hierarchii
+        // Hierarchy entry/exit
         SM.Configure(HsmState.Outside)
             .Permit(HsmTrigger.EnterParent, HsmState.Parent);
         SM.Configure(HsmState.Parent)
             .Permit(HsmTrigger.LeaveParent, HsmState.Outside);
 
-        // Ruch wewnątrz hierarchii
+        // Movement within hierarchy
         SM.Configure(HsmState.Parent_Child1)
             .Permit(HsmTrigger.Toggle, HsmState.Parent_Child2);
         SM.Configure(HsmState.Parent_Child2)
             .Permit(HsmTrigger.Toggle, HsmState.Parent_Child1);
 
-        // Internal na rodzicu (obowiązuje w childach)
+        // Internal on parent (applies to children)
         SM.Configure(HsmState.Parent)
             .InternalTransition(HsmTrigger.Tick, _ => { /* nop */ });
     }
@@ -132,7 +132,7 @@ public sealed class StatelessHsmAsync
         SM.Configure(HsmState.Outside).Permit(HsmTrigger.EnterParent, HsmState.Parent);
         SM.Configure(HsmState.Parent).Permit(HsmTrigger.LeaveParent, HsmState.Outside);
 
-        // DWUKIERUNKOWY Toggle, oba z OnExitAsync (real async)
+        // BIDIRECTIONAL Toggle, both with OnExitAsync (real async)
         SM.Configure(HsmState.Parent_Child1)
           .Permit(HsmTrigger.Toggle, HsmState.Parent_Child2)
           .OnExitAsync(async () => await Task.Yield());
@@ -143,7 +143,7 @@ public sealed class StatelessHsmAsync
     }
 }
 
-// ===== 3) Benchmarki HSM (BDN) =====
+// ===== 3) HSM Benchmarks (BDN) =====
 
 [SimpleJob(RuntimeMoniker.Net90, launchCount: 1, warmupCount: 3, iterationCount: 15)]
 [MemoryDiagnoser]
@@ -182,7 +182,7 @@ public class HsmBenchmarks
         _slAsync = new StatelessHsmAsync();
     }
 
-    // ---------- WSPÓLNE: HSM-Basic (Outside -> Parent(auto Child1) -> Outside) ----------
+    // ---------- COMMON: HSM-Basic (Outside -> Parent(auto Child1) -> Outside) ----------
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("HSM-Basic")]
     public void FastFSM_Hsm_Basic_EnterLeave()
     {
@@ -207,7 +207,7 @@ public class HsmBenchmarks
         BenchmarkDotNet.Engines.DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_slBasic.SM);
     }
 
-    // ---------- WSPÓLNE: HSM-Internal (Parent-level internal, brak zmiany stanu) ----------
+    // ---------- COMMON: HSM-Internal (Parent-level internal, no state change) ----------
     [GlobalSetup(Targets = new[] { nameof(FastFSM_Hsm_Internal), nameof(Stateless_Hsm_Internal) })]
     public void Setup_InternalState()
     {
@@ -248,7 +248,7 @@ public class HsmBenchmarks
         BenchmarkDotNet.Engines.DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_slBasic.SM);
     }
 
-    // ---------- WSPÓLNE: HSM-Async (real async: Task.Yield) ----------
+    // ---------- COMMON: HSM-Async (real async: Task.Yield) ----------
     [GlobalSetup(Targets = new[] { nameof(FastFSM_Hsm_AsyncYield), nameof(Stateless_Hsm_AsyncYield) })]
     public async Task Setup_AsyncState()
     {
@@ -290,7 +290,7 @@ public class HsmBenchmarks
     }
 
     // ---------- FASTFSM-ONLY: Shallow History ----------
-    // Sekwencja: Outside->Parent(auto Child1)->Toggle(Child2)->LeaveParent->EnterParent (restore Child2)
+    // Sequence: Outside->Parent(auto Child1)->Toggle(Child2)->LeaveParent->EnterParent (restore Child2)
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("HSM-History-Shallow", "FastFSM-only")]
     public void FastFSM_Hsm_History_Shallow()
     {
@@ -299,7 +299,7 @@ public class HsmBenchmarks
         {
             _fastHist.TryFire(HsmTrigger.EnterParent); // -> Child1
             _fastHist.TryFire(HsmTrigger.Toggle);      // Child1 -> Child2
-            _fastHist.TryFire(HsmTrigger.LeaveParent); // zapisz shallow history = Child2
+            _fastHist.TryFire(HsmTrigger.LeaveParent); // save shallow history = Child2
             _fastHist.TryFire(HsmTrigger.EnterParent); // restore Child2
             acc ^= (int)_fastHist.CurrentState;
         }

@@ -7,8 +7,8 @@ using System.Linq;
 namespace Generator.Log
 {
     /// <summary>
-    /// Generator klasy logującej dla maszyny stanów.
-    /// Tworzy statyczną klasę {ClassName}Log z zestawem metod rozszerzających ILogger.
+    /// Generator of logging class for state machine.
+    /// Creates a static class {ClassName}Log with a set of ILogger extension methods.
     /// </summary>
     public sealed class LoggingClassGenerator
     {
@@ -19,7 +19,7 @@ namespace Generator.Log
             new IndentedStringBuilder.IndentedStringBuilder("    ");
 
         /// <summary>
-        /// Dodatkowe usingi do wstawienia w nagłówku wygenerowanego pliku.
+        /// Additional usings to insert in the header of the generated file.
         /// </summary>
         public ICollection<string> AdditionalUsings { get; } =
             new List<string> { "System", "Microsoft.Extensions.Logging" };
@@ -45,7 +45,7 @@ namespace Generator.Log
             foreach (var u in AdditionalUsings.OrderBy(n => n, StringComparer.Ordinal))
                 _sb.AppendLine($"using {u};");
 
-            _sb.AppendLine(); // pusta linia
+            _sb.AppendLine(); // empty line
         }
 
         private void WriteNamespaceAndClass()
@@ -325,7 +325,7 @@ namespace Generator.Log
             _sb.AppendLine();
         }
 
-        // ---- Statyczne helpery używane przez inne generatory ----
+        // ---- Static helpers used by other generators ----
 
         public static void WriteLoggerField(string className, ref IndentedStringBuilder.IndentedStringBuilder sb)
         {
@@ -336,7 +336,7 @@ namespace Generator.Log
 
         public static string GetLoggerConstructorParameter(string className, ref IndentedStringBuilder.IndentedStringBuilder sb)
         {
-            // sb jest tu nieużywany, ale zostawiamy podpis zgodny z oryginałem
+            // sb is unused here, but we keep the signature consistent with the original
             return $"ILogger<{className}>? logger = null";
         }
 

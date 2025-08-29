@@ -1,9 +1,9 @@
-﻿//  ←  NOWY using
+﻿//  New using
 
 namespace Generator;
 
 /// <summary>
-/// Zbiór stałych/literalów używanych przez generator.
+/// Collection of constants/literals used by the generator.
 /// </summary>
 internal static class Strings
 {
@@ -14,7 +14,7 @@ internal static class Strings
     public const string InternalTransitionAttributeName = "FastFsm.Attributes.InternalTransitionAttribute";
 
     // ──────────────────────────────────────────────────────────────
-    //  Dependency-Injection (nazwy pól/typów)
+    //  Dependency-Injection (field/type names)
     // ──────────────────────────────────────────────────────────────
     public const string ServiceProviderField = "_serviceProvider";
    // public const string ActivatorUtilitiesClass = "Microsoft.Extensions.DependencyInjection.ActivatorUtilities";
@@ -28,7 +28,7 @@ internal static class Strings
     public const string StateMachineWithPayloadFactoryInterface = "IStateMachineWithPayloadFactory";
 
     // ──────────────────────────────────────────────────────────────
-    //  Pełne nazwy atrybutów (Roslyn)
+    //  Full attribute names (Roslyn)
     // ──────────────────────────────────────────────────────────────
     public const string AbstractionsNamespace = "Abstractions.Attributes";
 
@@ -37,10 +37,9 @@ internal static class Strings
     public const string InternalTransitionAttributeFullName = $"{AbstractionsNamespace}.InternalTransitionAttribute";
     public const string StateAttributeFullName = $"{AbstractionsNamespace}.StateAttribute";
     public const string PayloadTypeAttributeFullName = $"{AbstractionsNamespace}.PayloadTypeAttribute";
-    // Variants removed in 0.8 — GenerationModeAttribute no longer exists
 
     // ──────────────────────────────────────────────────────────────
-    //  Callback-types / nazwy parametrów w atrybutach
+    //  Callback-types / parameter names in attributes
     // ──────────────────────────────────────────────────────────────
     public const string GuardCallbackType = "Guard";
     public const string ActionCallbackType = "Action";
@@ -62,7 +61,7 @@ internal static class Strings
     public const string ArrayEmptyMethod = "System.Array.Empty";
 
     // ──────────────────────────────────────────────────────────────
-    //  Nazwy pól/zmiennych generowanych maszyn
+    //  Field/variable names for generated machines
     // ──────────────────────────────────────────────────────────────
     public const string CurrentStateField = "_currentState";
     public const string OriginalStateVar = "originalState";
@@ -72,13 +71,13 @@ internal static class Strings
     public const string PayloadMapField = "_payloadMap";
 
     // ──────────────────────────────────────────────────────────────
-    //  Komentarze w kodzie gen.
+    //  Comments in generated code
     // ──────────────────────────────────────────────────────────────
     public const string NoTransitionsComment = "// No transitions defined";
     public const string InitialOnEntryComment = "// Initial OnEntry dispatch";
 
     // ──────────────────────────────────────────────────────────────
-    //  Standardowe przestrzenie nazw (do importu)
+    //  Standard namespaces (for import)
     // ──────────────────────────────────────────────────────────────
     public const string NamespaceSystem = "System";
     public const string NamespaceSystemCollectionsGeneric = "System.Collections.Generic";
