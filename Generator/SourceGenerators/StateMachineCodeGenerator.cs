@@ -1122,7 +1122,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             if (ShouldGenerateLogging)
             {
                 WriteLogStatement("Debug",
-                    $"HierarchicalTransition(_logger, _instanceId, NameOf(({stateTypeForUsage})bestFromIndex), NameOf(_currentState), NameOf(({stateTypeForUsage})lca), __exitCount, __entryCount);");
+                    $"HierarchicalTransition(_logger, _instanceId, NameOf(({stateTypeForUsage})srcLeaf), NameOf(_currentState), NameOf(({stateTypeForUsage})lca), __exitCount, __entryCount);");
                 WriteLogStatement("Trace",
                     $"ActivePath(_logger, _instanceId, DumpActivePath());");
             }
