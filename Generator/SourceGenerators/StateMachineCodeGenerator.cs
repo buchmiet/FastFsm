@@ -1892,12 +1892,12 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                 Sb.AppendLine();
                 Sb.AppendLine("// Copy from precomputed array to destination span");
                 Sb.AppendLine($"var result = s_perm__Mask[mask];");
-                Sb.AppendLine("if (result.Count > destination.Length) return -1;");
-                Sb.AppendLine("for (int i = 0; i < result.Count; i++)");
+                Sb.AppendLine("if (result.Length > destination.Length) return -1;");
+                Sb.AppendLine("for (int i = 0; i < result.Length; i++)");
                 Sb.AppendLine("{");
                 Sb.AppendLine("    destination[i] = result[i];");
                 Sb.AppendLine("}");
-                Sb.AppendLine("return result.Count;");
+                Sb.AppendLine("return result.Length;");
             }
             Sb.AppendLine();
         }
