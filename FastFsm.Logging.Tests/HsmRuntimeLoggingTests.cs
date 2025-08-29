@@ -1,4 +1,4 @@
-using Abstractions.Attributes;
+﻿using Abstractions.Attributes;
 using Microsoft.Extensions.Logging;
 using Shouldly;
 using Xunit;
@@ -42,33 +42,58 @@ namespace FastFsm.Logging.Tests
         }
 
 
+        public sealed class TestLogger<T> : ILogger<T>
+        {
+            public readonly List<LogEntry> Entries = new();
+            public readonly record struct LogEntry(LogLevel Level, string EventName, string Message);
 
+            IDisposable ILogger.BeginScope<TState>(TState state) => NullScope.Instance;
+            bool ILogger.IsEnabled(LogLevel level) => true;
 
+            void ILogger.Log<TState>(LogLevel level, EventId eventId, TState state, Exception? ex, Func<TState, Exception?, string> formatter)
+            {
+                Entries.Add(new(level, eventId.Name ?? string.Empty, formatter(state, ex)));
+            }
+
+            private sealed class NullScope : IDisposable { public static readonly NullScope Instance = new(); public void Dispose() { } }
+        }
         [Fact]
         public void HistoryRestored_WhenReturningToA_IsLogged()
         {
-            // Arrange
-            LoggedMessages.Clear();
-            var machine = new HsmMachine(HState.A, GetLogger<HsmMachine>());
-            machine.Start(); // A1
+            var logger = new TestLogger<HsmMachine>();
+            var machine = new HsmMachine(HState.A, logger);
 
-            // Move within A to A2 to establish history (external within same composite)
-            machine.TryFire(HTrigger.MoveToA2); // A1 -> A2
+            machine.Start();                       // A1
+            machine.TryFire(HTrigger.MoveToA2);    // A1 -> A2 (ustawia historię A=A2)
+            machine.TryFire(HTrigger.Switch);      // A -> B (B1 Initial)
+            machine.TryFire(HTrigger.Back);        // B -> A (przywraca historię A2)
 
-            // Switch A -> B (land at B1)
-            machine.TryFire(HTrigger.Switch);
-            // Go back B -> A, should use shallow history to A2
-            machine.TryFire(HTrigger.Back);
+            // Szukamy wpisów po nazwie eventu i fragmencie treści (odpornie na kolejność)
+            VerifyLogMessage(logger, LogLevel.Debug, "CompositeStateEntry", "A", "A2", "History");
+            VerifyLogMessage(logger, LogLevel.Debug, "HistoryRestored", "Shallow", "A", "A2");
+            VerifyLogMessage(logger, LogLevel.Debug, "HierarchicalTransition", "B1", "A2");
+            VerifyLogMessage(logger, LogLevel.Trace, "ActivePath", "A", "A2");
+        }
 
-            // Assert
-            // CompositeStateEntry for A should resolve to A2 with History
-            VerifyLogMessage(LogLevel.Debug, "CompositeStateEntry", "A", "A2", "History");
-            // HistoryRestored with Shallow and restored A2
-            VerifyLogMessage(LogLevel.Debug, "HistoryRestored", "Shallow", "A", "A2");
-            // Also expect hierarchical transition summary
-            VerifyLogMessage(LogLevel.Debug, "HierarchicalTransition", "B1", "A2");
-            // And ActivePath reflecting A / A2
-            VerifyLogMessage(LogLevel.Trace, "ActivePath", "A", "A2");
+        private static void VerifyLogMessage(
+            TestLogger<HsmMachine> logger,
+            LogLevel expectedLevel,
+            string expectedEventName,
+            params string[] expectedMessageParts)
+        {
+            var match = logger.Entries.FirstOrDefault(e =>
+                e.Level == expectedLevel &&
+                string.Equals(e.EventName, expectedEventName, StringComparison.Ordinal) &&
+                expectedMessageParts.All(p => e.Message.IndexOf(p, StringComparison.OrdinalIgnoreCase) >= 0));
+
+            if (match.Equals(default(TestLogger<HsmMachine>.LogEntry)))
+            {
+                var dump = string.Join(Environment.NewLine, logger.Entries.Select(e =>
+                    $"[{e.Level}] {e.EventName}: {e.Message}"));
+                throw new Xunit.Sdk.XunitException(
+                    $"Expected event '{expectedEventName}' at level {expectedLevel} with parts: {string.Join(", ", expectedMessageParts)}" +
+                    $"{Environment.NewLine}--- Captured logs ---{Environment.NewLine}{dump}");
+            }
         }
     }
 
