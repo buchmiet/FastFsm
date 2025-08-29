@@ -22,3 +22,15 @@ pub use payload::{PayloadMachine, PayloadEvent, Payload};
 // Re-exports for async
 pub use async_hot::{AsyncHotMachine};
 pub use async_cold::{AsyncColdMachine};
+
+// HSM (manual, apples-to-apples scenarios)
+mod hsm_manual;
+pub use hsm_manual::{
+    HsmMachine,
+    HsmEvent,
+    HsmHierarchicalSetup,
+    HsmHistorySetup,
+};
+
+mod hsm_statig;
+pub use hsm_statig::{StatigHsm, HsmEvent as StatigHsmEvent};

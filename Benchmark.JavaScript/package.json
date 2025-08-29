@@ -1,0 +1,14 @@
+{
+  "name": "benchmark.javascript",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "mitata": "^1.0.34",
+    "robot3": "^1.1.1",
+    "xstate": "^5.20.2"
+  },
+  "scripts": {
+    "bench:libs": "node benchmark.libs.js"
+  }
+}
+
