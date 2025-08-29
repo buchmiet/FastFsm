@@ -351,4 +351,6 @@ CLAUDE.md
 .nuget/
 bin/
 include/
-tui/__pycache__
+tui/__pycache__/
+Benchmark.TypeScript/node_modules/
+Benchmark.JavaScript/node_modules/

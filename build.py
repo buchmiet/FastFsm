@@ -297,8 +297,11 @@ def git_commit_and_tag(new_version: str, do_commit: bool, do_tag: bool):
                 label="git tag", fatal=False)
 
 def dotnet_pack(csproj: Path, configuration: str, label: str):
-    """Pack with TUI label"""
-    run(["dotnet", "pack", str(csproj), "-c", configuration, "-o", str(NUGET_DIR)],
+    """Reliably pack a project by building first, then packing without building."""
+    # Build first to ensure all referenced analyzer outputs exist
+    run(["dotnet", "build", str(csproj), "-c", configuration])
+    # Then pack without building again
+    run(["dotnet", "pack", str(csproj), "-c", configuration, "--no-build", "-o", str(NUGET_DIR)],
         label=label)
 
 def restore_tests_with_local():

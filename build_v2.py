@@ -164,10 +164,13 @@ class BuildRunner:
             return 1, "", str(e)
     
     def pack_project(self, name: str, csproj: Path, configuration: str) -> bool:
-        """Pack a project (also builds it)."""
+        """Pack a project: build first, then pack without building."""
+        # Build first to guarantee binaries exist (avoids NU5026)
+        if not self.build_project(csproj, configuration):
+            print(f"Build failed for {name}; skipping pack.")
+            return False
         task_id = f"pack_{name}"
-        cmd = ["dotnet", "pack", str(csproj), "-c", configuration, "-o", str(NUGET_DIR)]
-        
+        cmd = ["dotnet", "pack", str(csproj), "-c", configuration, "--no-build", "-o", str(NUGET_DIR)]
         returncode, _, _ = self.run_command(cmd, task_id)
         return returncode == 0
     
@@ -196,7 +199,8 @@ class BuildRunner:
             return True
         
         task_id = f"test_{csproj.parent.name}"
-        cmd = ["dotnet", "test", str(csproj), "-c", configuration, "--no-build", "--no-restore"]
+        # Let dotnet test perform its own build/restore for reliability
+        cmd = ["dotnet", "test", str(csproj), "-c", configuration]
         
         returncode, _, _ = self.run_command(cmd, task_id)
         return returncode == 0
@@ -295,10 +299,17 @@ def main():
         # Execute build steps
         NUGET_DIR.mkdir(exist_ok=True)
         
-        # Pack projects (which also builds them)
+        # Pack projects (explicit build, then pack)
         for key, (name, csproj) in PACKAGE_IDS.items():
             if not runner.pack_project(name, csproj, args.configuration):
-                print(f"Pack failed for {name}", file=sys.stderr)
+                # Render summary and exit with a clear message
+                ui.summary()
+                print(f"Pack failed for {name}. See above for details.")
+                if hasattr(ui, 'stop'):
+                    try:
+                        ui.stop()
+                    except Exception:
+                        pass
                 sys.exit(1)
         
         # Restore test projects
