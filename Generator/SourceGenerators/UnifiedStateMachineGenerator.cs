@@ -429,7 +429,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                     Sb.AppendLine();
                     Sb.AppendLine("// Execute OnEntry from root to leaf");
                     using (Sb.Block("for (int i = 0; i < written; i++)"))
-                    using (Sb.Block($"switch (span[i])"))
+                    using (Sb.Block($"switch (rented[i])"))
                 {
                     foreach (var stateEntry in statesWithParameterlessOnEntry)
                     {
