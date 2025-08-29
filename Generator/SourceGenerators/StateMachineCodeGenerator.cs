@@ -991,11 +991,6 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         
         // Apply the best candidate if found
         Sb.AppendLine("// Apply winner");
-        // Capture from-state for diagnostics
-        if (ShouldGenerateLogging)
-        {
-            Sb.AppendLine("var __fromName = NameOf(_currentState);");
-        }
         using (Sb.Block("if (!found)"))
         {
         // No matching transition - failure
