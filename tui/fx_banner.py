@@ -51,6 +51,7 @@ class FxBanner:
         self.width = 80
         self.height = 8
         self.framebuffer = [(0, 0, 0)] * (self.width * self.height)
+        self.charbuffer = [' '] * (self.width * self.height)  # Character buffer for logo
         self.palette = palette or PALETTE_RGB
         self.logo_lines = logo_lines
         self.t0 = time.monotonic()
@@ -83,6 +84,7 @@ class FxBanner:
         self.width = width
         self.height = height
         self.framebuffer = [(0, 0, 0)] * (width * height)
+        self.charbuffer = [' '] * (width * height)
     
     def _plasma(self, x: float, y: float, t: float) -> Tuple[int, int, int]:
         """Calculate plasma color at position."""
@@ -168,6 +170,9 @@ class FxBanner:
         if not self.logo_lines:
             return
         
+        # Clear character buffer first
+        self.charbuffer = [' '] * (self.width * self.height)
+        
         logo_height = len(self.logo_lines)
         logo_width = max(len(line) for line in self.logo_lines) if self.logo_lines else 0
         
@@ -175,9 +180,9 @@ class FxBanner:
         start_y = max(0, (self.height - logo_height) // 2)
         start_x = max(0, (self.width - logo_width) // 2)
         
-        # Logo colors (cool tones)
-        logo_fg = (0, 255, 255)  # Cyan
-        logo_bg = (0, 64, 128)   # Dark blue
+        # Brightening factor for logo
+        bright_factor = 2.0  # Main characters - brighter
+        medium_factor = 1.6  # Secondary characters
         
         for ly, line in enumerate(self.logo_lines):
             y = start_y + ly
@@ -191,11 +196,24 @@ class FxBanner:
                 
                 if char not in (' ', ''):
                     idx = y * self.width + x
-                    # Use bright color for logo characters
+                    # Store character in buffer
+                    self.charbuffer[idx] = char
+                    
+                    # Brighten existing plasma colors instead of overwriting
+                    r, g, b = self.framebuffer[idx]
+                    
                     if char in ('█', '╗', '╔', '╝', '╚', '║', '═'):
-                        self.framebuffer[idx] = logo_fg
+                        # Main logo characters - brighten more
+                        r = min(255, int(r * bright_factor + 80))
+                        g = min(255, int(g * bright_factor + 80))
+                        b = min(255, int(b * bright_factor + 80))
                     else:
-                        self.framebuffer[idx] = logo_bg
+                        # Other characters - moderate brightening
+                        r = min(255, int(r * medium_factor + 40))
+                        g = min(255, int(g * medium_factor + 40))
+                        b = min(255, int(b * medium_factor + 40))
+                    
+                    self.framebuffer[idx] = (r, g, b)
     
     def frame(self, now: Optional[float] = None) -> 'RenderOutput':
         """Render a frame and return as Rich Text or ANSI string."""
@@ -230,9 +248,15 @@ class FxBanner:
             for x in range(self.width):
                 idx = y * self.width + x
                 r, g, b = self.framebuffer[idx]
+                char = self.charbuffer[idx]
                 
-                # Use space with background color for solid fill
-                output.append(' ', style=f'on rgb({r},{g},{b})')
+                # Use character from buffer, with appropriate styling
+                if char != ' ':
+                    # Logo character - use bright foreground on colored background
+                    output.append(char, style=f'bold white on rgb({r},{g},{b})')
+                else:
+                    # Empty space - just background color
+                    output.append(' ', style=f'on rgb({r},{g},{b})')
         
         return output
     

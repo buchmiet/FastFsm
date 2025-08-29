@@ -16,6 +16,10 @@ class TaskInfo:
         self.warnings = 0
         self.errors = 0
         self.progress = 0  # 0-100
+    
+    def __str__(self) -> str:
+        """String representation for plain/ansi UI"""
+        return getattr(self, "label", getattr(self, "name", ""))
 
 class ITui(ABC):
     """Abstract base for TUI implementations"""

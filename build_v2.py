@@ -164,9 +164,9 @@ class BuildRunner:
             return 1, "", str(e)
     
     def pack_project(self, name: str, csproj: Path, configuration: str) -> bool:
-        """Pack a project."""
+        """Pack a project (also builds it)."""
         task_id = f"pack_{name}"
-        cmd = ["dotnet", "pack", str(csproj), "-c", configuration, "--no-build"]
+        cmd = ["dotnet", "pack", str(csproj), "-c", configuration, "-o", str(NUGET_DIR)]
         
         returncode, _, _ = self.run_command(cmd, task_id)
         return returncode == 0
@@ -213,25 +213,15 @@ def collect_tasks(args) -> List[TaskInfo]:
     """Collect all tasks to be executed."""
     tasks = []
     
-    # Pack tasks
+    # Pack tasks (which also build)
     for key, (name, csproj) in PACKAGE_IDS.items():
         task = TaskInfo(
             label=f"pack {name}",
-            estimated_time=3.0
+            estimated_time=5.0  # Increased since it also builds
         )
         # Add id as attribute for our tracking
-        task.id = f"pack_{key}"
+        task.id = f"pack_{name}"
         task.name = f"pack {name}"
-        tasks.append(task)
-    
-    # Build main projects
-    for key, (name, csproj) in PACKAGE_IDS.items():
-        task = TaskInfo(
-            label=f"build {name}",
-            estimated_time=5.0
-        )
-        task.id = f"build_{key}"
-        task.name = f"build {name}"
         tasks.append(task)
     
     # Restore test projects
@@ -305,15 +295,9 @@ def main():
         # Execute build steps
         NUGET_DIR.mkdir(exist_ok=True)
         
-        # Build main projects
+        # Pack projects (which also builds them)
         for key, (name, csproj) in PACKAGE_IDS.items():
-            if not runner.build_project(csproj, args.configuration):
-                print(f"Build failed for {name}", file=sys.stderr)
-                sys.exit(1)
-        
-        # Pack projects
-        for key, (name, csproj) in PACKAGE_IDS.items():
-            if not runner.pack_project(key, csproj, args.configuration):
+            if not runner.pack_project(name, csproj, args.configuration):
                 print(f"Pack failed for {name}", file=sys.stderr)
                 sys.exit(1)
         
