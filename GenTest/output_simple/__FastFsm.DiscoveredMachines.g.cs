@@ -8,7 +8,7 @@ internal static class __FastFsm_DiscoveryDump
     // Valid: 1, Skipped: 0
     // Format: Index | FullyQualifiedName | Status | SkipReason
 
-    // 0: TestFsm.LightController
+    // 0: SimpleMachine
     //     status=VALID
 
     /*
