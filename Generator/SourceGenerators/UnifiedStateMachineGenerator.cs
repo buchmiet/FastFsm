@@ -1354,11 +1354,33 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         // Action (if present) - BEFORE OnEntry (Extensions order)
         if (!string.IsNullOrEmpty(transition.ActionMethod))
         {
-            Sb.AppendLine($"    {transition.ActionMethod}();");
-            if (ShouldGenerateLogging)
+            // For async actions, generate async-specific logging
+            if (IsAsyncMachine && transition.ActionIsAsync)
             {
-                WriteLogStatement("Debug",
-                    $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+                if (ShouldGenerateLogging)
+                {
+                    WriteLogStatement("Debug",
+                        $"AsyncActionStarted(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {transition.FromState} -> {transition.ToState}\");");
+                    Sb.AppendLine("    var actionStart = System.Diagnostics.Stopwatch.GetTimestamp();");
+                }
+                
+                Sb.AppendLine($"    await {transition.ActionMethod}().ConfigureAwait({Model.ContinueOnCapturedContext.ToString().ToLowerInvariant()});");
+                
+                if (ShouldGenerateLogging)
+                {
+                    Sb.AppendLine("    var elapsedMs = System.Diagnostics.Stopwatch.GetElapsedTime(actionStart).TotalMilliseconds;");
+                    WriteLogStatement("Debug",
+                        $"AsyncActionCompleted(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {transition.FromState} -> {transition.ToState}\", elapsedMs);");
+                }
+            }
+            else
+            {
+                Sb.AppendLine($"    {transition.ActionMethod}();");
+                if (ShouldGenerateLogging)
+                {
+                    WriteLogStatement("Debug",
+                        $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+                }
             }
         }
 
