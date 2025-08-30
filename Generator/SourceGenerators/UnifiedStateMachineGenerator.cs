@@ -382,11 +382,77 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
     private void WriteStartMethods()
 {
-        if (IsHierarchical || HasOnEntryExit)
+        if (IsHierarchical || HasOnEntryExit || ShouldGenerateLogging)
     {
             WriteStartMethod();
         }
 }
+
+    private void WriteStartMethod()
+    {
+        if (IsAsyncMachine)
+        {
+            WriteStartAsyncMethod();
+        }
+        else
+        {
+            WriteStartSyncMethod();
+        }
+    }
+
+    private void WriteStartSyncMethod()
+    {
+        using (Sb.Block("public override void Start()"))
+        {
+            Sb.AppendLine("if (IsStarted) return;");
+            Sb.AppendLine();
+            
+            if (IsHierarchical)
+            {
+                Sb.AppendLine("// For HSM: resolve composite initial state to leaf before calling OnInitialEntry");
+                Sb.AppendLine("DescendToInitialIfComposite();");
+                Sb.AppendLine();
+            }
+            
+            Sb.AppendLine("base.Start();");
+            
+            // Log machine started
+            if (ShouldGenerateLogging)
+            {
+                Sb.AppendLine();
+                var stateAccessor = Model.HierarchyEnabled ? $"NameOf({CurrentStateField})" : $"{CurrentStateField}.ToString()";
+                Sb.AppendLine($"{Model.ClassName}Log.MachineStarted(_logger, _instanceId, {stateAccessor});");
+            }
+        }
+        Sb.AppendLine();
+    }
+
+    private void WriteStartAsyncMethod()
+    {
+        using (Sb.Block("public override async ValueTask StartAsync(CancellationToken cancellationToken = default)"))
+        {
+            Sb.AppendLine("if (IsStarted) return;");
+            Sb.AppendLine();
+            
+            if (IsHierarchical)
+            {
+                Sb.AppendLine("// For HSM: resolve composite initial state to leaf before calling OnInitialEntry");
+                Sb.AppendLine("DescendToInitialIfComposite();");
+                Sb.AppendLine();
+            }
+            
+            Sb.AppendLine("await base.StartAsync(cancellationToken).ConfigureAwait(false);");
+            
+            // Log machine started
+            if (ShouldGenerateLogging)
+            {
+                Sb.AppendLine();
+                var stateAccessor = Model.HierarchyEnabled ? $"NameOf({CurrentStateField})" : $"{CurrentStateField}.ToString()";
+                Sb.AppendLine($"{Model.ClassName}Log.MachineStarted(_logger, _instanceId, {stateAccessor});");
+            }
+        }
+        Sb.AppendLine();
+    }
 
     private void WriteInitialEntryMethods(string stateType)
 {
@@ -1325,11 +1391,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                     {
                         using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
                         {
-                            Sb.AppendLine($"CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                            Sb.AppendLine($"{Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
                         }
                         using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)"))
                         {
-                            Sb.AppendLine($"HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
+                            Sb.AppendLine($"{Model.ClassName}Log.HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
                         }
                     }
                     
@@ -2516,11 +2582,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 {
                     Sb.AppendLine($"{indent}    if (_logger?.IsEnabled(LogLevel.Debug) == true)");
                     Sb.AppendLine($"{indent}    {{");
-                    Sb.AppendLine($"{indent}        CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                    Sb.AppendLine($"{indent}        {Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
                     Sb.AppendLine($"{indent}    }}");
                     Sb.AppendLine($"{indent}    if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)");
                     Sb.AppendLine($"{indent}    {{");
-                    Sb.AppendLine($"{indent}        HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
+                    Sb.AppendLine($"{indent}        {Model.ClassName}Log.HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
                     Sb.AppendLine($"{indent}    }}");
                 }
                 
@@ -3016,11 +3082,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 {
                     Sb.AppendLine($"{indent}    if (_logger?.IsEnabled(LogLevel.Debug) == true)");
                     Sb.AppendLine($"{indent}    {{");
-                    Sb.AppendLine($"{indent}        CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                    Sb.AppendLine($"{indent}        {Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
                     Sb.AppendLine($"{indent}    }}");
                     Sb.AppendLine($"{indent}    if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)");
                     Sb.AppendLine($"{indent}    {{");
-                    Sb.AppendLine($"{indent}        HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
+                    Sb.AppendLine($"{indent}        {Model.ClassName}Log.HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
                     Sb.AppendLine($"{indent}    }}");
                 }
                 
