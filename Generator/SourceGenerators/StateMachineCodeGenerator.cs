@@ -416,6 +416,14 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                 Sb.AppendLine("DescendToInitialIfComposite();");
                 Sb.AppendLine();
                 Sb.AppendLine("await base.StartAsync(cancellationToken).ConfigureAwait(" + Model.ContinueOnCapturedContext.ToString().ToLowerInvariant() + ");");
+                
+                // Log machine started
+                if (ShouldGenerateLogging)
+                {
+                    Sb.AppendLine();
+                    WriteLogStatement("Information",
+                        $"MachineStarted(_logger, _instanceId, NameOf({CurrentStateField}));");
+                }
             }
         }
         else
@@ -429,6 +437,14 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                 Sb.AppendLine("DescendToInitialIfComposite();");
                 Sb.AppendLine();
                 Sb.AppendLine("base.Start();");
+                
+                // Log machine started
+                if (ShouldGenerateLogging)
+                {
+                    Sb.AppendLine();
+                    WriteLogStatement("Information",
+                        $"MachineStarted(_logger, _instanceId, NameOf({CurrentStateField}));");
+                }
             }
         }
         Sb.AppendLine();
@@ -579,6 +595,8 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         if (ShouldGenerateLogging)
         {
             WriteLogStatement("Warning",
+                $"UnhandledTrigger(_logger, _instanceId, NameOf({CurrentStateField}), NameOfTrigger(trigger));");
+            WriteLogStatement("Warning",
                 $"TransitionFailed(_logger, _instanceId, NameOf({CurrentStateField}), NameOfTrigger(trigger));");
         }
         Sb.AppendLine("return false;");
@@ -727,6 +745,11 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         // State change
         if (!transition.IsInternal)
         {
+            if (ShouldGenerateLogging)
+            {
+                WriteLogStatement("Debug",
+                    $"TransitionStarted(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\", \"{transition.ToState}\");");
+            }
             Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
         }
 
@@ -1000,6 +1023,8 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         if (ShouldGenerateLogging)
         {
             WriteLogStatement("Warning",
+                $"UnhandledTrigger(_logger, _instanceId, NameOf({CurrentStateField}), NameOfTrigger(trigger));");
+            WriteLogStatement("Warning",
                 $"TransitionFailed(_logger, _instanceId, NameOf({CurrentStateField}), NameOfTrigger(trigger));");
         }
         Sb.AppendLine("return false;");
@@ -1096,11 +1121,11 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                 {
                     using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
                     {
-                        Sb.AppendLine($"{Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, NameOf(({stateTypeForUsage})__targetComposite), NameOf(({stateTypeForUsage})__resolvedIndex), __resolution);");
+                        Sb.AppendLine($"CompositeStateEntry(_logger, _instanceId, NameOf(({stateTypeForUsage})__targetComposite), NameOf(({stateTypeForUsage})__resolvedIndex), __resolution);");
                     }
                     using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)"))
                     {
-                        Sb.AppendLine($"{Model.ClassName}Log.HistoryRestored(_logger, _instanceId, __histMode.ToString(), NameOf(({stateTypeForUsage})__targetComposite), NameOf(({stateTypeForUsage})__resolvedIndex));");
+                        Sb.AppendLine($"HistoryRestored(_logger, _instanceId, __histMode.ToString(), NameOf(({stateTypeForUsage})__targetComposite), NameOf(({stateTypeForUsage})__resolvedIndex));");
                     }
                 }
                 
@@ -1357,11 +1382,11 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             {
                 using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
                 {
-                    Sb.AppendLine($"{Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                    Sb.AppendLine($"CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
                 }
                 using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)"))
                 {
-                    Sb.AppendLine($"{Model.ClassName}Log.HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
+                    Sb.AppendLine($"HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
                 }
             }
             

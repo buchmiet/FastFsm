@@ -84,6 +84,17 @@ namespace Generator.Log
                 WriteCompositeStateEntryMethod();
                 WriteHistoryRestoredMethod();
                 WriteActivePathMethod();
+                _sb.AppendLine();
+                
+                // New lifecycle methods
+                WriteUnhandledTriggerMethod();
+                WriteMachineStartedMethod();
+                WriteMachineStoppedMethod();
+                WriteTransitionStartedMethod();
+                WriteAsyncActionStartedMethod();
+                WriteAsyncActionCompletedMethod();
+                WriteAsyncActionFailedMethod();
+                WriteCallbackExceptionMethod();
             }
         }
 
@@ -91,6 +102,63 @@ namespace Generator.Log
         {
             _sb.AppendLine("// Static LoggerMessage.Define delegates for zero-allocation logging");
             
+            // New lifecycle events (1100+ range)
+            _sb.AppendLine("// UnhandledTrigger");
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, string, Exception?> s_UnhandledTrigger = LoggerMessage.Define<string, string, string>(");
+            _sb.AppendLine("    LogLevel.Warning,");
+            _sb.AppendLine("    new EventId(1100, nameof(UnhandledTrigger)),");
+            _sb.AppendLine("    \"State machine {InstanceId} unhandled trigger: {Trigger} in state {State}\");");
+            _sb.AppendLine();
+
+            _sb.AppendLine("// MachineStarted");
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, Exception?> s_MachineStarted = LoggerMessage.Define<string, string>(");
+            _sb.AppendLine("    LogLevel.Information,");
+            _sb.AppendLine("    new EventId(1101, nameof(MachineStarted)),");
+            _sb.AppendLine("    \"State machine {InstanceId} started at {InitialState}\");");
+            _sb.AppendLine();
+
+            _sb.AppendLine("// MachineStopped");
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, Exception?> s_MachineStopped = LoggerMessage.Define<string, string>(");
+            _sb.AppendLine("    LogLevel.Information,");
+            _sb.AppendLine("    new EventId(1102, nameof(MachineStopped)),");
+            _sb.AppendLine("    \"State machine {InstanceId} stopped at {FinalState}\");");
+            _sb.AppendLine();
+
+            _sb.AppendLine("// TransitionStarted");
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, string, string, Exception?> s_TransitionStarted = LoggerMessage.Define<string, string, string, string>(");
+            _sb.AppendLine("    LogLevel.Debug,");
+            _sb.AppendLine("    new EventId(1103, nameof(TransitionStarted)),");
+            _sb.AppendLine("    \"State machine {InstanceId} transition started: {FromState} --({Trigger})--> {ToState}\");");
+            _sb.AppendLine();
+
+            _sb.AppendLine("// AsyncActionStarted");
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, string, Exception?> s_AsyncActionStarted = LoggerMessage.Define<string, string, string>(");
+            _sb.AppendLine("    LogLevel.Debug,");
+            _sb.AppendLine("    new EventId(1104, nameof(AsyncActionStarted)),");
+            _sb.AppendLine("    \"State machine {InstanceId} async action started: {ActionName} (on {Context})\");");
+            _sb.AppendLine();
+
+            _sb.AppendLine("// AsyncActionCompleted");
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, string, double, Exception?> s_AsyncActionCompleted = LoggerMessage.Define<string, string, string, double>(");
+            _sb.AppendLine("    LogLevel.Debug,");
+            _sb.AppendLine("    new EventId(1105, nameof(AsyncActionCompleted)),");
+            _sb.AppendLine("    \"State machine {InstanceId} async action completed: {ActionName} (on {Context}) in {ElapsedMs}ms\");");
+            _sb.AppendLine();
+
+            _sb.AppendLine("// AsyncActionFailed");
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, string, string, Exception?> s_AsyncActionFailed = LoggerMessage.Define<string, string, string, string>(");
+            _sb.AppendLine("    LogLevel.Warning,");
+            _sb.AppendLine("    new EventId(1106, nameof(AsyncActionFailed)),");
+            _sb.AppendLine("    \"State machine {InstanceId} async action failed: {ActionName} (on {Context}) error: {ErrorType}\");");
+            _sb.AppendLine();
+
+            _sb.AppendLine("// CallbackException");
+            _sb.AppendLine("private static readonly Action<ILogger, string, string, string, string, Exception?> s_CallbackException = LoggerMessage.Define<string, string, string, string>(");
+            _sb.AppendLine("    LogLevel.Warning,");
+            _sb.AppendLine("    new EventId(1107, nameof(CallbackException)),");
+            _sb.AppendLine("    \"State machine {InstanceId} {CallbackKind} threw: {CallbackName} (on {Context})\");");
+            _sb.AppendLine();
+
             // TransitionSucceeded
             _sb.AppendLine("private static readonly Action<ILogger, string, string, string, string, Exception?> s_TransitionSucceeded = LoggerMessage.Define<string, string, string, string>(");
             _sb.AppendLine("    LogLevel.Information,");
@@ -328,6 +396,109 @@ namespace Generator.Log
                     _sb.AppendLine("s_ActivePath(logger, instanceId, path, null);");
                 }
             }
+        }
+
+        private void WriteUnhandledTriggerMethod()
+        {
+            _sb.WriteSummary("Logs unhandled triggers");
+            using (_sb.Block("public static void UnhandledTrigger(ILogger? logger, string instanceId, string state, string trigger)"))
+            {
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Warning) == true)"))
+                {
+                    _sb.AppendLine("s_UnhandledTrigger(logger, instanceId, trigger, state, null);");
+                }
+            }
+            _sb.AppendLine();
+        }
+
+        private void WriteMachineStartedMethod()
+        {
+            _sb.WriteSummary("Logs when state machine starts");
+            using (_sb.Block("public static void MachineStarted(ILogger? logger, string instanceId, string initialState)"))
+            {
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Information) == true)"))
+                {
+                    _sb.AppendLine("s_MachineStarted(logger, instanceId, initialState, null);");
+                }
+            }
+            _sb.AppendLine();
+        }
+
+        private void WriteMachineStoppedMethod()
+        {
+            _sb.WriteSummary("Logs when state machine stops");
+            using (_sb.Block("public static void MachineStopped(ILogger? logger, string instanceId, string finalState)"))
+            {
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Information) == true)"))
+                {
+                    _sb.AppendLine("s_MachineStopped(logger, instanceId, finalState, null);");
+                }
+            }
+            _sb.AppendLine();
+        }
+
+        private void WriteTransitionStartedMethod()
+        {
+            _sb.WriteSummary("Logs when transition starts");
+            using (_sb.Block("public static void TransitionStarted(ILogger? logger, string instanceId, string fromState, string trigger, string toState)"))
+            {
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Debug) == true)"))
+                {
+                    _sb.AppendLine("s_TransitionStarted(logger, instanceId, fromState, trigger, toState, null);");
+                }
+            }
+            _sb.AppendLine();
+        }
+
+        private void WriteAsyncActionStartedMethod()
+        {
+            _sb.WriteSummary("Logs when async action starts");
+            using (_sb.Block("public static void AsyncActionStarted(ILogger? logger, string instanceId, string actionName, string context)"))
+            {
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Debug) == true)"))
+                {
+                    _sb.AppendLine("s_AsyncActionStarted(logger, instanceId, actionName, context, null);");
+                }
+            }
+            _sb.AppendLine();
+        }
+
+        private void WriteAsyncActionCompletedMethod()
+        {
+            _sb.WriteSummary("Logs when async action completes");
+            using (_sb.Block("public static void AsyncActionCompleted(ILogger? logger, string instanceId, string actionName, string context, double elapsedMs)"))
+            {
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Debug) == true)"))
+                {
+                    _sb.AppendLine("s_AsyncActionCompleted(logger, instanceId, actionName, context, elapsedMs, null);");
+                }
+            }
+            _sb.AppendLine();
+        }
+
+        private void WriteAsyncActionFailedMethod()
+        {
+            _sb.WriteSummary("Logs when async action fails");
+            using (_sb.Block("public static void AsyncActionFailed(ILogger? logger, string instanceId, string actionName, string context, Exception ex)"))
+            {
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Warning) == true)"))
+                {
+                    _sb.AppendLine("s_AsyncActionFailed(logger, instanceId, actionName, context, ex.GetType().Name, ex);");
+                }
+            }
+            _sb.AppendLine();
+        }
+
+        private void WriteCallbackExceptionMethod()
+        {
+            _sb.WriteSummary("Logs when callback throws exception");
+            using (_sb.Block("public static void CallbackException(ILogger? logger, string instanceId, string kind, string callbackName, string context, Exception ex)"))
+            {
+                using (_sb.Block("if (logger?.IsEnabled(LogLevel.Warning) == true)"))
+                {
+                    _sb.AppendLine("s_CallbackException(logger, instanceId, kind, callbackName, context, ex);");
+                }
+            }
             _sb.AppendLine();
         }
 
@@ -336,8 +507,21 @@ namespace Generator.Log
         public static void WriteLoggerField(string className, ref IndentedStringBuilder.IndentedStringBuilder sb)
         {
             sb.AppendLine($"private readonly ILogger<{className}>? _logger;");
-            sb.AppendLine("private readonly string _instanceId = Guid.NewGuid().ToString();");
+            // Note: _instanceId is written by UnifiedStateMachineGenerator for async machines
+            // For sync machines with logging, we need to add it here
+            // The UnifiedStateMachineGenerator will need to check this to avoid duplicates
             sb.AppendLine();
+        }
+        
+        public static void WriteInstanceIdFieldIfNeeded(bool isAsyncMachine, ref IndentedStringBuilder.IndentedStringBuilder sb)
+        {
+            // Only write _instanceId for sync machines with logging
+            // Async machines already have it from UnifiedStateMachineGenerator
+            if (!isAsyncMachine)
+            {
+                sb.AppendLine("private readonly string _instanceId = Guid.NewGuid().ToString();");
+                sb.AppendLine();
+            }
         }
 
         public static string GetLoggerConstructorParameter(string className, ref IndentedStringBuilder.IndentedStringBuilder sb)

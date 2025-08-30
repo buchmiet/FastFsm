@@ -215,14 +215,14 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
     private void WriteFields(string className)
     {
-        // Instance ID for async machines
-        if (IsAsyncMachine)
+        // Instance ID for async machines (or for logging in sync machines)
+        if (IsAsyncMachine || ShouldGenerateLogging)
     {
             Sb.AppendLine("private readonly string _instanceId = Guid.NewGuid().ToString();");
             Sb.AppendLine();
         }
 
-        // Logger field
+        // Logger field (but not the _instanceId since we handle it above)
         WriteLoggerField(className);
 
         // Extensions fields
@@ -957,6 +957,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 Sb.AppendLine($"case {stateTypeForUsage}.{fromEsc}:");
                 using (Sb.Block(""))
                 {
+                    if (ShouldGenerateLogging)
+                    {
+                        WriteLogStatement("Debug",
+                            $"TransitionStarted(_logger, _instanceId, \"{fromState}\", \"{triggerName}\", \"{toState}\");");
+                    }
                     Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{toEsc};");
                     if (ShouldGenerateLogging)
                     {
@@ -1218,6 +1223,13 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         Sb.AppendLine("    payload);");
         Sb.AppendLine();
 
+        // Log transition started
+        if (ShouldGenerateLogging)
+        {
+            WriteLogStatement("Debug",
+                $"TransitionStarted(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\", \"{transition.ToState}\");");
+        }
+
         // Hook: Before transition
         Sb.AppendLine("_extensionRunner.RunBeforeTransition(_extensions, smCtx);");
         Sb.AppendLine();
@@ -1313,11 +1325,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                     {
                         using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
                         {
-                            Sb.AppendLine($"{Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                            Sb.AppendLine($"CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
                         }
                         using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)"))
                         {
-                            Sb.AppendLine($"{Model.ClassName}Log.HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
+                            Sb.AppendLine($"HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
                         }
                     }
                     
@@ -1342,11 +1354,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                     
                     using (Sb.Block("    if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
                     {
-                        Sb.AppendLine($"{Model.ClassName}Log.HierarchicalTransition(_logger, _instanceId, __fromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
+                        Sb.AppendLine($"HierarchicalTransition(_logger, _instanceId, __fromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
                     }
                     using (Sb.Block("    if (_logger?.IsEnabled(LogLevel.Trace) == true)"))
                     {
-                        Sb.AppendLine($"{Model.ClassName}Log.ActivePath(_logger, _instanceId, DumpActivePath());");
+                        Sb.AppendLine($"ActivePath(_logger, _instanceId, DumpActivePath());");
                     }
                 }
             }
@@ -1461,7 +1473,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                         Sb.AppendLine($"                    // Internal transition on ancestor: {bestTransition.FromState}");
                         using (Sb.Block("                    if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
                         {
-                            Sb.AppendLine($"                        {Model.ClassName}Log.InternalTransitionOnAncestor(_logger, _instanceId, (({stateType})check).ToString(), __fromName, trigger.ToString());");
+                            Sb.AppendLine($"                        InternalTransitionOnAncestor(_logger, _instanceId, (({stateType})check).ToString(), __fromName, trigger.ToString());");
                         }
                     }
                     
@@ -2142,6 +2154,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             }
             else
         {
+                if (ShouldGenerateLogging)
+                {
+                    WriteLogStatement("Debug",
+                        $"TransitionStarted(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\", \"{transition.ToState}\");");
+                }
                 Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
             }
         }
@@ -2352,6 +2369,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             }
             else
         {
+                if (ShouldGenerateLogging)
+                {
+                    WriteLogStatement("Debug",
+                        $"TransitionStarted(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\", \"{transition.ToState}\");");
+                }
                 Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
             }
         }
@@ -2494,11 +2516,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 {
                     Sb.AppendLine($"{indent}    if (_logger?.IsEnabled(LogLevel.Debug) == true)");
                     Sb.AppendLine($"{indent}    {{");
-                    Sb.AppendLine($"{indent}        {Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                    Sb.AppendLine($"{indent}        CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
                     Sb.AppendLine($"{indent}    }}");
                     Sb.AppendLine($"{indent}    if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)");
                     Sb.AppendLine($"{indent}    {{");
-                    Sb.AppendLine($"{indent}        {Model.ClassName}Log.HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
+                    Sb.AppendLine($"{indent}        HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
                     Sb.AppendLine($"{indent}    }}");
                 }
                 
@@ -2523,11 +2545,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                     
                     Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true)");
                     Sb.AppendLine($"{indent}{{");
-                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.HierarchicalTransition(_logger, _instanceId, __fromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
+                    Sb.AppendLine($"{indent}    HierarchicalTransition(_logger, _instanceId, __fromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
                     Sb.AppendLine($"{indent}}}");
                     Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Trace) == true)");
                     Sb.AppendLine($"{indent}{{");
-                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.ActivePath(_logger, _instanceId, DumpActivePath());");
+                    Sb.AppendLine($"{indent}    ActivePath(_logger, _instanceId, DumpActivePath());");
                     Sb.AppendLine($"{indent}}}");
                 }
             }
@@ -2994,11 +3016,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 {
                     Sb.AppendLine($"{indent}    if (_logger?.IsEnabled(LogLevel.Debug) == true)");
                     Sb.AppendLine($"{indent}    {{");
-                    Sb.AppendLine($"{indent}        {Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                    Sb.AppendLine($"{indent}        CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
                     Sb.AppendLine($"{indent}    }}");
                     Sb.AppendLine($"{indent}    if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)");
                     Sb.AppendLine($"{indent}    {{");
-                    Sb.AppendLine($"{indent}        {Model.ClassName}Log.HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
+                    Sb.AppendLine($"{indent}        HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
                     Sb.AppendLine($"{indent}    }}");
                 }
                 
@@ -3023,11 +3045,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                     
                     Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true)");
                     Sb.AppendLine($"{indent}{{");
-                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.HierarchicalTransition(_logger, _instanceId, __fromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
+                    Sb.AppendLine($"{indent}    HierarchicalTransition(_logger, _instanceId, __fromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
                     Sb.AppendLine($"{indent}}}");
                     Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Trace) == true)");
                     Sb.AppendLine($"{indent}{{");
-                    Sb.AppendLine($"{indent}    {Model.ClassName}Log.ActivePath(_logger, _instanceId, DumpActivePath());");
+                    Sb.AppendLine($"{indent}    ActivePath(_logger, _instanceId, DumpActivePath());");
                     Sb.AppendLine($"{indent}}}");
                 }
             }
