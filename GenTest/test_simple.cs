@@ -1,24 +1,14 @@
 using Abstractions.Attributes;
-using System;
 
-namespace TestFsm
+namespace Examples
 {
-    public enum LightState { Off, On, Blinking }
-    public enum LightTrigger { TurnOn, TurnOff, StartBlink, StopBlink }
+    public enum State { A, B }
+    public enum Trigger { X }
 
-    [StateMachine(typeof(LightState), typeof(LightTrigger))]
-    public partial class LightController
+    [StateMachine(typeof(State), typeof(Trigger))]
+    public partial class SimpleMachine
     {
-        [Transition(LightState.Off, LightTrigger.TurnOn, LightState.On)]
-        [Transition(LightState.On, LightTrigger.TurnOff, LightState.Off)]
-        [Transition(LightState.On, LightTrigger.StartBlink, LightState.Blinking)]
-        [Transition(LightState.Blinking, LightTrigger.StopBlink, LightState.On)]
-        [Transition(LightState.Blinking, LightTrigger.TurnOff, LightState.Off)]
-        private void ConfigureTransitions() { }
-
-        [State(LightState.On, OnEntry = nameof(OnLightOn))]
-        private void ConfigureOnState() { }
-        
-        private void OnLightOn() => Console.WriteLine("Light is ON!");
+        [Transition(State.A, Trigger.X, State.B)]
+        private void Configure() { }
     }
 }
