@@ -1,4 +1,0 @@
-info FSM995: EmitCompilerGeneratedFiles=(not set); CompilerGeneratedFilesOutputPath=(not set)
-info FSM990_PROP: FsmGenerateLogging=False; FsmGenerateDI=False
-(9,6): warning FSM004: The [StateMachine] attribute on class 'LightController' requires at least two arguments (state type and trigger type).
-(9,5): info FSM997: Skipped state machine candidate TestFsm.LightController: Parser validation failed

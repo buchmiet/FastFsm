@@ -111,6 +111,7 @@ internal sealed class HotRunner : IDisposable
     private readonly bool _enableDI;
     private CollectibleAlc? _alc;
     private ImmutableArray<ISourceGenerator> _gens = ImmutableArray<ISourceGenerator>.Empty;
+    private string[] _generatorLocalRefs = Array.Empty<string>();
     private int _runCount = 0;
 
     public HotRunner(string generatorPath, string? outDir, bool enableLogging, bool enableDI)
@@ -127,7 +128,7 @@ internal sealed class HotRunner : IDisposable
         _runCount++;
         Console.WriteLine($"\n[RUN #{_runCount}] Executing generators...");
         
-        var compilation = BuildCompilation(inputPath);
+        var compilation = BuildCompilation(inputPath, _generatorLocalRefs);
         
         // Create analyzer config for generator options
         var options = CreateAnalyzerOptions();
@@ -170,6 +171,33 @@ internal sealed class HotRunner : IDisposable
         
         _alc = new CollectibleAlc(Path.GetDirectoryName(_generatorPath)!);
         var asm = _alc.LoadFromAssemblyPath(_generatorPath);
+        
+        // Collect potential references from generator directory
+        try
+        {
+            var dir = Path.GetDirectoryName(_generatorPath)!;
+            _generatorLocalRefs = Directory.GetFiles(dir, "*.dll", SearchOption.TopDirectoryOnly)
+                .Where(p =>
+                {
+                    var name = Path.GetFileName(p);
+                    // Skip Roslyn and System assemblies - we don't want to load them from ALC
+                    return !name.StartsWith("Microsoft.CodeAnalysis", StringComparison.OrdinalIgnoreCase)
+                        && !name.StartsWith("System.", StringComparison.OrdinalIgnoreCase)
+                        && !name.Equals("mscorlib.dll", StringComparison.OrdinalIgnoreCase);
+                })
+                .ToArray();
+            
+            Console.WriteLine($"  Found {_generatorLocalRefs.Length} reference(s) in generator directory:");
+            foreach (var r in _generatorLocalRefs.Take(10))  // Show first 10
+                Console.WriteLine($"    + {Path.GetFileName(r)}");
+            if (_generatorLocalRefs.Length > 10)
+                Console.WriteLine($"    ... and {_generatorLocalRefs.Length - 10} more");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  Warning: Could not probe references: {ex.Message}");
+            _generatorLocalRefs = Array.Empty<string>();
+        }
 
         var allTypes = asm.GetTypes();
         var incType = typeof(Microsoft.CodeAnalysis.IIncrementalGenerator);
@@ -286,7 +314,7 @@ internal sealed class HotRunner : IDisposable
         Console.WriteLine("[UNLOAD] Generators unloaded");
     }
 
-    private static CSharpCompilation BuildCompilation(string inputPath)
+    private static CSharpCompilation BuildCompilation(string inputPath, IEnumerable<string>? extraRefs = null)
     {
         var text = File.ReadAllText(inputPath);
         var syntax = CSharpSyntaxTree.ParseText(text, new CSharpParseOptions(LanguageVersion.Latest));
@@ -297,10 +325,35 @@ internal sealed class HotRunner : IDisposable
             MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Console).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
+            // Add System.Runtime for better type resolution
+            MetadataReference.CreateFromFile(typeof(Type).Assembly.Location),
         };
         
-        // Try to add project-specific references
+        // Try to add project-specific references (legacy path-based approach)
         TryAddProjectReferences(refs);
+        
+        // Add references from generator directory (new approach)
+        if (extraRefs != null)
+        {
+            foreach (var path in extraRefs)
+            {
+                try
+                {
+                    if (File.Exists(path))
+                    {
+                        refs.Add(MetadataReference.CreateFromFile(path));
+                        var name = Path.GetFileName(path);
+                        // Only show important references, not all
+                        if (name.Contains("Abstractions") || name.Contains("FastFsm"))
+                            Console.WriteLine($"  Added reference: {name}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"  Warning: Could not add reference {Path.GetFileName(path)}: {ex.Message}");
+                }
+            }
+        }
         
         return CSharpCompilation.Create(
             assemblyName: "GenTest.Input",
@@ -323,7 +376,7 @@ internal sealed class HotRunner : IDisposable
             if (File.Exists(path))
             {
                 refs.Add(MetadataReference.CreateFromFile(path));
-                Console.WriteLine($"  Added reference: {Path.GetFileName(path)}");
+                // Legacy reference added silently - new approach will log
                 break;
             }
         }

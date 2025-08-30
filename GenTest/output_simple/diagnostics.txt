@@ -1,0 +1,6 @@
+info FSM995: EmitCompilerGeneratedFiles=(not set); CompilerGeneratedFilesOutputPath=(not set)
+info FSM990_PROP: FsmGenerateLogging=True; FsmGenerateDI=False
+(4,22): info FSM989: SimpleMachine - StatesFrom: (none) | TransitionsFrom: Configure (ext=0) | InternalFrom: (none) (int=0) | PayloadTypes: 0
+(3,1): info FSM994: Enum-only states fallback applied for 'SimpleMachine' — 0 [State] attributes found; using all enum members as states
+(3,1): info FSM990_HSM_FLAG: [2-AfterConfig] SimpleMachine: HierarchyEnabled=False, Features payload=False ext=False callbacks=False
+(3,1): info FSM997: Skipped state machine candidate SimpleMachine: Parser validation failed
