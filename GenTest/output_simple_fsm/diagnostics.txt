@@ -1,0 +1,14 @@
+info FSM995: EmitCompilerGeneratedFiles=(not set); CompilerGeneratedFilesOutputPath=(not set)
+info FSM990_PROP: FsmGenerateLogging=False; FsmGenerateDI=False
+(4,1): info FSM998: Using syntax-only parsing for types in limited compilation context
+(13,6): error FSM983: InternalTransition attribute requires an Action method name, either as third constructor argument or Action named parameter
+(5,22): info FSM989: DoorMachine - StatesFrom: (none) | TransitionsFrom: ConfigureTransitions (ext=0) | InternalFrom: ConfigureInternal (int=0) | PayloadTypes: 0
+(4,1): info FSM994: Enum-only states fallback applied for 'DoorMachine' — 0 [State] attributes found; using all enum members as states
+(4,1): info FSM990_HSM_FLAG: [2-AfterConfig] DoorMachine: HierarchyEnabled=False, Features payload=False ext=False callbacks=False
+(4,1): info FSM981: Machine 'DoorMachine' has no transitions - generating minimal API skeleton
+(4,1): info FSM996: Parsing completed with errors in lenient mode for DoorMachine
+(4,1): info FSM990_HSM_FLAG: [1-Parser] DoorMachine: HierarchyEnabled=False, UsedEnumOnlyFallback=True, HasPayload=False, HasExtensions=False, HasCallbacks=False
+(4,1): info FSM991: DoorMachine -> variant=features: payload=0, ext=0, callbacks=0; internalOnly=False; payloadPresent=False
+(4,1): info FSM992: DECLARATION_PLAN for DoorMachine: ns='', nesting='(none)', class='DoorMachine', accessibility='public', partial=True
+info FSM990_HSM_FLAG: [3-GenEntry] DoorMachine: HierarchyEnabled=False, Features payload=False ext=False callbacks=False
+(4,1): info FSM996: AddSource ok: global__DoorMachine.Generated.cs (len=2159)

@@ -9,6 +9,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Abstractions.Attributes;
 using Generator.Model;
 using static Generator.Strings;
@@ -185,6 +186,37 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         var a1 = attrSyntax.ArgumentList.Arguments[1];
         return (ExtractTypeName(a0), ExtractTypeName(a1));
     }
+    
+    // ——— Additional Syntax Helpers for Lenient Mode ———
+    
+    // Extract enum member name from attribute argument (e.g., State.A -> "A", or just "A")
+    private static string? GetEnumMemberFromAttrSyntax(AttributeData attr, int argIndex, CancellationToken ct)
+    {
+        var syn = attr.ApplicationSyntaxReference?.GetSyntax(ct) as AttributeSyntax;
+        var expr = syn?.ArgumentList?.Arguments.ElementAtOrDefault(argIndex)?.Expression;
+        return expr switch
+        {
+            MemberAccessExpressionSyntax m => m.Name.Identifier.Text,  // State.A -> "A"
+            IdentifierNameSyntax id => id.Identifier.Text,             // A -> "A"
+            _ => null
+        };
+    }
+    
+    // Extract type name from typeof() expression in attribute
+    private static string? GetTypeNameFromTypeOfSyntax(AttributeData attr, int argIndex, CancellationToken ct)
+    {
+        var syn = attr.ApplicationSyntaxReference?.GetSyntax(ct) as AttributeSyntax;
+        var expr = syn?.ArgumentList?.Arguments.ElementAtOrDefault(argIndex)?.Expression;
+        return (expr as TypeOfExpressionSyntax)?.Type?.ToString();    // typeof(MyPayload) -> "MyPayload"
+    }
+    
+    // Get named argument from attribute syntax
+    private static AttributeArgumentSyntax? TryGetNamedArgFromSyntax(AttributeData attr, string name, CancellationToken ct)
+    {
+        var syn = attr.ApplicationSyntaxReference?.GetSyntax(ct) as AttributeSyntax;
+        return syn?.ArgumentList?.Arguments
+            .FirstOrDefault(a => a.NameEquals?.Name.Identifier.Text == name);
+    }
 
     public bool TryParse(
      ClassDeclarationSyntax classDeclaration,
@@ -360,6 +392,16 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             // Yet syntax shows it has arguments - this is a limited compilation scenario
             isLenientMode = true;
             report?.Invoke("[Lenient Mode] Enabled: using syntax-only parsing for types due to limited compilation context");
+            
+            // Emit info diagnostic for lenient mode
+            EmitLegacy(
+                context,
+                "FSM998",
+                "Lenient compilation mode enabled",
+                "Using syntax-only parsing for types in limited compilation context",
+                "FSM.Generator.Discovery",
+                RuleSeverity.Info,
+                classDeclaration.GetLocation());
         }
 
         // ── Guard before running the rule:
@@ -663,7 +705,8 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         report?.Invoke("Calling ParseMemberAttributes");
         if (isAsyncOce)
             report?.Invoke("[DEBUG AOE] Before ParseMemberAttributes");
-        ParseMemberAttributes(classSymbol, currentModel, stateTypeArg, triggerTypeArg, ref criticalErrorOccurred, ref isMachineAsyncMode, report);
+        // Always call ParseMemberAttributes, but pass null symbols in lenient mode
+        ParseMemberAttributes(classSymbol, currentModel, stateTypeArg, triggerTypeArg, ref criticalErrorOccurred, ref isMachineAsyncMode, report, isLenientMode);
         report?.Invoke($"ParseMemberAttributes completed. Critical error: {criticalErrorOccurred}, IsAsync: {isMachineAsyncMode}");
         if (isAsyncOce)
             report?.Invoke($"[DEBUG AOE] After ParseMemberAttributes - criticalError: {criticalErrorOccurred}, isAsync: {isMachineAsyncMode}");
@@ -751,10 +794,14 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         // === SECTION 10: Feature configuration validation (without forcing variants) ===
         report?.Invoke("Section 10: Feature configuration validations");
 
-        if (criticalErrorOccurred)
+        if (criticalErrorOccurred && !isLenientMode)
         {
             report?.Invoke("ERROR: Critical error occurred during validations - returning false");
             return false;
+        }
+        else if (criticalErrorOccurred && isLenientMode)
+        {
+            report?.Invoke("[Lenient Mode] Critical error occurred during validations but continuing");
         }
 
         // === SECTION 11: State reachability validation ===
@@ -867,13 +914,20 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
 
         // === SEKCJA 12: Finalizacja ===
         report?.Invoke("Section 12: Finalization");
-        if (criticalErrorOccurred)
+        if (criticalErrorOccurred && !isLenientMode)
         {
             report?.Invoke($"ERROR: Critical error occurred for {currentModel.ClassName} - returning false");
             EmitLegacy(context, "FSM999", "Parser critical error",
                 $"Critical error occurred while parsing {currentModel.ClassName}, code generation skipped",
                 "FSM.Generator", RuleSeverity.Warning, classDeclaration.GetLocation());
             return false;
+        }
+        else if (criticalErrorOccurred && isLenientMode)
+        {
+            report?.Invoke($"[Lenient Mode] Critical error occurred but continuing in lenient mode for {currentModel.ClassName}");
+            EmitLegacy(context, "FSM996", "Lenient mode parsing with errors",
+                $"Parsing completed with errors in lenient mode for {currentModel.ClassName}",
+                "FSM.Generator", RuleSeverity.Info, classDeclaration.GetLocation());
         }
 
         currentModel.GenerationConfig.IsAsync = isMachineAsyncMode ?? false;
@@ -906,10 +960,11 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
 
 
     private void ParseMemberAttributes(INamedTypeSymbol classSymbol, StateMachineModel model,
-        INamedTypeSymbol stateTypeSymbol, INamedTypeSymbol triggerTypeSymbol,
+        INamedTypeSymbol? stateTypeSymbol, INamedTypeSymbol? triggerTypeSymbol,
         ref bool criticalErrorOccurred,
         ref bool? isMachineAsyncMode,
-        Action<string>? report = null)
+        Action<string>? report = null,
+        bool isLenientMode = false)
     {
         // Collect configuration sections for FSM989 diagnostic
         var stateMethodNames = new HashSet<string>();
@@ -933,11 +988,11 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         payloadTypeCount = classSymbol.GetAttributes()
             .Count(a => a.AttributeClass?.ToDisplayString() == PayloadTypeAttributeFullName);
         
-        ParsePayloadTypeAttributes(classSymbol, model, ref criticalErrorOccurred);
-        ParseTransitionAttributes(classSymbol, model, stateTypeSymbol, triggerTypeSymbol, ref criticalErrorOccurred, ref isMachineAsyncMode);
-        ParseInternalTransitionAttributes(classSymbol, model, stateTypeSymbol, triggerTypeSymbol, ref criticalErrorOccurred, ref isMachineAsyncMode);
-        ParseStateAttributes(classSymbol, model, stateTypeSymbol, ref criticalErrorOccurred, ref isMachineAsyncMode);
-        ParseOnExceptionAttribute(classSymbol, model, stateTypeSymbol, triggerTypeSymbol, ref criticalErrorOccurred, ref isMachineAsyncMode, report);
+        ParsePayloadTypeAttributes(classSymbol, model, ref criticalErrorOccurred, isLenientMode);
+        ParseTransitionAttributes(classSymbol, model, stateTypeSymbol, triggerTypeSymbol, ref criticalErrorOccurred, ref isMachineAsyncMode, isLenientMode);
+        ParseInternalTransitionAttributes(classSymbol, model, stateTypeSymbol, triggerTypeSymbol, ref criticalErrorOccurred, ref isMachineAsyncMode, isLenientMode);
+        ParseStateAttributes(classSymbol, model, stateTypeSymbol, ref criticalErrorOccurred, ref isMachineAsyncMode, isLenientMode);
+        ParseOnExceptionAttribute(classSymbol, model, stateTypeSymbol, triggerTypeSymbol, ref criticalErrorOccurred, ref isMachineAsyncMode, report, isLenientMode);
         
         // Report FSM989 diagnostic after parsing to get accurate counts
         var externalCount = model.Transitions.Count(t => !t.IsInternal);
@@ -968,9 +1023,10 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
 
 
     private void ParseTransitionAttributes(INamedTypeSymbol classSymbolContainingMethods, StateMachineModel model,
-                                       INamedTypeSymbol stateTypeSymbol, INamedTypeSymbol localTriggerTypeSymbol,
+                                       INamedTypeSymbol? stateTypeSymbol, INamedTypeSymbol? localTriggerTypeSymbol,
                                        ref bool criticalErrorOccurred,
-                                       ref bool? isMachineAsyncMode)
+                                       ref bool? isMachineAsyncMode,
+                                       bool isLenientMode = false)
     {
         foreach (var methodSymbol in classSymbolContainingMethods.GetMembers().OfType<IMethodSymbol>())
         {
@@ -987,14 +1043,41 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
                     continue;
                 }
 
-                var fromState = GetEnumMemberName(attrData.ConstructorArguments[0], stateTypeSymbol, attrData, ref criticalErrorOccurred);
-                var trigger = GetEnumMemberName(attrData.ConstructorArguments[1], localTriggerTypeSymbol, attrData, ref criticalErrorOccurred);
-                var toState = GetEnumMemberName(attrData.ConstructorArguments[2], stateTypeSymbol, attrData, ref criticalErrorOccurred);
-
-                if (fromState == null || trigger == null || toState == null)
+                string? fromState, trigger, toState;
+                
+                if (isLenientMode && (stateTypeSymbol == null || localTriggerTypeSymbol == null))
                 {
-                    // GetEnumMemberName already reported error and set criticalErrorOccurred
-                    continue;
+                    // Lenient mode: extract from syntax
+                    fromState = GetEnumMemberFromAttrSyntax(attrData, 0, context.CancellationToken);
+                    trigger = GetEnumMemberFromAttrSyntax(attrData, 1, context.CancellationToken);
+                    toState = GetEnumMemberFromAttrSyntax(attrData, 2, context.CancellationToken);
+                    
+                    if (fromState == null || trigger == null || toState == null)
+                    {
+                        // Emit info diagnostic instead of error in lenient mode
+                        EmitLegacy(
+                            context,
+                            "FSM996",
+                            "Lenient transition parse",
+                            "Could not extract transition members from syntax in lenient mode",
+                            "FSM.Generator.Discovery",
+                            RuleSeverity.Info,
+                            attrLocation);
+                        continue;
+                    }
+                }
+                else
+                {
+                    // Normal mode: use symbols
+                    fromState = GetEnumMemberName(attrData.ConstructorArguments[0], stateTypeSymbol!, attrData, ref criticalErrorOccurred);
+                    trigger = GetEnumMemberName(attrData.ConstructorArguments[1], localTriggerTypeSymbol!, attrData, ref criticalErrorOccurred);
+                    toState = GetEnumMemberName(attrData.ConstructorArguments[2], stateTypeSymbol!, attrData, ref criticalErrorOccurred);
+                    
+                    if (fromState == null || trigger == null || toState == null)
+                    {
+                        // GetEnumMemberName already reported error and set criticalErrorOccurred
+                        continue;
+                    }
                 }
 
                 var currentTransitionDef = new TransitionDefinition(fromState, trigger, toState);
@@ -1105,9 +1188,10 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
 
 
     private void ParseInternalTransitionAttributes(INamedTypeSymbol classSymbolContainingMethods, StateMachineModel model,
-                                                INamedTypeSymbol stateTypeSymbol, INamedTypeSymbol localTriggerTypeSymbol,
+                                                INamedTypeSymbol? stateTypeSymbol, INamedTypeSymbol? localTriggerTypeSymbol,
                                                 ref bool criticalErrorOccurred,
-                                                ref bool? isMachineAsyncMode)
+                                                ref bool? isMachineAsyncMode,
+                                                bool isLenientMode = false)
     {
         foreach (var methodSymbol in classSymbolContainingMethods.GetMembers().OfType<IMethodSymbol>())
         {
@@ -1150,12 +1234,38 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
                     continue;
                 }
 
-                var state = GetEnumMemberName(attrData.ConstructorArguments[0], stateTypeSymbol, attrData, ref criticalErrorOccurred);
-                var trigger = GetEnumMemberName(attrData.ConstructorArguments[1], localTriggerTypeSymbol, attrData, ref criticalErrorOccurred);
-
-                if (state == null || trigger == null)
+                string? state, trigger;
+                
+                if (isLenientMode && (stateTypeSymbol == null || localTriggerTypeSymbol == null))
                 {
-                    continue;
+                    // Lenient mode: extract from syntax
+                    state = GetEnumMemberFromAttrSyntax(attrData, 0, context.CancellationToken);
+                    trigger = GetEnumMemberFromAttrSyntax(attrData, 1, context.CancellationToken);
+                    
+                    if (state == null || trigger == null)
+                    {
+                        // Emit info diagnostic instead of error in lenient mode
+                        EmitLegacy(
+                            context,
+                            "FSM996",
+                            "Lenient internal transition parse",
+                            "Could not extract internal transition members from syntax in lenient mode",
+                            "FSM.Generator.Discovery",
+                            RuleSeverity.Info,
+                            attrLocation);
+                        continue;
+                    }
+                }
+                else
+                {
+                    // Normal mode: use symbols
+                    state = GetEnumMemberName(attrData.ConstructorArguments[0], stateTypeSymbol!, attrData, ref criticalErrorOccurred);
+                    trigger = GetEnumMemberName(attrData.ConstructorArguments[1], localTriggerTypeSymbol!, attrData, ref criticalErrorOccurred);
+                    
+                    if (state == null || trigger == null)
+                    {
+                        continue;
+                    }
                 }
 
                 var currentTransitionDef = new TransitionDefinition(state, trigger, state); // toState jest takie samo jak fromState
@@ -1265,9 +1375,10 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
     private void ParseStateAttributes(
       INamedTypeSymbol classSymbolContainingMethods,
       StateMachineModel model,
-      INamedTypeSymbol stateTypeSymbol,
+      INamedTypeSymbol? stateTypeSymbol,
       ref bool criticalErrorOccurred,
-      ref bool? isMachineAsyncMode)
+      ref bool? isMachineAsyncMode,
+      bool isLenientMode = false)
     {
         bool isAsyncOce = classSymbolContainingMethods.Name.Contains("AsyncOceOnEntryMachine");
             
@@ -1292,12 +1403,37 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
                 }
 
                 // Nazwa stanu z argumentu atrybutu
-                var stateName = GetEnumMemberName(attrData.ConstructorArguments[0],
-                                                  stateTypeSymbol,
-                                                  attrData,
-                                                  ref criticalErrorOccurred);
-                if (stateName is null)
-                    continue;
+                string? stateName;
+                
+                if (isLenientMode && stateTypeSymbol == null)
+                {
+                    // Lenient mode: extract from syntax
+                    stateName = GetEnumMemberFromAttrSyntax(attrData, 0, context.CancellationToken);
+                    
+                    if (stateName == null)
+                    {
+                        // Emit info diagnostic instead of error in lenient mode
+                        EmitLegacy(
+                            context,
+                            "FSM996",
+                            "Lenient state parse",
+                            "Could not extract state name from syntax in lenient mode",
+                            "FSM.Generator.Discovery",
+                            RuleSeverity.Info,
+                            Location.None);
+                        continue;
+                    }
+                }
+                else
+                {
+                    // Normal mode: use symbols
+                    stateName = GetEnumMemberName(attrData.ConstructorArguments[0],
+                                                      stateTypeSymbol!,
+                                                      attrData,
+                                                      ref criticalErrorOccurred);
+                    if (stateName is null)
+                        continue;
+                }
 
                 // Get or create state definition in model
                 if (!model.States.TryGetValue(stateName, out var stateModel))
@@ -1730,7 +1866,8 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
     private void ParsePayloadTypeAttributes(
         INamedTypeSymbol classSymbol,
         StateMachineModel model,
-        ref bool criticalErrorOccurred)
+        ref bool criticalErrorOccurred,
+        bool isLenientMode = false)
     {
 
         // ---------- 1. Atrybuty na poziomie klasy ---------------------------------
@@ -1883,11 +2020,12 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
     private void ParseOnExceptionAttribute(
         INamedTypeSymbol classSymbol,
         StateMachineModel model,
-        INamedTypeSymbol stateTypeSymbol,
-        INamedTypeSymbol triggerTypeSymbol,
+        INamedTypeSymbol? stateTypeSymbol,
+        INamedTypeSymbol? triggerTypeSymbol,
         ref bool criticalErrorOccurred,
         ref bool? isMachineAsyncMode,
-        Action<string>? report = null)
+        Action<string>? report = null,
+        bool isLenientMode = false)
     {
         bool isAsyncOce = classSymbol.Name.Contains("AsyncOceOnEntryMachine");
         bool isContinueMachine = classSymbol.Name.Contains("ContinueOnActionMachine");
