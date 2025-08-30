@@ -308,7 +308,7 @@ namespace Generator.Log
         private void WriteHistoryRestoredMethod()
         {
             _sb.WriteSummary("Logs history restoration");
-            using (_sb.Block("public static void HistoryRestored(ILogger? logger, string instanceId, string compositeState, string restoredState, string historyType)"))
+            using (_sb.Block("public static void HistoryRestored(ILogger? logger, string instanceId, string historyType, string compositeState, string restoredState)"))
             {
                 using (_sb.Block("if (logger?.IsEnabled(LogLevel.Debug) == true)"))
                 {
