@@ -382,10 +382,12 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
     private void WriteStartMethods()
 {
-        // Only generate Start/StartAsync if:
+        // Generate Start/StartAsync if:
         // 1. It's hierarchical (needs DescendToInitialIfComposite)
-        // 2. It has logging but NO OnEntryExit (OnEntryExit already generates Start/StartAsync with OnInitialEntry call)
-        if (IsHierarchical || (ShouldGenerateLogging && !HasOnEntryExit))
+        // 2. It has logging (to add MachineStarted log)
+        // Note: We avoid duplicate StartAsync for async machines that have OnEntryExit
+        //       by checking if OnInitialEntry is being overridden separately
+        if (IsHierarchical || ShouldGenerateLogging)
     {
             WriteStartMethod();
         }
