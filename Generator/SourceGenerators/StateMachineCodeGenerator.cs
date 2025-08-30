@@ -1097,7 +1097,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                     }
                     using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)"))
                     {
-                        Sb.AppendLine($"{Model.ClassName}Log.HistoryRestored(_logger, _instanceId, NameOf(({stateTypeForUsage})__targetComposite), NameOf(({stateTypeForUsage})__resolvedIndex), __histMode.ToString());");
+                        Sb.AppendLine($"{Model.ClassName}Log.HistoryRestored(_logger, _instanceId, __histMode.ToString(), NameOf(({stateTypeForUsage})__targetComposite), NameOf(({stateTypeForUsage})__resolvedIndex));");
                     }
                 }
                 
@@ -1358,7 +1358,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                 }
                 using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)"))
                 {
-                    Sb.AppendLine($"{Model.ClassName}Log.HistoryRestored(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __histMode.ToString());");
+                    Sb.AppendLine($"{Model.ClassName}Log.HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
                 }
             }
             
