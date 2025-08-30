@@ -11,7 +11,7 @@
 		<IncludeBuildOutput>false</IncludeBuildOutput>
 		<DevelopmentDependency>true</DevelopmentDependency>
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-		<!-- skopiuj wszystkie zależności do bin/, żeby były współlokowane z generatorem -->
+		<!-- skopiuj zależności do bin/, ALE NIE Microsoft.CodeAnalysis (dla hot-reload) -->
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 
 		<Authors>Lukasz Buchmiet</Authors>

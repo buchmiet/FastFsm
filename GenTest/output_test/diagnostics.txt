@@ -1,0 +1,4 @@
+info FSM995: EmitCompilerGeneratedFiles=(not set); CompilerGeneratedFilesOutputPath=(not set)
+info FSM990_PROP: FsmGenerateLogging=False; FsmGenerateDI=False
+(3,2): warning FSM004: The [StateMachine] attribute on class 'TestMachine' requires at least two arguments (state type and trigger type).
+(3,1): info FSM997: Skipped state machine candidate TestMachine: Parser validation failed

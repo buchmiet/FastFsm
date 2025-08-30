@@ -1,0 +1,5 @@
+This is a test input file for GenTest.
+It contains multiple lines to test the file reading capability.
+Special characters: ąćęłńóśźż ĄĆĘŁŃÓŚŹŻ
+Numbers: 1234567890
+Symbols: !@#$%^&*()_+-=[]{}|;':",.<>/?`~
