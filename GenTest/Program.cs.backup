@@ -1,0 +1,581 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading.Tasks;
+using Generator;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
+
+public static class Program
+{
+    public static async Task<int> Main(string[] args)
+    {
+        // Parse command line arguments manually for full AOT compatibility
+        string? inputPath = null;
+        string? outputPath = null;
+        bool showHelp = false;
+        bool enableLogging = false;
+        bool enableDI = false;
+
+        for (int i = 0; i < args.Length; i++)
+        {
+            switch (args[i])
+            {
+                case "--in":
+                case "-i":
+                    if (i + 1 < args.Length)
+                    {
+                        inputPath = args[++i];
+                    }
+                    break;
+                case "--out":
+                case "-o":
+                    if (i + 1 < args.Length)
+                    {
+                        outputPath = args[++i];
+                    }
+                    break;
+                case "--logging":
+                case "-l":
+                    enableLogging = true;
+                    break;
+                case "--di":
+                case "-d":
+                    enableDI = true;
+                    break;
+                case "--help":
+                case "-h":
+                case "-?":
+                    showHelp = true;
+                    break;
+                default:
+                    if (!args[i].StartsWith("-") && inputPath == null)
+                    {
+                        // Allow first non-option argument as input file
+                        inputPath = args[i];
+                    }
+                    break;
+            }
+        }
+
+        if (showHelp || (inputPath == null && args.Length > 0))
+        {
+            ShowHelp();
+            return inputPath == null && !showHelp ? 1 : 0;
+        }
+
+        if (string.IsNullOrWhiteSpace(inputPath))
+        {
+            WriteError("Missing input file. Use --in <file> or provide file as first argument.");
+            ShowHelp();
+            return 2;
+        }
+
+        return await RunGeneration(inputPath!, outputPath, enableLogging, enableDI);
+    }
+
+    private static void ShowHelp()
+    {
+        Console.WriteLine("GenTest - FastFSM Source Generator Testing Tool");
+        Console.WriteLine("==================================================");
+        Console.WriteLine();
+        Console.WriteLine("PURPOSE:");
+        Console.WriteLine("  This tool runs the FastFSM StateMachineGenerator on C# source code files");
+        Console.WriteLine("  to test and debug the code generation process. It shows what code the");
+        Console.WriteLine("  generator produces and reports any diagnostics (errors/warnings).");
+        Console.WriteLine();
+        Console.WriteLine("HOW IT WORKS:");
+        Console.WriteLine("  1. Reads a C# source file containing state machine definitions");
+        Console.WriteLine("  2. Runs the StateMachineGenerator from Generator.dll");
+        Console.WriteLine("  3. Outputs generated code and compilation diagnostics");
+        Console.WriteLine("  4. Uses the latest Generator.dll from the build directory automatically");
+        Console.WriteLine();
+        Console.WriteLine("USAGE:");
+        Console.WriteLine("  GenTest --in <input_file> [options]");
+        Console.WriteLine("  GenTest <input_file> [options]");
+        Console.WriteLine();
+        Console.WriteLine("REQUIRED:");
+        Console.WriteLine("  --in <file>        Path to C# source file with [StateMachine] attributes");
+        Console.WriteLine("                     The file should contain state machine class definitions");
+        Console.WriteLine();
+        Console.WriteLine("OPTIONAL:");
+        Console.WriteLine("  --out <file>       Save output to file instead of console");
+        Console.WriteLine("  --logging          Enable logging code generation (sets FsmGenerateLogging)");
+        Console.WriteLine("  --di               Enable dependency injection (sets FsmGenerateDI)");
+        Console.WriteLine("  --help             Show this help message");
+        Console.WriteLine();
+        Console.WriteLine("INPUT FILE FORMAT:");
+        Console.WriteLine("  The input file should be a C# source file with:");
+        Console.WriteLine("  - Enum definitions for states and triggers");
+        Console.WriteLine("  - A partial class with [StateMachine] attribute");
+        Console.WriteLine("  - [Transition] attributes defining state transitions");
+        Console.WriteLine("  - Optional [State] attributes for entry/exit behaviors");
+        Console.WriteLine();
+        Console.WriteLine("EXAMPLE INPUT FILE:");
+        Console.WriteLine("  using Abstractions.Attributes;");
+        Console.WriteLine("  namespace Test {");
+        Console.WriteLine("      public enum State { A, B }");
+        Console.WriteLine("      public enum Trigger { X }");
+        Console.WriteLine("      ");
+        Console.WriteLine("      [StateMachine(typeof(State), typeof(Trigger))]");
+        Console.WriteLine("      public partial class Machine {");
+        Console.WriteLine("          [Transition(State.A, Trigger.X, State.B)]");
+        Console.WriteLine("          private void Configure() { }");
+        Console.WriteLine("      }");
+        Console.WriteLine("  }");
+        Console.WriteLine();
+        Console.WriteLine("EXAMPLES:");
+        Console.WriteLine("  GenTest --in StateMachine.cs");
+        Console.WriteLine("  GenTest test.cs --out generated.cs");
+        Console.WriteLine("  GenTest --in Machine.cs --logging --di --out output.cs");
+        Console.WriteLine();
+        Console.WriteLine("EXIT CODES:");
+        Console.WriteLine("  0 - Success (generation completed)");
+        Console.WriteLine("  1 - Invalid command line arguments");
+        Console.WriteLine("  2 - Invalid input file path");
+        Console.WriteLine("  3 - Input file not found");
+        Console.WriteLine("  4 - Cannot read input file (permissions/IO error)");
+        Console.WriteLine("  5 - Generator execution failed");
+        Console.WriteLine("  6 - Invalid output file path");
+        Console.WriteLine("  7 - Cannot write output file (permissions/IO error)");
+        Console.WriteLine();
+        Console.WriteLine("NOTES:");
+        Console.WriteLine("  - Generator.dll is loaded dynamically from the build directory");
+        Console.WriteLine("  - The tool automatically finds FastFsm.dll and Abstractions.dll");
+        Console.WriteLine("  - Diagnostics include FSM-specific warnings and compilation errors");
+    }
+
+    private static async Task<int> RunGeneration(string inputArgument, string? outputArgument, bool enableLogging, bool enableDI)
+    {
+        // 0) Banner
+        WriteInfo("GenTest - FastFSM Source Generator Debugger");
+        WriteInfo("============================================");
+
+        // 1) Validate and normalize input path
+        string inputPath;
+        try
+        {
+            inputPath = Path.GetFullPath(inputArgument);
+        }
+        catch (Exception ex)
+        {
+            WriteError($"Invalid input path: '{inputArgument}'. {ex.GetType().Name}: {ex.Message}");
+            return 2;
+        }
+
+        // 2) Check existence
+        if (File.Exists(inputPath))
+        {
+            WriteOk($"Input file exists: '{inputPath}'");
+        }
+        else
+        {
+            WriteError($"Input file not found: '{inputPath}'.");
+            return 3;
+        }
+
+        // 3) Read input
+        string inputContent;
+        try
+        {
+            WriteInfo("Reading input source...");
+            inputContent = await File.ReadAllTextAsync(inputPath, Encoding.UTF8).ConfigureAwait(false);
+            WriteOk($"Read {inputContent.Length} chars from input file.");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            WriteError($"Cannot read input file '{inputPath}': {ex.Message}");
+            return 4;
+        }
+        catch (IOException ex)
+        {
+            WriteError($"I/O error while reading '{inputPath}': {ex.Message}");
+            return 4;
+        }
+        catch (Exception ex)
+        {
+            WriteError($"Unexpected error while reading '{inputPath}': {ex.GetType().Name}: {ex.Message}");
+            return 4;
+        }
+
+        // 4) Run generator
+        string generatedSource;
+        string diagnosticsOutput;
+        try
+        {
+            WriteInfo("Running StateMachineGenerator...");
+            if (enableLogging) WriteInfo("  - Logging support: ENABLED");
+            if (enableDI) WriteInfo("  - Dependency Injection support: ENABLED");
+            
+            var (generatedSources, diagnostics) = CompileAndRunGenerator(
+                inputContent, 
+                enableLogging, 
+                enableDI);
+            
+            // Format generated sources
+            var sb = new StringBuilder();
+            if (generatedSources.Count == 0)
+            {
+                sb.AppendLine("// No source files were generated");
+            }
+            else
+            {
+                foreach (var kvp in generatedSources.OrderBy(x => x.Key))
+                {
+                    sb.AppendLine($"// ============= Generated file: {kvp.Key} =============");
+                    sb.AppendLine(kvp.Value);
+                    sb.AppendLine();
+                }
+            }
+            generatedSource = sb.ToString();
+            
+            // Format diagnostics
+            var diagSb = new StringBuilder();
+            diagSb.AppendLine($"Total diagnostics: {diagnostics.Length}");
+            
+            var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
+            var warnings = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Warning).ToList();
+            var infos = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Info).ToList();
+            
+            diagSb.AppendLine($"  Errors: {errors.Count}");
+            diagSb.AppendLine($"  Warnings: {warnings.Count}");
+            diagSb.AppendLine($"  Info: {infos.Count}");
+            
+            if (errors.Count > 0)
+            {
+                diagSb.AppendLine("\nERRORS:");
+                foreach (var diag in errors)
+                {
+                    diagSb.AppendLine($"  [{diag.Id}] {diag.GetMessage()}");
+                    if (diag.Location != Location.None)
+                    {
+                        var lineSpan = diag.Location.GetLineSpan();
+                        diagSb.AppendLine($"    at line {lineSpan.StartLinePosition.Line + 1}");
+                    }
+                }
+            }
+            
+            if (warnings.Count > 0)
+            {
+                diagSb.AppendLine("\nWARNINGS:");
+                foreach (var diag in warnings)
+                {
+                    diagSb.AppendLine($"  [{diag.Id}] {diag.GetMessage()}");
+                    if (diag.Location != Location.None)
+                    {
+                        var lineSpan = diag.Location.GetLineSpan();
+                        diagSb.AppendLine($"    at line {lineSpan.StartLinePosition.Line + 1}");
+                    }
+                }
+            }
+            
+            diagnosticsOutput = diagSb.ToString();
+            
+            if (errors.Count > 0)
+            {
+                WriteWarning("Generation completed with errors.");
+            }
+            else if (warnings.Count > 0)
+            {
+                WriteWarning("Generation completed with warnings.");
+            }
+            else
+            {
+                WriteOk("Generation completed successfully.");
+            }
+        }
+        catch (Exception ex)
+        {
+            WriteError($"Generator failed: {ex.GetType().Name}: {ex.Message}");
+            if (ex.StackTrace != null)
+            {
+                WriteError("Stack trace:");
+                WriteError(ex.StackTrace);
+            }
+            return 5;
+        }
+
+        // 5) Output to console or file
+        if (string.IsNullOrWhiteSpace(outputArgument))
+        {
+            // Console output
+            WriteSectionHeader("GENERATED SOURCE");
+            Console.Out.WriteLine(generatedSource);
+            WriteSectionHeader("DIAGNOSTICS");
+            Console.Out.WriteLine(diagnosticsOutput);
+            WriteOk("Output written to console.");
+        }
+        else
+        {
+            // Write to a single file (both sections)
+            string outputPath;
+            try
+            {
+                outputPath = Path.GetFullPath(outputArgument);
+            }
+            catch (Exception ex)
+            {
+                WriteError($"Invalid output path: '{outputArgument}'. {ex.GetType().Name}: {ex.Message}");
+                return 6;
+            }
+
+            try
+            {
+                WriteInfo($"Writing output to '{outputPath}'...");
+                var sb = new StringBuilder();
+                sb.AppendLine("// =============== GENERATED SOURCE ===============");
+                sb.AppendLine(generatedSource);
+                sb.AppendLine();
+                sb.AppendLine("// =============== DIAGNOSTICS ===============");
+                sb.AppendLine($"// {diagnosticsOutput.Replace("\n", "\n// ")}");
+
+                var dir = Path.GetDirectoryName(outputPath);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                    WriteInfo($"Created directory: '{dir}'");
+                }
+
+                await File.WriteAllTextAsync(outputPath, sb.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)).ConfigureAwait(false);
+                WriteOk($"Output written to '{outputPath}'.");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                WriteError($"Cannot write to '{outputPath}': {ex.Message}");
+                return 7;
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                WriteError($"Directory not found for '{outputPath}': {ex.Message}");
+                return 7;
+            }
+            catch (IOException ex)
+            {
+                WriteError($"I/O error while writing '{outputPath}': {ex.Message}");
+                return 7;
+            }
+            catch (Exception ex)
+            {
+                WriteError($"Unexpected error while writing '{outputPath}': {ex.GetType().Name}: {ex.Message}");
+                return 7;
+            }
+        }
+
+        WriteInfo("GenTest finished.");
+        return 0;
+    }
+
+    private static (Dictionary<string, string> generatedSources, ImmutableArray<Diagnostic> diagnostics) 
+        CompileAndRunGenerator(string userSource, bool enableLogging, bool enableDI)
+    {
+        // Build properties for generator configuration
+        var buildProps = new Dictionary<string, string>();
+        if (enableLogging)
+            buildProps["build_property.FsmGenerateLogging"] = "true";
+        if (enableDI)
+            buildProps["build_property.FsmGenerateDI"] = "true";
+
+        var optionsProvider = new DictionaryAnalyzerConfigOptionsProvider(buildProps);
+        
+        // Parse the source
+        var parseOptions = CSharpParseOptions.Default;
+        var syntaxTree = CSharpSyntaxTree.ParseText(userSource, parseOptions);
+        
+        // Create references
+        var refs = new List<MetadataReference>();
+        
+        // Add basic references
+        refs.Add(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
+        refs.Add(MetadataReference.CreateFromFile(typeof(Console).Assembly.Location));
+        refs.Add(MetadataReference.CreateFromFile(typeof(System.Runtime.AssemblyTargetedPatchBandAttribute).Assembly.Location));
+        refs.Add(MetadataReference.CreateFromFile(typeof(System.ComponentModel.DataAnnotations.RequiredAttribute).Assembly.Location));
+        refs.Add(MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location));
+        refs.Add(MetadataReference.CreateFromFile(typeof(Type).Assembly.Location));
+        
+        // Add System.Runtime explicitly
+        var systemRuntime = Path.Combine(RuntimeEnvironment.GetRuntimeDirectory(), "System.Runtime.dll");
+        if (File.Exists(systemRuntime))
+            refs.Add(MetadataReference.CreateFromFile(systemRuntime));
+            
+        // Add netstandard
+        var netstandard = Path.Combine(RuntimeEnvironment.GetRuntimeDirectory(), "netstandard.dll");
+        if (File.Exists(netstandard))
+            refs.Add(MetadataReference.CreateFromFile(netstandard));
+        
+        // Try to add project references
+        try
+        {
+            AddProjectReferences(refs);
+        }
+        catch (Exception ex)
+        {
+            WriteWarning($"Could not add project references: {ex.Message}");
+        }
+        
+        if (enableLogging)
+        {
+            // ILogger<T>
+            refs.Add(MetadataReference.CreateFromFile(
+                typeof(Microsoft.Extensions.Logging.ILogger).Assembly.Location));
+        }
+
+        if (enableDI)
+        {
+            // IServiceCollection
+            refs.Add(MetadataReference.CreateFromFile(
+                typeof(Microsoft.Extensions.DependencyInjection.IServiceCollection).Assembly.Location));
+        }
+        
+        // Create compilation
+        var compilation = CSharpCompilation.Create(
+            "FsmTestAssembly",
+            new[] { syntaxTree },
+            refs,
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        
+        // Create and run generator
+        var generator = new StateMachineGenerator();
+        var driver = CSharpGeneratorDriver.Create(
+            new[] { generator.AsSourceGenerator() },
+            additionalTexts: null,
+            parseOptions,
+            optionsProvider);
+        
+        var driverAfterRun = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outCompilation,
+            out var genDiags);
+        
+        // Collect generated sources
+        var generated = new Dictionary<string, string>();
+        foreach (var result in driverAfterRun.GetRunResult().Results)
+        {
+            foreach (var src in result.GeneratedSources)
+            {
+                generated[src.HintName] = src.SourceText.ToString();
+            }
+        }
+        
+        // Compile to check for errors
+        using var ms = new MemoryStream();
+        var emitResult = outCompilation.Emit(ms);
+        var allDiagnostics = genDiags.AddRange(emitResult.Diagnostics);
+        
+        // Filter out non-FSM diagnostics for clarity
+        var relevantDiags = allDiagnostics.Where(d => 
+            d.Id.StartsWith("FSM") || 
+            d.Severity == DiagnosticSeverity.Error ||
+            d.Id.StartsWith("CS") && d.Severity == DiagnosticSeverity.Warning
+        ).ToImmutableArray();
+        
+        return (generated, relevantDiags);
+    }
+    
+    private static void AddProjectReferences(List<MetadataReference> refs)
+    {
+        // Find solution directory
+        string currentAssemblyPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+        string? solutionDir = null;
+        
+        string currentDir = currentAssemblyPath;
+        for (int i = 0; i < 10; i++)
+        {
+            if (Directory.GetFiles(currentDir, "*.sln").Any() || 
+                Directory.GetFiles(currentDir, "*.slnx").Any())
+            {
+                solutionDir = currentDir;
+                break;
+            }
+            var parent = Directory.GetParent(currentDir);
+            if (parent == null) break;
+            currentDir = parent.FullName;
+        }
+        
+        if (solutionDir == null)
+        {
+            WriteWarning("Cannot find solution directory for project references");
+            return;
+        }
+        
+        // Determine configuration
+        string configuration = currentAssemblyPath.Contains("Debug") ? "Debug" : "Release";
+        
+        // Add FastFsm.dll
+        string fsmDllPath = Path.Combine(
+            solutionDir, "FastFsm", "bin", configuration, "net9.0", "FastFsm.dll");
+        
+        if (File.Exists(fsmDllPath))
+        {
+            refs.Add(MetadataReference.CreateFromFile(fsmDllPath));
+            WriteInfo($"  Added reference: FastFsm.dll");
+        }
+        
+        // Add Abstractions.dll
+        string abstractionsDllPath = Path.Combine(
+            solutionDir, "Abstractions", "bin", configuration, "netstandard2.0", "Abstractions.dll");
+        
+        if (File.Exists(abstractionsDllPath))
+        {
+            refs.Add(MetadataReference.CreateFromFile(abstractionsDllPath));
+            WriteInfo($"  Added reference: Abstractions.dll");
+        }
+    }
+
+    private static void WriteOk(string message)
+    {
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine($"[OK] {message}");
+        Console.ResetColor();
+    }
+
+    private static void WriteInfo(string message)
+    {
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine($"[INFO] {message}");
+        Console.ResetColor();
+    }
+
+    private static void WriteWarning(string message)
+    {
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine($"[WARN] {message}");
+        Console.ResetColor();
+    }
+
+    private static void WriteError(string message)
+    {
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.Error.WriteLine($"[ERROR] {message}");
+        Console.ResetColor();
+    }
+
+    private static void WriteSectionHeader(string title)
+    {
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine($"\n============= {title} =============");
+        Console.ResetColor();
+    }
+    
+    // Helper class for analyzer configuration
+    private sealed class DictionaryAnalyzerConfigOptionsProvider(IDictionary<string, string> global)
+        : AnalyzerConfigOptionsProvider
+    {
+        private readonly AnalyzerConfigOptions _globalOptions = new DictionaryAnalyzerConfigOptions(global);
+
+        public override AnalyzerConfigOptions GlobalOptions => _globalOptions;
+        public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => _globalOptions;
+        public override AnalyzerConfigOptions GetOptions(AdditionalText text) => _globalOptions;
+
+        private sealed class DictionaryAnalyzerConfigOptions(IDictionary<string, string> values) : AnalyzerConfigOptions
+        {
+            public override bool TryGetValue(string key, out string? value) => values.TryGetValue(key, out value);
+            public override IEnumerable<string> Keys => values.Keys;
+        }
+    }
+}
