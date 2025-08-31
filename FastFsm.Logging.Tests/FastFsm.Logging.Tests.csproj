@@ -10,6 +10,7 @@
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\GeneratedFiles</CompilerGeneratedFilesOutputPath>
     <FsmGenerateLogging>true</FsmGenerateLogging>
+    <DefineConstants>$(DefineConstants);FASTFSM_SAFE_ACTIONS</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
