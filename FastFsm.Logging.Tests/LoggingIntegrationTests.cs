@@ -22,20 +22,32 @@ namespace FastFsm.Logging.Tests
             // Act
             machine.TryFire(TestTrigger.Start);
 
-            // Assert - Verify exact order of logs
-            LoggedMessages.Count.ShouldBe(4);
+            // Assert - Verify exact order of logs (now includes MachineStarted and TransitionStarted)
+            // Debug: Print actual logs
+            for (int i = 0; i < LoggedMessages.Count; i++)
+            {
+                Console.WriteLine($"[{i}] {LoggedMessages[i].EventId.Name}: {LoggedMessages[i].Message}");
+            }
+            
+            LoggedMessages.Count.ShouldBe(6);
 
-            // 1. OnExit
-            LoggedMessages[0].EventId.Name.ShouldBe("OnExitExecuted");
+            // 1. MachineStarted
+            LoggedMessages[0].EventId.Name.ShouldBe("MachineStarted");
 
-            // 2. OnEntry  (↓ było Action)
-            LoggedMessages[1].EventId.Name.ShouldBe("OnEntryExecuted");
+            // 2. TransitionStarted
+            LoggedMessages[1].EventId.Name.ShouldBe("TransitionStarted");
 
-            // 3. Action   (↓ było OnEntry)
-            LoggedMessages[2].EventId.Name.ShouldBe("ActionExecuted");
+            // 3. OnExit
+            LoggedMessages[2].EventId.Name.ShouldBe("OnExitExecuted");
 
-            // 4. TransitionSucceeded
-            LoggedMessages[3].EventId.Name.ShouldBe("TransitionSucceeded");
+            // 4. OnEntry
+            LoggedMessages[3].EventId.Name.ShouldBe("OnEntryExecuted");
+
+            // 5. Action
+            LoggedMessages[4].EventId.Name.ShouldBe("ActionExecuted");
+
+            // 6. TransitionSucceeded
+            LoggedMessages[5].EventId.Name.ShouldBe("TransitionSucceeded");
 
         }
 
@@ -50,9 +62,12 @@ namespace FastFsm.Logging.Tests
                 TestInitialState.Ready,
                 GetLogger < InitialOnEntryStateMachineActions >());
             machine.Start();
-            // Assert
-            VerifyLogCount(1);
-            VerifyLogMessage(LogLevel.Debug, "OnEntryExecuted", "OnReadyEntry", "Ready");
+            // Assert - OnEntry is called first (in OnInitialEntry), then MachineStarted
+            VerifyLogCount(2);
+            LoggedMessages[0].EventId.Name.ShouldBe("OnEntryExecuted");
+            LoggedMessages[0].Message.ShouldContain("OnReadyEntry");
+            LoggedMessages[0].Message.ShouldContain("Ready");
+            LoggedMessages[1].EventId.Name.ShouldBe("MachineStarted");
         }
 
         [Fact]
@@ -67,9 +82,12 @@ namespace FastFsm.Logging.Tests
                 null,
                 GetLogger<FullMultiPayloadMachine>());
             machine.Start();
-            // Assert
-            VerifyLogCount(1);
-            VerifyLogMessage(LogLevel.Debug, "OnEntryExecuted", "OnNewEntry", "New");
+            // Assert - OnEntry is called first (in OnInitialEntry), then MachineStarted
+            VerifyLogCount(2);
+            LoggedMessages[0].EventId.Name.ShouldBe("OnEntryExecuted");
+            LoggedMessages[0].Message.ShouldContain("OnNewEntry");
+            LoggedMessages[0].Message.ShouldContain("New");
+            LoggedMessages[1].EventId.Name.ShouldBe("MachineStarted");
         }
 
         [Fact]
@@ -98,24 +116,31 @@ namespace FastFsm.Logging.Tests
             machine.TryFire(TestTrigger.Complete);
             machine.TryFire(TestTrigger.Reset); // This should fail
 
-            // Assert
+            // Assert - Now includes MachineStarted, TransitionStarted events and UnhandledTrigger
             machine.CurrentState.ShouldBe(TestState.Completed);
-            LoggedMessages.Count.ShouldBe(3);
+            LoggedMessages.Count.ShouldBe(7);
+
+            // MachineStarted
+            LoggedMessages[0].EventId.Name.ShouldBe("MachineStarted");
 
             // First transition
-            LoggedMessages[0].EventId.Name.ShouldBe("TransitionSucceeded");
-            LoggedMessages[0].Message.ShouldContain("Initial");
-            LoggedMessages[0].Message.ShouldContain("Processing");
+            LoggedMessages[1].EventId.Name.ShouldBe("TransitionStarted");
+            LoggedMessages[2].EventId.Name.ShouldBe("TransitionSucceeded");
+            LoggedMessages[2].Message.ShouldContain("Initial");
+            LoggedMessages[2].Message.ShouldContain("Processing");
 
             // Second transition
-            LoggedMessages[1].EventId.Name.ShouldBe("TransitionSucceeded");
-            LoggedMessages[1].Message.ShouldContain("Processing");
-            LoggedMessages[1].Message.ShouldContain("Completed");
+            LoggedMessages[3].EventId.Name.ShouldBe("TransitionStarted");
+            LoggedMessages[4].EventId.Name.ShouldBe("TransitionSucceeded");
+            LoggedMessages[4].Message.ShouldContain("Processing");
+            LoggedMessages[4].Message.ShouldContain("Completed");
 
-            // Failed transition
-            LoggedMessages[2].EventId.Name.ShouldBe("TransitionFailed");
-            LoggedMessages[2].Message.ShouldContain("Completed");
-            LoggedMessages[2].Message.ShouldContain("Reset");
+            // Failed transition - UnhandledTrigger and TransitionFailed
+            LoggedMessages[5].EventId.Name.ShouldBe("UnhandledTrigger");
+            LoggedMessages[5].Message.ShouldContain("Reset");
+            LoggedMessages[6].EventId.Name.ShouldBe("TransitionFailed");
+            LoggedMessages[6].Message.ShouldContain("Completed");
+            LoggedMessages[6].Message.ShouldContain("Reset");
         }
 
         [Fact]
@@ -210,10 +235,13 @@ namespace FastFsm.Logging.Tests
             // -------------------------------------------------
             // Assert
             // -------------------------------------------------
-            // Powinien pojawić się tylko TransitionSucceeded (Information)
-            // Logi Debug (OnExit, Action, OnEntry) powinny być odfiltrowane
-            VerifyLogCount(1);
-            VerifyLogMessage(LogLevel.Information, "TransitionSucceeded");
+            // Powinny pojawić się tylko logi Information: MachineStarted i TransitionSucceeded
+            // Logi Debug (TransitionStarted, OnExit, Action, OnEntry) powinny być odfiltrowane
+            VerifyLogCount(2);
+            LoggedMessages[0].EventId.Name.ShouldBe("MachineStarted");
+            LoggedMessages[0].Level.ShouldBe(LogLevel.Information);
+            LoggedMessages[1].EventId.Name.ShouldBe("TransitionSucceeded");
+            LoggedMessages[1].Level.ShouldBe(LogLevel.Information);
         }
 
 
