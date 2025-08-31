@@ -2188,6 +2188,9 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         string stateTypeForUsage,
         string triggerTypeForUsage)
 {
+        // Debug to trace the call path
+        Sb.AppendLine($"// DEBUG: WriteTransitionLogic called in UnifiedStateMachineGenerator for {transition.ActionMethod}");
+        
         var hasOnEntryExit = ShouldGenerateOnEntryExit();
 
         // Hook: Before transition

@@ -2327,28 +2327,76 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         string fromState,
         string toState)
     {
+        // Debug output to trace the call
+        Sb.AppendLine($"// DEBUG: EmitActionWithExceptionPolicy called for {transition.ActionMethod}, IsAsync={IsAsyncMachine}, ActionIsAsync={transition.ActionIsAsync}");
+        
         if (Model.ExceptionHandler == null)
         {
             // No exception handler - wrap with FASTFSM_SAFE_ACTIONS to optionally swallow exceptions
             Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
             using (Sb.Block("try"))
             {
+                // Log async action start if async
+                if (IsAsyncMachine && transition.ActionIsAsync)
+                {
+                    WriteLogStatement("Debug",
+                        $"AsyncActionStarted(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {fromState} -> {toState}\");");
+                    Sb.AppendLine("var actionStart = System.Diagnostics.Stopwatch.GetTimestamp();");
+                }
+                
                 WriteActionCall(transition);
-                WriteLogStatement("Debug",
-                    $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+                
+                // Log completion based on whether it's async or not
+                if (IsAsyncMachine && transition.ActionIsAsync)
+                {
+                    Sb.AppendLine("var elapsedMs = System.Diagnostics.Stopwatch.GetElapsedTime(actionStart).TotalMilliseconds;");
+                    WriteLogStatement("Debug",
+                        $"AsyncActionCompleted(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {fromState} -> {toState}\", elapsedMs);");
+                }
+                else
+                {
+                    WriteLogStatement("Debug",
+                        $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+                }
             }
             using (Sb.Block("catch (System.OperationCanceledException)"))
             {
                 Sb.AppendLine("return false;");
             }
-            using (Sb.Block("catch (System.Exception)"))
+            using (Sb.Block("catch (System.Exception ex)"))
             {
+                // Log async action failure if async
+                if (IsAsyncMachine && transition.ActionIsAsync)
+                {
+                    WriteLogStatement("Warning",
+                        $"AsyncActionFailed(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {fromState} -> {toState}\", ex);");
+                }
                 Sb.AppendLine("return false;");
             }
             Sb.AppendLine("#else");
+            
+            // Log async action start if async (outside try block)
+            if (IsAsyncMachine && transition.ActionIsAsync)
+            {
+                WriteLogStatement("Debug",
+                    $"AsyncActionStarted(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {fromState} -> {toState}\");");
+                Sb.AppendLine("var actionStart = System.Diagnostics.Stopwatch.GetTimestamp();");
+            }
+            
             WriteActionCall(transition);
-            WriteLogStatement("Debug",
-                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+            
+            // Log completion based on whether it's async or not
+            if (IsAsyncMachine && transition.ActionIsAsync)
+            {
+                Sb.AppendLine("var elapsedMs = System.Diagnostics.Stopwatch.GetElapsedTime(actionStart).TotalMilliseconds;");
+                WriteLogStatement("Debug",
+                    $"AsyncActionCompleted(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {fromState} -> {toState}\", elapsedMs);");
+            }
+            else
+            {
+                WriteLogStatement("Debug",
+                    $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+            }
             Sb.AppendLine("#endif");
             return;
         }
@@ -2356,12 +2404,37 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         // Wrap in try/catch with exception policy
         using (Sb.Block("try"))
         {
+            // Log async action start if async
+            if (IsAsyncMachine && transition.ActionIsAsync)
+            {
+                WriteLogStatement("Debug",
+                    $"AsyncActionStarted(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {fromState} -> {toState}\");");
+                Sb.AppendLine("var actionStart = System.Diagnostics.Stopwatch.GetTimestamp();");
+            }
+            
             WriteActionCall(transition);
-            WriteLogStatement("Debug",
-                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+            
+            // Log completion based on whether it's async or not
+            if (IsAsyncMachine && transition.ActionIsAsync)
+            {
+                Sb.AppendLine("var elapsedMs = System.Diagnostics.Stopwatch.GetElapsedTime(actionStart).TotalMilliseconds;");
+                WriteLogStatement("Debug",
+                    $"AsyncActionCompleted(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {fromState} -> {toState}\", elapsedMs);");
+            }
+            else
+            {
+                WriteLogStatement("Debug",
+                    $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+            }
         }
         using (Sb.Block("catch (Exception ex) when (ex is not System.OperationCanceledException)"))
         {
+            // Log async action failure if async
+            if (IsAsyncMachine && transition.ActionIsAsync)
+            {
+                WriteLogStatement("Warning",
+                    $"AsyncActionFailed(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {fromState} -> {toState}\", ex);");
+            }
             EmitExceptionHandlerCallForAction(fromState, toState, transition.Trigger);
         }
     }
@@ -2471,6 +2544,14 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
             using (Sb.Block("try"))
             {
+                // Log async action start if async
+                if (IsAsyncMachine && transition.ActionIsAsync)
+                {
+                    WriteLogStatement("Debug",
+                        $"AsyncActionStarted(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {fromState} -> {toState}\");");
+                    Sb.AppendLine("var actionStart = System.Diagnostics.Stopwatch.GetTimestamp();");
+                }
+                
                 CallbackGenerationHelper.EmitActionCall(
                     Sb,
                     transition,
@@ -2481,18 +2562,44 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                     cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
                     treatCancellationAsFailure: IsAsyncMachine
                 );
-                WriteLogStatement("Debug",
-                    $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+                
+                // Log completion based on whether it's async or not
+                if (IsAsyncMachine && transition.ActionIsAsync)
+                {
+                    Sb.AppendLine("var elapsedMs = System.Diagnostics.Stopwatch.GetElapsedTime(actionStart).TotalMilliseconds;");
+                    WriteLogStatement("Debug",
+                        $"AsyncActionCompleted(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {fromState} -> {toState}\", elapsedMs);");
+                }
+                else
+                {
+                    WriteLogStatement("Debug",
+                        $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+                }
             }
             using (Sb.Block("catch (System.OperationCanceledException)"))
             {
                 Sb.AppendLine("return false;");
             }
-            using (Sb.Block("catch (System.Exception)"))
+            using (Sb.Block("catch (System.Exception ex)"))
             {
+                // Log async action failure if async
+                if (IsAsyncMachine && transition.ActionIsAsync)
+                {
+                    WriteLogStatement("Warning",
+                        $"AsyncActionFailed(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {fromState} -> {toState}\", ex);");
+                }
                 Sb.AppendLine("return false;");
             }
             Sb.AppendLine("#else");
+            
+            // Log async action start if async (outside try block)
+            if (IsAsyncMachine && transition.ActionIsAsync)
+            {
+                WriteLogStatement("Debug",
+                    $"AsyncActionStarted(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {fromState} -> {toState}\");");
+                Sb.AppendLine("var actionStart = System.Diagnostics.Stopwatch.GetTimestamp();");
+            }
+            
             CallbackGenerationHelper.EmitActionCall(
                 Sb,
                 transition,
@@ -2503,8 +2610,19 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                 cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
                 treatCancellationAsFailure: IsAsyncMachine
             );
-            WriteLogStatement("Debug",
-                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+            
+            // Log completion based on whether it's async or not
+            if (IsAsyncMachine && transition.ActionIsAsync)
+            {
+                Sb.AppendLine("var elapsedMs = System.Diagnostics.Stopwatch.GetElapsedTime(actionStart).TotalMilliseconds;");
+                WriteLogStatement("Debug",
+                    $"AsyncActionCompleted(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {fromState} -> {toState}\", elapsedMs);");
+            }
+            else
+            {
+                WriteLogStatement("Debug",
+                    $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+            }
             Sb.AppendLine("#endif");
             return;
         }
@@ -2512,6 +2630,14 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         // Wrap in try/catch with exception policy
         using (Sb.Block("try"))
         {
+            // Log async action start if async
+            if (IsAsyncMachine && transition.ActionIsAsync)
+            {
+                WriteLogStatement("Debug",
+                    $"AsyncActionStarted(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {fromState} -> {toState}\");");
+                Sb.AppendLine("var actionStart = System.Diagnostics.Stopwatch.GetTimestamp();");
+            }
+            
             CallbackGenerationHelper.EmitActionCall(
                 Sb,
                 transition,
@@ -2522,11 +2648,28 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                 cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
                 treatCancellationAsFailure: IsAsyncMachine
             );
-            WriteLogStatement("Debug",
-                $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+            
+            // Log completion based on whether it's async or not
+            if (IsAsyncMachine && transition.ActionIsAsync)
+            {
+                Sb.AppendLine("var elapsedMs = System.Diagnostics.Stopwatch.GetElapsedTime(actionStart).TotalMilliseconds;");
+                WriteLogStatement("Debug",
+                    $"AsyncActionCompleted(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {fromState} -> {toState}\", elapsedMs);");
+            }
+            else
+            {
+                WriteLogStatement("Debug",
+                    $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{fromState}\", \"{toState}\", \"{transition.Trigger}\");");
+            }
         }
         using (Sb.Block("catch (Exception ex) when (ex is not System.OperationCanceledException)"))
         {
+            // Log async action failure if async
+            if (IsAsyncMachine && transition.ActionIsAsync)
+            {
+                WriteLogStatement("Warning",
+                    $"AsyncActionFailed(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {fromState} -> {toState}\", ex);");
+            }
             EmitExceptionHandlerCallForAction(fromState, toState, transition.Trigger);
         }
     }
