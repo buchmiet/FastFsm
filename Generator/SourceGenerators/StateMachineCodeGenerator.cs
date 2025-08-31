@@ -636,6 +636,13 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             }
         }
 
+        // Log transition started before any state changes
+        if (ShouldGenerateLogging && !transition.IsInternal)
+        {
+            WriteLogStatement("Debug",
+                $"TransitionStarted(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\", \"{transition.ToState}\");");
+        }
+
         // OnExit (if applicable)
         if (!transition.IsInternal && hasOnEntryExit &&
             Model.States.TryGetValue(transition.FromState, out var fromStateDef) &&
@@ -745,11 +752,6 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         // State change
         if (!transition.IsInternal)
         {
-            if (ShouldGenerateLogging)
-            {
-                WriteLogStatement("Debug",
-                    $"TransitionStarted(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\", \"{transition.ToState}\");");
-            }
             Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
         }
 
