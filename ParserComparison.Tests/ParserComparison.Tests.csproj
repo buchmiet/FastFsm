@@ -19,6 +19,21 @@
     <ProjectReference Include="..\Generator\Generator.csproj" 
                       OutputItemType="Analyzer" 
                       ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Generator.Model\Generator.Model.csproj" 
+                      ReferenceOutputAssembly="false" 
+                      PrivateAssets="all" />
+    <ProjectReference Include="..\Generator.Rules\Generator.Rules.csproj" 
+                      ReferenceOutputAssembly="false" 
+                      PrivateAssets="all" />
+    <ProjectReference Include="..\Generator.Logger\Generator.Logger.csproj" 
+                      ReferenceOutputAssembly="false" 
+                      PrivateAssets="all" />
+    <ProjectReference Include="..\IndentedStringBuilder\IndentedStringBuilder.csproj" 
+                      ReferenceOutputAssembly="false" 
+                      PrivateAssets="all" />
+    <ProjectReference Include="..\Generator.DependencyInjection\Generator.DependencyInjection.csproj" 
+                      ReferenceOutputAssembly="false" 
+                      PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
