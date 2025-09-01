@@ -710,6 +710,13 @@ namespace Generator.Parsers
                         nameofInvocation.ArgumentList.Arguments[0].Expression is IdentifierNameSyntax methodName)
                     {
                         state.OnEntryMethod = methodName.Identifier.Text;
+                        // parameterless overload detection
+                        if (_classSymbol != null)
+                        {
+                            var overloads = _classSymbol.GetMembers(state.OnEntryMethod).OfType<IMethodSymbol>();
+                            state.OnEntryHasParameterlessOverload = overloads.Any(m => m.Parameters.IsEmpty);
+                            state.OnEntryExpectsPayload = overloads.Any(m => m.Parameters.Length > 0);
+                        }
                         report?.Invoke($"[FluentParser] Set OnEntry for {currentState}: {state.OnEntryMethod}");
                     }
                 }
@@ -718,6 +725,12 @@ namespace Generator.Parsers
                          literal.Token.Value is string entryName)
                 {
                     state.OnEntryMethod = entryName;
+                    if (_classSymbol != null)
+                    {
+                        var overloads = _classSymbol.GetMembers(state.OnEntryMethod).OfType<IMethodSymbol>();
+                        state.OnEntryHasParameterlessOverload = overloads.Any(m => m.Parameters.IsEmpty);
+                        state.OnEntryExpectsPayload = overloads.Any(m => m.Parameters.Length > 0);
+                    }
                     report?.Invoke($"[FluentParser] Set OnEntry for {currentState}: {entryName}");
                 }
             }
@@ -740,6 +753,12 @@ namespace Generator.Parsers
                         nameofInvocation.ArgumentList.Arguments[0].Expression is IdentifierNameSyntax methodName)
                     {
                         state.OnExitMethod = methodName.Identifier.Text;
+                        if (_classSymbol != null)
+                        {
+                            var overloads = _classSymbol.GetMembers(state.OnExitMethod).OfType<IMethodSymbol>();
+                            state.OnExitHasParameterlessOverload = overloads.Any(m => m.Parameters.IsEmpty);
+                            state.OnExitExpectsPayload = overloads.Any(m => m.Parameters.Length > 0);
+                        }
                         report?.Invoke($"[FluentParser] Set OnExit for {currentState}: {state.OnExitMethod}");
                     }
                 }
@@ -748,6 +767,12 @@ namespace Generator.Parsers
                          literal.Token.Value is string exitName)
                 {
                     state.OnExitMethod = exitName;
+                    if (_classSymbol != null)
+                    {
+                        var overloads = _classSymbol.GetMembers(state.OnExitMethod).OfType<IMethodSymbol>();
+                        state.OnExitHasParameterlessOverload = overloads.Any(m => m.Parameters.IsEmpty);
+                        state.OnExitExpectsPayload = overloads.Any(m => m.Parameters.Length > 0);
+                    }
                     report?.Invoke($"[FluentParser] Set OnExit for {currentState}: {exitName}");
                 }
             }
