@@ -14,6 +14,8 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using static Generator.Strings;
 
@@ -454,11 +456,13 @@ public class StateMachineGenerator : IIncrementalGenerator
             return;
         }
         
-        // Parse the model
+        // Parse the model with both parsers
         StateMachineModel model;
+        StateMachineModel? fluentModel = null;
         try
         {
-            var parser = new StateMachineParser(compilation, context);
+            // Original parser
+            IStateMachineParser parser = new StateMachineParser(compilation, context);
             
             // Add diagnostic reporting for internal-only machines
             Action<string>? report = null;
@@ -499,6 +503,10 @@ public class StateMachineGenerator : IIncrementalGenerator
                     "Parser validation failed"));
                 return;
             }
+            
+            // Try parsing with FluentParser as well for comparison
+            IStateMachineParser fluentParser = new FluentParser(compilation, context);
+            fluentParser.TryParse(candidate.ClassDeclaration, out fluentModel, report);
         }
         catch (Exception ex)
         {
@@ -597,6 +605,51 @@ public class StateMachineGenerator : IIncrementalGenerator
             var generator = new Generator.SourceGenerators.UnifiedStateMachineGenerator(model);
             
             var source = generator.Generate();
+            
+            // Serialize both models to JSON for comparison
+            var jsonOptions = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                ReferenceHandler = ReferenceHandler.IgnoreCycles
+            };
+            
+            string originalModelJson;
+            string fluentModelJson;
+            
+            try
+            {
+                originalModelJson = JsonSerializer.Serialize(model, jsonOptions);
+            }
+            catch (Exception ex)
+            {
+                originalModelJson = $"{{ \"error\": \"Failed to serialize: {ex.Message}\" }}";
+            }
+            
+            try
+            {
+                fluentModelJson = fluentModel != null 
+                    ? JsonSerializer.Serialize(fluentModel, jsonOptions) 
+                    : "{}";
+            }
+            catch (Exception ex)
+            {
+                fluentModelJson = $"{{ \"error\": \"Failed to serialize: {ex.Message}\" }}";
+            }
+            
+            // Add JSON representations as multi-line comments at the end of generated source
+            var jsonComments = $@"
+/*
+====== PARSER COMPARISON DEBUG INFO ======
+Original StateMachineParser Model:
+{originalModelJson}
+
+FluentParser Model:
+{fluentModelJson}
+==========================================
+*/";
+            
+            source = source + jsonComments;
             
             // Check if generated source is valid
             if (string.IsNullOrWhiteSpace(source) || source.Length == 0)

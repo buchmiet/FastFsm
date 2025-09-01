@@ -18,7 +18,7 @@ using Generator.Helpers;
 
 namespace Generator.Parsers;
 
-internal class StateMachineParser(Compilation compilation, SourceProductionContext context)
+internal class StateMachineParser(Compilation compilation, SourceProductionContext context) : IStateMachineParser
 {
     private readonly InvalidMethodSignatureRule _invalidMethodSignatureRule = new();
     private readonly InvalidTypesInAttributeRule _invalidTypesInAttributeRule = new();
