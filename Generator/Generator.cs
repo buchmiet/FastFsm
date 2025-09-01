@@ -494,19 +494,38 @@ public class StateMachineGenerator : IIncrementalGenerator
             
             var parseResult = parser.TryParse(candidate.ClassDeclaration, out model, report);
             
+            // Try parsing with FluentParser as well
+            IStateMachineParser fluentParser = new FluentParser(compilation, context);
+            var fluentParseResult = fluentParser.TryParse(candidate.ClassDeclaration, out fluentModel, report);
+            
+            // If StateMachineParser failed but FluentParser succeeded, use fluent model
             if (!parseResult || model == null)
             {
-                context.ReportDiagnostic(Diagnostic.Create(
-                    FSM997_SkippedCandidate,
-                    candidate.ClassDeclaration.GetLocation(),
-                    fullName,
-                    "Parser validation failed"));
-                return;
+                if (fluentParseResult && fluentModel != null)
+                {
+                    // Use fluent model for generation
+                    model = fluentModel;
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        new DiagnosticDescriptor(
+                            "FSM998",
+                            "Using Fluent API parser",
+                            "Using Fluent API parser for '{0}'",
+                            "FastFsm",
+                            DiagnosticSeverity.Info,
+                            true),
+                        candidate.ClassDeclaration.GetLocation(),
+                        fullName));
+                }
+                else
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        FSM997_SkippedCandidate,
+                        candidate.ClassDeclaration.GetLocation(),
+                        fullName,
+                        "Both parsers failed"));
+                    return;
+                }
             }
-            
-            // Try parsing with FluentParser as well for comparison
-            IStateMachineParser fluentParser = new FluentParser(compilation, context);
-            fluentParser.TryParse(candidate.ClassDeclaration, out fluentModel, report);
         }
         catch (Exception ex)
         {
