@@ -1,4 +1,5 @@
 ﻿using Abstractions.Attributes;
+using Abstractions.Fluent;
 using static FastFsm.Tests.Features.EdgeCases.NameCollisionTests;
 
 namespace FastFsm.Tests.Machines
@@ -6,9 +7,12 @@ namespace FastFsm.Tests.Machines
     [StateMachine(typeof(CaseSensitiveState), typeof(CaseSensitiveTrigger))]
     public partial class CaseSensitiveMachine
     {
-        [Transition(CaseSensitiveState.state, CaseSensitiveTrigger.GO, CaseSensitiveState.STATE)]
-        [Transition(CaseSensitiveState.STATE, CaseSensitiveTrigger.go, CaseSensitiveState.State)]
-        [Transition(CaseSensitiveState.State, CaseSensitiveTrigger.Go, CaseSensitiveState.state)]
-        private void Configure() { }
+        private static void Configure() => FSM
+            .State(CaseSensitiveState.state)
+                .On(CaseSensitiveTrigger.GO).GoTo(CaseSensitiveState.STATE)
+            .State(CaseSensitiveState.STATE)
+                .On(CaseSensitiveTrigger.go).GoTo(CaseSensitiveState.State)
+            .State(CaseSensitiveState.State)
+                .On(CaseSensitiveTrigger.Go).GoTo(CaseSensitiveState.state);
     }
 }

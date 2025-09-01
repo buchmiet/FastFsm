@@ -1,4 +1,5 @@
 ﻿using Abstractions.Attributes;
+using Abstractions.Fluent;
 using static FastFsm.Tests.Features.EdgeCases.NameCollisionTests;
 
 namespace FastFsm.Tests.Machines
@@ -6,8 +7,10 @@ namespace FastFsm.Tests.Machines
     [StateMachine(typeof(NumericState), typeof(NumericTrigger))]
     public partial class NumericMachine
     {
-        [Transition(NumericState._1Start, NumericTrigger._2Next, NumericState._3Middle)]
-        [Transition(NumericState._3Middle, NumericTrigger._4Continue, NumericState._5End)]
-        private void Configure() { }
+        private static void Configure() => FSM
+            .State(NumericState._1Start)
+                .On(NumericTrigger._2Next).GoTo(NumericState._3Middle)
+            .State(NumericState._3Middle)
+                .On(NumericTrigger._4Continue).GoTo(NumericState._5End);
     }
 }

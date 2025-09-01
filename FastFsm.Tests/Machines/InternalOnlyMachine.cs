@@ -1,4 +1,5 @@
 ﻿using Abstractions.Attributes;
+using Abstractions.Fluent;
 using FastFsm.Tests.Features.EdgeCases;
 using static FastFsm.Tests.Features.EdgeCases.EmptyMachineTests;
 
@@ -10,9 +11,9 @@ namespace FastFsm.Tests.Machines
         private int _actionCount;
         public int ActionCount => _actionCount;
 
-        [InternalTransition(EmptyMachineTests.InternalOnlyState.Static, EmptyMachineTests.InternalOnlyTrigger.Action,
-            Action = nameof(PerformAction))]
-        private void Configure() { }
+        private static void Configure() => FSM
+            .State(EmptyMachineTests.InternalOnlyState.Static)
+                .OnInternal(EmptyMachineTests.InternalOnlyTrigger.Action).Action(nameof(PerformAction));
 
         private void PerformAction() => _actionCount++;
     }

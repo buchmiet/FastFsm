@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Abstractions.Attributes;
+using Abstractions.Fluent;
 using static FastFsm.Tests.Features.Core.StateCallbackTests;
 
 namespace FastFsm.Tests.Machines
@@ -9,16 +10,15 @@ namespace FastFsm.Tests.Machines
     {
         public List<string> ExecutionLog { get; } = [];
 
-        [State(CallbackState.A, OnExit = nameof(OnExitA))]
-        [State(CallbackState.B, OnEntry = nameof(OnEntryB), OnExit = nameof(OnExitB))]
-        [State(CallbackState.C, OnEntry = nameof(OnEntryC))]
-        private void ConfigureStates() { }
-
-        [Transition(CallbackState.A, CallbackTrigger.Next, CallbackState.B,
-            Action = nameof(ActionAtoB))]
-        [Transition(CallbackState.B, CallbackTrigger.Next, CallbackState.C,
-            Action = nameof(ActionBtoC))]
-        private void Configure() { }
+        private static void Configure() => FSM
+            .State(CallbackState.A)
+                .OnExit(nameof(OnExitA))
+                .On(CallbackTrigger.Next).GoTo(CallbackState.B).Action(nameof(ActionAtoB))
+            .State(CallbackState.B)
+                .OnEntry(nameof(OnEntryB)).OnExit(nameof(OnExitB))
+                .On(CallbackTrigger.Next).GoTo(CallbackState.C).Action(nameof(ActionBtoC))
+            .State(CallbackState.C)
+                .OnEntry(nameof(OnEntryC));
 
         private void OnExitA() => ExecutionLog.Add("Exit-A");
         private void OnEntryB() => ExecutionLog.Add("Entry-B");

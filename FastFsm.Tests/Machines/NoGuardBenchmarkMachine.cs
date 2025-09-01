@@ -1,4 +1,5 @@
 ﻿using Abstractions.Attributes;
+using Abstractions.Fluent;
 using static FastFsm.Tests.Features.Performance.BenchmarkTests;
 
 namespace FastFsm.Tests.Machines;
@@ -6,8 +7,10 @@ namespace FastFsm.Tests.Machines;
 [StateMachine(typeof(BenchmarkState), typeof(BenchmarkTrigger))]
 public partial class NoGuardBenchmarkMachine
 {
-    [Transition(BenchmarkState.A, BenchmarkTrigger.Next, BenchmarkState.B)]
-    [Transition(BenchmarkState.B, BenchmarkTrigger.Next, BenchmarkState.A)]
-    private void Configure() { }
+    private static void Configure() => FSM
+        .State(BenchmarkState.A)
+            .On(BenchmarkTrigger.Next).GoTo(BenchmarkState.B)
+        .State(BenchmarkState.B)
+            .On(BenchmarkTrigger.Next).GoTo(BenchmarkState.A);
 }
 

@@ -1,4 +1,5 @@
 ﻿using Abstractions.Attributes;
+using Abstractions.Fluent;
 using static FastFsm.Tests.Features.EdgeCases.EmptyMachineTests;
 
 namespace FastFsm.Tests.Machines
@@ -9,9 +10,9 @@ namespace FastFsm.Tests.Machines
         private int _actionCount;
         public int ActionCount => _actionCount;
 
-        [Transition(SingleState.Only, SingleTrigger.Loop, SingleState.Only,
-            Action = nameof(IncrementCounter))]
-        private void Configure() { }
+        private static void Configure() => FSM
+            .State(SingleState.Only)
+                .On(SingleTrigger.Loop).GoTo(SingleState.Only).Action(nameof(IncrementCounter));
 
         private void IncrementCounter() => _actionCount++;
     }
