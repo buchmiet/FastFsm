@@ -5,6 +5,8 @@ using Generator.Model;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Generator.Infrastructure;
+using Generator.Helpers;
 
 namespace Generator.Parsers
 {
@@ -13,6 +15,12 @@ namespace Generator.Parsers
         private readonly Compilation _compilation;
         private readonly SourceProductionContext _context;
         private SemanticModel? _semanticModel;
+        private INamedTypeSymbol? _classSymbol;
+        private ClassDeclarationSyntax? _classDecl;
+
+        private readonly TypeSystemHelper _typeHelper = new();
+        private CallbackSignatureAnalyzer? _callbackAnalyzer;
+        private INamedTypeSymbol? _stateEnumSymbol;
 
         public FluentParser(Compilation compilation, SourceProductionContext context)
         {
@@ -26,6 +34,7 @@ namespace Generator.Parsers
             Action<string>? report = null)
         {
             model = null;
+            _classDecl = classDeclaration;
             
             // Check if this class uses Fluent API (has Configure method)
             var configureMethod = FindConfigureMethod(classDeclaration);
@@ -37,9 +46,10 @@ namespace Generator.Parsers
 
             report?.Invoke($"[FluentParser] Found Configure() method in {classDeclaration.Identifier.Text}");
 
-            // Get semantic model
+            // Get semantic model and class symbol
             _semanticModel = _compilation.GetSemanticModel(classDeclaration.SyntaxTree);
-            
+            _classSymbol = _semanticModel.GetDeclaredSymbol(classDeclaration) as INamedTypeSymbol;
+
             // Initialize model
             model = new StateMachineModel
             {
@@ -50,7 +60,7 @@ namespace Generator.Parsers
                 GenerationConfig = new GenerationConfig()
             };
 
-            // Extract state and trigger types from [StateMachine] attribute
+            // Extract configuration and types from [StateMachine] attribute
             if (!ExtractTypesFromAttribute(classDeclaration, model, report))
             {
                 return false;
@@ -60,6 +70,26 @@ namespace Generator.Parsers
             if (!ParseConfigureMethod(configureMethod, model, report))
             {
                 return false;
+            }
+
+            // Populate ExpectedPayloadType for transitions (Default or per-trigger)
+            foreach (var t in model.Transitions)
+            {
+                if (!string.IsNullOrEmpty(t.Trigger) && model.TriggerPayloadTypes.TryGetValue(t.Trigger, out var trigPayload))
+                {
+                    t.ExpectedPayloadType = trigPayload;
+                }
+                else if (!string.IsNullOrEmpty(model.DefaultPayloadType))
+                {
+                    t.ExpectedPayloadType = model.DefaultPayloadType;
+                }
+            }
+
+            // If class signals fluent usage (Configure exists) but no DSL recognized,
+            // fall back to enum-only states model for parity with legacy parser.
+            if (model.States.Count == 0 && model.Transitions.Count == 0)
+            {
+                ApplyEnumOnlyFallback(model, report);
             }
 
             report?.Invoke($"[FluentParser] Successfully parsed {model.States.Count} states and {model.Transitions.Count} transitions");
@@ -76,35 +106,110 @@ namespace Generator.Parsers
 
         private bool ExtractTypesFromAttribute(ClassDeclarationSyntax classDeclaration, StateMachineModel model, Action<string>? report)
         {
-            var stateMachineAttr = classDeclaration.AttributeLists
-                .SelectMany(al => al.Attributes)
-                .FirstOrDefault(a => a.Name.ToString().Contains("StateMachine"));
-
-            if (stateMachineAttr?.ArgumentList?.Arguments.Count >= 2)
+            if (_classSymbol == null)
             {
-                // Extract State type
-                var stateTypeArg = stateMachineAttr.ArgumentList.Arguments[0];
-                if (stateTypeArg.Expression is TypeOfExpressionSyntax stateTypeOf)
-                {
-                    var stateType = stateTypeOf.Type.ToString();
-                    model.StateType = $"{model.Namespace}.{stateType}";
-                    report?.Invoke($"[FluentParser] State type: {model.StateType}");
-                }
-
-                // Extract Trigger type
-                var triggerTypeArg = stateMachineAttr.ArgumentList.Arguments[1];
-                if (triggerTypeArg.Expression is TypeOfExpressionSyntax triggerTypeOf)
-                {
-                    var triggerType = triggerTypeOf.Type.ToString();
-                    model.TriggerType = $"{model.Namespace}.{triggerType}";
-                    report?.Invoke($"[FluentParser] Trigger type: {model.TriggerType}");
-                }
-
-                return true;
+                report?.Invoke("[FluentParser] Semantic class symbol not available");
+                return false;
             }
 
-            report?.Invoke("[FluentParser] Failed to extract State/Trigger types from [StateMachine] attribute");
-            return false;
+            var smAttr = _classSymbol.GetAttributes()
+                .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == Strings.StateMachineAttributeFullName);
+            if (smAttr == null)
+            {
+                report?.Invoke("[FluentParser] [StateMachine] attribute not found");
+                return false;
+            }
+
+            // Constructor args: (typeof(State), typeof(Trigger))
+            if (smAttr.ConstructorArguments.Length >= 2)
+            {
+                if (smAttr.ConstructorArguments[0].Value is INamedTypeSymbol stateSym)
+                {
+                    model.StateType = _typeHelper.BuildFullTypeName(stateSym);
+                    _stateEnumSymbol = stateSym;
+                    report?.Invoke($"[FluentParser] State type: {model.StateType}");
+                }
+                if (smAttr.ConstructorArguments[1].Value is INamedTypeSymbol triggerSym)
+                {
+                    model.TriggerType = _typeHelper.BuildFullTypeName(triggerSym);
+                    report?.Invoke($"[FluentParser] Trigger type: {model.TriggerType}");
+                }
+            }
+            else
+            {
+                // Lenient fallback: extract names from attribute syntax (typeof(...))
+                var attrSyntax = classDeclaration.AttributeLists
+                    .SelectMany(al => al.Attributes)
+                    .FirstOrDefault(attr =>
+                    {
+                        var n = attr.Name.ToString();
+                        return n == "StateMachine" || n == "StateMachineAttribute" ||
+                               n.EndsWith(".StateMachine") || n.EndsWith(".StateMachineAttribute");
+                    });
+
+                if (attrSyntax?.ArgumentList?.Arguments.Count >= 2)
+                {
+                    static string? ExtractTypeName(AttributeArgumentSyntax a)
+                        => (a.Expression as TypeOfExpressionSyntax)?.Type?.ToString();
+
+                    var stName = ExtractTypeName(attrSyntax.ArgumentList.Arguments[0]);
+                    var trName = ExtractTypeName(attrSyntax.ArgumentList.Arguments[1]);
+
+                    if (!string.IsNullOrEmpty(stName)) model.StateType = stName!;
+                    if (!string.IsNullOrEmpty(trName)) model.TriggerType = trName!;
+                    report?.Invoke($"[FluentParser] [Lenient] Types from syntax: state={model.StateType}, trigger={model.TriggerType}");
+
+                    // Try resolving state symbol so that enum-only fallback can enumerate members
+                    if (!string.IsNullOrEmpty(model.StateType))
+                    {
+                        // If type is unqualified, try with containing namespace prefix
+                        INamedTypeSymbol? resolved = _compilation.GetTypeByMetadataName(model.StateType) as INamedTypeSymbol;
+                        if (resolved == null && !string.IsNullOrEmpty(model.Namespace) && !model.StateType!.Contains('.'))
+                        {
+                            var fq = string.IsNullOrEmpty(model.Namespace) ? model.StateType : ($"{model.Namespace}.{model.StateType}");
+                            resolved = _compilation.GetTypeByMetadataName(fq) as INamedTypeSymbol;
+                        }
+                        _stateEnumSymbol = resolved;
+                    }
+                }
+                else
+                {
+                    report?.Invoke("[FluentParser] Invalid [StateMachine] constructor arguments and no syntax fallback available");
+                    return false;
+                }
+            }
+
+            // Named args: DefaultPayloadType, GenerateStructuralApi, ContinueOnCapturedContext, EnableHierarchy
+            var defaultPayloadArg = smAttr.NamedArguments.FirstOrDefault(na => na.Key == nameof(Abstractions.Attributes.StateMachineAttribute.DefaultPayloadType));
+            if (defaultPayloadArg.Key != null && defaultPayloadArg.Value.Value is INamedTypeSymbol payloadSym)
+            {
+                model.DefaultPayloadType = _typeHelper.BuildFullTypeName(payloadSym);
+                model.GenerationConfig.HasPayload = true;
+                report?.Invoke($"[FluentParser] DefaultPayloadType: {model.DefaultPayloadType}");
+            }
+
+            var structuralApiArg = smAttr.NamedArguments.FirstOrDefault(na => na.Key == "GenerateStructuralApi");
+            if (structuralApiArg.Key != null && structuralApiArg.Value.Value is bool structural)
+            {
+                model.EmitStructuralHelpers = structural;
+            }
+
+            var continueCtxArg = smAttr.NamedArguments.FirstOrDefault(na => na.Key == "ContinueOnCapturedContext");
+            if (continueCtxArg.Key != null && continueCtxArg.Value.Value is bool cont)
+            {
+                model.ContinueOnCapturedContext = cont;
+            }
+
+            var enableHierarchyArg = smAttr.NamedArguments.FirstOrDefault(na => na.Key == "EnableHierarchy");
+            if (enableHierarchyArg.Key != null && enableHierarchyArg.Value.Value is bool enableHsm)
+            {
+                model.HierarchyEnabled = enableHsm;
+            }
+
+            // Also honor [PayloadType] attributes (class-level and method-level)
+            ParsePayloadTypeAttributes(model, report);
+
+            return true;
         }
 
         private bool ParseConfigureMethod(MethodDeclarationSyntax configureMethod, StateMachineModel model, Action<string>? report)
@@ -198,6 +303,88 @@ namespace Generator.Parsers
                         break;
                 }
             }
+        }
+
+        private void ApplyEnumOnlyFallback(StateMachineModel model, Action<string>? report)
+        {
+            INamedTypeSymbol? stateEnum = _stateEnumSymbol;
+            if (stateEnum == null && !string.IsNullOrEmpty(model.StateType))
+            {
+                stateEnum = _compilation.GetTypeByMetadataName(model.StateType) as INamedTypeSymbol;
+            }
+
+            if (stateEnum == null)
+            {
+                // Try syntax-based enumeration as last resort (lenient):
+                // find enum declaration matching the simple type name in this syntax tree
+                string? typeName = model.StateType;
+                string simpleName = typeName ?? string.Empty;
+                if (!string.IsNullOrEmpty(typeName))
+                {
+                    int lastDot = typeName.LastIndexOf('.');
+                    int lastPlus = typeName.LastIndexOf('+');
+                    int cut = Math.Max(lastDot, lastPlus);
+                    if (cut >= 0 && cut + 1 < typeName.Length)
+                        simpleName = typeName.Substring(cut + 1);
+                }
+
+                var enumDecl = _classDecl?.SyntaxTree.GetRoot().DescendantNodes()
+                    .OfType<EnumDeclarationSyntax>()
+                    .FirstOrDefault(e => e.Identifier.Text == simpleName);
+
+                if (enumDecl != null)
+                {
+                    model.States.Clear();
+                    int ordinal = 0;
+                    foreach (var member in enumDecl.Members)
+                    {
+                        var memberName = member.Identifier.Text;
+                        int value = ordinal;
+                        if (member.EqualsValue?.Value is LiteralExpressionSyntax lit && lit.Token.Value is int explicitValue)
+                        {
+                            value = explicitValue;
+                            ordinal = explicitValue + 1;
+                        }
+                        else
+                        {
+                            ordinal++;
+                        }
+                        if (!model.States.ContainsKey(memberName))
+                        {
+                            model.States[memberName] = new StateModel { Name = memberName, OrdinalValue = value };
+                        }
+                    }
+                    model.UsedEnumOnlyFallback = true;
+                    report?.Invoke($"[FluentParser] Enum-only fallback (syntax): {model.States.Count} states from enum {simpleName}");
+                    return;
+                }
+
+                // No symbol and no syntax; still mark fallback for diagnostics parity
+                model.UsedEnumOnlyFallback = true;
+                report?.Invoke("[FluentParser] Enum-only fallback: could not resolve state enum symbol");
+                return;
+            }
+
+            model.States.Clear();
+            foreach (var member in stateEnum.GetMembers().OfType<IFieldSymbol>())
+            {
+                if (member.IsConst && member.HasConstantValue)
+                {
+                    var name = member.Name;
+                    int ordinal = member.ConstantValue is int iv ? iv : 0;
+                    if (!model.States.ContainsKey(name))
+                    {
+                        model.States[name] = new StateModel
+                        {
+                            Name = name,
+                            OrdinalValue = ordinal
+                        };
+                    }
+                }
+            }
+
+            model.UsedEnumOnlyFallback = true;
+            report?.Invoke($"[FluentParser] Enum-only fallback applied: {model.States.Count} states from enum");
         }
 
         private void CollectInvocations(ExpressionSyntax expression, List<InvocationExpressionSyntax> invocations)
@@ -300,9 +487,9 @@ namespace Generator.Parsers
         private void ParseAction(InvocationExpressionSyntax invocation, StateMachineModel model, Action<string>? report)
         {
             if (model.Transitions.Count == 0) return;
-            
+
             var lastTransition = model.Transitions[model.Transitions.Count - 1];
-            
+
             if (invocation.ArgumentList.Arguments.Count > 0)
             {
                 var arg = invocation.ArgumentList.Arguments[0];
@@ -317,6 +504,7 @@ namespace Generator.Parsers
                     {
                         lastTransition.ActionMethod = methodName.Identifier.Text;
                         report?.Invoke($"[FluentParser] Set action method: {lastTransition.ActionMethod}");
+                        AnalyzeActionSignature(lastTransition);
                     }
                 }
                 // Check if it's a string literal
@@ -325,8 +513,9 @@ namespace Generator.Parsers
                 {
                     lastTransition.ActionMethod = actionName;
                     report?.Invoke($"[FluentParser] Set action method: {actionName}");
+                    AnalyzeActionSignature(lastTransition);
                 }
-                
+
                 // If no GoTo was specified, this is an internal transition
                 if (string.IsNullOrEmpty(lastTransition.ToState))
                 {
@@ -340,9 +529,9 @@ namespace Generator.Parsers
         private void ParseGuard(InvocationExpressionSyntax invocation, StateMachineModel model, Action<string>? report)
         {
             if (model.Transitions.Count == 0) return;
-            
+
             var lastTransition = model.Transitions[model.Transitions.Count - 1];
-            
+
             if (invocation.ArgumentList.Arguments.Count > 0)
             {
                 var arg = invocation.ArgumentList.Arguments[0];
@@ -357,6 +546,7 @@ namespace Generator.Parsers
                     {
                         lastTransition.GuardMethod = methodName.Identifier.Text;
                         report?.Invoke($"[FluentParser] Set guard method: {lastTransition.GuardMethod}");
+                        AnalyzeGuardSignature(lastTransition);
                     }
                 }
                 // Check if it's a string literal
@@ -365,8 +555,113 @@ namespace Generator.Parsers
                 {
                     lastTransition.GuardMethod = guardName;
                     report?.Invoke($"[FluentParser] Set guard method: {guardName}");
+                    AnalyzeGuardSignature(lastTransition);
                 }
             }
+        }
+
+        private void EnsureAnalyzers()
+        {
+            if (_callbackAnalyzer == null)
+            {
+                var asyncAnalyzer = new AsyncSignatureAnalyzer(_typeHelper);
+                _callbackAnalyzer = new CallbackSignatureAnalyzer(_typeHelper, asyncAnalyzer);
+            }
+        }
+
+        private void AnalyzeActionSignature(TransitionModel t)
+        {
+            if (_classSymbol == null || string.IsNullOrEmpty(t.ActionMethod)) return;
+            EnsureAnalyzers();
+            var sig = _callbackAnalyzer!.AnalyzeCallback(_classSymbol, t.ActionMethod!, "Action", _compilation);
+            t.ActionSignature = sig;
+            t.ActionIsAsync = sig.IsAsync;
+            t.ActionHasParameterlessOverload = sig.HasParameterless;
+            t.ActionExpectsPayload = sig.HasPayloadOnly || sig.HasPayloadAndToken;
+        }
+
+        private void AnalyzeGuardSignature(TransitionModel t)
+        {
+            if (_classSymbol == null || string.IsNullOrEmpty(t.GuardMethod)) return;
+            EnsureAnalyzers();
+            var sig = _callbackAnalyzer!.AnalyzeCallback(_classSymbol, t.GuardMethod!, "Guard", _compilation);
+            t.GuardSignature = sig;
+            t.GuardIsAsync = sig.IsAsync;
+            t.GuardHasParameterlessOverload = sig.HasParameterless;
+            t.GuardExpectsPayload = sig.HasPayloadOnly || sig.HasPayloadAndToken;
+        }
+
+        private void ParsePayloadTypeAttributes(StateMachineModel model, Action<string>? report)
+        {
+            if (_classSymbol == null) return;
+
+            // Class-level [PayloadType(typeof(Default))]
+            var classPayloadAttrs = _classSymbol.GetAttributes()
+                .Where(a => a.AttributeClass?.ToDisplayString() == Strings.PayloadTypeAttributeFullName);
+
+            foreach (var attr in classPayloadAttrs)
+            {
+                if (attr.ConstructorArguments.Length == 1 && attr.ConstructorArguments[0].Value is INamedTypeSymbol payloadType)
+                {
+                    model.DefaultPayloadType = _typeHelper.BuildFullTypeName(payloadType);
+                    model.GenerationConfig.HasPayload = true;
+                    report?.Invoke($"[FluentParser] [PayloadType] default: {model.DefaultPayloadType}");
+                }
+                else if (attr.ConstructorArguments.Length == 2)
+                {
+                    var triggerArg = attr.ConstructorArguments[0];
+                    var payloadTypeArg = attr.ConstructorArguments[1];
+                    var triggerEnum = _compilation.GetTypeByMetadataName(model.TriggerType) as INamedTypeSymbol;
+                    if (triggerEnum != null && payloadTypeArg.Value is INamedTypeSymbol named)
+                    {
+                        var triggerName = ResolveEnumMemberName(triggerArg, triggerEnum);
+                        if (triggerName != null)
+                        {
+                            model.TriggerPayloadTypes[triggerName] = _typeHelper.BuildFullTypeName(named);
+                            model.GenerationConfig.HasPayload = true;
+                            report?.Invoke($"[FluentParser] [PayloadType] for {triggerName}: {model.TriggerPayloadTypes[triggerName]}");
+                        }
+                    }
+                }
+            }
+
+            // Method-level [PayloadType(Trigger.X, typeof(T))] (overrides)
+            foreach (var m in _classSymbol.GetMembers().OfType<IMethodSymbol>())
+            {
+                foreach (var attr in m.GetAttributes().Where(a => a.AttributeClass?.ToDisplayString() == Strings.PayloadTypeAttributeFullName))
+                {
+                    if (attr.ConstructorArguments.Length == 2)
+                    {
+                        var triggerArg = attr.ConstructorArguments[0];
+                        var payloadTypeArg = attr.ConstructorArguments[1];
+                        var triggerEnum = _compilation.GetTypeByMetadataName(model.TriggerType) as INamedTypeSymbol;
+                        if (triggerEnum != null && payloadTypeArg.Value is INamedTypeSymbol named)
+                        {
+                            var triggerName = ResolveEnumMemberName(triggerArg, triggerEnum);
+                            if (triggerName != null)
+                            {
+                                model.TriggerPayloadTypes[triggerName] = _typeHelper.BuildFullTypeName(named);
+                                model.GenerationConfig.HasPayload = true;
+                                report?.Invoke($"[FluentParser] [PayloadType method] for {triggerName}: {model.TriggerPayloadTypes[triggerName]}");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private static string? ResolveEnumMemberName(TypedConstant enumValueConstant, INamedTypeSymbol enumTypeSymbol)
+        {
+            if (enumValueConstant.Kind == TypedConstantKind.Error || enumValueConstant.Value == null)
+                return null;
+            foreach (var member in enumTypeSymbol.GetMembers().OfType<IFieldSymbol>())
+            {
+                if (member.IsConst && member.HasConstantValue && member.ConstantValue != null && Equals(member.ConstantValue, enumValueConstant.Value))
+                {
+                    return member.Name;
+                }
+            }
+            return null;
         }
         
         private void ParseOnEntry(InvocationExpressionSyntax invocation, string currentState, StateMachineModel model, Action<string>? report)
