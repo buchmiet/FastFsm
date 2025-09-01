@@ -526,6 +526,33 @@ public class StateMachineGenerator : IIncrementalGenerator
                     return;
                 }
             }
+            else
+            {
+                // Attribute parser returned a minimal enum-only model; if fluent provided a richer model, prefer it.
+                if (model.UsedEnumOnlyFallback && fluentParseResult && fluentModel != null)
+                {
+                    bool fluentIsRicher =
+                        (fluentModel.Transitions?.Count ?? 0) > 0 ||
+                        (fluentModel.States?.Values?.Any(s => !string.IsNullOrEmpty(s.OnEntryMethod) || !string.IsNullOrEmpty(s.OnExitMethod)) ?? false) ||
+                        !string.IsNullOrEmpty(fluentModel.DefaultPayloadType) ||
+                        (fluentModel.TriggerPayloadTypes?.Count ?? 0) > 0;
+
+                    if (fluentIsRicher)
+                    {
+                        model = fluentModel;
+                        context.ReportDiagnostic(Diagnostic.Create(
+                            new DiagnosticDescriptor(
+                                "FSM998",
+                                "Using Fluent API parser (enum-only fallback override)",
+                                "Using Fluent model instead of enum-only attribute fallback for '{0}'",
+                                "FastFsm",
+                                DiagnosticSeverity.Info,
+                                true),
+                            candidate.ClassDeclaration.GetLocation(),
+                            fullName));
+                    }
+                }
+            }
         }
         catch (Exception ex)
         {
