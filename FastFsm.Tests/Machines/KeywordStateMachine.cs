@@ -1,4 +1,5 @@
 ﻿using Abstractions.Attributes;
+using Abstractions.Fluent;
 using static FastFsm.Tests.Features.EdgeCases.NameCollisionTests;
 
 namespace FastFsm.Tests.Machines
@@ -6,11 +7,16 @@ namespace FastFsm.Tests.Machines
     [StateMachine(typeof(KeywordState), typeof(KeywordTrigger))]
     public partial class KeywordStateMachine
     {
-        [Transition(KeywordState.@class, KeywordTrigger.@goto, KeywordState.@return)]
-        [Transition(KeywordState.@return, KeywordTrigger.@continue, KeywordState.@void)]
-        [Transition(KeywordState.@void, KeywordTrigger.@break, KeywordState.@int)]
-        [Transition(KeywordState.@int, KeywordTrigger.@new, KeywordState.@interface)]
-        [Transition(KeywordState.@interface, KeywordTrigger.@throw, KeywordState.@namespace)]
-        private void Configure() { }
+        private static void Configure() => FSM
+            .State(KeywordState.@class)
+                .On(KeywordTrigger.@goto).GoTo(KeywordState.@return)
+            .State(KeywordState.@return)
+                .On(KeywordTrigger.@continue).GoTo(KeywordState.@void)
+            .State(KeywordState.@void)
+                .On(KeywordTrigger.@break).GoTo(KeywordState.@int)
+            .State(KeywordState.@int)
+                .On(KeywordTrigger.@new).GoTo(KeywordState.@interface)
+            .State(KeywordState.@interface)
+                .On(KeywordTrigger.@throw).GoTo(KeywordState.@namespace);
     }
 }

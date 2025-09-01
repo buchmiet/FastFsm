@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Abstractions.Attributes;
+using Abstractions.Fluent;
 using FastFsm.Tests.Features.Core;
 
 
@@ -10,18 +11,13 @@ namespace FastFsm.Tests.Machines
     {
         public List<string> EventLog { get; } = [];
 
-        [State(StateCallbackTests.InternalState.Active,
-            OnEntry = nameof(OnEntryActive),
-            OnExit = nameof(OnExitActive))]
-        [State(StateCallbackTests.InternalState.Inactive,
-            OnEntry = nameof(OnEntryInactive))]
-        private void ConfigureStates() { }
-
-        [InternalTransition(StateCallbackTests.InternalState.Active, StateCallbackTests.InternalTrigger.Update,
-            Action = nameof(HandleUpdate))]
-        [Transition(StateCallbackTests.InternalState.Active, StateCallbackTests.InternalTrigger.Deactivate,
-            StateCallbackTests.InternalState.Inactive)]
-        private void Configure() { }
+        private static void Configure() => FSM
+            .State(StateCallbackTests.InternalState.Active)
+                .OnEntry(nameof(OnEntryActive)).OnExit(nameof(OnExitActive))
+                .OnInternal(StateCallbackTests.InternalTrigger.Update).Action(nameof(HandleUpdate))
+                .On(StateCallbackTests.InternalTrigger.Deactivate).GoTo(StateCallbackTests.InternalState.Inactive)
+            .State(StateCallbackTests.InternalState.Inactive)
+                .OnEntry(nameof(OnEntryInactive));
 
         private void OnEntryActive() => EventLog.Add("OnEntry-Active");
         private void OnExitActive() => EventLog.Add("OnExit-Active");

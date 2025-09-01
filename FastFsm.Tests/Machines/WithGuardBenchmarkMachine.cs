@@ -1,4 +1,5 @@
 ﻿using Abstractions.Attributes;
+using Abstractions.Fluent;
 using static FastFsm.Tests.Features.Performance.BenchmarkTests;
 
 namespace FastFsm.Tests.Machines
@@ -8,9 +9,11 @@ namespace FastFsm.Tests.Machines
     {
         private int _counter;
 
-        [Transition(BenchmarkState.A, BenchmarkTrigger.Next, BenchmarkState.B, Guard = nameof(CanTransition))]
-        [Transition(BenchmarkState.B, BenchmarkTrigger.Next, BenchmarkState.A, Guard = nameof(CanTransition))]
-        private void Configure() { }
+        private static void Configure() => FSM
+            .State(BenchmarkState.A)
+                .On(BenchmarkTrigger.Next).GoTo(BenchmarkState.B).Guard(nameof(CanTransition))
+            .State(BenchmarkState.B)
+                .On(BenchmarkTrigger.Next).GoTo(BenchmarkState.A).Guard(nameof(CanTransition));
 
         private bool CanTransition()
         {
