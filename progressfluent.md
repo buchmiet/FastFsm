@@ -215,3 +215,30 @@ Target: All test machines should produce identical JSON models from both attribu
   - Analyze guard/action overloads for payload and async via `CallbackSignatureAnalyzer`
 - Added `SinglePayloadStateMachine` and `SinglePayloadFluentMachine` to `ParserComparison.Tests`
 - Pending: build + JSON parity check for payload machines
+
+### 2025-09-02 — Methodology + Final FSM push
+
+Methodology we follow (clear split of roles):
+- You handle packaging, versioning and test execution. I implement changes and do not assert build/test results without your confirmation. I request verification when needed.
+- We keep ParserComparison.Tests as source-of-truth for parser parity with JSON comparisons under obj/GeneratedFiles.
+- Generator model selection now prefers FluentParser when StateMachineParser returns enum‑only fallback and Fluent model is richer (has transitions/callbacks/payloads). This preserves legacy behavior while enabling fluent-only projects.
+
+Key updates done today:
+- FluentParser: added parsing of `.OnInternal(TTrigger)` to produce internal transitions (From=To=current state, IsInternal=true). This unblocked machines with internal transitions.
+- FluentParser: improved OnEntry/OnExit handling by detecting overloads in class symbols and setting:
+  - `OnEntryHasParameterlessOverload` / `OnExitHasParameterlessOverload`
+  - `OnEntryExpectsPayload` / `OnExitExpectsPayload`
+  These flags are required by the generator to emit correct Exit/Entry execution around transitions and self-loops.
+- Generator: updated model selection to prefer FluentParser when attribute parser yields `UsedEnumOnlyFallback == true` and fluent model is richer (transitions, callbacks, payloads). This fixed fluent‑only machines that previously generated “skeletons”.
+- Migrated many FSM machines in `FastFsm.Tests/Machines` to fluent DSL (kept method signatures; replaced attributes with `.State/.OnEntry/.OnExit/.On/.GoTo/.Guard/.Action/.OnInternal`).
+- Verified iteratively with your test runs; fixed internal/self/entry-exit ordering issues via parser flags.
+
+Status end-of-day:
+- FSM coverage across variants is complete and passing in your test suite (per latest run):
+  - payload default/per-trigger; guard with payload (sync/async); actions async (Task/ValueTask) with/without payload; entry/exit async (with/without payload); internal transitions (with/without payload); name/keyword/unicode/long-name edge cases.
+- ParserComparison.Tests contains parity tests for all above categories.
+- Machines migrated to fluent (subset): CallbackOrderMachine, UnreachableMachine, WithGuardBenchmarkMachine, SingleStateMachine, UnicodeMachine, SelfTransitionMachine, InternalTransitionMachine, InternalOnlyMachine, NoGuardBenchmarkMachine, NumericMachine, KeywordStateMachine, LongNameMachine, CaseSensitiveMachine, ConflictingNamesMachine.
+
+Next steps (when we resume):
+- Migrate the remaining complex Machines in `FastFsm.Tests/Machines` to fluent DSL (notably `PayloadStateMachine.cs` and `FullOrderMachine.cs` with extensions/payloads) 1:1.
+- After FSM is fully migrated and stable, start HSM support in FluentParser: Parent/IsInitial/WithHistory/Priority/Internal vs child resolution; add JSON parity tests.
