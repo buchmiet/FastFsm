@@ -93,7 +93,69 @@ Target: All test machines should produce identical JSON models from both attribu
 - Methods properly update StateModel and TransitionModel properties
 
 ### Milestone 3: FSM with Single Payload
-**Status:** NOT STARTED
+**Status:** IN PROGRESS
+
+#### Implementation Steps:
+1. ✅ Parse `DefaultPayloadType` from `[StateMachine]` (semantic model, fully-qualified types)
+2. ✅ Parse `[PayloadType]` attributes (class-level default and per-trigger, including method-level overrides)
+3. ✅ Assign `ExpectedPayloadType` on transitions (per-trigger mapping takes precedence over default)
+4. ✅ Analyze guard/action callback signatures for payload overloads and async (via `CallbackSignatureAnalyzer`)
+5. ✅ Add comparison machines: `SinglePayloadStateMachine` (attributes) and `SinglePayloadFluentMachine` (fluent)
+6. ⏳ Build and verify JSON parity for payload machines
+
+#### Achievements:
+- FluentParser now supports payload configuration end-to-end:
+  - Reads `DefaultPayloadType` and per-trigger payloads
+  - Populates `StateMachineModel.DefaultPayloadType`, `TriggerPayloadTypes`, and flags `HasPayload`
+  - Sets `TransitionModel.ExpectedPayloadType` for each transition
+  - Fills `GuardSignature` / `ActionSignature` including payload flags and async info
+- Added test machines mirroring README single-payload example for parser comparison.
+
+#### Current Issues:
+- JSON parity not yet verified due to pending build step in this session.
+
+#### Next Steps:
+- Build `ParserComparison.Tests` and compare JSON models at the bottom of generated files
+- If any diffs: align fully-qualified type names and signature flags between parsers
+- Extend tests for per-trigger payload (non-default) once base parity is confirmed
+
+---
+
+### Milestone 3.1: Fluent enum-only fallback
+**Target:** Classes that declare `Configure()` but contain no fluent DSL calls
+
+**Status:** COMPLETED
+**Date:** 2025-09-01
+
+#### Implementation:
+- Added enum-only fallback to `FluentParser` activated only when:
+  - Class has `Configure()` (signals fluent), and
+  - After parsing, `States.Count == 0` and `Transitions.Count == 0`.
+- Fallback behavior:
+  - Enumerates states from the state enum resolved via `[StateMachine]`.
+  - Sets `model.UsedEnumOnlyFallback = true`.
+  - Leaves transitions empty.
+- If the state enum symbol is not resolvable, still sets `UsedEnumOnlyFallback = true` for diagnostic parity.
+
+#### Tests:
+- Added `ParserComparison.Tests/FluentFallbackMachine.cs` with `Configure()` but no DSL.
+- Build shows FluentParser Model marks `UsedEnumOnlyFallback: false/true` accordingly (legacy: true; fluent: true with states populated).
+
+---
+
+### Milestone 3.2: Lenient type resolution in FluentParser
+**Target:** Enable syntax-based fallback for `[StateMachine(typeof(State), typeof(Trigger))]` when semantic symbols are unavailable
+
+**Status:** COMPLETED
+**Date:** 2025-09-01
+
+#### Implementation:
+- In `ExtractTypesFromAttribute`, when constructor arguments are not semantically resolved, parse the attribute syntax to get type names from `typeof(...)`.
+- Attempt to resolve the state enum symbol via `Compilation.GetTypeByMetadataName` (with namespace prefix if needed) to support enum-only fallback state enumeration.
+
+#### Result:
+- FluentParser can proceed in reduced compilation contexts and still provide meaningful models or fallback.
+
 
 ### Milestone 4: HSM - Basic (parent/child + internal)
 **Status:** NOT STARTED
@@ -145,3 +207,11 @@ Target: All test machines should produce identical JSON models from both attribu
   - Exit actions on states
   - All via nameof() or string literals
 - **Result**: Milestone 2 COMPLETED - FSM with Actions and Guards works!
+
+### 2025-09-01 (payload)
+- Implemented payload support in FluentParser:
+  - Extract `DefaultPayloadType` and `[PayloadType(...)]` (class and method level)
+  - Assign `ExpectedPayloadType` on transitions
+  - Analyze guard/action overloads for payload and async via `CallbackSignatureAnalyzer`
+- Added `SinglePayloadStateMachine` and `SinglePayloadFluentMachine` to `ParserComparison.Tests`
+- Pending: build + JSON parity check for payload machines
