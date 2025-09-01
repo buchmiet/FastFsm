@@ -268,18 +268,25 @@ namespace Generator.Parsers
                     case "State":
                         currentState = ParseStateCall(invocation, model, report);
                         break;
-                    
+                
                     case "On":
                         if (currentState != null)
                         {
                             ParseTransitionStart(invocation, currentState, model, report);
                         }
                         break;
-                    
+                
+                    case "OnInternal":
+                        if (currentState != null)
+                        {
+                            ParseInternalTransition(invocation, currentState, model, report);
+                        }
+                        break;
+
                     case "GoTo":
                         CompleteTransition(invocation, model, report);
                         break;
-                    
+                
                     case "Action":
                         ParseAction(invocation, model, report);
                         break;
@@ -301,6 +308,28 @@ namespace Generator.Parsers
                             ParseOnExit(invocation, currentState, model, report);
                         }
                         break;
+                }
+            }
+        }
+
+        private void ParseInternalTransition(InvocationExpressionSyntax invocation, string fromState, StateMachineModel model, Action<string>? report)
+        {
+            if (invocation.ArgumentList.Arguments.Count > 0)
+            {
+                var arg = invocation.ArgumentList.Arguments[0];
+                if (arg.Expression is MemberAccessExpressionSyntax memberAccess)
+                {
+                    var triggerName = memberAccess.Name.Identifier.Text;
+
+                    var transition = new TransitionModel
+                    {
+                        FromState = fromState,
+                        ToState = fromState,
+                        Trigger = triggerName,
+                        IsInternal = true
+                    };
+                    model.Transitions.Add(transition);
+                    report?.Invoke($"[FluentParser] Added internal transition in {fromState} on {triggerName}");
                 }
             }
         }
