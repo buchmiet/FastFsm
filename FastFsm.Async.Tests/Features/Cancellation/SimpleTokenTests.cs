@@ -84,13 +84,13 @@ public partial class TokenMachineFluentFsm
     private static void Configure() => FSM
         .State(TokenStates.Off)
             .On(TokenTriggers.SwitchOn)
-                .GuardAsync(nameof(CanSwitchOnAsync))
-                .ActionAsync(nameof(SwitchOnAsync))
+                .Guard(nameof(CanSwitchOnAsync))
+                .Action(nameof(SwitchOnAsync))
                 .GoTo(TokenStates.On)
         .State(TokenStates.On)
             .On(TokenTriggers.SwitchOff)
-                .GuardAsync(nameof(CanSwitchOffAsync))
-                .ActionAsync(nameof(SwitchOffAsync))
+                .Guard(nameof(CanSwitchOffAsync))
+                .Action(nameof(SwitchOffAsync))
                 .GoTo(TokenStates.Off);
 
     private async ValueTask<bool> CanSwitchOnAsync(CancellationToken cancellationToken)
@@ -214,8 +214,8 @@ public partial class PayloadMachineFluentFsm
         .State(PayloadStates.Off)
             .On(PayloadTriggers.ToggleOn)
                 .Payload<TogglePayload>()
-                .GuardAsync(nameof(CanToggleOnAsync))
-                .ActionAsync(nameof(ToggleOnAsync))
+                .Guard(nameof(CanToggleOnAsync))
+                .Action(nameof(ToggleOnAsync))
                 .GoTo(PayloadStates.On);
 
     private async ValueTask<bool> CanToggleOnAsync(TogglePayload payload)

@@ -13,7 +13,7 @@ public partial class AsyncNoActionHsmTests
     public partial class TinyAsyncHsm
     {
         // Parent with shallow history; initial child
-        [State(S.Menu, History = HistoryMode.Shallow, OnEntry = nameof(OnMenuEntryAsync))]
+        [State(S.Menu, History = Abstractions.Attributes.HistoryMode.Shallow, OnEntry = nameof(OnMenuEntryAsync))]
         [State(S.Menu_Item, Parent = S.Menu, IsInitial = true)]
         private void ConfigureStates() { }
 
