@@ -7,6 +7,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Generator.Infrastructure;
 using Generator.Helpers;
+using Generator.Rules.Definitions;
 
 namespace Generator.Parsers
 {
@@ -283,6 +284,15 @@ namespace Generator.Parsers
                             currentTransition.ToState = currentTransition.FromState;
                             currentTransition.IsInternal = true;
                             report?.Invoke($"[FluentParser] Auto-finalized transition as internal");
+                            
+                            // Report warning for auto-finalization
+                            var descriptor = DiagnosticFactory.Get(RuleIdentifiers.AutoFinalizedTransition);
+                            var diagnostic = Diagnostic.Create(
+                                descriptor,
+                                invocation.GetLocation(),
+                                currentTransition.FromState,
+                                currentTransition.Trigger);
+                            _context.ReportDiagnostic(diagnostic);
                         }
                         currentState = ParseStateCall(invocation, model, report);
                         currentTransition = null;
@@ -295,6 +305,15 @@ namespace Generator.Parsers
                             currentTransition.ToState = currentTransition.FromState;
                             currentTransition.IsInternal = true;
                             report?.Invoke($"[FluentParser] Auto-finalized previous transition as internal");
+                            
+                            // Report warning for auto-finalization
+                            var descriptor = DiagnosticFactory.Get(RuleIdentifiers.AutoFinalizedTransition);
+                            var diagnostic = Diagnostic.Create(
+                                descriptor,
+                                invocation.GetLocation(),
+                                currentTransition.FromState,
+                                currentTransition.Trigger);
+                            _context.ReportDiagnostic(diagnostic);
                         }
                         if (currentState != null)
                         {
@@ -309,6 +328,15 @@ namespace Generator.Parsers
                             currentTransition.ToState = currentTransition.FromState;
                             currentTransition.IsInternal = true;
                             report?.Invoke($"[FluentParser] Auto-finalized previous transition as internal");
+                            
+                            // Report warning for auto-finalization
+                            var descriptor = DiagnosticFactory.Get(RuleIdentifiers.AutoFinalizedTransition);
+                            var diagnostic = Diagnostic.Create(
+                                descriptor,
+                                invocation.GetLocation(),
+                                currentTransition.FromState,
+                                currentTransition.Trigger);
+                            _context.ReportDiagnostic(diagnostic);
                         }
                         if (currentState != null)
                         {
@@ -402,9 +430,18 @@ namespace Generator.Parsers
             // Auto-finalize any remaining open transition
             if (currentTransition != null && string.IsNullOrEmpty(currentTransition.ToState))
             {
+                // Report error for open transition at end of chain
+                var descriptor = DiagnosticFactory.Get(RuleIdentifiers.OpenTransition);
+                var diagnostic = Diagnostic.Create(
+                    descriptor,
+                    invocations.LastOrDefault()?.GetLocation() ?? Location.None,
+                    currentTransition.FromState,
+                    currentTransition.Trigger);
+                _context.ReportDiagnostic(diagnostic);
+                
                 currentTransition.ToState = currentTransition.FromState;
                 currentTransition.IsInternal = true;
-                report?.Invoke($"[FluentParser] Auto-finalized final transition as internal");
+                report?.Invoke($"[FluentParser] ERROR: Open transition at end of chain - auto-finalized as internal");
             }
         }
 
@@ -627,6 +664,21 @@ namespace Generator.Parsers
                         if (typeInfo.Type is INamedTypeSymbol namedType)
                         {
                             var payloadType = _typeHelper.BuildFullTypeName(namedType);
+                            
+                            // Check if payload was already set
+                            if (!string.IsNullOrEmpty(transition.ExpectedPayloadType) && transition.ExpectedPayloadType != payloadType)
+                            {
+                                // Report warning for multiple payloads
+                                var descriptor = DiagnosticFactory.Get(RuleIdentifiers.MultiplePayloadsOnTransition);
+                                var diagnostic = Diagnostic.Create(
+                                    descriptor,
+                                    invocation.GetLocation(),
+                                    transition.FromState,
+                                    transition.Trigger,
+                                    payloadType);
+                                _context.ReportDiagnostic(diagnostic);
+                            }
+                            
                             transition.ExpectedPayloadType = payloadType;
                             
                             // Also update trigger payload map
@@ -653,6 +705,21 @@ namespace Generator.Parsers
                     if (typeInfo.Type is INamedTypeSymbol namedType)
                     {
                         var payloadType = _typeHelper.BuildFullTypeName(namedType);
+                        
+                        // Check if payload was already set
+                        if (!string.IsNullOrEmpty(transition.ExpectedPayloadType) && transition.ExpectedPayloadType != payloadType)
+                        {
+                            // Report warning for multiple payloads
+                            var descriptor = DiagnosticFactory.Get(RuleIdentifiers.MultiplePayloadsOnTransition);
+                            var diagnostic = Diagnostic.Create(
+                                descriptor,
+                                invocation.GetLocation(),
+                                transition.FromState,
+                                transition.Trigger,
+                                payloadType);
+                            _context.ReportDiagnostic(diagnostic);
+                        }
+                        
                         transition.ExpectedPayloadType = payloadType;
                         
                         // Also update trigger payload map
