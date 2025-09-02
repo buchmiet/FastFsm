@@ -182,5 +182,41 @@ public partial class AsyncExtensionsMachineFluentFsm
     }
 }
 
+// Async machine with extensions support (Legacy version)
+[StateMachine(typeof(ExtState), typeof(ExtTrigger), GenerateExtensibleVersion = true)]
+public partial class AsyncExtensionsMachine
+{
+    [State(ExtState.Idle, OnEntry = nameof(OnEnterIdleAsync))]
+    [State(ExtState.Working, OnExit = nameof(OnExitWorkingAsync))]
+    private void ConfigureStates() { }
+
+    [Transition(ExtState.Idle, ExtTrigger.Start, ExtState.Working,
+        Guard = nameof(CanStartAsync), Action = nameof(StartWorkAsync))]
+    [Transition(ExtState.Working, ExtTrigger.Finish, ExtState.Complete)]
+    [Transition(ExtState.Complete, ExtTrigger.Cancel, ExtState.Idle)]
+    private void Configure() { }
+
+    private async ValueTask<bool> CanStartAsync()
+    {
+        await Task.Yield();
+        return true;
+    }
+
+    private async Task StartWorkAsync()
+    {
+        await Task.Yield();
+    }
+
+    private async Task OnEnterIdleAsync()
+    {
+        await Task.Yield();
+    }
+
+    private async Task OnExitWorkingAsync()
+    {
+        await Task.Yield();
+    }
+}
+
 public enum ExtState { Idle, Working, Complete }
 public enum ExtTrigger { Start, Finish, Cancel }
