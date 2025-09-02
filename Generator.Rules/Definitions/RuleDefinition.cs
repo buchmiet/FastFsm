@@ -215,6 +215,63 @@ namespace Generator.Rules.Definitions
             defaultSeverity: RuleSeverity.Info,
             description: "When transitioning to a composite state without specifying a target substate, the entry point is determined by: 1) History mode (if set and previously visited), 2) Initial substate (if defined), or 3) First defined child.");
 
+        // Fluent API rules (FSM200-FSM206)
+        public static readonly RuleDefinition OpenTransition = new(
+            id: RuleIdentifiers.OpenTransition,  // FSM200
+            title: "Open transition not finalized",
+            messageFormat: "Transition from state '{0}' on trigger '{1}' is not finalized with GoTo() or Internal(). Add .GoTo(targetState) or .Internal() to complete the transition.",
+            category: RuleCategories.FSM_Generator,
+            defaultSeverity: RuleSeverity.Error,
+            description: "Every transition must be finalized with either GoTo(targetState) for external transitions or Internal() for internal transitions.");
+
+        public static readonly RuleDefinition AutoFinalizedTransition = new(
+            id: RuleIdentifiers.AutoFinalizedTransition,  // FSM201
+            title: "Transition auto-finalized as internal",
+            messageFormat: "Transition from state '{0}' on trigger '{1}' was auto-finalized as internal. Add explicit .GoTo() or .Internal() to suppress this warning.",
+            category: RuleCategories.FSM_Generator,
+            defaultSeverity: RuleSeverity.Warning,
+            description: "When a new On() or State() is encountered without finalizing the previous transition, it is auto-finalized as internal. This may not be the intended behavior.");
+
+        public static readonly RuleDefinition MultiplePayloadsOnTransition = new(
+            id: RuleIdentifiers.MultiplePayloadsOnTransition,  // FSM202
+            title: "Multiple payload definitions on transition",
+            messageFormat: "Transition from state '{0}' on trigger '{1}' has multiple Payload() calls. The last one ('{2}') will be used.",
+            category: RuleCategories.FSM_Generator,
+            defaultSeverity: RuleSeverity.Warning,
+            description: "Each transition should have at most one payload type. Multiple Payload() calls will use the last specified type.");
+
+        public static readonly RuleDefinition IncompatibleHandlerSignature = new(
+            id: RuleIdentifiers.IncompatibleHandlerSignature,  // FSM203
+            title: "Incompatible handler signature",
+            messageFormat: "Handler method '{0}' has signature '{1}' which is incompatible with expected signature '{2}' for {3}.",
+            category: RuleCategories.FSM_Generator,
+            defaultSeverity: RuleSeverity.Error,
+            description: "Handler methods must have compatible signatures. Guards return bool/Task<bool>, actions are void/Task, and payload parameters must match the transition's payload type.");
+
+        public static readonly RuleDefinition AsyncPathWithSyncFire = new(
+            id: RuleIdentifiers.AsyncPathWithSyncFire,  // FSM204
+            title: "Async path requires FireAsync",
+            messageFormat: "State machine has async handlers in path from '{0}' on trigger '{1}'. Use FireAsync() instead of Fire() for proper async execution.",
+            category: RuleCategories.FSM_Generator_Async,
+            defaultSeverity: RuleSeverity.Warning,
+            description: "When any handler in the transition path is async, you must use FireAsync() to properly await the async operations. Fire() will not work correctly with async handlers.");
+
+        public static readonly RuleDefinition AsyncMethodWithoutSuffix = new(
+            id: RuleIdentifiers.AsyncMethodWithoutSuffix,  // FSM205
+            title: "Async method without *Async suffix",
+            messageFormat: "Method '{0}' is async but doesn't use *Async suffix. With AsyncPolicy.Explicit, async methods must use OnEntryAsync/OnExitAsync/GuardAsync/ActionAsync.",
+            category: RuleCategories.FSM_Generator_Async,
+            defaultSeverity: RuleSeverity.Error,
+            description: "When AsyncPolicy.Explicit is set, all async methods must use the *Async suffix convention (e.g., OnEntryAsync instead of OnEntry).");
+
+        public static readonly RuleDefinition SyncMethodInRequiredAsyncMode = new(
+            id: RuleIdentifiers.SyncMethodInRequiredAsyncMode,  // FSM206
+            title: "Synchronous method in Required async mode",
+            messageFormat: "Method '{0}' is synchronous but AsyncPolicy.Required demands all handlers be async. Change to async or switch to AsyncPolicy.Implicit/Explicit.",
+            category: RuleCategories.FSM_Generator_Async,
+            defaultSeverity: RuleSeverity.Error,
+            description: "When AsyncPolicy.Required is set, all handler methods must be async. Synchronous handlers are not allowed.");
+
         public static readonly IReadOnlyList<RuleDefinition> All = new List<RuleDefinition>
         {
             DuplicateTransition,
@@ -238,6 +295,14 @@ namespace Generator.Rules.Definitions
             MultipleInitialSubstates,       // FSM103
             InvalidHistoryConfiguration,    // FSM104
             ConflictingTransitionTargets,   // FSM105
+            // Fluent API rules (FSM200-FSM206)
+            OpenTransition,                 // FSM200
+            AutoFinalizedTransition,        // FSM201
+            MultiplePayloadsOnTransition,   // FSM202
+            IncompatibleHandlerSignature,   // FSM203
+            AsyncPathWithSyncFire,          // FSM204
+            AsyncMethodWithoutSuffix,       // FSM205
+            SyncMethodInRequiredAsyncMode,  // FSM206
         }.AsReadOnly();
     }
 }

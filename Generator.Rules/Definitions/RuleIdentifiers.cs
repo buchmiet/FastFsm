@@ -27,4 +27,13 @@ public static class RuleIdentifiers
     public const string InvalidHistoryConfiguration = "FSM104";          // History on non-composite
     public const string ConflictingTransitionTargets = "FSM105";         // Transition to composite without explicit child
 
+    // Fluent API-specific diagnostics
+    public const string OpenTransition = "FSM200";                       // Transition not finalized with GoTo/Internal
+    public const string AutoFinalizedTransition = "FSM201";              // Transition auto-finalized as internal
+    public const string MultiplePayloadsOnTransition = "FSM202";         // Multiple Payload() calls on same transition
+    public const string IncompatibleHandlerSignature = "FSM203";         // Handler signature doesn't match requirements
+    public const string AsyncPathWithSyncFire = "FSM204";                // Using Fire() when path has async handlers
+    public const string AsyncMethodWithoutSuffix = "FSM205";             // Async method without *Async suffix (Explicit policy)
+    public const string SyncMethodInRequiredAsyncMode = "FSM206";       // Sync method when AsyncPolicy.Required
+
 }
