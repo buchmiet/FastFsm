@@ -85,6 +85,15 @@ namespace Generator.Parsers
                 }
             }
 
+            // Determine async mode: if any guard/action is async, mark machine as async.
+            // This mirrors legacy parser behavior where async callbacks flip machine into async mode
+            // so generator emits awaitable code paths instead of sync wrappers.
+            if (model.Transitions.Any(tr => tr.GuardIsAsync || tr.ActionIsAsync))
+            {
+                model.GenerationConfig.IsAsync = true;
+                report?.Invoke($"[FluentParser] Async mode enabled due to async callbacks (guards/actions)");
+            }
+
             // If class signals fluent usage (Configure exists) but no DSL recognized,
             // fall back to enum-only states model for parity with legacy parser.
             if (model.States.Count == 0 && model.Transitions.Count == 0)
