@@ -167,7 +167,51 @@ Target: All test machines should produce identical JSON models from both attribu
 **Status:** NOT STARTED
 
 ### Milestone 7: Async Actions
-**Status:** NOT STARTED
+**Status:** ✅ COMPLETED
+**Started:** 2025-09-02
+**Completed:** 2025-09-02
+
+#### Implementation Verification:
+- Analyzed all async test machines in ParserComparison.Tests
+- Verified FluentParser correctly detects async signatures
+- Confirmed JSON models show proper async flags
+
+#### Test Coverage:
+1. **AsyncActionFluentMachine** ✅
+   - 2 async actions detected (BeginConnectAsync, CloseAsync)
+   - ActionIsAsync = true in transitions
+   - GenerationConfig.IsAsync = true
+
+2. **AsyncGuardFluentMachine** ✅
+   - Async guard detected (CanStartAsync)
+   - GuardIsAsync = true in transition
+   - GenerationConfig.IsAsync = true
+
+3. **AsyncEntryExitFluentMachine** ✅
+   - Async entry/exit actions detected
+   - OnEntryIsAsync/OnExitIsAsync = true
+   - GenerationConfig.IsAsync = true
+
+4. **AsyncPayloadActionFluentMachine** ✅
+   - Async action with payload detected
+   - ActionIsAsync = true, ActionExpectsPayload = true
+   - GenerationConfig.IsAsync = true
+
+5. **AsyncPayloadEntryFluentMachine** ✅
+   - Async entry with payload detected
+   - OnEntryIsAsync = true, OnEntryExpectsPayload = true
+   - GenerationConfig.IsAsync = true
+
+6. **GuardAsyncPayloadFluentMachine** ✅
+   - Async guard with payload detected
+   - GuardIsAsync = true, GuardExpectsPayload = true
+   - GenerationConfig.IsAsync = true
+
+#### Technical Details:
+- CallbackSignatureAnalyzer (lines 602-630) properly analyzes async signatures
+- AsyncSignatureAnalyzer detects ValueTask/Task return types
+- Automatic async mode detection (lines 91-95) enables when any callback is async
+- All generated files show correct async flags in JSON models
 
 ## Technical Notes
 
