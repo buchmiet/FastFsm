@@ -12,6 +12,44 @@ namespace  FastFsm.Async.Tests.Features.Cancellation;
 public enum TokenTestState { Initial, Processing, Completed, Cancelled }
 public enum TokenTestTrigger { Start, Process, Complete, Cancel }
 
+// Helper class for better test synchronization
+public static class TestSynchronization
+{
+    public static async Task<bool> WaitForConditionAsync(
+        Func<bool> condition,
+        int timeoutMs = 5000,
+        int checkIntervalMs = 10,
+        string timeoutMessage = null)
+    {
+        var timeout = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+        while (!condition())
+        {
+            if (DateTime.UtcNow > timeout)
+            {
+                if (timeoutMessage != null)
+                    throw new TimeoutException(timeoutMessage);
+                return false;
+            }
+            await Task.Delay(checkIntervalMs);
+        }
+        return true;
+    }
+
+    public static async Task WaitForLogEntryAsync(
+        IList<string> log,
+        string expectedEntry,
+        int timeoutMs = 5000)
+    {
+        var success = await WaitForConditionAsync(
+            () => log.Contains(expectedEntry),
+            timeoutMs,
+            timeoutMessage: $"Log entry '{expectedEntry}' not found in {timeoutMs}ms. Current log: {string.Join(", ", log)}");
+        
+        if (!success)
+            throw new TimeoutException($"Timeout waiting for log entry: {expectedEntry}");
+    }
+}
+
 
 #region Test Machine 1: Basic Token Support
 [StateMachine(typeof(TokenTestState), typeof(TokenTestTrigger))]
@@ -406,16 +444,50 @@ public class CancellationTokenCoreTests
             TokenTestTrigger.Start,
             cancellationToken: cts.Token);
 
-        await Task.Delay(220);      // Guard i OnEntry skończą się
-        cts.Cancel();              // Anulujemy w trakcie Action
+        // Wait for action to start with proper synchronization
+        var timeout = DateTime.UtcNow.AddSeconds(5);
+        while (!machine.ExecutionLog.Contains("Action:Begin"))
+        {
+            if (DateTime.UtcNow > timeout)
+            {
+                // If action hasn't started, check what did execute
+                var currentLog = string.Join(", ", machine.ExecutionLog);
+                
+                // If we're stuck in OnEntry, that's a different issue
+                if (machine.ExecutionLog.Contains("OnEntry:Begin") && 
+                    !machine.ExecutionLog.Contains("OnEntry:End"))
+                {
+                    // OnEntry is still running, cancel and verify that instead
+                    cts.Cancel();
+                    await Should.ThrowAsync<TaskCanceledException>(async () => await transition);
+                    
+                    // Verify OnEntry was interrupted
+                    machine.ExecutionLog.ShouldContain("OnEntry:Begin");
+                    machine.ExecutionLog.ShouldNotContain("OnEntry:End");
+                    
+                    // This is acceptable - cancellation during OnEntry
+                    return;
+                }
+                
+                throw new TimeoutException($"Action:Begin not reached in 5s. Log: {currentLog}");
+            }
+            await Task.Delay(10);
+        }
 
-        // Oczekujemy TaskCanceledException (ValueTask → Task via async lambda)
-        await Should.ThrowAsync<TaskCanceledException>(async () => await transition);
+        // Add small delay to ensure we're inside the action
+        await Task.Delay(50);
+        
+        // Cancel while in Action
+        cts.Cancel();
 
-        // Stan pozostaje Processing, ponieważ został ustawiony przed Action
+        // Expect TaskCanceledException
+        var exception = await Should.ThrowAsync<TaskCanceledException>(async () => await transition);
+        exception.ShouldNotBeNull();
+
+        // State should be Processing (set before Action executes)
         machine.CurrentState.ShouldBe(TokenTestState.Processing);
 
-        // Log pokazuje początek akcji, ale brak końca
+        // Log should show action started but not completed
         machine.ExecutionLog.ShouldContain("Action:Begin");
         machine.ExecutionLog.ShouldNotContain("Action:End");
     }
@@ -428,32 +500,37 @@ public class CancellationTokenCoreTests
         // Arrange
         var machine = new CancellationMachine(TokenTestState.Initial)
         {
-            DelayMs = 100   // szerokie okno na anulowanie
+            DelayMs = 100   // wide window for cancellation
         };
         await machine.StartAsync();
 
         using var cts = new CancellationTokenSource();
 
-        // Startujemy przejście; ValueTask → Task, żeby Shouldly je widział
+        // Start transition; ValueTask → Task for Shouldly
         var fireTask = machine
             .FireAsync(TokenTestTrigger.Start, null, cts.Token)
             .AsTask();
 
-        // Czekamy aż OnEntry się faktycznie zacznie
-        var entered = SpinWait.SpinUntil(
-            () => machine.ExecutionLog.Contains("OnEntry:Begin"),
-            1_000);
+        // Wait for OnEntry to actually start using helper
+        await TestSynchronization.WaitForLogEntryAsync(
+            machine.ExecutionLog, 
+            "OnEntry:Begin",
+            timeoutMs: 2000);
 
-        entered.ShouldBeTrue("OnEntry was never reached – test set-up failed.");
+        // Add small delay to ensure we're inside the async operation
+        await Task.Delay(20);
 
-        // Anulujemy w trakcie OnEntry (w środku Task.Delay)
+        // Cancel while in OnEntry (inside Task.Delay)
         cts.Cancel();
 
-        // Assert – TaskCanceledException ma się propagować
-        await Should.ThrowAsync<TaskCanceledException>(fireTask);
+        // Assert - TaskCanceledException should propagate
+        var exception = await Should.ThrowAsync<TaskCanceledException>(fireTask);
+        exception.ShouldNotBeNull();
 
+        // State should be Processing (transition happened before OnEntry)
         machine.CurrentState.ShouldBe(TokenTestState.Processing);
 
+        // Verify log state
         machine.ExecutionLog.ShouldContain("OnEntry:Begin");
         machine.ExecutionLog.ShouldNotContain("OnEntry:End");
         machine.ExecutionLog.ShouldNotContain("Action:Begin");

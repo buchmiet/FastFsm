@@ -9,7 +9,7 @@
 		<CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\GeneratedFiles</CompilerGeneratedFilesOutputPath>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="FastFsm.Net" Version="0.1.0.6-workFluentAPi" />
+		<PackageReference Include="FastFsm.Net" Version="0.1.0.7-workFluentAPi" />
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.6" />
 		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
