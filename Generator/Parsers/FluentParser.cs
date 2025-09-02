@@ -262,6 +262,7 @@ namespace Generator.Parsers
         {
             // Track current state being configured
             string? currentState = null;
+            TransitionModel? currentTransition = null;
             
             // Walk through the method call chain
             var invocations = new List<InvocationExpressionSyntax>();
@@ -275,49 +276,135 @@ namespace Generator.Parsers
                 switch (methodName)
                 {
                     case "State":
+                    case "At": // Alias for State
+                        // Auto-finalize open transition as internal
+                        if (currentTransition != null && string.IsNullOrEmpty(currentTransition.ToState))
+                        {
+                            currentTransition.ToState = currentTransition.FromState;
+                            currentTransition.IsInternal = true;
+                            report?.Invoke($"[FluentParser] Auto-finalized transition as internal");
+                        }
                         currentState = ParseStateCall(invocation, model, report);
+                        currentTransition = null;
                         break;
                 
                     case "On":
+                        // Auto-finalize previous open transition as internal
+                        if (currentTransition != null && string.IsNullOrEmpty(currentTransition.ToState))
+                        {
+                            currentTransition.ToState = currentTransition.FromState;
+                            currentTransition.IsInternal = true;
+                            report?.Invoke($"[FluentParser] Auto-finalized previous transition as internal");
+                        }
                         if (currentState != null)
                         {
-                            ParseTransitionStart(invocation, currentState, model, report);
+                            currentTransition = ParseTransitionStart(invocation, currentState, model, report, isInternal: false);
                         }
                         break;
                 
                     case "OnInternal":
+                        // Auto-finalize previous open transition as internal
+                        if (currentTransition != null && string.IsNullOrEmpty(currentTransition.ToState))
+                        {
+                            currentTransition.ToState = currentTransition.FromState;
+                            currentTransition.IsInternal = true;
+                            report?.Invoke($"[FluentParser] Auto-finalized previous transition as internal");
+                        }
                         if (currentState != null)
                         {
-                            ParseInternalTransition(invocation, currentState, model, report);
+                            currentTransition = ParseTransitionStart(invocation, currentState, model, report, isInternal: true);
                         }
                         break;
 
                     case "GoTo":
-                        CompleteTransition(invocation, model, report);
+                        if (currentTransition != null)
+                        {
+                            CompleteTransition(invocation, currentTransition, model, report);
+                            currentTransition = null; // Transition is finalized
+                        }
+                        break;
+                    
+                    case "Internal":
+                        if (currentTransition != null)
+                        {
+                            currentTransition.ToState = currentTransition.FromState;
+                            currentTransition.IsInternal = true;
+                            report?.Invoke($"[FluentParser] Finalized transition as internal");
+                            currentTransition = null; // Transition is finalized
+                        }
+                        break;
+
+                    case "Payload":
+                        if (currentTransition != null)
+                        {
+                            ParsePayload(invocation, currentTransition, model, report);
+                        }
                         break;
                 
                     case "Action":
-                        ParseAction(invocation, model, report);
+                        if (currentTransition != null)
+                        {
+                            ParseAction(invocation, currentTransition, model, report, isAsync: false);
+                        }
+                        break;
+                    
+                    case "ActionAsync":
+                        if (currentTransition != null)
+                        {
+                            ParseAction(invocation, currentTransition, model, report, isAsync: true);
+                        }
                         break;
                     
                     case "Guard":
-                        ParseGuard(invocation, model, report);
+                        if (currentTransition != null)
+                        {
+                            ParseGuard(invocation, currentTransition, model, report, isAsync: false);
+                        }
+                        break;
+                    
+                    case "GuardAsync":
+                        if (currentTransition != null)
+                        {
+                            ParseGuard(invocation, currentTransition, model, report, isAsync: true);
+                        }
                         break;
                     
                     case "OnEntry":
                         if (currentState != null)
                         {
-                            ParseOnEntry(invocation, currentState, model, report);
+                            ParseOnEntry(invocation, currentState, model, report, isAsync: false);
+                        }
+                        break;
+                    
+                    case "OnEntryAsync":
+                        if (currentState != null)
+                        {
+                            ParseOnEntry(invocation, currentState, model, report, isAsync: true);
                         }
                         break;
                     
                     case "OnExit":
                         if (currentState != null)
                         {
-                            ParseOnExit(invocation, currentState, model, report);
+                            ParseOnExit(invocation, currentState, model, report, isAsync: false);
+                        }
+                        break;
+                    
+                    case "OnExitAsync":
+                        if (currentState != null)
+                        {
+                            ParseOnExit(invocation, currentState, model, report, isAsync: true);
                         }
                         break;
                 }
+            }
+            
+            // Auto-finalize any remaining open transition
+            if (currentTransition != null && string.IsNullOrEmpty(currentTransition.ToState))
+            {
+                currentTransition.ToState = currentTransition.FromState;
+                currentTransition.IsInternal = true;
+                report?.Invoke($"[FluentParser] Auto-finalized final transition as internal");
             }
         }
 
@@ -472,7 +559,7 @@ namespace Generator.Parsers
             return null;
         }
 
-        private void ParseTransitionStart(InvocationExpressionSyntax invocation, string fromState, StateMachineModel model, Action<string>? report)
+        private TransitionModel? ParseTransitionStart(InvocationExpressionSyntax invocation, string fromState, StateMachineModel model, Action<string>? report, bool isInternal)
         {
             if (invocation.ArgumentList.Arguments.Count > 0)
             {
@@ -481,31 +568,32 @@ namespace Generator.Parsers
                 {
                     var triggerName = memberAccess.Name.Identifier.Text;
                     
-                    // Create partial transition (will be completed by GoTo)
+                    // Create partial transition (will be completed by GoTo or Internal)
                     var transition = new TransitionModel
                     {
                         FromState = fromState,
                         Trigger = triggerName,
-                        IsInternal = false
+                        IsInternal = isInternal,
+                        ToState = isInternal ? fromState : null // Internal transitions know their target immediately
                     };
                     
                     model.Transitions.Add(transition);
-                    report?.Invoke($"[FluentParser] Started transition from {fromState} on {triggerName}");
+                    report?.Invoke($"[FluentParser] Started {(isInternal ? "internal " : "")}transition from {fromState} on {triggerName}");
+                    return transition;
                 }
             }
+            return null;
         }
 
-        private void CompleteTransition(InvocationExpressionSyntax invocation, StateMachineModel model, Action<string>? report)
+        private void CompleteTransition(InvocationExpressionSyntax invocation, TransitionModel transition, StateMachineModel model, Action<string>? report)
         {
-            // Find the last incomplete transition
-            var lastTransition = model.Transitions.LastOrDefault(t => string.IsNullOrEmpty(t.ToState));
-            if (lastTransition != null && invocation.ArgumentList.Arguments.Count > 0)
+            if (invocation.ArgumentList.Arguments.Count > 0)
             {
                 var arg = invocation.ArgumentList.Arguments[0];
                 if (arg.Expression is MemberAccessExpressionSyntax memberAccess)
                 {
                     var toStateName = memberAccess.Name.Identifier.Text;
-                    lastTransition.ToState = toStateName;
+                    transition.ToState = toStateName;
                     
                     // Ensure target state exists
                     if (!model.States.ContainsKey(toStateName))
@@ -522,11 +610,66 @@ namespace Generator.Parsers
             }
         }
         
-        private void ParseAction(InvocationExpressionSyntax invocation, StateMachineModel model, Action<string>? report)
+        private void ParsePayload(InvocationExpressionSyntax invocation, TransitionModel transition, StateMachineModel model, Action<string>? report)
         {
-            if (model.Transitions.Count == 0) return;
-
-            var lastTransition = model.Transitions[model.Transitions.Count - 1];
+            // Handle .Payload(typeof(T)) or .Payload<T>()
+            if (invocation.ArgumentList.Arguments.Count > 0)
+            {
+                var arg = invocation.ArgumentList.Arguments[0];
+                
+                // Check for typeof(T) expression
+                if (arg.Expression is TypeOfExpressionSyntax typeofExpr)
+                {
+                    var typeSyntax = typeofExpr.Type;
+                    if (_semanticModel != null)
+                    {
+                        var typeInfo = _semanticModel.GetTypeInfo(typeSyntax);
+                        if (typeInfo.Type is INamedTypeSymbol namedType)
+                        {
+                            var payloadType = _typeHelper.BuildFullTypeName(namedType);
+                            transition.ExpectedPayloadType = payloadType;
+                            
+                            // Also update trigger payload map
+                            if (!string.IsNullOrEmpty(transition.Trigger))
+                            {
+                                model.TriggerPayloadTypes[transition.Trigger] = payloadType;
+                            }
+                            
+                            model.GenerationConfig.HasPayload = true;
+                            report?.Invoke($"[FluentParser] Set payload type: {payloadType}");
+                        }
+                    }
+                }
+            }
+            // For .Payload<T>() - check generic type arguments
+            else if (invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
+                     memberAccess.Name is GenericNameSyntax genericName &&
+                     genericName.TypeArgumentList.Arguments.Count > 0)
+            {
+                var typeSyntax = genericName.TypeArgumentList.Arguments[0];
+                if (_semanticModel != null)
+                {
+                    var typeInfo = _semanticModel.GetTypeInfo(typeSyntax);
+                    if (typeInfo.Type is INamedTypeSymbol namedType)
+                    {
+                        var payloadType = _typeHelper.BuildFullTypeName(namedType);
+                        transition.ExpectedPayloadType = payloadType;
+                        
+                        // Also update trigger payload map
+                        if (!string.IsNullOrEmpty(transition.Trigger))
+                        {
+                            model.TriggerPayloadTypes[transition.Trigger] = payloadType;
+                        }
+                        
+                        model.GenerationConfig.HasPayload = true;
+                        report?.Invoke($"[FluentParser] Set payload type (generic): {payloadType}");
+                    }
+                }
+            }
+        }
+        
+        private void ParseAction(InvocationExpressionSyntax invocation, TransitionModel transition, StateMachineModel model, Action<string>? report, bool isAsync)
+        {
 
             if (invocation.ArgumentList.Arguments.Count > 0)
             {
@@ -540,35 +683,27 @@ namespace Generator.Parsers
                     if (nameofInvocation.ArgumentList.Arguments.Count > 0 &&
                         nameofInvocation.ArgumentList.Arguments[0].Expression is IdentifierNameSyntax methodName)
                     {
-                        lastTransition.ActionMethod = methodName.Identifier.Text;
-                        report?.Invoke($"[FluentParser] Set action method: {lastTransition.ActionMethod}");
-                        AnalyzeActionSignature(lastTransition);
+                        transition.ActionMethod = methodName.Identifier.Text;
+                        report?.Invoke($"[FluentParser] Set action{(isAsync ? " async" : "")} method: {transition.ActionMethod}");
+                        AnalyzeActionSignature(transition);
+                        if (isAsync) transition.ActionIsAsync = true;
                     }
                 }
                 // Check if it's a string literal
                 else if (arg.Expression is LiteralExpressionSyntax literal && 
                          literal.Token.Value is string actionName)
                 {
-                    lastTransition.ActionMethod = actionName;
-                    report?.Invoke($"[FluentParser] Set action method: {actionName}");
-                    AnalyzeActionSignature(lastTransition);
+                    transition.ActionMethod = actionName;
+                    report?.Invoke($"[FluentParser] Set action{(isAsync ? " async" : "")} method: {actionName}");
+                    AnalyzeActionSignature(transition);
+                    if (isAsync) transition.ActionIsAsync = true;
                 }
 
-                // If no GoTo was specified, this is an internal transition
-                if (string.IsNullOrEmpty(lastTransition.ToState))
-                {
-                    lastTransition.ToState = lastTransition.FromState;
-                    lastTransition.IsInternal = true;
-                    report?.Invoke($"[FluentParser] Marked as internal transition");
-                }
             }
         }
 
-        private void ParseGuard(InvocationExpressionSyntax invocation, StateMachineModel model, Action<string>? report)
+        private void ParseGuard(InvocationExpressionSyntax invocation, TransitionModel transition, StateMachineModel model, Action<string>? report, bool isAsync)
         {
-            if (model.Transitions.Count == 0) return;
-
-            var lastTransition = model.Transitions[model.Transitions.Count - 1];
 
             if (invocation.ArgumentList.Arguments.Count > 0)
             {
@@ -582,18 +717,20 @@ namespace Generator.Parsers
                     if (nameofInvocation.ArgumentList.Arguments.Count > 0 &&
                         nameofInvocation.ArgumentList.Arguments[0].Expression is IdentifierNameSyntax methodName)
                     {
-                        lastTransition.GuardMethod = methodName.Identifier.Text;
-                        report?.Invoke($"[FluentParser] Set guard method: {lastTransition.GuardMethod}");
-                        AnalyzeGuardSignature(lastTransition);
+                        transition.GuardMethod = methodName.Identifier.Text;
+                        report?.Invoke($"[FluentParser] Set guard{(isAsync ? " async" : "")} method: {transition.GuardMethod}");
+                        AnalyzeGuardSignature(transition);
+                        if (isAsync) transition.GuardIsAsync = true;
                     }
                 }
                 // Check if it's a string literal
                 else if (arg.Expression is LiteralExpressionSyntax literal && 
                          literal.Token.Value is string guardName)
                 {
-                    lastTransition.GuardMethod = guardName;
-                    report?.Invoke($"[FluentParser] Set guard method: {guardName}");
-                    AnalyzeGuardSignature(lastTransition);
+                    transition.GuardMethod = guardName;
+                    report?.Invoke($"[FluentParser] Set guard{(isAsync ? " async" : "")} method: {guardName}");
+                    AnalyzeGuardSignature(transition);
+                    if (isAsync) transition.GuardIsAsync = true;
                 }
             }
         }
@@ -613,7 +750,7 @@ namespace Generator.Parsers
             EnsureAnalyzers();
             var sig = _callbackAnalyzer!.AnalyzeCallback(_classSymbol, t.ActionMethod!, "Action", _compilation);
             t.ActionSignature = sig;
-            t.ActionIsAsync = sig.IsAsync;
+            t.ActionIsAsync = t.ActionIsAsync || sig.IsAsync; // Preserve explicit async flag from ActionAsync()
             t.ActionHasParameterlessOverload = sig.HasParameterless;
             t.ActionExpectsPayload = sig.HasPayloadOnly || sig.HasPayloadAndToken;
         }
@@ -624,7 +761,7 @@ namespace Generator.Parsers
             EnsureAnalyzers();
             var sig = _callbackAnalyzer!.AnalyzeCallback(_classSymbol, t.GuardMethod!, "Guard", _compilation);
             t.GuardSignature = sig;
-            t.GuardIsAsync = sig.IsAsync;
+            t.GuardIsAsync = t.GuardIsAsync || sig.IsAsync; // Preserve explicit async flag from GuardAsync()
             t.GuardHasParameterlessOverload = sig.HasParameterless;
             t.GuardExpectsPayload = sig.HasPayloadOnly || sig.HasPayloadAndToken;
         }
@@ -702,7 +839,7 @@ namespace Generator.Parsers
             return null;
         }
         
-        private void ParseOnEntry(InvocationExpressionSyntax invocation, string currentState, StateMachineModel model, Action<string>? report)
+        private void ParseOnEntry(InvocationExpressionSyntax invocation, string currentState, StateMachineModel model, Action<string>? report, bool isAsync)
         {
             if (!model.States.TryGetValue(currentState, out var state)) return;
             
@@ -719,14 +856,11 @@ namespace Generator.Parsers
                         nameofInvocation.ArgumentList.Arguments[0].Expression is IdentifierNameSyntax methodName)
                     {
                         state.OnEntryMethod = methodName.Identifier.Text;
-                        // parameterless overload detection
-                        if (_classSymbol != null)
-                        {
-                            var overloads = _classSymbol.GetMembers(state.OnEntryMethod).OfType<IMethodSymbol>();
-                            state.OnEntryHasParameterlessOverload = overloads.Any(m => m.Parameters.IsEmpty);
-                            state.OnEntryExpectsPayload = overloads.Any(m => m.Parameters.Length > 0);
-                        }
-                        report?.Invoke($"[FluentParser] Set OnEntry for {currentState}: {state.OnEntryMethod}");
+                        // Analyze signature
+                        AnalyzeOnEntrySignature(state);
+                        if (isAsync) state.OnEntryIsAsync = true;
+                        model.GenerationConfig.HasOnEntryExit = true;
+                        report?.Invoke($"[FluentParser] Set OnEntry{(isAsync ? "Async" : "")} for {currentState}: {state.OnEntryMethod}");
                     }
                 }
                 // Check if it's a string literal
@@ -734,18 +868,27 @@ namespace Generator.Parsers
                          literal.Token.Value is string entryName)
                 {
                     state.OnEntryMethod = entryName;
-                    if (_classSymbol != null)
-                    {
-                        var overloads = _classSymbol.GetMembers(state.OnEntryMethod).OfType<IMethodSymbol>();
-                        state.OnEntryHasParameterlessOverload = overloads.Any(m => m.Parameters.IsEmpty);
-                        state.OnEntryExpectsPayload = overloads.Any(m => m.Parameters.Length > 0);
-                    }
-                    report?.Invoke($"[FluentParser] Set OnEntry for {currentState}: {entryName}");
+                    // Analyze signature
+                    AnalyzeOnEntrySignature(state);
+                    if (isAsync) state.OnEntryIsAsync = true;
+                    model.GenerationConfig.HasOnEntryExit = true;
+                    report?.Invoke($"[FluentParser] Set OnEntry{(isAsync ? "Async" : "")} for {currentState}: {entryName}");
                 }
             }
         }
         
-        private void ParseOnExit(InvocationExpressionSyntax invocation, string currentState, StateMachineModel model, Action<string>? report)
+        private void AnalyzeOnEntrySignature(StateModel state)
+        {
+            if (_classSymbol == null || string.IsNullOrEmpty(state.OnEntryMethod)) return;
+            EnsureAnalyzers();
+            var sig = _callbackAnalyzer!.AnalyzeCallback(_classSymbol, state.OnEntryMethod!, "OnEntry", _compilation);
+            state.OnEntrySignature = sig;
+            state.OnEntryIsAsync = state.OnEntryIsAsync || sig.IsAsync; // Preserve explicit async flag
+            state.OnEntryHasParameterlessOverload = sig.HasParameterless;
+            state.OnEntryExpectsPayload = sig.HasPayloadOnly || sig.HasPayloadAndToken;
+        }
+        
+        private void ParseOnExit(InvocationExpressionSyntax invocation, string currentState, StateMachineModel model, Action<string>? report, bool isAsync)
         {
             if (!model.States.TryGetValue(currentState, out var state)) return;
             
@@ -762,13 +905,11 @@ namespace Generator.Parsers
                         nameofInvocation.ArgumentList.Arguments[0].Expression is IdentifierNameSyntax methodName)
                     {
                         state.OnExitMethod = methodName.Identifier.Text;
-                        if (_classSymbol != null)
-                        {
-                            var overloads = _classSymbol.GetMembers(state.OnExitMethod).OfType<IMethodSymbol>();
-                            state.OnExitHasParameterlessOverload = overloads.Any(m => m.Parameters.IsEmpty);
-                            state.OnExitExpectsPayload = overloads.Any(m => m.Parameters.Length > 0);
-                        }
-                        report?.Invoke($"[FluentParser] Set OnExit for {currentState}: {state.OnExitMethod}");
+                        // Analyze signature
+                        AnalyzeOnExitSignature(state);
+                        if (isAsync) state.OnExitIsAsync = true;
+                        model.GenerationConfig.HasOnEntryExit = true;
+                        report?.Invoke($"[FluentParser] Set OnExit{(isAsync ? "Async" : "")} for {currentState}: {state.OnExitMethod}");
                     }
                 }
                 // Check if it's a string literal
@@ -776,15 +917,24 @@ namespace Generator.Parsers
                          literal.Token.Value is string exitName)
                 {
                     state.OnExitMethod = exitName;
-                    if (_classSymbol != null)
-                    {
-                        var overloads = _classSymbol.GetMembers(state.OnExitMethod).OfType<IMethodSymbol>();
-                        state.OnExitHasParameterlessOverload = overloads.Any(m => m.Parameters.IsEmpty);
-                        state.OnExitExpectsPayload = overloads.Any(m => m.Parameters.Length > 0);
-                    }
-                    report?.Invoke($"[FluentParser] Set OnExit for {currentState}: {exitName}");
+                    // Analyze signature
+                    AnalyzeOnExitSignature(state);
+                    if (isAsync) state.OnExitIsAsync = true;
+                    model.GenerationConfig.HasOnEntryExit = true;
+                    report?.Invoke($"[FluentParser] Set OnExit{(isAsync ? "Async" : "")} for {currentState}: {exitName}");
                 }
             }
+        }
+        
+        private void AnalyzeOnExitSignature(StateModel state)
+        {
+            if (_classSymbol == null || string.IsNullOrEmpty(state.OnExitMethod)) return;
+            EnsureAnalyzers();
+            var sig = _callbackAnalyzer!.AnalyzeCallback(_classSymbol, state.OnExitMethod!, "OnExit", _compilation);
+            state.OnExitSignature = sig;
+            state.OnExitIsAsync = state.OnExitIsAsync || sig.IsAsync; // Preserve explicit async flag
+            state.OnExitHasParameterlessOverload = sig.HasParameterless;
+            state.OnExitExpectsPayload = sig.HasPayloadOnly || sig.HasPayloadAndToken;
         }
 
         private string? GetNamespace(ClassDeclarationSyntax classDeclaration)

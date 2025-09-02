@@ -1,3 +1,5 @@
+using System;
+
 namespace Abstractions.Fluent
 {
     /// <summary>
@@ -9,9 +11,17 @@ namespace Abstractions.Fluent
         /// <summary>
         /// Define a state in the state machine.
         /// </summary>
-        public static StateBuilder<TState> State<TState>(TState state) where TState : System.Enum
+        public static StateBuilder<TState> State<TState>(TState state) where TState : Enum
         {
             // Runtime no-op - only used at compile time by source generator
+            return new StateBuilder<TState>();
+        }
+
+        /// <summary>
+        /// Alias for State - set state context.
+        /// </summary>
+        public static StateBuilder<TState> At<TState>(TState state) where TState : Enum
+        {
             return new StateBuilder<TState>();
         }
     }
@@ -19,7 +29,7 @@ namespace Abstractions.Fluent
     /// <summary>
     /// Builder for configuring a state.
     /// </summary>
-    public class StateBuilder<TState> where TState : System.Enum
+    public sealed class StateBuilder<TState> where TState : Enum
     {
         /// <summary>
         /// Set the parent state (for hierarchical state machines).
@@ -37,19 +47,29 @@ namespace Abstractions.Fluent
         public StateBuilder<TState> WithHistory(HistoryMode mode) => this;
 
         /// <summary>
-        /// Set the entry action for this state.
+        /// Set the synchronous entry action for this state.
         /// </summary>
         public StateBuilder<TState> OnEntry(string methodName) => this;
 
         /// <summary>
-        /// Set the exit action for this state.
+        /// Set the asynchronous entry action for this state.
+        /// </summary>
+        public StateBuilder<TState> OnEntryAsync(string methodName) => this;
+
+        /// <summary>
+        /// Set the synchronous exit action for this state.
         /// </summary>
         public StateBuilder<TState> OnExit(string methodName) => this;
 
         /// <summary>
+        /// Set the asynchronous exit action for this state.
+        /// </summary>
+        public StateBuilder<TState> OnExitAsync(string methodName) => this;
+
+        /// <summary>
         /// Define a transition from this state.
         /// </summary>
-        public TransitionBuilder<TState, TTrigger> On<TTrigger>(TTrigger trigger) where TTrigger : System.Enum
+        public TransitionBuilder<TState, TTrigger> On<TTrigger>(TTrigger trigger) where TTrigger : Enum
         {
             return new TransitionBuilder<TState, TTrigger>();
         }
@@ -57,9 +77,9 @@ namespace Abstractions.Fluent
         /// <summary>
         /// Define an internal transition (no state change).
         /// </summary>
-        public InternalTransitionBuilder<TTrigger> OnInternal<TTrigger>(TTrigger trigger) where TTrigger : System.Enum
+        public TransitionBuilder<TState, TTrigger> OnInternal<TTrigger>(TTrigger trigger) where TTrigger : Enum
         {
-            return new InternalTransitionBuilder<TTrigger>();
+            return new TransitionBuilder<TState, TTrigger>(isInternal: true);
         }
 
         /// <summary>
@@ -74,24 +94,46 @@ namespace Abstractions.Fluent
     /// <summary>
     /// Builder for configuring a transition.
     /// </summary>
-    public class TransitionBuilder<TState, TTrigger> 
-        where TState : System.Enum
-        where TTrigger : System.Enum
+    public sealed class TransitionBuilder<TState, TTrigger> 
+        where TState : Enum
+        where TTrigger : Enum
     {
-        /// <summary>
-        /// Set the target state for this transition.
-        /// </summary>
-        public TransitionBuilder<TState, TTrigger> GoTo(TState targetState) => this;
+        private readonly bool _isInternal;
+
+        public TransitionBuilder(bool isInternal = false)
+        {
+            _isInternal = isInternal;
+        }
 
         /// <summary>
-        /// Set the guard for this transition.
+        /// Set the payload type for this transition.
+        /// </summary>
+        public TransitionBuilder<TState, TTrigger> Payload(Type payloadType) => this;
+
+        /// <summary>
+        /// Set the payload type for this transition (generic).
+        /// </summary>
+        public TransitionBuilder<TState, TTrigger> Payload<TPayload>() => Payload(typeof(TPayload));
+
+        /// <summary>
+        /// Set the synchronous guard for this transition.
         /// </summary>
         public TransitionBuilder<TState, TTrigger> Guard(string methodName) => this;
 
         /// <summary>
-        /// Set the action for this transition.
+        /// Set the asynchronous guard for this transition.
+        /// </summary>
+        public TransitionBuilder<TState, TTrigger> GuardAsync(string methodName) => this;
+
+        /// <summary>
+        /// Set the synchronous action for this transition.
         /// </summary>
         public TransitionBuilder<TState, TTrigger> Action(string methodName) => this;
+
+        /// <summary>
+        /// Set the asynchronous action for this transition.
+        /// </summary>
+        public TransitionBuilder<TState, TTrigger> ActionAsync(string methodName) => this;
 
         /// <summary>
         /// Set the priority for this transition (HSM).
@@ -99,28 +141,49 @@ namespace Abstractions.Fluent
         public TransitionBuilder<TState, TTrigger> Priority(int priority) => this;
 
         /// <summary>
+        /// Set the target state for this transition and return to state builder.
+        /// </summary>
+        public StateBuilder<TState> GoTo(TState targetState)
+        {
+            // Finalize transition with target state
+            return new StateBuilder<TState>();
+        }
+
+        /// <summary>
+        /// Finalize as internal transition and return to state builder.
+        /// </summary>
+        public StateBuilder<TState> Internal()
+        {
+            // Finalize as internal transition
+            return new StateBuilder<TState>();
+        }
+
+        /// <summary>
+        /// Continue to define another transition from the same state.
+        /// </summary>
+        public TransitionBuilder<TState, TTrigger> On(TTrigger trigger)
+        {
+            // Auto-finalize previous transition as internal (parser will handle warning)
+            return new TransitionBuilder<TState, TTrigger>();
+        }
+
+        /// <summary>
+        /// Continue to define an internal transition from the same state.
+        /// </summary>
+        public TransitionBuilder<TState, TTrigger> OnInternal(TTrigger trigger)
+        {
+            // Auto-finalize previous transition as internal (parser will handle warning)
+            return new TransitionBuilder<TState, TTrigger>(isInternal: true);
+        }
+
+        /// <summary>
         /// Continue to define another state.
         /// </summary>
         public StateBuilder<TState> State(TState state)
         {
+            // Auto-finalize previous transition as internal if not finalized
             return new StateBuilder<TState>();
         }
-    }
-
-    /// <summary>
-    /// Builder for configuring an internal transition.
-    /// </summary>
-    public class InternalTransitionBuilder<TTrigger> where TTrigger : System.Enum
-    {
-        /// <summary>
-        /// Set the action for this internal transition.
-        /// </summary>
-        public InternalTransitionBuilder<TTrigger> Action(string methodName) => this;
-
-        /// <summary>
-        /// Set the guard for this internal transition.
-        /// </summary>
-        public InternalTransitionBuilder<TTrigger> Guard(string methodName) => this;
     }
 
     /// <summary>
@@ -131,5 +194,26 @@ namespace Abstractions.Fluent
         None,
         Shallow,
         Deep
+    }
+
+    /// <summary>
+    /// Async policy for state machine configuration.
+    /// </summary>
+    public enum AsyncPolicy
+    {
+        /// <summary>
+        /// Parser infers async from signatures. FireAsync recommended for async paths.
+        /// </summary>
+        Implicit,
+
+        /// <summary>
+        /// Async methods must use *Async suffix. FireAsync required for async paths.
+        /// </summary>
+        Explicit,
+
+        /// <summary>
+        /// All handlers must be async. Only FireAsync available.
+        /// </summary>
+        Required
     }
 }
