@@ -13,7 +13,7 @@ namespace  FastFsm.Async.Tests.Features.Lifecycle
         [Fact]
         public async Task Machine_Throws_Before_StartAsync()
         {
-            var machine = new  FastFsm.Async.Tests.Features.Cancellation.BasicTokenMachineFluentFsm(TokenTestState.Initial);
+            var machine = new  FastFsm.Async.Tests.Features.Cancellation.BasicTokenMachine(TokenTestState.Initial);
 
             await Assert.ThrowsAsync<InvalidOperationException>(async () =>
                 await machine.TryFireAsync(TokenTestTrigger.Start));
@@ -22,7 +22,7 @@ namespace  FastFsm.Async.Tests.Features.Lifecycle
         [Fact]
         public async Task Machine_Works_After_StartAsync()
         {
-            var machine = new  FastFsm.Async.Tests.Features.Cancellation.BasicTokenMachineFluentFsm(TokenTestState.Initial);
+            var machine = new  FastFsm.Async.Tests.Features.Cancellation.BasicTokenMachine(TokenTestState.Initial);
             await machine.StartAsync();
 
             var result = await machine.TryFireAsync(TokenTestTrigger.Start);

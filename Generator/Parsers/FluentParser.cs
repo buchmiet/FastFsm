@@ -55,7 +55,7 @@ namespace Generator.Parsers
             model = new StateMachineModel
             {
                 ClassName = classDeclaration.Identifier.Text,
-                Namespace = GetNamespace(classDeclaration),
+                Namespace = GetNamespace(),
                 States = new Dictionary<string, StateModel>(),
                 Transitions = new List<TransitionModel>(),
                 GenerationConfig = new GenerationConfig()
@@ -86,13 +86,16 @@ namespace Generator.Parsers
                 }
             }
 
-            // Determine async mode: if any guard/action is async, mark machine as async.
+            // Determine async mode: if any guard/action/entry/exit is async, mark machine as async.
             // This mirrors legacy parser behavior where async callbacks flip machine into async mode
             // so generator emits awaitable code paths instead of sync wrappers.
-            if (model.Transitions.Any(tr => tr.GuardIsAsync || tr.ActionIsAsync))
+            bool hasAsyncTransitions = model.Transitions.Any(tr => tr.GuardIsAsync || tr.ActionIsAsync);
+            bool hasAsyncStates = model.States.Values.Any(st => st.OnEntryIsAsync || st.OnExitIsAsync);
+            
+            if (hasAsyncTransitions || hasAsyncStates)
             {
                 model.GenerationConfig.IsAsync = true;
-                report?.Invoke($"[FluentParser] Async mode enabled due to async callbacks (guards/actions)");
+                report?.Invoke($"[FluentParser] Async mode enabled due to async callbacks (transitions: {hasAsyncTransitions}, states: {hasAsyncStates})");
             }
 
             // If class signals fluent usage (Configure exists) but no DSL recognized,
@@ -123,7 +126,7 @@ namespace Generator.Parsers
             }
 
             var smAttr = _classSymbol.GetAttributes()
-                .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == Strings.StateMachineAttributeFullName);
+                .FirstOrDefault(a => a.AttributeClass != null && _typeHelper.BuildFullTypeName(a.AttributeClass) == Strings.StateMachineAttributeFullName);
             if (smAttr == null)
             {
                 report?.Invoke("[FluentParser] [StateMachine] attribute not found");
@@ -268,14 +271,20 @@ namespace Generator.Parsers
             // Walk through the method call chain
             var invocations = new List<InvocationExpressionSyntax>();
             CollectInvocations(expression, invocations);
+            report?.Invoke($"[FluentParser] Found {invocations.Count} invocations in chain");
 
             foreach (var invocation in invocations)
             {
                 var methodName = GetMethodName(invocation);
-                report?.Invoke($"[FluentParser] Processing method: {methodName}");
+                report?.Invoke($"[FluentParser] Processing method: {methodName} from {invocation.Expression}");
 
                 switch (methodName)
                 {
+                    case "Extensible":
+                        report?.Invoke($"[FluentParser] Found Extensible method - enabling extensions");
+                        EnableExtensions(model, report);
+                        break;
+                        
                     case "State":
                     case "At": // Alias for State
                         // Auto-finalize open transition as internal
@@ -295,7 +304,7 @@ namespace Generator.Parsers
                             _context.ReportDiagnostic(diagnostic);
                         }
                         currentState = ParseStateCall(invocation, model, report);
-                        currentTransition = null;
+                        currentTransition = null; // Clear any previous transition context
                         break;
                 
                     case "On":
@@ -348,7 +357,7 @@ namespace Generator.Parsers
                         if (currentTransition != null)
                         {
                             CompleteTransition(invocation, currentTransition, model, report);
-                            currentTransition = null; // Transition is finalized
+                            // Don't set currentTransition to null yet - allow Guard/Action to be chained after GoTo
                         }
                         break;
                     
@@ -467,6 +476,20 @@ namespace Generator.Parsers
             }
         }
 
+        private void EnableExtensions(StateMachineModel model, Action<string>? report)
+        {
+            // Check if GenerateExtensibleVersion exists in GenerationConfig
+            // This flag is shared with legacy attribute API
+            if (model.GenerationConfig.HasExtensions)
+            {
+                report?.Invoke("[FluentParser] Warning: Duplicate .Extensible() ignored (already enabled)");
+                return;
+            }
+
+            model.GenerationConfig.HasExtensions = true;
+            report?.Invoke("[FluentParser] Extensions enabled via .Extensible()");
+        }
+
         private void ApplyEnumOnlyFallback(StateMachineModel model, Action<string>? report)
         {
             INamedTypeSymbol? stateEnum = _stateEnumSymbol;
@@ -566,7 +589,13 @@ namespace Generator.Parsers
         {
             if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
             {
-                return memberAccess.Name.Identifier.Text;
+                // Handle both regular and generic method names
+                return memberAccess.Name switch
+                {
+                    GenericNameSyntax genericName => genericName.Identifier.Text,
+                    SimpleNameSyntax simpleName => simpleName.Identifier.Text,
+                    _ => null
+                };
             }
             return null;
         }
@@ -802,6 +831,7 @@ namespace Generator.Parsers
             }
         }
 
+
         private void EnsureAnalyzers()
         {
             if (_callbackAnalyzer == null)
@@ -839,7 +869,7 @@ namespace Generator.Parsers
 
             // Class-level [PayloadType(typeof(Default))]
             var classPayloadAttrs = _classSymbol.GetAttributes()
-                .Where(a => a.AttributeClass?.ToDisplayString() == Strings.PayloadTypeAttributeFullName);
+                .Where(a => a.AttributeClass != null && _typeHelper.BuildFullTypeName(a.AttributeClass) == Strings.PayloadTypeAttributeFullName);
 
             foreach (var attr in classPayloadAttrs)
             {
@@ -870,7 +900,7 @@ namespace Generator.Parsers
             // Method-level [PayloadType(Trigger.X, typeof(T))] (overrides)
             foreach (var m in _classSymbol.GetMembers().OfType<IMethodSymbol>())
             {
-                foreach (var attr in m.GetAttributes().Where(a => a.AttributeClass?.ToDisplayString() == Strings.PayloadTypeAttributeFullName))
+                foreach (var attr in m.GetAttributes().Where(a => a.AttributeClass != null && _typeHelper.BuildFullTypeName(a.AttributeClass) == Strings.PayloadTypeAttributeFullName))
                 {
                     if (attr.ConstructorArguments.Length == 2)
                     {
@@ -1004,10 +1034,14 @@ namespace Generator.Parsers
             state.OnExitExpectsPayload = sig.HasPayloadOnly || sig.HasPayloadAndToken;
         }
 
-        private string? GetNamespace(ClassDeclarationSyntax classDeclaration)
+        private string? GetNamespace()
         {
-            var namespaceDeclaration = classDeclaration.FirstAncestorOrSelf<BaseNamespaceDeclarationSyntax>();
-            return namespaceDeclaration?.Name.ToString();
+            // Use symbol-based namespace extraction for consistency with StateMachineParser
+            if (_classSymbol != null)
+            {
+                return _classSymbol.ContainingNamespace.IsGlobalNamespace ? string.Empty : _classSymbol.ContainingNamespace.ToDisplayString();
+            }
+            return string.Empty;
         }
     }
 }

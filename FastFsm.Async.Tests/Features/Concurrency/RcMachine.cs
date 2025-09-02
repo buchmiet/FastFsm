@@ -125,8 +125,8 @@ namespace FastFsm.Async.Tests.Features.Concurrency
         private static void Configure() => FSM
             .State(RcStates.Initial)
                 .OnExitAsync(nameof(OnInitialExitAsync))
-                .On(RcTriggers.ToA).GoTo(RcStates.A).ActionAsync(nameof(SlowActionAsync))
-                .On(RcTriggers.ToB).GoTo(RcStates.B).ActionAsync(nameof(SlowActionAsync))
+                .On(RcTriggers.ToA).GoTo(RcStates.A).Action(nameof(SlowActionAsync))
+                .On(RcTriggers.ToB).GoTo(RcStates.B).Action(nameof(SlowActionAsync))
             .State(RcStates.A)
                 .OnEntryAsync(nameof(OnEntryAAsync))
             .State(RcStates.B)

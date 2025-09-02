@@ -9,6 +9,16 @@ namespace Abstractions.Fluent
     public static class FSM
     {
         /// <summary>
+        /// Enable extensions support for the state machine.
+        /// Equivalent to GenerateExtensibleVersion = true in attribute API.
+        /// </summary>
+        public static StateBuilder<TState> Extensible<TState>() where TState : Enum
+        {
+            // Runtime no-op - only used at compile time by source generator
+            return new StateBuilder<TState>();
+        }
+
+        /// <summary>
         /// Define a state in the state machine.
         /// </summary>
         public static StateBuilder<TState> State<TState>(TState state) where TState : Enum

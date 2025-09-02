@@ -582,12 +582,16 @@ public class StateMachineGenerator : IIncrementalGenerator
             model.GenerationConfig.HasOnEntryExit = model.States.Values.Any(s =>
                 !string.IsNullOrEmpty(s.OnEntryMethod) || !string.IsNullOrEmpty(s.OnExitMethod));
             // Extensions flag from [StateMachine(GenerateExtensibleVersion = true)]
-            var smAttr = candidate.Symbol.GetAttributes()
-                .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == StateMachineAttributeFullName);
-            if (smAttr != null)
+            // Only check attribute if extensions not already enabled by fluent API
+            if (!model.GenerationConfig.HasExtensions)
             {
-                var extArg = smAttr.NamedArguments.FirstOrDefault(na => na.Key == nameof(Abstractions.Attributes.StateMachineAttribute.GenerateExtensibleVersion));
-                model.GenerationConfig.HasExtensions = extArg.Key != null && (bool)extArg.Value.Value!;
+                var smAttr = candidate.Symbol.GetAttributes()
+                    .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == StateMachineAttributeFullName);
+                if (smAttr != null)
+                {
+                    var extArg = smAttr.NamedArguments.FirstOrDefault(na => na.Key == nameof(Abstractions.Attributes.StateMachineAttribute.GenerateExtensibleVersion));
+                    model.GenerationConfig.HasExtensions = extArg.Key != null && (bool)extArg.Value.Value!;
+                }
             }
             // No internal variants — unified generator gates purely on feature flags
             
