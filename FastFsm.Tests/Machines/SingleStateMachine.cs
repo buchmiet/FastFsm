@@ -12,7 +12,7 @@ namespace FastFsm.Tests.Machines
 
         private static void Configure() => FSM
             .State(SingleState.Only)
-                .On(SingleTrigger.Loop).GoTo(SingleState.Only).Action(nameof(IncrementCounter));
+                .On(SingleTrigger.Loop).Action(nameof(IncrementCounter)).GoTo(SingleState.Only);
 
         private void IncrementCounter() => _actionCount++;
     }

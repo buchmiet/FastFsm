@@ -13,10 +13,10 @@ namespace FastFsm.Tests.Machines
         private static void Configure() => FSM
             .State(CallbackState.A)
                 .OnExit(nameof(OnExitA))
-                .On(CallbackTrigger.Next).GoTo(CallbackState.B).Action(nameof(ActionAtoB))
+                .On(CallbackTrigger.Next).Action(nameof(ActionAtoB)).GoTo(CallbackState.B)
             .State(CallbackState.B)
                 .OnEntry(nameof(OnEntryB)).OnExit(nameof(OnExitB))
-                .On(CallbackTrigger.Next).GoTo(CallbackState.C).Action(nameof(ActionBtoC))
+                .On(CallbackTrigger.Next).Action(nameof(ActionBtoC)).GoTo(CallbackState.C)
             .State(CallbackState.C)
                 .OnEntry(nameof(OnEntryC));
 

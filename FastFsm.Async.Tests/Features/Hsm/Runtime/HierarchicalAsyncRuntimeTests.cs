@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Abstractions.Attributes;
+using Abstractions.Fluent;
 using Xunit;
 
 namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
@@ -15,7 +16,7 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
         [Fact]
         public async Task Transition_ToCompositeParent_Enters_ItsInitialChild()
         {
-            var m = new InitialChildMachine(S.Outside);
+            var m = new InitialChildMachineFluentFsm(S.Outside);
             await m.StartAsync();
 
             m.CurrentState.ShouldBe(S.Outside);
@@ -34,16 +35,19 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
         public enum T { EnterParent, Switch, LeaveParent }
 
         [StateMachine(typeof(S), typeof(T), EnableHierarchy = true)]
-        public partial class InitialChildMachine
+        public partial class InitialChildMachineFluentFsm
         {
-            [State(S.Parent, OnEntry = nameof(OnParentEntryAsync))] private void Parent() { }
-            [State(S.Parent_A, Parent = S.Parent, IsInitial = true)] private void ChildA() { }
-            [State(S.Parent_B, Parent = S.Parent)] private void ChildB() { }
-
-            [Transition(S.Outside, T.EnterParent, S.Parent)]
-            [Transition(S.Parent_A, T.Switch, S.Parent_B)]
-            [Transition(S.Parent, T.LeaveParent, S.Outside)]
-            private void Configure() { }
+            private static void Configure() => FSM
+                .State(S.Parent)
+                    .OnEntryAsync(nameof(OnParentEntryAsync))
+                .State(S.Parent_A).Parent(S.Parent).IsInitial()
+                .State(S.Parent_B).Parent(S.Parent)
+                .State(S.Outside)
+                    .On(T.EnterParent).GoTo(S.Parent)
+                .State(S.Parent_A)
+                    .On(T.Switch).GoTo(S.Parent_B)
+                .State(S.Parent)
+                    .On(T.LeaveParent).GoTo(S.Outside);
 
             private async Task OnParentEntryAsync() => await Task.Yield();
         }
@@ -55,7 +59,7 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
         [Fact]
         public async Task Reentering_Parent_With_ShallowHistory_Restores_LastChild()
         {
-            var m = new ShallowHistoryMachine(S.Outside);
+            var m = new ShallowHistoryMachineFluentFsm(S.Outside);
             await m.StartAsync();
 
             // Enter parent → initial child
@@ -79,17 +83,21 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
         public enum T { Enter, Next, Back, Exit }
 
         [StateMachine(typeof(S), typeof(T), EnableHierarchy = true)]
-        public partial class ShallowHistoryMachine
+        public partial class ShallowHistoryMachineFluentFsm
         {
-            [State(S.Menu, History = HistoryMode.Shallow, OnEntry = nameof(OnMenuEntryAsync))] private void Menu() { }
-            [State(S.Menu_Main, Parent = S.Menu, IsInitial = true)] private void Main() { }
-            [State(S.Menu_Settings, Parent = S.Menu)] private void Settings() { }
-
-            [Transition(S.Outside, T.Enter, S.Menu)]
-            [Transition(S.Menu_Main, T.Next, S.Menu_Settings)]
-            [Transition(S.Menu_Settings, T.Back, S.Menu_Main)]
-            [Transition(S.Menu, T.Exit, S.Outside)]
-            private void Configure() { }
+            private static void Configure() => FSM
+                .State(S.Menu).WithHistory(HistoryMode.Shallow)
+                    .OnEntryAsync(nameof(OnMenuEntryAsync))
+                .State(S.Menu_Main).Parent(S.Menu).IsInitial()
+                .State(S.Menu_Settings).Parent(S.Menu)
+                .State(S.Outside)
+                    .On(T.Enter).GoTo(S.Menu)
+                .State(S.Menu_Main)
+                    .On(T.Next).GoTo(S.Menu_Settings)
+                .State(S.Menu_Settings)
+                    .On(T.Back).GoTo(S.Menu_Main)
+                .State(S.Menu)
+                    .On(T.Exit).GoTo(S.Outside);
 
             private async Task OnMenuEntryAsync() => await Task.CompletedTask;
         }
@@ -101,7 +109,7 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
         [Fact]
         public async Task DeepHistory_Restores_LeafPath_After_Reentering()
         {
-            var m = new DeepHistoryMachine(S.Out);
+            var m = new DeepHistoryMachineFluentFsm(S.Out);
             await m.StartAsync();
 
             // Enter composite → auto path: Work → S1 (initial) → Loading (initial)
@@ -125,17 +133,20 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
         public enum T { EnterWork, Next, Abort }
 
         [StateMachine(typeof(S), typeof(T), EnableHierarchy = true)]
-        public partial class DeepHistoryMachine
+        public partial class DeepHistoryMachineFluentFsm
         {
-            [State(S.Work, History = HistoryMode.Deep, OnEntry = nameof(OnWorkEntryAsync))] private void Work() { }
-            [State(S.Work_S1, Parent = S.Work, IsInitial = true)] private void S1() { }
-            [State(S.Work_S1_Loading, Parent = S.Work_S1, IsInitial = true)] private void Loading() { }
-            [State(S.Work_S1_Calc, Parent = S.Work_S1)] private void Calc() { }
-
-            [Transition(S.Out, T.EnterWork, S.Work)]
-            [Transition(S.Work_S1_Loading, T.Next, S.Work_S1_Calc)]
-            [Transition(S.Work, T.Abort, S.Out)]
-            private void Configure() { }
+            private static void Configure() => FSM
+                .State(S.Work).WithHistory(HistoryMode.Deep)
+                    .OnEntryAsync(nameof(OnWorkEntryAsync))
+                .State(S.Work_S1).Parent(S.Work).IsInitial()
+                .State(S.Work_S1_Loading).Parent(S.Work_S1).IsInitial()
+                .State(S.Work_S1_Calc).Parent(S.Work_S1)
+                .State(S.Out)
+                    .On(T.EnterWork).GoTo(S.Work)
+                .State(S.Work_S1_Loading)
+                    .On(T.Next).GoTo(S.Work_S1_Calc)
+                .State(S.Work)
+                    .On(T.Abort).GoTo(S.Out);
 
             private async Task OnWorkEntryAsync() => await Task.CompletedTask;
         }
@@ -147,7 +158,7 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
         [Fact]
         public async Task Internal_OnParent_Executes_Action_Without_ExitOrEntry()
         {
-            var m = new InternalMachine(S.Parent);
+            var m = new InternalMachineFluentFsm(S.Parent);
             await m.StartAsync(); // auto enters Child
             m.Log.Clear();
 
@@ -160,7 +171,7 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
         [Fact]
         public async Task Internal_OnChild_Overrides_Parent_When_PriorityEqual()
         {
-            var m = new InternalMachine(S.Parent) { UseChildInternal = true };
+            var m = new InternalMachineFluentFsm(S.Parent) { UseChildInternal = true };
             await m.StartAsync();
             m.Log.Clear();
 
@@ -174,21 +185,21 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
         public enum T { Refresh }
 
         [StateMachine(typeof(S), typeof(T), EnableHierarchy = true)]
-        public partial class InternalMachine
+        public partial class InternalMachineFluentFsm
         {
             public List<string> Log { get; } = new();
             public bool UseChildInternal { get; set; }
 
-            [State(S.Parent)] private void Parent() { }
-            [State(S.Child, Parent = S.Parent, IsInitial = true)] private void Child() { }
-
-            // Parent internal (always present)
-            [InternalTransition(S.Parent, T.Refresh, Action = nameof(ParentInternalAsync))]
-            private void ParentInternals() { }
-
-            // Child internal with guard
-            [InternalTransition(S.Child, T.Refresh, Guard = nameof(UseChildInternalGuard), Action = nameof(ChildInternalAsync))]
-            private void ChildInternals() { }
+            private static void Configure() => FSM
+                .State(S.Parent)
+                    .OnInternal(T.Refresh)
+                        .ActionAsync(nameof(ParentInternalAsync))
+                        .Internal()
+                .State(S.Child).Parent(S.Parent).IsInitial()
+                    .OnInternal(T.Refresh)
+                        .Guard(nameof(UseChildInternalGuard))
+                        .ActionAsync(nameof(ChildInternalAsync))
+                        .Internal();
 
             private async Task ParentInternalAsync() { await Task.Yield(); Log.Add("ParentInternal"); }
             private async Task ChildInternalAsync() { await Task.Yield(); Log.Add("ChildInternal"); }
@@ -202,7 +213,7 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
         [Fact]
         public async Task HigherPriority_Wins_Even_If_Parent()
         {
-            var m = new PriorityMachine(S.Parent);
+            var m = new PriorityMachineFluentFsm(S.Parent);
             await m.StartAsync(); // enters Child
             await m.FireAsync(T.Go);
             m.CurrentState.ShouldBe(S.ParentDone); // parent wins due to higher priority
@@ -212,7 +223,7 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
         [Fact]
         public async Task ChildOverridesParent_When_PrioEqual()
         {
-            var m = new ChildOverridesMachine(S.Parent);
+            var m = new ChildOverridesMachineFluentFsm(S.Parent);
             await m.StartAsync();
             await m.FireAsync(T.Go);
             m.CurrentState.ShouldBe(S.Child); // child wins over parent at equal priority
@@ -222,7 +233,7 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
         [Fact]
         public async Task SourceOrder_Tie_Breaks_By_First_Declared()
         {
-            var m = new SourceOrderTieMachine(S.A);
+            var m = new SourceOrderTieMachineFluentFsm(S.A);
             await m.StartAsync();
             await m.FireAsync(T.Go);
             m.CurrentState.ShouldBe(S.B); // first declared wins
@@ -233,16 +244,16 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
         public enum T { Go }
 
         [StateMachine(typeof(S), typeof(T), EnableHierarchy = true)]
-        public partial class PriorityMachine
+        public partial class PriorityMachineFluentFsm
         {
             public List<string> Log { get; } = new();
 
-            [State(S.Parent, OnEntry = nameof(OnParentEntryAsync))] private void Parent() { }
-            [State(S.Child, Parent = S.Parent, IsInitial = true)] private void Child() { }
-
-            [Transition(S.Parent, T.Go, S.ParentDone, Priority = 200, Action = nameof(P))]
-            [Transition(S.Child, T.Go, S.Child, Priority = 100, Action = nameof(C))]
-            private void Configure() { }
+            private static void Configure() => FSM
+                .State(S.Parent)
+                    .OnEntryAsync(nameof(OnParentEntryAsync))
+                    .On(T.Go).GoTo(S.ParentDone).ActionAsync(nameof(P)).Priority(200)
+                .State(S.Child).Parent(S.Parent).IsInitial()
+                    .On(T.Go).GoTo(S.Child).ActionAsync(nameof(C)).Priority(100);
 
             private async Task P() { await Task.Yield(); Log.Add("Parent"); }
             private async Task C() { await Task.Yield(); Log.Add("Child"); }
@@ -250,16 +261,16 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
         }
 
         [StateMachine(typeof(S), typeof(T), EnableHierarchy = true)]
-        public partial class ChildOverridesMachine
+        public partial class ChildOverridesMachineFluentFsm
         {
             public List<string> Log { get; } = new();
 
-            [State(S.Parent, OnEntry = nameof(OnParentEntryAsync))] private void Parent() { }
-            [State(S.Child, Parent = S.Parent, IsInitial = true)] private void Child() { }
-
-            [Transition(S.Parent, T.Go, S.Parent, Priority = 100, Action = nameof(P))]
-            [Transition(S.Child, T.Go, S.Child, Priority = 100, Action = nameof(C))]
-            private void Configure() { }
+            private static void Configure() => FSM
+                .State(S.Parent)
+                    .OnEntryAsync(nameof(OnParentEntryAsync))
+                    .On(T.Go).GoTo(S.Parent).ActionAsync(nameof(P)).Priority(100)
+                .State(S.Child).Parent(S.Parent).IsInitial()
+                    .On(T.Go).GoTo(S.Child).ActionAsync(nameof(C)).Priority(100);
 
             private async Task P() { await Task.Yield(); Log.Add("Parent"); }
             private async Task C() { await Task.Yield(); Log.Add("Child"); }
@@ -267,13 +278,15 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
         }
 
         [StateMachine(typeof(S), typeof(T))]
-        public partial class SourceOrderTieMachine
+        public partial class SourceOrderTieMachineFluentFsm
         {
             public List<string> Log { get; } = new();
-            [State(S.A, OnEntry = nameof(OnAEntryAsync))] private void AState() { }
-            [Transition(S.A, T.Go, S.B, Priority = 0, Action = nameof(First))]
-            [Transition(S.A, T.Go, S.C, Priority = 0, Action = nameof(Second))]
-            private void Configure() { }
+
+            private static void Configure() => FSM
+                .State(S.A)
+                    .OnEntryAsync(nameof(OnAEntryAsync))
+                    .On(T.Go).GoTo(S.B).ActionAsync(nameof(First)).Priority(0)
+                    .On(T.Go).GoTo(S.C).ActionAsync(nameof(Second)).Priority(0);
 
             private async Task First() { await Task.Yield(); Log.Add("First"); }
             private async Task Second() { await Task.Yield(); Log.Add("Second"); }
@@ -287,7 +300,7 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
         [Fact]
         public async Task Child_Inherits_Parent_Transitions_And_PermittedTriggers_Unions()
         {
-            var m = new InheritanceMachine(S.Outside);
+            var m = new InheritanceMachineFluentFsm(S.Outside);
             await m.StartAsync();
 
             // Enter the composite parent
@@ -306,7 +319,7 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
         [Fact]
         public async Task IsIn_Reports_Correctly()
         {
-            var m = new InheritanceMachine(S.Outside);
+            var m = new InheritanceMachineFluentFsm(S.Outside);
             await m.StartAsync();
 
             await m.FireAsync(T.Enter); // now in Parent_A
@@ -319,7 +332,7 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
         [Fact]
         public async Task DumpActivePath_Contains_Parent_And_Leaf()
         {
-            var m = new InheritanceMachine(S.Outside);
+            var m = new InheritanceMachineFluentFsm(S.Outside);
             await m.StartAsync();
             await m.FireAsync(T.Enter); // Parent → initial child
 
@@ -332,19 +345,17 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
         public enum T { Enter, Next, Leave }
 
         [StateMachine(typeof(S), typeof(T), EnableHierarchy = true)]
-        public partial class InheritanceMachine
+        public partial class InheritanceMachineFluentFsm
         {
-            [State(S.Parent, OnEntry = nameof(OnParentEntryAsync))] private void Parent() { }
-            [State(S.Parent_A, Parent = S.Parent, IsInitial = true)] private void A() { }
-            [State(S.Parent_B, Parent = S.Parent)] private void B() { }
-
-            // Parent‑level transition that applies from any child
-            [Transition(S.Parent, T.Leave, S.Outside)]
-            // Child‑only transition
-            [Transition(S.Parent_A, T.Next, S.Parent_B)]
-            // Enter composite from outside
-            [Transition(S.Outside, T.Enter, S.Parent)]
-            private void Configure() { }
+            private static void Configure() => FSM
+                .State(S.Parent)
+                    .OnEntryAsync(nameof(OnParentEntryAsync))
+                    .On(T.Leave).GoTo(S.Outside)
+                .State(S.Parent_A).Parent(S.Parent).IsInitial()
+                    .On(T.Next).GoTo(S.Parent_B)
+                .State(S.Parent_B).Parent(S.Parent)
+                .State(S.Outside)
+                    .On(T.Enter).GoTo(S.Parent);
 
             private async Task OnParentEntryAsync() => await Task.CompletedTask;
         }

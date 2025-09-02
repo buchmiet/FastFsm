@@ -11,9 +11,9 @@ namespace FastFsm.Tests.Machines
 
         private static void Configure() => FSM
             .State(BenchmarkState.A)
-                .On(BenchmarkTrigger.Next).GoTo(BenchmarkState.B).Guard(nameof(CanTransition))
+                .On(BenchmarkTrigger.Next).Guard(nameof(CanTransition)).GoTo(BenchmarkState.B)
             .State(BenchmarkState.B)
-                .On(BenchmarkTrigger.Next).GoTo(BenchmarkState.A).Guard(nameof(CanTransition));
+                .On(BenchmarkTrigger.Next).Guard(nameof(CanTransition)).GoTo(BenchmarkState.A);
 
         private bool CanTransition()
         {

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Abstractions.Attributes;
+using Abstractions.Fluent;
 
 namespace FastFsmTests.Tests
 {
@@ -60,6 +61,73 @@ namespace FastFsmTests.Tests
 
         // ---------- OnExit rzuca ----------
         [State(ExStates.Middle, OnExit = nameof(ThrowingOnExitAsync))]
+        private async ValueTask ThrowingOnExitAsync()
+        {
+            _log.Add("OnExit:Begin");
+            await Task.Yield();
+            throw new InvalidOperationException("on exit failed");
+        }
+    }
+
+    // Fluent API equivalent
+    [StateMachine(typeof(ExStates), typeof(ExTriggers))]
+    public partial class ExceptionAsyncMachineFluentFsm
+    {
+        private readonly List<string> _log = new();
+        public IReadOnlyList<string> Log => _log;
+
+        private static void Configure() => FSM
+            .State(ExStates.Init)
+                .On(ExTriggers.GuardBoom)
+                    .GuardAsync(nameof(ThrowingGuardAsync))
+                    .GoTo(ExStates.Next)
+                .On(ExTriggers.ActionBoom)
+                    .GuardAsync(nameof(GuardOkAsync))
+                    .ActionAsync(nameof(ThrowingActionAsync))
+                    .GoTo(ExStates.Middle)
+                .On(ExTriggers.EntryBoom)
+                    .GuardAsync(nameof(GuardOkAsync))
+                    .GoTo(ExStates.Next)
+            .State(ExStates.Middle)
+                .On(ExTriggers.ExitBoom)
+                    .GuardAsync(nameof(GuardOkAsync))
+                    .GoTo(ExStates.Next)
+            .State(ExStates.Next)
+                .OnEntryAsync(nameof(ThrowingOnEntryAsync))
+            .State(ExStates.Middle)
+                .OnExitAsync(nameof(ThrowingOnExitAsync));
+
+        private async ValueTask<bool> ThrowingGuardAsync()
+        {
+            _log.Add("Guard:Begin");
+            await Task.Yield();
+            throw new InvalidOperationException("guard failed");
+        }
+
+        private async ValueTask<bool> GuardOkAsync()
+        {
+            _log.Add("GuardOk");
+            await Task.Yield();
+            return true;
+        }
+
+        private async Task ThrowingActionAsync()
+        {
+            _log.Add("Action:Begin");
+            await Task.Yield();
+            throw new InvalidOperationException("action failed");
+        }
+
+        private void NoAction() { }
+        private void NoAction2() { }
+
+        private async Task ThrowingOnEntryAsync()
+        {
+            _log.Add("OnEntry:Begin");
+            await Task.Yield();
+            throw new InvalidOperationException("on entry failed");
+        }
+
         private async ValueTask ThrowingOnExitAsync()
         {
             _log.Add("OnExit:Begin");

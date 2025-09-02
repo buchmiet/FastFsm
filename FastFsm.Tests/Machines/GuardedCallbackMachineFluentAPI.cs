@@ -15,8 +15,9 @@ namespace FastFsm.Tests.Machines
             .State(GuardedState.A)
                 .OnEntry(nameof(OnEntryA))
                 .OnExit(nameof(OnExitA))
-                .On(GuardedTrigger.Go).GoTo(GuardedState.B)
+                .On(GuardedTrigger.Go)
                     .Guard(nameof(CanTransition))
+                    .GoTo(GuardedState.B)
             .State(GuardedState.B)
                 .OnEntry(nameof(OnEntryB));
 
