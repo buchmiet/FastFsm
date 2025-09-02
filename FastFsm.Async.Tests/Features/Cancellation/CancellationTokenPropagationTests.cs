@@ -1,4 +1,5 @@
 using Abstractions.Attributes;
+using Abstractions.Fluent;
 using Shouldly;
 using System;
 using System.Collections.Generic;
@@ -97,6 +98,82 @@ namespace  FastFsm.Async.Tests.Features.Cancellation
         public void ClearLog() => _callLog.Clear();
     }
 
+    // Fluent API equivalent
+    [StateMachine(typeof(SpecStates), typeof(SpecTriggers))]
+    public partial class SpecificationComplianceMachineFluentFsm
+    {
+        private readonly List<(string Method, string Parameters)> _callLog = new();
+        public IReadOnlyList<(string Method, string Parameters)> CallLog => _callLog;
+
+        private static void Configure() => FSM
+            .State(SpecStates.Ready)
+                .OnEntryAsync(nameof(OnEnterReady))
+                .On(SpecTriggers.Start).GoTo(SpecStates.Working)
+                    .GuardAsync(nameof(CanStart))
+                    .ActionAsync(nameof(DoStart))
+            .State(SpecStates.Working)
+                .OnEntryAsync(nameof(OnEnterWorking))
+                .OnExitAsync(nameof(OnExitWorking))
+                .On(SpecTriggers.Finish).GoTo(SpecStates.Done)
+                    .Guard(nameof(CanFinish))
+                    .ActionAsync(nameof(DoFinish))
+                .OnInternal(SpecTriggers.Update)
+                    .GuardAsync(nameof(CanUpdate))
+                    .ActionAsync(nameof(DoUpdate))
+                    .Internal()
+            .State(SpecStates.Done);
+
+        private Task OnEnterReady()
+        {
+            _callLog.Add(("OnEnterReady", "()"));
+            return Task.CompletedTask;
+        }
+        private async Task OnEnterWorking(CancellationToken ct)
+        {
+            _callLog.Add(("OnEnterWorking", "(CT)"));
+            await Task.Delay(1, ct);
+        }
+        private async ValueTask OnExitWorking()
+        {
+            _callLog.Add(("OnExitWorking", "()"));
+            await Task.Delay(1);
+        }
+        private async ValueTask<bool> CanStart(CancellationToken ct = default)
+        {
+            _callLog.Add(("CanStart", ct.CanBeCanceled ? "(CT)" : "()"));
+            await Task.Delay(1, ct);
+            return true;
+        }
+        private ValueTask<bool> CanFinish(CancellationToken ct = default)
+        {
+            _callLog.Add(("CanFinish", ct.CanBeCanceled ? "(CT)" : "()"));
+            ct.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(true);
+        }
+        private async ValueTask<bool> CanUpdate(CancellationToken ct)
+        {
+            _callLog.Add(("CanUpdate", "(CT)"));
+            await Task.Delay(1, ct);
+            return true;
+        }
+        private async Task DoStart(CancellationToken ct = default)
+        {
+            _callLog.Add(("DoStart", ct.CanBeCanceled ? "(CT)" : "()"));
+            await Task.Delay(1, ct);
+        }
+        private async ValueTask DoFinish()
+        {
+            _callLog.Add(("DoFinish", "()"));
+            await Task.Delay(1);
+        }
+        private async Task DoUpdate(CancellationToken ct)
+        {
+            _callLog.Add(("DoUpdate", "(CT)"));
+            await Task.Delay(1, ct);
+        }
+        public void ClearLog() => _callLog.Clear();
+    }
+
     public enum SpecStates
     {
         Ready,
@@ -117,7 +194,7 @@ namespace  FastFsm.Async.Tests.Features.Cancellation
         public async Task Should_Call_ThrowIfCancellationRequested_At_Start_Of_Public_Methods()
         {
             // Per spec: ThrowIfCancellationRequested() is called at the start of all public async methods
-            var machine = new SpecificationComplianceMachine(SpecStates.Ready);
+            var machine = new SpecificationComplianceMachineFluentFsm(SpecStates.Ready);
             await machine.StartAsync();
 
             // poczekaj, aż async OnEnterReady skończy się dopisywać do logu…
@@ -153,7 +230,7 @@ namespace  FastFsm.Async.Tests.Features.Cancellation
         public async Task Should_Use_Best_Overload_With_CancellationToken_Priority()
         {
             // Per spec: Priority order for overloads - (CT) should be preferred over ()
-            var machine = new SpecificationComplianceMachine(SpecStates.Ready);
+            var machine = new SpecificationComplianceMachineFluentFsm(SpecStates.Ready);
             await machine.StartAsync();
             using var cts = new CancellationTokenSource();
 
@@ -170,7 +247,7 @@ namespace  FastFsm.Async.Tests.Features.Cancellation
         [Fact]
         public async Task Should_Use_Parameterless_Overload_When_No_CT_Version()
         {
-            var machine = new SpecificationComplianceMachine(SpecStates.Working);
+            var machine = new SpecificationComplianceMachineFluentFsm(SpecStates.Working);
             using var cts = new CancellationTokenSource();
             await machine.StartAsync();
             await machine.FireAsync(SpecTriggers.Finish, null, cts.Token);
@@ -203,7 +280,7 @@ namespace  FastFsm.Async.Tests.Features.Cancellation
         public async Task Should_Not_Rollback_State_On_Cancellation()
         {
             // Arrange
-            var machine = new SpecificationComplianceMachine(SpecStates.Ready);
+                var machine = new SpecificationComplianceMachineFluentFsm(SpecStates.Ready);
             await machine.StartAsync();
 
             using var cts = new CancellationTokenSource();
@@ -268,7 +345,7 @@ namespace  FastFsm.Async.Tests.Features.Cancellation
 
             try
             {
-                var machine = new SpecificationComplianceMachine(SpecStates.Ready);
+                var machine = new SpecificationComplianceMachineFluentFsm(SpecStates.Ready);
             await machine.StartAsync();
                 await machine.FireAsync(SpecTriggers.Start);
 
@@ -285,7 +362,7 @@ namespace  FastFsm.Async.Tests.Features.Cancellation
         [Fact]
         public async Task Should_Handle_GetPermittedTriggers_With_Cancellation()
         {
-            var machine = new SpecificationComplianceMachine(SpecStates.Working);
+            var machine = new SpecificationComplianceMachineFluentFsm(SpecStates.Working);
             using var cts = new CancellationTokenSource();
             await machine.StartAsync();
             // Should evaluate guards with token
@@ -299,7 +376,7 @@ namespace  FastFsm.Async.Tests.Features.Cancellation
         [Fact]
         public async Task Should_Handle_Null_CancellationToken_As_Default()
         {
-            var machine = new SpecificationComplianceMachine(SpecStates.Ready);
+            var machine = new SpecificationComplianceMachineFluentFsm(SpecStates.Ready);
             await machine.StartAsync();
 
             // Brak anulowalnego tokenu
@@ -319,7 +396,7 @@ namespace  FastFsm.Async.Tests.Features.Cancellation
             using var cts = new CancellationTokenSource();
             var token = cts.Token;
 
-            var machine = new SpecificationComplianceMachine(SpecStates.Ready);
+            var machine = new SpecificationComplianceMachineFluentFsm(SpecStates.Ready);
             await machine.StartAsync();
 
             // Fire with token
