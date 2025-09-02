@@ -83,6 +83,8 @@ namespace  FastFsm.Async.Tests.Features.Concurrency
     }
 }
 
+namespace FastFsm.Async.Tests.Features.Concurrency
+{
     // Fluent API equivalent
     [StateMachine(typeof(RcStates), typeof(RcTriggers))]
     public partial class RcMachineFluentFsm
@@ -156,3 +158,4 @@ namespace  FastFsm.Async.Tests.Features.Concurrency
             await Task.Yield();
         }
     }
+}
