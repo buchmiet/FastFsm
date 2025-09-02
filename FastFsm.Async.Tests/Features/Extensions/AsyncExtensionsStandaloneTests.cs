@@ -151,9 +151,10 @@ public partial class AsyncExtensionsMachineFluentFsm
     private static void Configure() => FSM
         .State(ExtState.Idle)
             .OnEntryAsync(nameof(OnEnterIdleAsync))
-            .On(ExtTrigger.Start).GoTo(ExtState.Working)
+            .On(ExtTrigger.Start)
                 .Guard(nameof(CanStartAsync))
                 .Action(nameof(StartWorkAsync))
+                .GoTo(ExtState.Working)
         .State(ExtState.Working)
             .OnExitAsync(nameof(OnExitWorkingAsync))
             .On(ExtTrigger.Finish).GoTo(ExtState.Complete)

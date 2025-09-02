@@ -45,9 +45,10 @@ namespace  FastFsm.Async.Tests.Features.Cancellation
         private static void Configure() => FSM
             .State(SimpleStates.Ready)
                 .OnEntryAsync(nameof(OnEnterReady))
-                .On(SimpleTriggers.Start).GoTo(SimpleStates.Working)
+                .On(SimpleTriggers.Start)
                     .Guard(nameof(CanStart))
                     .Action(nameof(DoStart))
+                    .GoTo(SimpleStates.Working)
             .State(SimpleStates.Working)
                 .On(SimpleTriggers.Finish).GoTo(SimpleStates.Done)
             .State(SimpleStates.Done);
