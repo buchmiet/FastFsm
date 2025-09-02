@@ -130,16 +130,19 @@ FluentParser Model:
 - Action methods via `nameof()`
 - JSON serialization for comparison
 
+✅ **Completed Features:**
+- Guard conditions (`.Guard(nameof(Method))`)
+- Entry/Exit actions (`.OnEntry()`, `.OnExit()`, `.OnEntryAsync()`, `.OnExitAsync()`)
+- Async actions (`.GuardAsync()`, `.ActionAsync()`)
+- Payload support (`.Payload<T>()` and `DefaultPayloadType`)
+- Internal transitions (`.OnInternal().Action().Internal()`)
+
 ⚠️ **In Progress:**
-- Guard conditions
-- Entry/Exit actions
 - Hierarchical states (HSM)
 - History modes
 - Priorities
-- Async actions
 
 ❌ **Not Started:**
-- Payload support
 - Extension hooks
 - Complex HSM scenarios
 
@@ -229,14 +232,19 @@ public partial class SinglePayloadMachine
     
     private static void Configure() => FSM
         .State(State.Idle)
-            .On(Trigger.Start).GoTo(State.Running)
-                .Guard(nameof(CanStart)).Action(nameof(StartJob))
+            .On(Trigger.Start)
+                .Guard(nameof(CanStart))
+                .Action(nameof(StartJob))
+                .GoTo(State.Running)
         .State(State.Running)
-            .On(Trigger.Update).GoTo(State.Running)
+            .On(Trigger.Update)
                 .Action(nameof(UpdateJob))
-            .On(Trigger.Stop).GoTo(State.Idle)
-                .Action(nameof(StopJob));
+                .GoTo(State.Running)
+            .On(Trigger.Stop)
+                .Action(nameof(StopJob))
+                .GoTo(State.Idle);
     
+    // When DefaultPayloadType is set, all transitions automatically use it
     // payload-aware guard/action signatures:
     private bool CanStart(JobData data) => _runningCount < 4 && data.Priority >= 0;
     private void StartJob(JobData data) { _runningCount++; /* ... */ }
@@ -245,12 +253,54 @@ public partial class SinglePayloadMachine
 }
 ```
 
-#### 4) FSM with Multiple Data (multi-payload via record/struct)
-> FastFSM prefers single payload type — multi-payload is done via composite type.
+#### 4) FSM with Multiple Payload Types (using .Payload<T>())
+```csharp
+[StateMachine(typeof(State), typeof(Trigger))]
+public partial class MultiPayloadMachine
+{
+    public enum State { Initial, Processing, Complete, Failed }
+    public enum Trigger { Submit, Process, Success, Error }
+    
+    // Different payload types for different transitions
+    public sealed class SubmitRequest { public required string Id { get; init; } }
+    public sealed class ProcessData { public int Count { get; init; } }
+    public sealed class ErrorInfo { public required string Message { get; init; } }
+    
+    private static void Configure() => FSM
+        .State(State.Initial)
+            .On(Trigger.Submit)
+                .Payload<SubmitRequest>()  // Specify payload type for this transition
+                .Guard(nameof(ValidateSubmit))
+                .Action(nameof(HandleSubmit))
+                .GoTo(State.Processing)
+        .State(State.Processing)
+            .On(Trigger.Process)
+                .Payload<ProcessData>()    // Different payload type
+                .Action(nameof(ProcessItem))
+                .GoTo(State.Processing)    // Self-transition
+            .On(Trigger.Success)
+                .Action(nameof(Complete))  // No payload
+                .GoTo(State.Complete)
+            .On(Trigger.Error)
+                .Payload<ErrorInfo>()      // Error-specific payload
+                .Action(nameof(HandleError))
+                .GoTo(State.Failed);
+    
+    // Methods with specific payload types
+    private bool ValidateSubmit(SubmitRequest req) => !string.IsNullOrEmpty(req.Id);
+    private void HandleSubmit(SubmitRequest req) { /* ... */ }
+    private void ProcessItem(ProcessData data) { /* ... */ }
+    private void HandleError(ErrorInfo error) { /* ... */ }
+    private void Complete() { /* ... */ }
+}
+```
+
+#### 5) FSM with Composite Payload (alternative multi-data approach)
+> When multiple data needs to be passed together, use a composite type.
 
 ```csharp
 [StateMachine(typeof(State), typeof(Trigger), DefaultPayloadType = typeof(OperationData))]
-public partial class MultiPayloadMachine
+public partial class CompositePayloadMachine
 {
     public enum State { Ready, Busy }
     public enum Trigger { Begin, Tick, End }
@@ -279,7 +329,7 @@ public partial class MultiPayloadMachine
 }
 ```
 
-#### 5) FSM with Extensions (generator hooks)
+#### 6) FSM with Extensions (generator hooks)
 ```csharp
 [StateMachine(typeof(State), typeof(Trigger), GenerateExtensibleVersion = true)]
 public partial class ExtensibleMachine
@@ -303,7 +353,7 @@ public partial class ExtensibleMachine
 }
 ```
 
-#### 6) HSM — Basics (parent/child + internal)
+#### 7) HSM — Basics (parent/child + internal)
 ```csharp
 [StateMachine(typeof(State), typeof(Trigger), EnableHierarchy = true)]
 public partial class HsmBasicMachine
@@ -341,7 +391,7 @@ public partial class HsmBasicMachine
 }
 ```
 
-#### 7) HSM — History (Shallow & Deep)
+#### 8) HSM — History (Shallow & Deep)
 ```csharp
 [StateMachine(typeof(State), typeof(Trigger), EnableHierarchy = true)]
 public partial class HsmHistoryMachine
@@ -385,7 +435,7 @@ public partial class HsmHistoryMachine
 }
 ```
 
-#### 8) HSM — Transition Priorities (parent vs child)
+#### 9) HSM — Transition Priorities (parent vs child)
 ```csharp
 [StateMachine(typeof(State), typeof(Trigger), EnableHierarchy = true)]
 public partial class HsmPriorityMachine
@@ -406,7 +456,7 @@ public partial class HsmPriorityMachine
 }
 ```
 
-#### 9) HSM — Internal in parent + normal in child (parallel rules)
+#### 10) HSM — Internal in parent + normal in child (parallel rules)
 ```csharp
 [StateMachine(typeof(State), typeof(Trigger), EnableHierarchy = true)]
 public partial class HsmInternalVsChildMachine
@@ -425,7 +475,59 @@ public partial class HsmInternalVsChildMachine
 }
 ```
 
-#### 10) FSM — Async actions (ValueTask/Task) – without payload
+#### 11) FSM — Async actions (ValueTask/Task)
+```csharp
+[StateMachine(typeof(State), typeof(Trigger))]
+public partial class AsyncMachine
+{
+    public enum State { Disconnected, Connecting, Connected }
+    public enum Trigger { Connect, ConnectedOk, Disconnect }
+    
+    private static void Configure() => FSM
+        .State(State.Disconnected)
+            .On(Trigger.Connect)
+                .GuardAsync(nameof(CanConnectAsync))  // Async guard
+                .ActionAsync(nameof(BeginConnectAsync))  // Async action
+                .GoTo(State.Connecting)
+        .State(State.Connecting)
+            .OnEntryAsync(nameof(OnConnectingEntryAsync))  // Async OnEntry
+            .On(Trigger.ConnectedOk).GoTo(State.Connected)
+        .State(State.Connected)
+            .OnExitAsync(nameof(OnConnectedExitAsync))  // Async OnExit
+            .On(Trigger.Disconnect)
+                .ActionAsync(nameof(CloseAsync))
+                .GoTo(State.Disconnected);
+    
+    // Async methods with CancellationToken support
+    private async ValueTask<bool> CanConnectAsync(CancellationToken ct)
+    {
+        await Task.Delay(100, ct);
+        return true;
+    }
+    
+    private async Task BeginConnectAsync(CancellationToken ct)
+    {
+        await Task.Delay(500, ct);
+    }
+    
+    private async Task OnConnectingEntryAsync(CancellationToken ct)
+    {
+        await Task.Delay(100, ct);
+    }
+    
+    private async ValueTask OnConnectedExitAsync()  // OnExit never receives payload
+    {
+        await Task.Delay(50);
+    }
+    
+    private async Task CloseAsync(CancellationToken ct)
+    {
+        await Task.Delay(200, ct);
+    }
+}
+```
+
+#### 12) FSM — Async with Payload and CancellationToken
 ```csharp
 [StateMachine(typeof(State), typeof(Trigger))]
 public partial class AsyncMachine
@@ -453,7 +555,64 @@ public partial class AsyncMachine
 }
 ```
 
-#### 11) HSM + Async (internal async in parent)
+#### 13) FSM — Internal Transitions with Payload
+```csharp
+[StateMachine(typeof(State), typeof(Trigger))]
+public partial class InternalTransitionMachine
+{
+    public enum State { Active, Inactive }
+    public enum Trigger { Update, Toggle }
+    
+    public sealed class UpdateData { public int Value { get; init; } }
+    
+    private int _counter;
+    
+    private static void Configure() => FSM
+        .State(State.Active)
+            .OnInternal(Trigger.Update)  // Internal transition (no state change)
+                .Payload<UpdateData>()
+                .Guard(nameof(ValidateUpdate))
+                .Action(nameof(ApplyUpdate))
+                .Internal()  // Marks as internal
+            .On(Trigger.Toggle).GoTo(State.Inactive)
+        .State(State.Inactive)
+            .On(Trigger.Toggle).GoTo(State.Active);
+    
+    private bool ValidateUpdate(UpdateData data) => data.Value >= 0;
+    private void ApplyUpdate(UpdateData data) { _counter += data.Value; }
+}
+```
+
+#### 14) FSM — Method Overloading (with and without payload)
+```csharp
+[StateMachine(typeof(State), typeof(Trigger))]
+public partial class OverloadingMachine
+{
+    public enum State { Ready, Busy }
+    public enum Trigger { Start }
+    
+    public sealed class StartParams { public bool FastMode { get; init; } }
+    
+    private static void Configure() => FSM
+        .State(State.Ready)
+            .On(Trigger.Start)
+                .Payload<StartParams>()  // Optional payload
+                .Guard(nameof(CanStart))  // Has overloads
+                .Action(nameof(DoStart))  // Has overloads
+                .GoTo(State.Busy);
+    
+    // Method overloading - generator picks based on payload availability
+    private bool CanStart() => true;  // Called when no payload
+    private bool CanStart(StartParams p) => !p.FastMode || IsReady();  // Called with payload
+    
+    private void DoStart() { /* default start */ }
+    private void DoStart(StartParams p) { /* start with params */ }
+    
+    private bool IsReady() => true;
+}
+```
+
+#### 15) HSM + Async (internal async in parent)
 ```csharp
 [StateMachine(typeof(State), typeof(Trigger), EnableHierarchy = true)]
 public partial class HsmAsyncInternalMachine
@@ -486,13 +645,20 @@ For the above examples, we assume the following **rigid** set of methods (all co
 * `.OnExit(string methodName)`
 
 **Transitions from/to**
-* `.On(TTrigger).GoTo(TState)`
-* `.OnInternal(TTrigger)` *(HSM internal)*
+* `.On(TTrigger)` - Start defining a transition
+* `.OnInternal(TTrigger)` - Start defining internal transition (no state change)
+* `.GoTo(TState)` - Set target state (for external transitions)
+* `.Internal()` - Mark as internal transition (alternative to GoTo)
 
-**Transition Modifiers**
-* `.Guard(string methodName)`
-* `.Action(string methodName)`
-* `.Priority(int priority)` *(HSM parent/child conflict)*
+**Transition Modifiers (must be called BEFORE .GoTo())**
+* `.Payload<T>()` or `.Payload(typeof(T))` - Specify payload type for transition
+* `.Guard(string methodName)` - Synchronous guard
+* `.GuardAsync(string methodName)` - Async guard
+* `.Action(string methodName)` - Synchronous action
+* `.ActionAsync(string methodName)` - Async action
+* `.Priority(int priority)` - HSM parent/child conflict resolution
+
+**Important:** The order matters! Use: `.On().Payload().Guard().Action().GoTo()`
 
 Ensure the design covers **all features** currently supported by attributes – including hierarchical state relationships (parent/child states for HSMs), internal transitions, entry/exit actions, guard conditions, and event payloads (both single and multiple parameters). The design should also determine how the fluent definitions will be recognized by the source generator (e.g. perhaps still using a [StateMachine] attribute to mark the class and indicate state/trigger types, or an alternative marker). Aim for a clear, intuitive API that will become the default way to define state machines, while coexisting with the attribute system.
 
@@ -566,6 +732,49 @@ Finalize the update for release:
 - Ensure all tests pass in CI pipeline
 - Publish NuGet package with new components
 
+## Payload Support in FluentAPI
+
+### Overview
+FluentAPI fully supports payload functionality equivalent to attribute-based definitions:
+
+#### Setting Payload Types
+1. **Default Payload** - Set in `[StateMachine]` attribute, applies to all transitions
+2. **Per-Transition Payload** - Use `.Payload<T>()` on specific transitions
+3. **Mixed Approach** - Default for most, override with `.Payload<T>()` where needed
+
+#### Key Rules
+- **OnEntry** callbacks receive payload from the triggering transition
+- **OnExit** callbacks never receive payload (by design)
+- **Guards and Actions** can have payload-aware signatures
+- **Method Overloading** is supported - generator picks correct overload
+- **CancellationToken** can be combined with payload parameters
+- **Internal Transitions** support payload via `.OnInternal().Payload<T>()`
+
+#### Syntax Order
+The correct order for FluentAPI calls is:
+```csharp
+.On(Trigger)
+    .Payload<PayloadType>()    // Optional: specify payload type
+    .Guard(nameof(GuardMethod)) // Optional: guard condition
+    .Action(nameof(ActionMethod)) // Optional: action to execute
+    .GoTo(TargetState)         // Required: target state (or .Internal())
+```
+
+#### Usage Examples
+```csharp
+// With default payload (set in StateMachine attribute)
+.On(Trigger.Submit).Guard(nameof(Validate)).Action(nameof(Process)).GoTo(State.Next)
+
+// With specific payload type
+.On(Trigger.Submit).Payload<OrderData>().Guard(nameof(ValidateOrder)).GoTo(State.Processing)
+
+// Internal transition with payload
+.OnInternal(Trigger.Update).Payload<UpdateData>().Action(nameof(ApplyUpdate)).Internal()
+
+// Async with payload and CancellationToken
+.On(Trigger.Start).Payload<Config>().GuardAsync(nameof(CanStartAsync)).ActionAsync(nameof(StartAsync)).GoTo(State.Running)
+```
+
 ## Success Criteria
 
 The Fluent API implementation is complete when:
@@ -574,3 +783,4 @@ The Fluent API implementation is complete when:
 3. All existing attribute-based tests continue to pass
 4. Documentation is updated with fluent examples
 5. No breaking changes to existing functionality
+6. **Payload support is fully functional** with both default and per-transition types
