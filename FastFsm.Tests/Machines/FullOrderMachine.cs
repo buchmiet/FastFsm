@@ -27,6 +27,7 @@ namespace FastFsm.Tests.Machines
         [Transition(OrderState.Processing, OrderTrigger.Cancel, OrderState.Cancelled)]
         [Transition(OrderState.Paid, OrderTrigger.Ship, OrderState.Shipped,
             Guard = nameof(CanShip))]
+        [Transition(OrderState.Shipped, OrderTrigger.Deliver, OrderState.Delivered)]
         private void Configure() { }
 
         private bool CanProcess(AllFeaturesExtendedTests.OrderPayload order) => order.Amount > 0;

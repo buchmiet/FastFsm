@@ -21,6 +21,8 @@ namespace FastFsm.Tests
             // Arrange
             var attrMachine = new BasicBenchmarkMachine(BenchmarkState.A);
             var fluentMachine = new BasicBenchmarkMachineFluentAPI(BenchmarkState.A);
+            attrMachine.Start();
+            fluentMachine.Start();
 
             // Act & Assert - both should transition identically
             attrMachine.CurrentState.ShouldBe(BenchmarkState.A);
@@ -45,6 +47,8 @@ namespace FastFsm.Tests
             // Arrange
             var attrMachine = new WithGuardBenchmarkMachine(BenchmarkState.A);
             var fluentMachine = new WithGuardBenchmarkMachineFluentAPI(BenchmarkState.A);
+            attrMachine.Start();
+            fluentMachine.Start();
 
             // Act & Assert - guards should work the same
             attrMachine.ShouldAllow = false;
@@ -80,6 +84,8 @@ namespace FastFsm.Tests
             // Arrange
             var attrMachine = new GuardedCallbackMachine(GuardedState.A);
             var fluentMachine = new GuardedCallbackMachineFluentAPI(GuardedState.A);
+            attrMachine.Start();
+            fluentMachine.Start();
 
             // Act
             attrMachine.AllowTransition = true;
@@ -103,6 +109,8 @@ namespace FastFsm.Tests
             // Arrange
             var attrMachine = new ComplexCallbackMachine(StateCallbackTests.ComplexCallbackState.Idle);
             var fluentMachine = new ComplexCallbackMachineFluentAPI(StateCallbackTests.ComplexCallbackState.Idle);
+            attrMachine.Start();
+            fluentMachine.Start();
 
             // Act - test transitions and callbacks
             attrMachine.Fire(StateCallbackTests.ComplexCallbackTrigger.Start);
@@ -136,6 +144,8 @@ namespace FastFsm.Tests
             // Arrange
             var attrMachine = new PayloadStateMachine(Machines.TestState.Initial);
             var fluentMachine = new PayloadStateMachineFluentAPI(Machines.TestState.Initial);
+            attrMachine.Start();
+            fluentMachine.Start();
 
             var payload = new Machines.TestPayload { Id = 42, Data = "Test" };
 
@@ -167,6 +177,8 @@ namespace FastFsm.Tests
             // Arrange & Act
             var attrMachine = new InitialStateMachine(StateCallbackTests.InitialState.Start);
             var fluentMachine = new InitialStateMachineFluentAPI(StateCallbackTests.InitialState.Start);
+            attrMachine.Start();
+            fluentMachine.Start();
 
             // Assert - both should be in initial state
             attrMachine.CurrentState.ShouldBe(StateCallbackTests.InitialState.Start);
@@ -193,6 +205,8 @@ namespace FastFsm.Tests
             // Arrange
             var attrMachine = new MultipleCallbacksMachine(MultiState.A);
             var fluentMachine = new MultipleCallbacksMachineFluentAPI(MultiState.A);
+            attrMachine.Start();
+            fluentMachine.Start();
 
             // Act - trigger transition
             attrMachine.Fire(MultiTrigger.Go);
@@ -213,6 +227,8 @@ namespace FastFsm.Tests
             // Arrange
             var attrMachine = new ExceptionCallbackMachine(StateCallbackTests.ExceptionState.A);
             var fluentMachine = new ExceptionCallbackMachineFluentAPI(StateCallbackTests.ExceptionState.A);
+            attrMachine.Start();
+            fluentMachine.Start();
 
             // Act - trigger exception in OnEntry
             attrMachine.ThrowInOnEntry = true;
@@ -225,9 +241,10 @@ namespace FastFsm.Tests
             attrAction.ShouldThrow<InvalidOperationException>();
             fluentAction.ShouldThrow<InvalidOperationException>();
 
-            // Both should remain in original state due to exception
-            attrMachine.CurrentState.ShouldBe(StateCallbackTests.ExceptionState.A);
-            fluentMachine.CurrentState.ShouldBe(StateCallbackTests.ExceptionState.A);
+            // FastFSM does not rollback transition on OnEntry exception
+            // Both machines should be in state B after the exception
+            attrMachine.CurrentState.ShouldBe(StateCallbackTests.ExceptionState.B);
+            fluentMachine.CurrentState.ShouldBe(StateCallbackTests.ExceptionState.B);
         }
 
         [Fact]
@@ -236,6 +253,8 @@ namespace FastFsm.Tests
             // Arrange
             var attrMachine = new FullOrderMachine(OrderState.New);
             var fluentMachine = new FullOrderMachineFluentAPI(OrderState.New);
+            attrMachine.Start();
+            fluentMachine.Start();
 
             var orderData = new Features.Integration.AllFeaturesExtendedTests.OrderPayload
             {
@@ -281,6 +300,8 @@ namespace FastFsm.Tests
             
             var attrMachine = new CoreBenchmarkMachine(BenchmarkState.A);
             var fluentMachine = new CoreBenchmarkMachineFluentAPI(BenchmarkState.A);
+            attrMachine.Start();
+            fluentMachine.Start();
 
             const int iterations = 1000;
 

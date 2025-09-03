@@ -23,7 +23,9 @@ namespace FastFsm.Tests.Machines
                 .On(OrderTrigger.Cancel).GoTo(OrderState.Cancelled)
             .State(OrderState.Paid)
                 .OnEntry(nameof(OnEnterPaid))
-                .On(OrderTrigger.Ship).Guard(nameof(CanShip)).GoTo(OrderState.Shipped);
+                .On(OrderTrigger.Ship).Guard(nameof(CanShip)).GoTo(OrderState.Shipped)
+            .State(OrderState.Shipped)
+                .On(OrderTrigger.Deliver).GoTo(OrderState.Delivered);
 
         private bool CanProcess(AllFeaturesExtendedTests.OrderPayload order) => order.Amount > 0;
 
