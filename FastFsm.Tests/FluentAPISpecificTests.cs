@@ -38,7 +38,7 @@ namespace FastFsm.Tests
                     .On(FluentTestTrigger.Reset)
                         .GoTo(FluentTestState.Idle);
 
-            private void IncrementCounter() => TransitionCount++;
+            public void IncrementCounter() => TransitionCount++;
         }
 
         [StateMachine(typeof(PayloadState), typeof(PayloadTrigger))]
@@ -77,9 +77,9 @@ namespace FastFsm.Tests
                         .GoTo(PayloadState.Complete)
                 .State(PayloadState.Complete);
 
-            private bool ValidateSubmit(SubmitData data) => !string.IsNullOrEmpty(data.Id);
-            private void HandleSubmit(SubmitData data) => LastSubmitId = data.Id;
-            private void ProcessItems(ProcessData data) => ProcessedItems += data.ItemCount;
+            public bool ValidateSubmit(SubmitData data) => !string.IsNullOrEmpty(data.Id);
+            public void HandleSubmit(SubmitData data) => LastSubmitId = data.Id;
+            public void ProcessItems(ProcessData data) => ProcessedItems += data.ItemCount;
         }
 
         [StateMachine(typeof(AsyncState), typeof(AsyncTrigger))]
@@ -109,38 +109,38 @@ namespace FastFsm.Tests
                         .ActionAsync(nameof(DisconnectAsync))
                         .GoTo(AsyncState.Disconnected);
 
-            private async Task OnDisconnectedEntryAsync(CancellationToken ct)
+            public async Task OnDisconnectedEntryAsync(CancellationToken ct)
             {
                 IsConnected = false;
                 await Task.Delay(10, ct);
             }
 
-            private async ValueTask<bool> CanConnectAsync(CancellationToken ct)
+            public async ValueTask<bool> CanConnectAsync(CancellationToken ct)
             {
                 await Task.Delay(10, ct);
                 return ConnectionAttempts < 3;
             }
 
-            private async Task StartConnectionAsync(CancellationToken ct)
+            public async Task StartConnectionAsync(CancellationToken ct)
             {
                 IsConnecting = true;
                 ConnectionAttempts++;
                 await Task.Delay(50, ct);
             }
 
-            private async Task OnConnectedAsync(CancellationToken ct)
+            public async Task OnConnectedAsync(CancellationToken ct)
             {
                 IsConnecting = false;
                 IsConnected = true;
                 await Task.Delay(10, ct);
             }
 
-            private async ValueTask OnConnectedExitAsync()
+            public async ValueTask OnConnectedExitAsync()
             {
                 await Task.Delay(10);
             }
 
-            private async Task DisconnectAsync(CancellationToken ct)
+            public async Task DisconnectAsync(CancellationToken ct)
             {
                 IsConnected = false;
                 await Task.Delay(10, ct);
@@ -171,7 +171,7 @@ namespace FastFsm.Tests
                     .On(InternalTrigger.Toggle)
                         .GoTo(InternalState.Active);
 
-            private bool ValidateUpdate(UpdateData data) => data.Value > 0;
+            public bool ValidateUpdate(UpdateData data) => data.Value > 0;
             public void ApplyUpdate(UpdateData data)
             {
                 Counter += data.Value;
@@ -185,22 +185,23 @@ namespace FastFsm.Tests
         public void FluentAPI_SimpleTransitions_ShouldWork()
         {
             // Arrange
-            var machine = new SimpleFluentMachine(FluentTestState.Idle);
+            var machine = new SimpleFluentMachine(SimpleFluentMachine.FluentTestState.Idle);
+            machine.Start();
 
             // Act & Assert
-            machine.CurrentState.ShouldBe(FluentTestState.Idle);
+            machine.CurrentState.ShouldBe(SimpleFluentMachine.FluentTestState.Idle);
             machine.TransitionCount.ShouldBe(0);
 
-            machine.Fire(FluentTestTrigger.Start);
-            machine.CurrentState.ShouldBe(FluentTestState.Active);
+            machine.Fire(SimpleFluentMachine.FluentTestTrigger.Start);
+            machine.CurrentState.ShouldBe(SimpleFluentMachine.FluentTestState.Active);
             machine.TransitionCount.ShouldBe(1);
 
-            machine.Fire(FluentTestTrigger.Stop);
-            machine.CurrentState.ShouldBe(FluentTestState.Done);
+            machine.Fire(SimpleFluentMachine.FluentTestTrigger.Stop);
+            machine.CurrentState.ShouldBe(SimpleFluentMachine.FluentTestState.Done);
             machine.TransitionCount.ShouldBe(2);
 
-            machine.Fire(FluentTestTrigger.Reset);
-            machine.CurrentState.ShouldBe(FluentTestState.Idle);
+            machine.Fire(SimpleFluentMachine.FluentTestTrigger.Reset);
+            machine.CurrentState.ShouldBe(SimpleFluentMachine.FluentTestState.Idle);
             machine.TransitionCount.ShouldBe(2); // Reset has no action
         }
 
@@ -208,77 +209,80 @@ namespace FastFsm.Tests
         public void FluentAPI_PayloadSupport_ShouldWork()
         {
             // Arrange
-            var machine = new FluentPayloadMachine(PayloadState.Ready);
+            var machine = new FluentPayloadMachine(FluentPayloadMachine.PayloadState.Ready);
+            machine.Start();
 
             // Act & Assert - Submit with payload
             var submitData = new FluentPayloadMachine.SubmitData { Id = "TEST-001", Priority = 1 };
-            machine.CanFire(PayloadTrigger.Submit, submitData).ShouldBeTrue();
+            machine.CanFire(FluentPayloadMachine.PayloadTrigger.Submit, submitData).ShouldBeTrue();
             
-            machine.Fire(PayloadTrigger.Submit, submitData);
-            machine.CurrentState.ShouldBe(PayloadState.Processing);
+            machine.Fire(FluentPayloadMachine.PayloadTrigger.Submit, submitData);
+            machine.CurrentState.ShouldBe(FluentPayloadMachine.PayloadState.Processing);
             machine.LastSubmitId.ShouldBe("TEST-001");
 
             // Process with different payload type
             var processData = new FluentPayloadMachine.ProcessData { ItemCount = 5 };
-            machine.Fire(FluentPayloadMachine.PayloadTrigger.Process, processData);
-            machine.CurrentState.ShouldBe(PayloadState.Processing); // Self-transition
+            machine.Fire(FluentPayloadMachine.FluentPayloadMachine.PayloadTrigger.Process, processData);
+            machine.CurrentState.ShouldBe(FluentPayloadMachine.PayloadState.Processing); // Self-transition
             machine.ProcessedItems.ShouldBe(5);
 
             // Process again
-            machine.Fire(FluentPayloadMachine.PayloadTrigger.Process, processData);
+            machine.Fire(FluentPayloadMachine.FluentPayloadMachine.PayloadTrigger.Process, processData);
             machine.ProcessedItems.ShouldBe(10);
 
             // Finish without payload
-            machine.Fire(PayloadTrigger.Finish);
-            machine.CurrentState.ShouldBe(PayloadState.Complete);
+            machine.Fire(FluentPayloadMachine.PayloadTrigger.Finish);
+            machine.CurrentState.ShouldBe(FluentPayloadMachine.PayloadState.Complete);
         }
 
         [Fact]
         public void FluentAPI_PayloadValidation_ShouldRejectInvalid()
         {
             // Arrange
-            var machine = new FluentPayloadMachine(PayloadState.Ready);
+            var machine = new FluentPayloadMachine(FluentPayloadMachine.PayloadState.Ready);
+            machine.Start();
 
             // Act & Assert - Invalid payload should fail guard
             var invalidData = new FluentPayloadMachine.SubmitData { Id = "", Priority = 1 };
-            machine.CanFire(PayloadTrigger.Submit, invalidData).ShouldBeFalse();
+            machine.CanFire(FluentPayloadMachine.PayloadTrigger.Submit, invalidData).ShouldBeFalse();
 
             // Should not transition
-            machine.TryFire(PayloadTrigger.Submit, invalidData).ShouldBeFalse();
-            machine.CurrentState.ShouldBe(PayloadState.Ready);
+            machine.TryFire(FluentPayloadMachine.PayloadTrigger.Submit, invalidData).ShouldBeFalse();
+            machine.CurrentState.ShouldBe(FluentPayloadMachine.PayloadState.Ready);
 
             // Valid payload should work
             var validData = new FluentPayloadMachine.SubmitData { Id = "VALID-001", Priority = 1 };
-            machine.TryFire(PayloadTrigger.Submit, validData).ShouldBeTrue();
-            machine.CurrentState.ShouldBe(PayloadState.Processing);
+            machine.TryFire(FluentPayloadMachine.PayloadTrigger.Submit, validData).ShouldBeTrue();
+            machine.CurrentState.ShouldBe(FluentPayloadMachine.PayloadState.Processing);
         }
 
         [Fact]
         public async Task FluentAPI_AsyncSupport_ShouldWork()
         {
             // Arrange
-            var machine = new FluentAsyncMachine(AsyncState.Disconnected);
+            var machine = new FluentAsyncMachine(FluentAsyncMachine.FluentAsyncMachine.AsyncState.Disconnected);
+            machine.Start();
             await machine.StartAsync();
 
             // Act & Assert - Async guard
-            var canConnect = await machine.CanFireAsync(AsyncTrigger.Connect);
+            var canConnect = await machine.CanFireAsync(FluentAsyncMachine.AsyncTrigger.Connect);
             canConnect.ShouldBeTrue();
 
             // Fire async transition
-            await machine.FireAsync(AsyncTrigger.Connect);
-            machine.CurrentState.ShouldBe(AsyncState.Connecting);
+            await machine.FireAsync(FluentAsyncMachine.AsyncTrigger.Connect);
+            machine.CurrentState.ShouldBe(FluentAsyncMachine.AsyncState.Connecting);
             machine.IsConnecting.ShouldBeTrue();
             machine.ConnectionAttempts.ShouldBe(1);
 
             // Complete connection
-            await machine.FireAsync(AsyncTrigger.Connected);
-            machine.CurrentState.ShouldBe(AsyncState.Connected);
+            await machine.FireAsync(FluentAsyncMachine.AsyncTrigger.Connected);
+            machine.CurrentState.ShouldBe(FluentAsyncMachine.AsyncState.Connected);
             machine.IsConnected.ShouldBeTrue();
             machine.IsConnecting.ShouldBeFalse();
 
             // Disconnect
-            await machine.FireAsync(AsyncTrigger.Disconnect);
-            machine.CurrentState.ShouldBe(AsyncState.Disconnected);
+            await machine.FireAsync(FluentAsyncMachine.AsyncTrigger.Disconnect);
+            machine.CurrentState.ShouldBe(FluentAsyncMachine.AsyncState.Disconnected);
             machine.IsConnected.ShouldBeFalse();
         }
 
@@ -286,21 +290,22 @@ namespace FastFsm.Tests
         public async Task FluentAPI_AsyncWithCancellation_ShouldRespectToken()
         {
             // Arrange
-            var machine = new FluentAsyncMachine(AsyncState.Disconnected);
+            var machine = new FluentAsyncMachine(FluentAsyncMachine.FluentAsyncMachine.AsyncState.Disconnected);
+            machine.Start();
             await machine.StartAsync();
 
             using var cts = new CancellationTokenSource();
 
             // Act - Start connection
-            await machine.FireAsync(AsyncTrigger.Connect, null, cts.Token);
-            machine.CurrentState.ShouldBe(AsyncState.Connecting);
+            await machine.FireAsync(FluentAsyncMachine.AsyncTrigger.Connect, null, cts.Token);
+            machine.CurrentState.ShouldBe(FluentAsyncMachine.AsyncState.Connecting);
 
             // Cancel during next transition
             cts.Cancel();
 
             // Assert - Should throw on cancelled token
             await Should.ThrowAsync<OperationCanceledException>(
-                machine.FireAsync(AsyncTrigger.Connected, null, cts.Token)
+                machine.FireAsync(FluentAsyncMachine.AsyncTrigger.Connected, null, cts.Token)
             );
         }
 
@@ -308,48 +313,50 @@ namespace FastFsm.Tests
         public void FluentAPI_InternalTransitions_ShouldNotChangeState()
         {
             // Arrange
-            var machine = new FluentInternalTransitionMachine(InternalState.Active);
+            var machine = new FluentInternalTransitionMachine(FluentInternalTransitionMachine.FluentInternalTransitionMachine.InternalState.Active);
+            machine.Start();
 
             // Act - Internal transition with payload
             var updateData = new FluentInternalTransitionMachine.UpdateData { Value = 10 };
-            machine.Fire(InternalTrigger.Update, updateData);
+            machine.Fire(FluentInternalTransitionMachine.InternalTrigger.Update, updateData);
 
             // Assert - State should not change
-            machine.CurrentState.ShouldBe(InternalState.Active);
+            machine.CurrentState.ShouldBe(FluentInternalTransitionMachine.InternalState.Active);
             machine.Counter.ShouldBe(10);
             machine.UpdateCount.ShouldBe(1);
 
             // Another internal transition
-            machine.Fire(InternalTrigger.Update, updateData);
-            machine.CurrentState.ShouldBe(InternalState.Active);
+            machine.Fire(FluentInternalTransitionMachine.InternalTrigger.Update, updateData);
+            machine.CurrentState.ShouldBe(FluentInternalTransitionMachine.InternalState.Active);
             machine.Counter.ShouldBe(20);
             machine.UpdateCount.ShouldBe(2);
 
             // External transition
-            machine.Fire(InternalTrigger.Toggle);
-            machine.CurrentState.ShouldBe(InternalState.Inactive);
+            machine.Fire(FluentInternalTransitionMachine.InternalTrigger.Toggle);
+            machine.CurrentState.ShouldBe(FluentInternalTransitionMachine.InternalState.Inactive);
 
             // Internal transitions should not work in Inactive state
-            machine.CanFire(InternalTrigger.Update, updateData).ShouldBeFalse();
+            machine.CanFire(FluentInternalTransitionMachine.InternalTrigger.Update, updateData).ShouldBeFalse();
         }
 
         [Fact]
         public void FluentAPI_InternalTransitionGuard_ShouldBeRespected()
         {
             // Arrange
-            var machine = new FluentInternalTransitionMachine(InternalState.Active);
+            var machine = new FluentInternalTransitionMachine(FluentInternalTransitionMachine.FluentInternalTransitionMachine.InternalState.Active);
+            machine.Start();
 
             // Act & Assert - Invalid update should be rejected
             var invalidUpdate = new FluentInternalTransitionMachine.UpdateData { Value = -5 };
-            machine.CanFire(InternalTrigger.Update, invalidUpdate).ShouldBeFalse();
+            machine.CanFire(FluentInternalTransitionMachine.InternalTrigger.Update, invalidUpdate).ShouldBeFalse();
             
-            machine.TryFire(InternalTrigger.Update, invalidUpdate).ShouldBeFalse();
+            machine.TryFire(FluentInternalTransitionMachine.InternalTrigger.Update, invalidUpdate).ShouldBeFalse();
             machine.Counter.ShouldBe(0);
             machine.UpdateCount.ShouldBe(0);
 
             // Valid update should work
             var validUpdate = new FluentInternalTransitionMachine.UpdateData { Value = 15 };
-            machine.TryFire(InternalTrigger.Update, validUpdate).ShouldBeTrue();
+            machine.TryFire(FluentInternalTransitionMachine.InternalTrigger.Update, validUpdate).ShouldBeTrue();
             machine.Counter.ShouldBe(15);
             machine.UpdateCount.ShouldBe(1);
         }
@@ -358,21 +365,22 @@ namespace FastFsm.Tests
         public void FluentAPI_ChainedConfiguration_ShouldMaintainContext()
         {
             // This test verifies that the fluent API maintains proper context through method chaining
-            var machine = new SimpleFluentMachine(FluentTestState.Idle);
+            var machine = new SimpleFluentMachine(SimpleFluentMachine.FluentTestState.Idle);
+            machine.Start();
 
             // The configuration is already defined in Configure() method
             // This test verifies it was parsed correctly
 
             // Verify all states are configured
-            machine.CanFire(FluentTestTrigger.Start).ShouldBeTrue();
-            machine.Fire(FluentTestTrigger.Start);
+            machine.CanFire(SimpleFluentMachine.FluentTestTrigger.Start).ShouldBeTrue();
+            machine.Fire(SimpleFluentMachine.FluentTestTrigger.Start);
             
-            machine.CanFire(FluentTestTrigger.Stop).ShouldBeTrue();
-            machine.CanFire(FluentTestTrigger.Reset).ShouldBeTrue();
-            machine.Fire(FluentTestTrigger.Stop);
+            machine.CanFire(SimpleFluentMachine.FluentTestTrigger.Stop).ShouldBeTrue();
+            machine.CanFire(SimpleFluentMachine.FluentTestTrigger.Reset).ShouldBeTrue();
+            machine.Fire(SimpleFluentMachine.FluentTestTrigger.Stop);
             
-            machine.CanFire(FluentTestTrigger.Reset).ShouldBeTrue();
-            machine.CanFire(FluentTestTrigger.Stop).ShouldBeFalse(); // Not available in Done state
+            machine.CanFire(SimpleFluentMachine.FluentTestTrigger.Reset).ShouldBeTrue();
+            machine.CanFire(SimpleFluentMachine.FluentTestTrigger.Stop).ShouldBeFalse(); // Not available in Done state
         }
     }
 }
