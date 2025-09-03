@@ -61,6 +61,20 @@ namespace Generator.Parsers
                 GenerationConfig = new GenerationConfig()
             };
 
+            // Capture nested containing types (outer classes) to mirror nested partials
+            if (_classSymbol != null)
+            {
+                var containers = new List<string>();
+                var containerSymbol = _classSymbol.ContainingType;
+                while (containerSymbol != null)
+                {
+                    containers.Insert(0, containerSymbol.Name);
+                    containerSymbol = containerSymbol.ContainingType;
+                }
+                model.ContainerClasses = containers;
+                report?.Invoke($"[FluentParser] ContainerClasses: [{string.Join(", ", containers)}]");
+            }
+
             // Extract configuration and types from [StateMachine] attribute
             if (!ExtractTypesFromAttribute(classDeclaration, model, report))
             {
