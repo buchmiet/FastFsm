@@ -10,7 +10,7 @@ namespace FastFsm.Tests.Machines
         private int _counter;
 
         private static void Configure() => FSM
-            .State(BenchmarkState.A)
+            .State<BenchmarkState>(BenchmarkState.A)
                 .OnEntry(nameof(IncrementCounter))
                 .On(BenchmarkTrigger.Next).GoTo(BenchmarkState.B)
             .State(BenchmarkState.B)

@@ -16,7 +16,7 @@ namespace FastFsm.Tests.Machines
     public partial class FullMultiPayloadMachineFluentAPI
     {
         private static void Configure() => FSM
-            .State(OrderState.New)
+            .State<OrderState>(OrderState.New)
                 .On(OrderTrigger.Process).Action(nameof(HandleOrder)).GoTo(OrderState.Processing)
             .State(OrderState.Processing)
                 .On(OrderTrigger.Pay).Action(nameof(HandlePayment)).GoTo(OrderState.Paid)

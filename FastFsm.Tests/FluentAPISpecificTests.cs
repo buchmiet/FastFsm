@@ -11,7 +11,7 @@ namespace FastFsm.Tests
     /// <summary>
     /// Tests specific to FluentAPI functionality
     /// </summary>
-    public class FluentAPISpecificTests
+    public partial class FluentAPISpecificTests
     {
         #region Test Machines
 
@@ -24,7 +24,7 @@ namespace FastFsm.Tests
             public int TransitionCount { get; private set; }
 
             private static void Configure() => FSM
-                .State(FluentTestState.Idle)
+                .State<FluentTestState>(FluentTestState.Idle)
                     .On(FluentTestTrigger.Start)
                         .Action(nameof(IncrementCounter))
                         .GoTo(FluentTestState.Active)
@@ -62,7 +62,7 @@ namespace FastFsm.Tests
             public int ProcessedItems { get; private set; }
 
             private static void Configure() => FSM
-                .State(PayloadState.Ready)
+                .State<PayloadState>(PayloadState.Ready)
                     .On(PayloadTrigger.Submit)
                         .Payload<SubmitData>()
                         .Guard(nameof(ValidateSubmit))
@@ -93,7 +93,7 @@ namespace FastFsm.Tests
             public int ConnectionAttempts { get; private set; }
 
             private static void Configure() => FSM
-                .State(AsyncState.Disconnected)
+                .State<AsyncState>(AsyncState.Disconnected)
                     .OnEntryAsync(nameof(OnDisconnectedEntryAsync))
                     .On(AsyncTrigger.Connect)
                         .GuardAsync(nameof(CanConnectAsync))
@@ -159,7 +159,7 @@ namespace FastFsm.Tests
             public int UpdateCount { get; private set; }
 
             private static void Configure() => FSM
-                .State(InternalState.Active)
+                .State<InternalState>(InternalState.Active)
                     .OnInternal(InternalTrigger.Update)
                         .Payload<UpdateData>()
                         .Guard(nameof(ValidateUpdate))

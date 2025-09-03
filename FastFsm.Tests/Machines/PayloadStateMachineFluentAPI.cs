@@ -16,7 +16,7 @@ namespace FastFsm.Tests.Machines
         public bool GuardResult { get; set; } = true;
 
         private static void Configure() => FSM
-            .State(TestState.Initial)
+            .State<TestState>(TestState.Initial)
                 .On(TestTrigger.Start).Guard(nameof(CanStart)).Action(nameof(ProcessAction)).GoTo(TestState.Processing)
             .State(TestState.Processing)
                 .OnEntry(nameof(OnProcessingEntry))

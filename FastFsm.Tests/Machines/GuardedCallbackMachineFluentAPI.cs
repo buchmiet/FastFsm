@@ -12,7 +12,7 @@ namespace FastFsm.Tests.Machines
         public List<string> EventLog { get; } = [];
 
         private static void Configure() => FSM
-            .State(GuardedState.A)
+            .State<GuardedState>(GuardedState.A)
                 .OnEntry(nameof(OnEntryA))
                 .OnExit(nameof(OnExitA))
                 .On(GuardedTrigger.Go)

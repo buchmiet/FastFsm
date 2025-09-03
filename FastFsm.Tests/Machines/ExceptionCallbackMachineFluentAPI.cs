@@ -13,7 +13,7 @@ namespace FastFsm.Tests.Machines
         public bool ThrowInOnEntry { get; set; }
 
         private static void Configure() => FSM
-            .State(StateCallbackTests.ExceptionState.A)
+            .State<StateCallbackTests.ExceptionState>(StateCallbackTests.ExceptionState.A)
                 .OnExit(nameof(OnExitA))
                 .On(StateCallbackTests.ExceptionTrigger.Go).GoTo(StateCallbackTests.ExceptionState.B)
             .State(StateCallbackTests.ExceptionState.B)

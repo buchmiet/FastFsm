@@ -12,7 +12,7 @@ namespace FastFsm.Tests.Machines
         public List<string> EventLog { get; } = [];
 
         private static void Configure() => FSM
-            .State(StateCallbackTests.InitialState.Start)
+            .State<StateCallbackTests.InitialState>(StateCallbackTests.InitialState.Start)
                 .OnEntry(nameof(OnEntryStart))
                 .OnExit(nameof(OnExitStart))
                 .On(StateCallbackTests.InitialTrigger.Go).GoTo(StateCallbackTests.InitialState.Next)

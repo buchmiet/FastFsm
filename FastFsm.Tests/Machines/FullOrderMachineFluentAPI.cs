@@ -14,7 +14,7 @@ namespace FastFsm.Tests.Machines
         public List<int> ProcessedOrderIds { get; } = new();
 
         private static void Configure() => FSM
-            .State(OrderState.New)
+            .State<OrderState>(OrderState.New)
                 .OnEntry(nameof(OnEnterNew))
                 .On(OrderTrigger.Process).Guard(nameof(CanProcess)).Action(nameof(ProcessOrder)).GoTo(OrderState.Processing)
             .State(OrderState.Processing)

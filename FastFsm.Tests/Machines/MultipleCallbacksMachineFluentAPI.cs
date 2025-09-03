@@ -11,7 +11,7 @@ namespace FastFsm.Tests.Machines
         public List<string> Log { get; } = [];
 
         private static void Configure() => FSM
-            .State(MultiState.A)
+            .State<MultiState>(MultiState.A)
                 .OnEntry(nameof(OnEntry1))
                 .OnEntry(nameof(OnEntry2))
                 .On(MultiTrigger.Go).GoTo(MultiState.B);
