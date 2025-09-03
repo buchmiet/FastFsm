@@ -86,18 +86,6 @@ namespace Generator.Parsers
                 }
             }
 
-            // Determine async mode: if any guard/action/entry/exit is async, mark machine as async.
-            // This mirrors legacy parser behavior where async callbacks flip machine into async mode
-            // so generator emits awaitable code paths instead of sync wrappers.
-            bool hasAsyncTransitions = model.Transitions.Any(tr => tr.GuardIsAsync || tr.ActionIsAsync);
-            bool hasAsyncStates = model.States.Values.Any(st => st.OnEntryIsAsync || st.OnExitIsAsync);
-            
-            if (hasAsyncTransitions || hasAsyncStates)
-            {
-                model.GenerationConfig.IsAsync = true;
-                report?.Invoke($"[FluentParser] Async mode enabled due to async callbacks (transitions: {hasAsyncTransitions}, states: {hasAsyncStates})");
-            }
-
             // If class signals fluent usage (Configure exists) but no DSL recognized,
             // fall back to enum-only states model for parity with legacy parser.
             if (model.States.Count == 0 && model.Transitions.Count == 0)
@@ -107,6 +95,19 @@ namespace Generator.Parsers
 
             // Finalize all callback signatures after the model is fully parsed
             FinalizeSignatures(model, report);
+
+            // Determine async mode: if any guard/action/entry/exit is async, mark machine as async.
+            // This mirrors legacy parser behavior where async callbacks flip machine into async mode
+            // so generator emits awaitable code paths instead of sync wrappers.
+            // NOTE: This must be done AFTER FinalizeSignatures because that's where IsAsync flags are set
+            bool hasAsyncTransitions = model.Transitions.Any(tr => tr.GuardIsAsync || tr.ActionIsAsync);
+            bool hasAsyncStates = model.States.Values.Any(st => st.OnEntryIsAsync || st.OnExitIsAsync);
+            
+            if (hasAsyncTransitions || hasAsyncStates)
+            {
+                model.GenerationConfig.IsAsync = true;
+                report?.Invoke($"[FluentParser] Async mode enabled due to async callbacks (transitions: {hasAsyncTransitions}, states: {hasAsyncStates})");
+            }
 
             report?.Invoke($"[FluentParser] Successfully parsed {model.States.Count} states and {model.Transitions.Count} transitions");
             return true;
@@ -1070,22 +1071,11 @@ namespace Generator.Parsers
             {
                 if (!string.IsNullOrEmpty(transition.ActionMethod))
                 {
-                    report?.Invoke($"[FluentParser] Analyzing action signature for: {transition.ActionMethod} in class {_classSymbol.ToDisplayString()}");
-                    
-                    // Debug: list all methods in the class
-                    var allMethods = _classSymbol.GetMembers().OfType<IMethodSymbol>().Where(m => !m.IsStatic);
-                    report?.Invoke($"[FluentParser]   Available instance methods in class:");
-                    foreach (var method in allMethods)
-                    {
-                        report?.Invoke($"[FluentParser]     - {method.Name}: {method.DeclaredAccessibility}, Parameters: {method.Parameters.Length}");
-                    }
-                    
                     var sig = _callbackAnalyzer!.AnalyzeCallback(_classSymbol, transition.ActionMethod, "Action", _compilation);
                     transition.ActionSignature = sig;
                     transition.ActionIsAsync = transition.ActionIsAsync || sig.IsAsync;
                     transition.ActionHasParameterlessOverload = sig.HasParameterless;
                     transition.ActionExpectsPayload = sig.HasPayloadOnly || sig.HasPayloadAndToken;
-                    report?.Invoke($"[FluentParser]   - Result: HasParameterless: {sig.HasParameterless}, IsAsync: {sig.IsAsync}, HasPayload: {sig.HasPayloadOnly || sig.HasPayloadAndToken}");
                 }
 
                 if (!string.IsNullOrEmpty(transition.GuardMethod))
