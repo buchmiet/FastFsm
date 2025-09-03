@@ -293,10 +293,37 @@ namespace Generator.Parsers
             }
 
             // Add ordinal values to states (required for code generation)
-            int ordinal = 0;
-            foreach (var state in model.States.Values)
+            // Must use actual enum values, not sequential numbers!
+            if (_stateEnumSymbol != null && _stateEnumSymbol.TypeKind == TypeKind.Enum)
             {
-                state.OrdinalValue = ordinal++;
+                var enumMembers = _stateEnumSymbol.GetMembers().OfType<IFieldSymbol>()
+                    .Where(f => f.IsConst && f.HasConstantValue);
+                    
+                foreach (var state in model.States.Values)
+                {
+                    var enumField = enumMembers.FirstOrDefault(f => f.Name == state.Name);
+                    if (enumField?.ConstantValue != null)
+                    {
+                        state.OrdinalValue = Convert.ToInt32(enumField.ConstantValue);
+                        report?.Invoke($"[FluentParser] State {state.Name} assigned OrdinalValue={state.OrdinalValue} from enum");
+                    }
+                    else
+                    {
+                        // Fallback if not found (shouldn't happen)
+                        report?.Invoke($"[FluentParser] WARNING: State {state.Name} not found in enum, using fallback ordinal");
+                        state.OrdinalValue = 0;
+                    }
+                }
+            }
+            else
+            {
+                // Fallback to sequential numbering if enum not available
+                report?.Invoke("[FluentParser] WARNING: State enum symbol not available, using sequential ordinals");
+                int ordinal = 0;
+                foreach (var state in model.States.Values)
+                {
+                    state.OrdinalValue = ordinal++;
+                }
             }
 
             return true;
