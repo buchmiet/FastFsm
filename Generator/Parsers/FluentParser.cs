@@ -105,6 +105,9 @@ namespace Generator.Parsers
                 ApplyEnumOnlyFallback(model, report);
             }
 
+            // Finalize all callback signatures after the model is fully parsed
+            FinalizeSignatures(model, report);
+
             report?.Invoke($"[FluentParser] Successfully parsed {model.States.Count} states and {model.Transitions.Count} transitions");
             return true;
         }
@@ -781,7 +784,8 @@ namespace Generator.Parsers
                     {
                         transition.ActionMethod = methodName.Identifier.Text;
                         report?.Invoke($"[FluentParser] Set action{(isAsync ? " async" : "")} method: {transition.ActionMethod}");
-                        AnalyzeActionSignature(transition);
+                        // NOTE: Delay signature analysis until after all parsing is done
+                        // AnalyzeActionSignature(transition);
                         if (isAsync) transition.ActionIsAsync = true;
                     }
                 }
@@ -791,7 +795,8 @@ namespace Generator.Parsers
                 {
                     transition.ActionMethod = actionName;
                     report?.Invoke($"[FluentParser] Set action{(isAsync ? " async" : "")} method: {actionName}");
-                    AnalyzeActionSignature(transition);
+                    // NOTE: Delay signature analysis until after all parsing is done
+                    // AnalyzeActionSignature(transition);
                     if (isAsync) transition.ActionIsAsync = true;
                 }
 
@@ -815,7 +820,8 @@ namespace Generator.Parsers
                     {
                         transition.GuardMethod = methodName.Identifier.Text;
                         report?.Invoke($"[FluentParser] Set guard{(isAsync ? " async" : "")} method: {transition.GuardMethod}");
-                        AnalyzeGuardSignature(transition);
+                        // NOTE: Delay signature analysis until after all parsing is done
+                        // AnalyzeGuardSignature(transition);
                         if (isAsync) transition.GuardIsAsync = true;
                     }
                 }
@@ -953,8 +959,8 @@ namespace Generator.Parsers
                         nameofInvocation.ArgumentList.Arguments[0].Expression is IdentifierNameSyntax methodName)
                     {
                         state.OnEntryMethod = methodName.Identifier.Text;
-                        // Analyze signature
-                        AnalyzeOnEntrySignature(state);
+                        // NOTE: Delay signature analysis until after all parsing is done
+                        // AnalyzeOnEntrySignature(state);
                         if (isAsync) state.OnEntryIsAsync = true;
                         model.GenerationConfig.HasOnEntryExit = true;
                         report?.Invoke($"[FluentParser] Set OnEntry{(isAsync ? "Async" : "")} for {currentState}: {state.OnEntryMethod}");
@@ -965,8 +971,8 @@ namespace Generator.Parsers
                          literal.Token.Value is string entryName)
                 {
                     state.OnEntryMethod = entryName;
-                    // Analyze signature
-                    AnalyzeOnEntrySignature(state);
+                    // NOTE: Delay signature analysis until after all parsing is done
+                    // AnalyzeOnEntrySignature(state);
                     if (isAsync) state.OnEntryIsAsync = true;
                     model.GenerationConfig.HasOnEntryExit = true;
                     report?.Invoke($"[FluentParser] Set OnEntry{(isAsync ? "Async" : "")} for {currentState}: {entryName}");
@@ -1002,8 +1008,8 @@ namespace Generator.Parsers
                         nameofInvocation.ArgumentList.Arguments[0].Expression is IdentifierNameSyntax methodName)
                     {
                         state.OnExitMethod = methodName.Identifier.Text;
-                        // Analyze signature
-                        AnalyzeOnExitSignature(state);
+                        // NOTE: Delay signature analysis until after all parsing is done
+                        // AnalyzeOnExitSignature(state);
                         if (isAsync) state.OnExitIsAsync = true;
                         model.GenerationConfig.HasOnEntryExit = true;
                         report?.Invoke($"[FluentParser] Set OnExit{(isAsync ? "Async" : "")} for {currentState}: {state.OnExitMethod}");
@@ -1014,8 +1020,8 @@ namespace Generator.Parsers
                          literal.Token.Value is string exitName)
                 {
                     state.OnExitMethod = exitName;
-                    // Analyze signature
-                    AnalyzeOnExitSignature(state);
+                    // NOTE: Delay signature analysis until after all parsing is done
+                    // AnalyzeOnExitSignature(state);
                     if (isAsync) state.OnExitIsAsync = true;
                     model.GenerationConfig.HasOnEntryExit = true;
                     report?.Invoke($"[FluentParser] Set OnExit{(isAsync ? "Async" : "")} for {currentState}: {exitName}");
@@ -1042,6 +1048,85 @@ namespace Generator.Parsers
                 return _classSymbol.ContainingNamespace.IsGlobalNamespace ? string.Empty : _classSymbol.ContainingNamespace.ToDisplayString();
             }
             return string.Empty;
+        }
+
+        /// <summary>
+        /// Finalizes all callback signatures after the model has been fully parsed.
+        /// This ensures that the class symbol has complete information about all methods.
+        /// </summary>
+        private void FinalizeSignatures(StateMachineModel model, Action<string>? report)
+        {
+            if (_classSymbol == null)
+            {
+                report?.Invoke("[FluentParser] Cannot finalize signatures: class symbol is null");
+                return;
+            }
+
+            EnsureAnalyzers();
+            report?.Invoke($"[FluentParser] Finalizing signatures for {model.Transitions.Count} transitions and {model.States.Count} states");
+
+            // Analyze transition actions and guards
+            foreach (var transition in model.Transitions)
+            {
+                if (!string.IsNullOrEmpty(transition.ActionMethod))
+                {
+                    report?.Invoke($"[FluentParser] Analyzing action signature for: {transition.ActionMethod} in class {_classSymbol.ToDisplayString()}");
+                    
+                    // Debug: list all methods in the class
+                    var allMethods = _classSymbol.GetMembers().OfType<IMethodSymbol>().Where(m => !m.IsStatic);
+                    report?.Invoke($"[FluentParser]   Available instance methods in class:");
+                    foreach (var method in allMethods)
+                    {
+                        report?.Invoke($"[FluentParser]     - {method.Name}: {method.DeclaredAccessibility}, Parameters: {method.Parameters.Length}");
+                    }
+                    
+                    var sig = _callbackAnalyzer!.AnalyzeCallback(_classSymbol, transition.ActionMethod, "Action", _compilation);
+                    transition.ActionSignature = sig;
+                    transition.ActionIsAsync = transition.ActionIsAsync || sig.IsAsync;
+                    transition.ActionHasParameterlessOverload = sig.HasParameterless;
+                    transition.ActionExpectsPayload = sig.HasPayloadOnly || sig.HasPayloadAndToken;
+                    report?.Invoke($"[FluentParser]   - Result: HasParameterless: {sig.HasParameterless}, IsAsync: {sig.IsAsync}, HasPayload: {sig.HasPayloadOnly || sig.HasPayloadAndToken}");
+                }
+
+                if (!string.IsNullOrEmpty(transition.GuardMethod))
+                {
+                    report?.Invoke($"[FluentParser] Analyzing guard signature for: {transition.GuardMethod}");
+                    var sig = _callbackAnalyzer!.AnalyzeCallback(_classSymbol, transition.GuardMethod, "Guard", _compilation);
+                    transition.GuardSignature = sig;
+                    transition.GuardIsAsync = transition.GuardIsAsync || sig.IsAsync;
+                    transition.GuardHasParameterlessOverload = sig.HasParameterless;
+                    transition.GuardExpectsPayload = sig.HasPayloadOnly || sig.HasPayloadAndToken;
+                    report?.Invoke($"[FluentParser]   - HasParameterless: {sig.HasParameterless}, IsAsync: {sig.IsAsync}, HasPayload: {sig.HasPayloadOnly || sig.HasPayloadAndToken}");
+                }
+            }
+
+            // Analyze state entry/exit methods
+            foreach (var state in model.States.Values)
+            {
+                if (!string.IsNullOrEmpty(state.OnEntryMethod))
+                {
+                    report?.Invoke($"[FluentParser] Analyzing OnEntry signature for state {state.Name}: {state.OnEntryMethod}");
+                    var sig = _callbackAnalyzer!.AnalyzeCallback(_classSymbol, state.OnEntryMethod, "OnEntry", _compilation);
+                    state.OnEntrySignature = sig;
+                    state.OnEntryIsAsync = state.OnEntryIsAsync || sig.IsAsync;
+                    state.OnEntryHasParameterlessOverload = sig.HasParameterless;
+                    state.OnEntryExpectsPayload = sig.HasPayloadOnly || sig.HasPayloadAndToken;
+                    report?.Invoke($"[FluentParser]   - HasParameterless: {sig.HasParameterless}, IsAsync: {sig.IsAsync}, HasPayload: {sig.HasPayloadOnly || sig.HasPayloadAndToken}");
+                }
+
+                if (!string.IsNullOrEmpty(state.OnExitMethod))
+                {
+                    report?.Invoke($"[FluentParser] Analyzing OnExit signature for state {state.Name}: {state.OnExitMethod}");
+                    var sig = _callbackAnalyzer!.AnalyzeCallback(_classSymbol, state.OnExitMethod, "OnExit", _compilation);
+                    state.OnExitSignature = sig;
+                    state.OnExitIsAsync = state.OnExitIsAsync || sig.IsAsync;
+                    state.OnExitHasParameterlessOverload = sig.HasParameterless;
+                    state.OnExitExpectsPayload = sig.HasPayloadOnly || sig.HasPayloadAndToken;
+                    report?.Invoke($"[FluentParser]   - HasParameterless: {sig.HasParameterless}, IsAsync: {sig.IsAsync}, HasPayload: {sig.HasPayloadOnly || sig.HasPayloadAndToken}");
+                }
+            }
+
+            report?.Invoke("[FluentParser] Signature finalization complete");
         }
     }
 }
