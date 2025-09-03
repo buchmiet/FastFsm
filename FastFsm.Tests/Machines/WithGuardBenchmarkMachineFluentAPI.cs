@@ -8,6 +8,7 @@ namespace FastFsm.Tests.Machines
     public partial class WithGuardBenchmarkMachineFluentAPI
     {
         private int _counter;
+        public bool ShouldAllow { get; set; } = true;
 
         private static void Configure() => FSM
             .State<BenchmarkState>(BenchmarkState.A)
@@ -18,7 +19,7 @@ namespace FastFsm.Tests.Machines
         private bool CanTransition()
         {
             _counter++;
-            return _counter % 2 == 0; // Simple condition
+            return ShouldAllow && (_counter % 2 == 0); // Simple condition
         }
     }
 }
