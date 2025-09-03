@@ -18,8 +18,7 @@ namespace FastFsm.Tests.Machines
 
         private bool CanTransition()
         {
-            _counter++;
-            return ShouldAllow && (_counter % 2 == 0); // Simple condition
+            return ShouldAllow; // Simple condition based on ShouldAllow flag
         }
     }
 }
