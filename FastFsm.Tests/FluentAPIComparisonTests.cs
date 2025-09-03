@@ -4,6 +4,7 @@ using Xunit;
 using FastFsm.Tests.Machines;
 using static FastFsm.Tests.Features.Performance.BenchmarkTests;
 using FastFsm.Tests.Features.Core;
+using static FastFsm.Tests.Features.Core.StateCallbackTests;
 using Shouldly;
 
 namespace FastFsm.Tests
@@ -133,31 +134,31 @@ namespace FastFsm.Tests
         public void PayloadStateMachine_AttributeVsFluentAPI_PayloadHandlingShouldBeIdentical()
         {
             // Arrange
-            var attrMachine = new PayloadStateMachine(TestState.StateA);
-            var fluentMachine = new PayloadStateMachineFluentAPI(TestState.StateA);
+            var attrMachine = new PayloadStateMachine(TestState.Initial);
+            var fluentMachine = new PayloadStateMachineFluentAPI(TestState.Initial);
 
-            var payload = new TestPayload { Value = 42 };
+            var payload = new TestPayload { Id = 42, Data = "Test" };
 
             // Act & Assert - CanFire with payload
-            var attrCanFire = attrMachine.CanFire(TestTrigger.TriggerX, payload);
-            var fluentCanFire = fluentMachine.CanFire(TestTrigger.TriggerX, payload);
+            var attrCanFire = attrMachine.CanFire(TestTrigger.Start, payload);
+            var fluentCanFire = fluentMachine.CanFire(TestTrigger.Start, payload);
 
             attrCanFire.ShouldBe(true);
             fluentCanFire.ShouldBe(true);
 
             // Fire with payload
-            attrMachine.Fire(TestTrigger.TriggerX, payload);
-            fluentMachine.Fire(TestTrigger.TriggerX, payload);
+            attrMachine.Fire(TestTrigger.Start, payload);
+            fluentMachine.Fire(TestTrigger.Start, payload);
 
-            attrMachine.CurrentState.ShouldBe(TestState.StateB);
-            fluentMachine.CurrentState.ShouldBe(TestState.StateB);
+            attrMachine.CurrentState.ShouldBe(TestState.Processing);
+            fluentMachine.CurrentState.ShouldBe(TestState.Processing);
 
             // Test parameterless transition
-            attrMachine.Fire(TestTrigger.TriggerY);
-            fluentMachine.Fire(TestTrigger.TriggerY);
+            attrMachine.Fire(TestTrigger.Complete);
+            fluentMachine.Fire(TestTrigger.Complete);
 
-            attrMachine.CurrentState.ShouldBe(TestState.StateC);
-            fluentMachine.CurrentState.ShouldBe(TestState.StateC);
+            attrMachine.CurrentState.ShouldBe(TestState.Completed);
+            fluentMachine.CurrentState.ShouldBe(TestState.Completed);
         }
 
         [Fact]
@@ -236,11 +237,11 @@ namespace FastFsm.Tests
             var attrMachine = new FullOrderMachine(OrderState.New);
             var fluentMachine = new FullOrderMachineFluentAPI(OrderState.New);
 
-            var orderData = new FullOrderData
+            var orderData = new Features.Integration.AllFeaturesExtendedTests.OrderPayload
             {
-                OrderId = "TEST-001",
+                OrderId = 1,
                 Amount = 100.50m,
-                CustomerEmail = "test@example.com"
+                TrackingNumber = "TRACK-001"
             };
 
             // Act - process order

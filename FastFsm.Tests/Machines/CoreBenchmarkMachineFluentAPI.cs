@@ -8,7 +8,7 @@ namespace FastFsm.Tests.Machines
     public partial class CoreBenchmarkMachineFluentAPI
     {
         private static void Configure() => FSM
-            .State(BenchmarkState.A)
+            .State<BenchmarkState>(BenchmarkState.A)
                 .On(BenchmarkTrigger.Next).GoTo(BenchmarkState.B)
             .State(BenchmarkState.B)
                 .On(BenchmarkTrigger.Next).GoTo(BenchmarkState.C)

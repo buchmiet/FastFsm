@@ -10,7 +10,7 @@ namespace FastFsm.Tests.Machines
         private int _counter;
 
         private static void Configure() => FSM
-            .State(BenchmarkState.A)
+            .State<BenchmarkState>(BenchmarkState.A)
                 .On(BenchmarkTrigger.Next).Guard(nameof(CanTransition)).GoTo(BenchmarkState.B)
             .State(BenchmarkState.B)
                 .On(BenchmarkTrigger.Next).Guard(nameof(CanTransition)).GoTo(BenchmarkState.A);

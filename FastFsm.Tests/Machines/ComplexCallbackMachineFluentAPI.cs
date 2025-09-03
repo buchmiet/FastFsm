@@ -14,7 +14,7 @@ namespace FastFsm.Tests.Machines
         public DateTime? CompletionTime { get; private set; }
 
         private static void Configure() => FSM
-            .State(StateCallbackTests.ComplexCallbackState.Idle)
+            .State<StateCallbackTests.ComplexCallbackState>(StateCallbackTests.ComplexCallbackState.Idle)
                 .OnEntry(nameof(OnEnterIdle))
                 .OnExit(nameof(OnExitIdle))
                 .On(StateCallbackTests.ComplexCallbackTrigger.Start)
