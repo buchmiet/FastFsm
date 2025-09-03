@@ -222,12 +222,12 @@ namespace FastFsm.Tests
 
             // Process with different payload type
             var processData = new FluentPayloadMachine.ProcessData { ItemCount = 5 };
-            machine.Fire(FluentPayloadMachine.FluentPayloadMachine.PayloadTrigger.Process, processData);
+            machine.Fire(FluentPayloadMachine.PayloadTrigger.Process, processData);
             machine.CurrentState.ShouldBe(FluentPayloadMachine.PayloadState.Processing); // Self-transition
             machine.ProcessedItems.ShouldBe(5);
 
             // Process again
-            machine.Fire(FluentPayloadMachine.FluentPayloadMachine.PayloadTrigger.Process, processData);
+            machine.Fire(FluentPayloadMachine.PayloadTrigger.Process, processData);
             machine.ProcessedItems.ShouldBe(10);
 
             // Finish without payload
@@ -260,8 +260,7 @@ namespace FastFsm.Tests
         public async Task FluentAPI_AsyncSupport_ShouldWork()
         {
             // Arrange
-            var machine = new FluentAsyncMachine(FluentAsyncMachine.FluentAsyncMachine.AsyncState.Disconnected);
-            machine.Start();
+            var machine = new FluentAsyncMachine(FluentAsyncMachine.AsyncState.Disconnected);
             await machine.StartAsync();
 
             // Act & Assert - Async guard
@@ -290,8 +289,7 @@ namespace FastFsm.Tests
         public async Task FluentAPI_AsyncWithCancellation_ShouldRespectToken()
         {
             // Arrange
-            var machine = new FluentAsyncMachine(FluentAsyncMachine.FluentAsyncMachine.AsyncState.Disconnected);
-            machine.Start();
+            var machine = new FluentAsyncMachine(FluentAsyncMachine.AsyncState.Disconnected);
             await machine.StartAsync();
 
             using var cts = new CancellationTokenSource();
@@ -305,7 +303,7 @@ namespace FastFsm.Tests
 
             // Assert - Should throw on cancelled token
             await Should.ThrowAsync<OperationCanceledException>(
-                machine.FireAsync(FluentAsyncMachine.AsyncTrigger.Connected, null, cts.Token)
+                machine.FireAsync(FluentAsyncMachine.AsyncTrigger.Connected, null, cts.Token).AsTask()
             );
         }
 
@@ -313,7 +311,7 @@ namespace FastFsm.Tests
         public void FluentAPI_InternalTransitions_ShouldNotChangeState()
         {
             // Arrange
-            var machine = new FluentInternalTransitionMachine(FluentInternalTransitionMachine.FluentInternalTransitionMachine.InternalState.Active);
+            var machine = new FluentInternalTransitionMachine(FluentInternalTransitionMachine.InternalState.Active);
             machine.Start();
 
             // Act - Internal transition with payload
@@ -343,7 +341,7 @@ namespace FastFsm.Tests
         public void FluentAPI_InternalTransitionGuard_ShouldBeRespected()
         {
             // Arrange
-            var machine = new FluentInternalTransitionMachine(FluentInternalTransitionMachine.FluentInternalTransitionMachine.InternalState.Active);
+            var machine = new FluentInternalTransitionMachine(FluentInternalTransitionMachine.InternalState.Active);
             machine.Start();
 
             // Act & Assert - Invalid update should be rejected

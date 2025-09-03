@@ -8,17 +8,16 @@ namespace FastFsm.Tests.Machines
     public partial class WithGuardBenchmarkMachine
     {
         private int _counter;
+        public bool ShouldAllow { get; set; } = true;
 
-        private static void Configure() => FSM
-            .State(BenchmarkState.A)
-                .On(BenchmarkTrigger.Next).Guard(nameof(CanTransition)).GoTo(BenchmarkState.B)
-            .State(BenchmarkState.B)
-                .On(BenchmarkTrigger.Next).Guard(nameof(CanTransition)).GoTo(BenchmarkState.A);
+        [Transition(BenchmarkState.A, BenchmarkTrigger.Next, BenchmarkState.B, Guard = nameof(CanTransition))]
+        [Transition(BenchmarkState.B, BenchmarkTrigger.Next, BenchmarkState.A, Guard = nameof(CanTransition))]
+        private void Configure() { }
 
         private bool CanTransition()
         {
             _counter++;
-            return _counter % 2 == 0; // Simple condition
+            return ShouldAllow && (_counter % 2 == 0); // Simple condition
         }
     }
 }

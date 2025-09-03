@@ -134,31 +134,31 @@ namespace FastFsm.Tests
         public void PayloadStateMachine_AttributeVsFluentAPI_PayloadHandlingShouldBeIdentical()
         {
             // Arrange
-            var attrMachine = new PayloadStateMachine(TestState.Initial);
-            var fluentMachine = new PayloadStateMachineFluentAPI(TestState.Initial);
+            var attrMachine = new PayloadStateMachine(Machines.TestState.Initial);
+            var fluentMachine = new PayloadStateMachineFluentAPI(Machines.TestState.Initial);
 
-            var payload = new TestPayload { Id = 42, Data = "Test" };
+            var payload = new Machines.TestPayload { Id = 42, Data = "Test" };
 
             // Act & Assert - CanFire with payload
-            var attrCanFire = attrMachine.CanFire(TestTrigger.Start, payload);
-            var fluentCanFire = fluentMachine.CanFire(TestTrigger.Start, payload);
+            var attrCanFire = attrMachine.CanFire(Machines.TestTrigger.Start, payload);
+            var fluentCanFire = fluentMachine.CanFire(Machines.TestTrigger.Start, payload);
 
             attrCanFire.ShouldBe(true);
             fluentCanFire.ShouldBe(true);
 
             // Fire with payload
-            attrMachine.Fire(TestTrigger.Start, payload);
-            fluentMachine.Fire(TestTrigger.Start, payload);
+            attrMachine.Fire(Machines.TestTrigger.Start, payload);
+            fluentMachine.Fire(Machines.TestTrigger.Start, payload);
 
-            attrMachine.CurrentState.ShouldBe(TestState.Processing);
-            fluentMachine.CurrentState.ShouldBe(TestState.Processing);
+            attrMachine.CurrentState.ShouldBe(Machines.TestState.Processing);
+            fluentMachine.CurrentState.ShouldBe(Machines.TestState.Processing);
 
             // Test parameterless transition
-            attrMachine.Fire(TestTrigger.Complete);
-            fluentMachine.Fire(TestTrigger.Complete);
+            attrMachine.Fire(Machines.TestTrigger.Complete);
+            fluentMachine.Fire(Machines.TestTrigger.Complete);
 
-            attrMachine.CurrentState.ShouldBe(TestState.Completed);
-            fluentMachine.CurrentState.ShouldBe(TestState.Completed);
+            attrMachine.CurrentState.ShouldBe(Machines.TestState.Completed);
+            fluentMachine.CurrentState.ShouldBe(Machines.TestState.Completed);
         }
 
         [Fact]
