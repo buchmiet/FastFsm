@@ -157,6 +157,16 @@ public sealed class StateModel
     /// Whether this state is marked as the initial substate of its parent
     /// </summary>
     public bool IsInitial { get; set; } = false;
+    
+    /// <summary>
+    /// The name of the initial child state (for composite states)
+    /// </summary>
+    public string? InitialChildState { get; set; }
+    
+    /// <summary>
+    /// History mode as string (for Fluent API compatibility)
+    /// </summary>
+    public string? HistoryModeString { get; set; }
 
     #endregion
 

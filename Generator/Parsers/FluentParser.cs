@@ -109,6 +109,9 @@ namespace Generator.Parsers
 
             // Finalize all callback signatures after the model is fully parsed
             FinalizeSignatures(model, report);
+            
+            // Build HSM hierarchy if enabled (must be done AFTER parsing all states)
+            BuildHSMHierarchy(model, report);
 
             // Determine async mode: if any guard/action/entry/exit is async, mark machine as async.
             // This mirrors legacy parser behavior where async callbacks flip machine into async mode
@@ -251,24 +254,43 @@ namespace Generator.Parsers
             if (configureMethod.ExpressionBody != null)
             {
                 expression = configureMethod.ExpressionBody.Expression;
+                // Parse the fluent API chain
+                ParseFluentChain(expression, model, report);
             }
             else if (configureMethod.Body != null)
             {
-                // Look for return statement with FSM chain
+                // First try to find a return statement with FSM chain
                 var returnStatement = configureMethod.Body.Statements
                     .OfType<ReturnStatementSyntax>()
                     .FirstOrDefault();
-                expression = returnStatement?.Expression;
+                    
+                if (returnStatement?.Expression != null)
+                {
+                    ParseFluentChain(returnStatement.Expression, model, report);
+                }
+                else
+                {
+                    // If no return statement, look for all expression statements with FSM calls
+                    var expressionStatements = configureMethod.Body.Statements
+                        .OfType<ExpressionStatementSyntax>();
+                        
+                    report?.Invoke($"[FluentParser] Found {expressionStatements.Count()} expression statements in Configure()");
+                    
+                    foreach (var statement in expressionStatements)
+                    {
+                        if (statement.Expression != null)
+                        {
+                            report?.Invoke($"[FluentParser] Processing statement: {statement.Expression.GetType().Name}");
+                            ParseFluentChain(statement.Expression, model, report);
+                        }
+                    }
+                }
             }
-
-            if (expression == null)
+            else
             {
                 report?.Invoke("[FluentParser] No FSM configuration found in Configure() method");
                 return false;
             }
-
-            // Parse the fluent API chain
-            ParseFluentChain(expression, model, report);
 
             // Add ordinal values to states (required for code generation)
             int ordinal = 0;
@@ -449,6 +471,36 @@ namespace Generator.Parsers
                         if (currentState != null)
                         {
                             ParseOnExit(invocation, currentState, model, report, isAsync: true);
+                        }
+                        break;
+                    
+                    case "ChildOf":
+                        if (currentState != null)
+                        {
+                            report?.Invoke($"[FluentParser] Processing ChildOf for state {currentState}");
+                            ParseChildOf(invocation, currentState, model, report);
+                        }
+                        break;
+                    
+                    case "Initial":
+                        if (currentState != null)
+                        {
+                            report?.Invoke($"[FluentParser] Processing Initial for state {currentState}");
+                            ParseInitial(invocation, currentState, model, report);
+                        }
+                        break;
+                    
+                    case "HistoryShallow":
+                        if (currentState != null)
+                        {
+                            ParseHistory(currentState, model, report, isShallow: true);
+                        }
+                        break;
+                    
+                    case "HistoryDeep":
+                        if (currentState != null)
+                        {
+                            ParseHistory(currentState, model, report, isShallow: false);
                         }
                         break;
                 }
@@ -1054,6 +1106,112 @@ namespace Generator.Parsers
             state.OnExitHasParameterlessOverload = sig.HasParameterless;
             state.OnExitExpectsPayload = sig.HasPayloadOnly || sig.HasPayloadAndToken;
         }
+        
+        private void ParseChildOf(InvocationExpressionSyntax invocation, string currentState, StateMachineModel model, Action<string>? report)
+        {
+            if (!model.States.TryGetValue(currentState, out var state)) 
+            {
+                report?.Invoke($"[FluentParser] WARNING: State {currentState} not found in model when processing ChildOf");
+                return;
+            }
+            
+            if (invocation.ArgumentList.Arguments.Count > 0)
+            {
+                var arg = invocation.ArgumentList.Arguments[0];
+                report?.Invoke($"[FluentParser] ChildOf argument type: {arg.Expression?.GetType().Name}");
+                
+                if (arg.Expression is MemberAccessExpressionSyntax memberAccess)
+                {
+                    var parentStateName = memberAccess.Name.Identifier.Text;
+                    state.ParentState = parentStateName;
+                    
+                    report?.Invoke($"[FluentParser] Successfully parsed ChildOf: {currentState} is child of {parentStateName}");
+                    
+                    // Ensure parent state exists
+                    if (!model.States.ContainsKey(parentStateName))
+                    {
+                        model.States[parentStateName] = new StateModel
+                        {
+                            Name = parentStateName,
+                            OrdinalValue = 0 // Will be set later
+                        };
+                        report?.Invoke($"[FluentParser] Created parent state {parentStateName}");
+                    }
+                    
+                    report?.Invoke($"[FluentParser] Set {currentState} as child of {parentStateName}");
+                }
+                else
+                {
+                    report?.Invoke($"[FluentParser] WARNING: Could not parse ChildOf argument for {currentState}. Expression: {arg.Expression}");
+                }
+            }
+            else
+            {
+                report?.Invoke($"[FluentParser] WARNING: ChildOf for {currentState} has no arguments");
+            }
+        }
+        
+        private void ParseInitial(InvocationExpressionSyntax invocation, string currentState, StateMachineModel model, Action<string>? report)
+        {
+            if (!model.States.TryGetValue(currentState, out var state)) 
+            {
+                report?.Invoke($"[FluentParser] WARNING: State {currentState} not found in model when processing Initial");
+                return;
+            }
+            
+            if (invocation.ArgumentList.Arguments.Count > 0)
+            {
+                var arg = invocation.ArgumentList.Arguments[0];
+                report?.Invoke($"[FluentParser] Initial argument type: {arg.Expression?.GetType().Name}");
+                
+                if (arg.Expression is MemberAccessExpressionSyntax memberAccess)
+                {
+                    var initialStateName = memberAccess.Name.Identifier.Text;
+                    state.InitialChildState = initialStateName;
+                    
+                    report?.Invoke($"[FluentParser] Successfully parsed Initial: {initialStateName} is initial child of {currentState}");
+                    
+                    // Ensure initial state exists and mark it
+                    if (!model.States.ContainsKey(initialStateName))
+                    {
+                        model.States[initialStateName] = new StateModel
+                        {
+                            Name = initialStateName,
+                            OrdinalValue = 0 // Will be set later
+                        };
+                        report?.Invoke($"[FluentParser] Created initial state {initialStateName}");
+                    }
+                    
+                    // Mark the child state as initial
+                    if (model.States.TryGetValue(initialStateName, out var childState))
+                    {
+                        childState.IsInitial = true;
+                        childState.ParentState = currentState; // Also set parent relationship
+                        report?.Invoke($"[FluentParser] Marked {initialStateName} as initial and set parent to {currentState}");
+                    }
+                    
+                    report?.Invoke($"[FluentParser] Set {initialStateName} as initial child of {currentState}");
+                }
+                else
+                {
+                    report?.Invoke($"[FluentParser] WARNING: Could not parse Initial argument for {currentState}. Expression: {arg.Expression}");
+                }
+            }
+            else
+            {
+                report?.Invoke($"[FluentParser] WARNING: Initial for {currentState} has no arguments");
+            }
+        }
+        
+        private void ParseHistory(string currentState, StateMachineModel model, Action<string>? report, bool isShallow)
+        {
+            if (!model.States.TryGetValue(currentState, out var state)) return;
+            
+            state.HistoryModeString = isShallow ? "Shallow" : "Deep";
+            // Also set the enum property for compatibility
+            state.History = isShallow ? Generator.Model.HistoryMode.Shallow : Generator.Model.HistoryMode.Deep;
+            report?.Invoke($"[FluentParser] Set {currentState} history mode to {state.HistoryModeString}");
+        }
 
         private string? GetNamespace()
         {
@@ -1131,6 +1289,128 @@ namespace Generator.Parsers
             }
 
             report?.Invoke("[FluentParser] Signature finalization complete");
+        }
+        
+        private void BuildHSMHierarchy(StateMachineModel model, Action<string>? report)
+        {
+            // Check if any HSM features are used
+            bool hasHsmFeatures = model.States.Values.Any(s => 
+                s.ParentState != null || 
+                s.History != Generator.Model.HistoryMode.None || 
+                s.IsInitial ||
+                s.InitialChildState != null);
+                
+            if (hasHsmFeatures)
+            {
+                model.HierarchyEnabled = true;
+                report?.Invoke("[FluentParser] HSM features detected, enabling hierarchy");
+            }
+            
+            if (!model.HierarchyEnabled)
+            {
+                report?.Invoke("[FluentParser] Hierarchy not enabled, skipping hierarchy building");
+                return;
+            }
+            
+            // Build parent-child relationships from StateModel data
+            foreach (var state in model.States.Values)
+            {
+                model.ParentOf[state.Name] = state.ParentState;
+                
+                if (!model.ChildrenOf.ContainsKey(state.Name))
+                {
+                    model.ChildrenOf[state.Name] = new List<string>();
+                }
+                
+                if (state.ParentState != null)
+                {
+                    // Ensure parent exists
+                    if (!model.States.ContainsKey(state.ParentState))
+                    {
+                        // Create parent if it doesn't exist
+                        model.States[state.ParentState] = new StateModel
+                        {
+                            Name = state.ParentState,
+                            OrdinalValue = 0 // Will be set later
+                        };
+                        model.ParentOf[state.ParentState] = null;
+                        model.ChildrenOf[state.ParentState] = new List<string>();
+                    }
+                    
+                    // Add to parent's children list
+                    if (!model.ChildrenOf.ContainsKey(state.ParentState))
+                    {
+                        model.ChildrenOf[state.ParentState] = new List<string>();
+                    }
+                    if (!model.ChildrenOf[state.ParentState].Contains(state.Name))
+                    {
+                        model.ChildrenOf[state.ParentState].Add(state.Name);
+                    }
+                }
+            }
+            
+            // Calculate depth for each state
+            foreach (var state in model.States.Keys)
+            {
+                model.Depth[state] = CalculateDepth(state, model.ParentOf);
+            }
+            
+            // Populate StateModel.ChildStates from model.ChildrenOf
+            foreach (var state in model.States.Values)
+            {
+                if (model.ChildrenOf.TryGetValue(state.Name, out var children))
+                {
+                    state.ChildStates = children.ToList();
+                }
+            }
+            
+            // Process initial substates from both IsInitial flags and InitialChildState properties
+            foreach (var state in model.States.Values)
+            {
+                // Process history mode
+                if (state.History != Generator.Model.HistoryMode.None)
+                {
+                    model.HistoryOf[state.Name] = state.History;
+                }
+                
+                // Process initial substates - from IsInitial flag
+                if (state.IsInitial && state.ParentState != null)
+                {
+                    if (!model.InitialChildOf.ContainsKey(state.ParentState))
+                    {
+                        model.InitialChildOf[state.ParentState] = state.Name;
+                    }
+                    // Note: multiple initial substates should be reported as error but we're not adding diagnostics here
+                }
+                
+                // Process initial substates - from InitialChildState property on parent
+                if (!string.IsNullOrEmpty(state.InitialChildState))
+                {
+                    model.InitialChildOf[state.Name] = state.InitialChildState;
+                    
+                    // Also mark the child as initial for consistency
+                    if (model.States.TryGetValue(state.InitialChildState, out var childState))
+                    {
+                        childState.IsInitial = true;
+                    }
+                }
+            }
+            
+            report?.Invoke($"[FluentParser] Hierarchy built: {model.ParentOf.Count} parent relationships, {model.ChildrenOf.Count} composite states");
+        }
+        
+        private int CalculateDepth(string state, Dictionary<string, string?> parentOf)
+        {
+            int depth = 0;
+            var current = state;
+            while (parentOf.TryGetValue(current, out var parent) && parent != null)
+            {
+                depth++;
+                current = parent;
+                // Prevent infinite loops
+                if (depth > 100) break;
+            }
+            return depth;
         }
     }
 }
