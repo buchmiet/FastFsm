@@ -1333,6 +1333,17 @@ namespace Generator.Parsers
                 report?.Invoke("[FluentParser] HSM features detected, enabling hierarchy");
             }
             
+            // If hierarchy is enabled but no explicit parent relationships defined,
+            // try to infer from naming convention (State_SubState pattern)
+            if (model.HierarchyEnabled && !hasHsmFeatures)
+            {
+                report?.Invoke("[FluentParser] HierarchyEnabled=true but no explicit HSM features found. Attempting to infer hierarchy from naming convention...");
+                InferHierarchyFromNamingConvention(model, report);
+                
+                // Check again if we found any hierarchy
+                hasHsmFeatures = model.States.Values.Any(s => s.ParentState != null);
+            }
+            
             if (!model.HierarchyEnabled)
             {
                 report?.Invoke("[FluentParser] Hierarchy not enabled, skipping hierarchy building");
@@ -1424,6 +1435,71 @@ namespace Generator.Parsers
             }
             
             report?.Invoke($"[FluentParser] Hierarchy built: {model.ParentOf.Count} parent relationships, {model.ChildrenOf.Count} composite states");
+        }
+        
+        /// <summary>
+        /// Infers parent-child relationships from state naming convention (Parent_Child pattern)
+        /// </summary>
+        private void InferHierarchyFromNamingConvention(StateMachineModel model, Action<string>? report)
+        {
+            var stateNames = model.States.Keys.OrderBy(s => s.Length).ToList();
+            
+            foreach (var stateName in stateNames)
+            {
+                // Check if state name contains underscore
+                var underscoreIndex = stateName.IndexOf('_');
+                if (underscoreIndex > 0)
+                {
+                    // Extract potential parent name
+                    var potentialParentName = stateName.Substring(0, underscoreIndex);
+                    
+                    // Check if parent state exists
+                    if (model.States.ContainsKey(potentialParentName))
+                    {
+                        var childState = model.States[stateName];
+                        var parentState = model.States[potentialParentName];
+                        
+                        // Only set parent if not already set (explicit definitions take precedence)
+                        if (childState.ParentState == null)
+                        {
+                            childState.ParentState = potentialParentName;
+                            report?.Invoke($"[FluentParser] Inferred parent relationship: {stateName} -> {potentialParentName}");
+                            
+                            // If this is the first child and parent has no initial child, set as initial
+                            if (parentState.InitialChildState == null)
+                            {
+                                // Check if the child name ends with common initial patterns
+                                var childSuffix = stateName.Substring(underscoreIndex + 1);
+                                if (childSuffix.Equals("Initializing", StringComparison.OrdinalIgnoreCase) ||
+                                    childSuffix.Equals("Initial", StringComparison.OrdinalIgnoreCase) ||
+                                    childSuffix.Equals("Start", StringComparison.OrdinalIgnoreCase) ||
+                                    childSuffix.Equals("Begin", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    parentState.InitialChildState = stateName;
+                                    childState.IsInitial = true;
+                                    report?.Invoke($"[FluentParser] Set {stateName} as initial child of {potentialParentName}");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // After inferring all relationships, set initial children for parents that don't have one
+            foreach (var stateName in model.States.Keys)
+            {
+                var state = model.States[stateName];
+                var children = model.States.Values.Where(s => s.ParentState == stateName).ToList();
+                
+                if (children.Any() && state.InitialChildState == null)
+                {
+                    // Set the first child (in enum order) as initial if no explicit initial is set
+                    var firstChild = children.OrderBy(c => c.OrdinalValue).First();
+                    state.InitialChildState = firstChild.Name;
+                    firstChild.IsInitial = true;
+                    report?.Invoke($"[FluentParser] Auto-set {firstChild.Name} as initial child of {stateName} (first in enum order)");
+                }
+            }
         }
         
         private int CalculateDepth(string state, Dictionary<string, string?> parentOf)
