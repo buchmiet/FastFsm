@@ -39,7 +39,7 @@ public partial class AsyncNoActionHsmTests
     [StateMachine(typeof(S), typeof(T), EnableHierarchy = true)]
     public partial class TinyAsyncHsmFluentFsm
     {
-        private void SetupStates()
+        private static void Configure()
         {
             // Parent with shallow history and initial child
             FSM.State(S.Menu)
