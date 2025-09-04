@@ -119,6 +119,32 @@ namespace Generator.Parsers
                 ValidateHsmModel(model, report);
             }
 
+            // Deduplicate transitions: Keep only the first transition for each (FromState, Trigger, Priority) tuple
+            // This matches Legacy parser behavior for source-order resolution
+            var originalCount = model.Transitions.Count;
+            var deduplicatedTransitions = new List<TransitionModel>();
+            var seenTransitions = new HashSet<(string FromState, string Trigger, int Priority)>();
+            
+            foreach (var transition in model.Transitions)
+            {
+                var key = (transition.FromState, transition.TriggerName, transition.Priority);
+                if (!seenTransitions.Contains(key))
+                {
+                    seenTransitions.Add(key);
+                    deduplicatedTransitions.Add(transition);
+                }
+                else
+                {
+                    report?.Invoke($"[FluentParser] Duplicate transition ignored: {transition.FromState} + {transition.TriggerName} (Priority={transition.Priority}) -> {transition.ToState}");
+                }
+            }
+            
+            if (deduplicatedTransitions.Count < originalCount)
+            {
+                model.Transitions = deduplicatedTransitions;
+                report?.Invoke($"[FluentParser] Deduplicated transitions: {originalCount} -> {deduplicatedTransitions.Count}");
+            }
+
             // Determine async mode: if any guard/action/entry/exit is async, mark machine as async.
             // This mirrors legacy parser behavior where async callbacks flip machine into async mode
             // so generator emits awaitable code paths instead of sync wrappers.
