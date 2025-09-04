@@ -140,7 +140,7 @@ namespace Generator.Parsers
         {
             return classDeclaration.Members
                 .OfType<MethodDeclarationSyntax>()
-                .FirstOrDefault(m => m.Identifier.Text == "Configure" && 
+                .FirstOrDefault(m => (m.Identifier.Text == "Configure" || m.Identifier.Text == "SetupStates") && 
                                     m.Modifiers.Any(mod => mod.IsKind(SyntaxKind.StaticKeyword)));
         }
 
