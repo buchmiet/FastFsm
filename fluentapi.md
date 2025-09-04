@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Fluent API is a complete, production-ready alternative to attribute-based state machine definitions in FastFSM. It provides a more intuitive and readable way to define state machines while generating identical runtime code.
+The Fluent API is a complete, production-ready alternative to attribute-based state machine definitions in FastFSM. It provides a more intuitive and readable way to define both simple (FSM) and hierarchical (HSM) state machines while generating identical runtime code. Full HSM support includes parent-child relationships, history modes (shallow/deep), initial substates, and priority-based transition resolution.
 
 ## Core Design Principles
 
@@ -15,8 +15,8 @@ The Fluent API is a complete, production-ready alternative to attribute-based st
 ## Basic State Machine Structure
 
 Every Fluent API state machine requires:
-1. The `[StateMachine]` attribute to specify state and trigger types
-2. A static `Configure()` method containing the DSL definition
+1. The `[StateMachine]` attribute to specify state and trigger types (add `EnableHierarchy = true` for HSM)
+2. A static `Configure()` or `SetupStates()` method containing the DSL definition
 3. State and trigger enums
 4. Handler methods for guards, actions, and callbacks
 
@@ -52,6 +52,15 @@ public partial class SimpleMachine
 | `.OnExit(string methodName)` | Set exit callback | `.OnExit(nameof(OnIdleExit))` |
 | `.OnExitAsync(string methodName)` | Set async exit callback | `.OnExitAsync(nameof(OnIdleExitAsync))` |
 
+### HSM-Specific Methods (Hierarchical State Machines)
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `.ChildOf(TState parent)` | Define parent-child relationship | `.ChildOf(State.Parent)` |
+| `.Initial(TState child)` | Set initial substate | `.Initial(State.Parent_Child1)` |
+| `.HistoryShallow()` | Enable shallow history mode | `.HistoryShallow()` |
+| `.HistoryDeep()` | Enable deep history mode | `.HistoryDeep()` |
+
 ### Transition Definition Methods
 
 | Method | Description | Example |
@@ -61,7 +70,7 @@ public partial class SimpleMachine
 
 ### Transition Modifiers
 
-**Recommended order:** Payload → Guard → Action → GoTo
+**Recommended order:** Payload → Guard → Action → Priority → GoTo
 
 | Method | Description | Example |
 |--------|-------------|---------|
@@ -70,6 +79,7 @@ public partial class SimpleMachine
 | `.GuardAsync(string methodName)` | Add async guard | `.GuardAsync(nameof(CanStartAsync))` |
 | `.Action(string methodName)` | Add transition action | `.Action(nameof(ProcessStart))` |
 | `.ActionAsync(string methodName)` | Add async action | `.ActionAsync(nameof(ProcessStartAsync))` |
+| `.Priority(int priority)` | Set transition priority (HSM) | `.Priority(100)` |
 
 ### Transition Target Methods
 
@@ -267,6 +277,81 @@ public partial class InternalTransitionMachine
 }
 ```
 
+### Hierarchical State Machine (HSM)
+
+```csharp
+[StateMachine(typeof(State), typeof(Trigger), EnableHierarchy = true)]
+public partial class HierarchicalMachine
+{
+    public enum State 
+    { 
+        Idle, 
+        Processing, 
+        Processing_Initialization, 
+        Processing_Work, 
+        Processing_Cleanup,
+        Done 
+    }
+    public enum Trigger { Start, Next, Finish, Abort }
+    
+    private static void Configure() => FSM
+        // Parent state with history and initial child
+        .State(State.Processing)
+            .Initial(State.Processing_Initialization)
+            .HistoryShallow()  // or .HistoryDeep() for deep history
+            .OnEntry(nameof(OnProcessingEntry))
+            .OnExit(nameof(OnProcessingExit))
+            .On(Trigger.Abort).GoTo(State.Idle)
+        
+        // Child states
+        .State(State.Processing_Initialization)
+            .ChildOf(State.Processing)
+            .On(Trigger.Next).GoTo(State.Processing_Work)
+        
+        .State(State.Processing_Work)
+            .ChildOf(State.Processing)
+            .On(Trigger.Next).GoTo(State.Processing_Cleanup)
+        
+        .State(State.Processing_Cleanup)
+            .ChildOf(State.Processing)
+            .On(Trigger.Finish).GoTo(State.Done)
+        
+        // Simple states
+        .State(State.Idle)
+            .On(Trigger.Start).GoTo(State.Processing)
+        
+        .State(State.Done);
+    
+    private void OnProcessingEntry() { /* Called when entering Processing or any child */ }
+    private void OnProcessingExit() { /* Called when exiting Processing to non-child */ }
+}
+```
+
+### HSM with Priority-based Transition Resolution
+
+```csharp
+[StateMachine(typeof(State), typeof(Trigger), EnableHierarchy = true)]
+public partial class PriorityMachine
+{
+    private static void Configure() => FSM
+        .State(State.Parent)
+            .On(Trigger.Action)
+                .Guard(nameof(HighPriorityCondition))
+                .Priority(100)  // Higher priority, evaluated first
+                .GoTo(State.HighPriorityTarget)
+            .On(Trigger.Action)
+                .Guard(nameof(MediumPriorityCondition))
+                .Priority(50)
+                .GoTo(State.MediumPriorityTarget)
+            .On(Trigger.Action)
+                .Priority(10)  // Lower priority, default fallback
+                .GoTo(State.DefaultTarget);
+    
+    private bool HighPriorityCondition() => /* check condition */;
+    private bool MediumPriorityCondition() => /* check condition */;
+}
+```
+
 ## Method Signatures
 
 ### Guard Methods
@@ -330,18 +415,21 @@ FSM.State(State.A)
 ### Method Order
 While the parser is flexible, the recommended order for readability is:
 1. State definition (`.State()`)
-2. State callbacks (`.OnEntry()`, `.OnExit()`)
-3. Transition trigger (`.On()` or `.OnInternal()`)
-4. Payload specification (`.Payload<T>()`)
-5. Guard (`.Guard()` or `.GuardAsync()`)
-6. Action (`.Action()` or `.ActionAsync()`)
-7. Target (`.GoTo()` or `.Internal()`)
+2. HSM modifiers (`.ChildOf()`, `.Initial()`, `.HistoryShallow()`, `.HistoryDeep()`)
+3. State callbacks (`.OnEntry()`, `.OnExit()`)
+4. Transition trigger (`.On()` or `.OnInternal()`)
+5. Payload specification (`.Payload<T>()`)
+6. Guard (`.Guard()` or `.GuardAsync()`)
+7. Action (`.Action()` or `.ActionAsync()`)
+8. Priority (`.Priority()`) - must be before `.GoTo()`
+9. Target (`.GoTo()` or `.Internal()`)
 
 ### Parser Behavior
-- The FluentParser processes the `Configure()` method at compile time
+- The FluentParser processes the `Configure()` or `SetupStates()` method at compile time
 - It generates the same `StateMachineModel` as the attribute-based parser
 - Both approaches produce identical runtime code
 - Mixing attributes and Fluent API in the same class is not supported
+- Duplicate transitions with the same (FromState, Trigger, Priority) tuple are automatically deduplicated (first wins)
 
 ## Migration from Attributes
 
@@ -384,19 +472,17 @@ public partial class FluentMachine
 
 ### Currently Supported
 ✅ Simple state machines (FSM)  
+✅ Hierarchical State Machines (HSM)  
+✅ Parent-child relationships  
+✅ History modes (Shallow/Deep)  
+✅ Priority for transitions  
+✅ Initial substates  
 ✅ Guards (sync/async)  
 ✅ Actions (sync/async)  
 ✅ State callbacks (OnEntry/OnExit, sync/async)  
 ✅ Payloads (default and per-transition)  
 ✅ Internal transitions  
 ✅ Extensible state machines  
-
-### Not Yet Implemented (Coming in v0.8)
-❌ Hierarchical State Machines (HSM)  
-❌ Parent states  
-❌ History modes (Shallow/Deep)  
-❌ Priority for transitions  
-❌ Initial substates  
 
 ## Best Practices
 
@@ -428,8 +514,12 @@ public partial class FluentMachine
 
 ## Version History
 
-- **v0.7.5** - Initial Fluent API release with full FSM support
-- **v0.8.0** - (Planned) HSM support with Parent(), History(), Priority()
+- **v0.7.5** - Initial Fluent API release with full FSM and HSM support including:
+  - Parent-child state relationships via `.ChildOf()` method
+  - Initial substates via `.Initial()` method
+  - History modes via `.HistoryShallow()` and `.HistoryDeep()` methods
+  - Priority support for transition resolution via `.Priority()` method
+  - Full parity with attribute-based HSM definitions
 
 ---
 

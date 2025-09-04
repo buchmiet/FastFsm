@@ -1739,7 +1739,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         }
 }
 
-    protected override void WriteCanFireMethod(string stateTypeForUsage, string triggerTypeForUsage)
+    protected virtual void WriteCanFireMethod(string stateTypeForUsage, string triggerTypeForUsage)
 {
         if (IsAsyncMachine)
     {
@@ -2169,7 +2169,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         Sb.AppendLine();
 }
 
-    protected override bool ShouldGenerateInitialOnEntry()
+    protected virtual bool ShouldGenerateInitialOnEntry()
 {
         // Variants were removed; gate solely on callbacks presence
         return Model.GenerationConfig.HasOnEntryExit;
