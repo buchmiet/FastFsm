@@ -489,42 +489,28 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
             private static void Configure()
             {
                 FSM.State(AsyncInternalTransitionTests.S.Parent)
-                    .OnEntryAsync(nameof(OnParentEntryAsync))
-                    .OnExitAsync(nameof(OnParentExitAsync))
-                    .Initial(AsyncInternalTransitionTests.S.Parent_Child);
+                    .Initial(AsyncInternalTransitionTests.S.Child);
                     
-                FSM.State(AsyncInternalTransitionTests.S.Parent_Child)
-                    .ChildOf(AsyncInternalTransitionTests.S.Parent)
-                    .OnEntryAsync(nameof(OnChildEntryAsync))
-                    .OnExitAsync(nameof(OnChildExitAsync));
-                    
-                FSM.State(AsyncInternalTransitionTests.S.Outside);
+                FSM.State(AsyncInternalTransitionTests.S.Child)
+                    .ChildOf(AsyncInternalTransitionTests.S.Parent);
                 
-                // Internal transition - no state change, no exit/entry
+                // Internal transitions matching the Legacy machine
                 FSM.At(AsyncInternalTransitionTests.S.Parent)
-                    .OnInternal(AsyncInternalTransitionTests.T.UpdateInternal)
-                    .ActionAsync(nameof(ProcessInternalAsync));
+                    .OnInternal(AsyncInternalTransitionTests.T.Refresh)
+                    .ActionAsync(nameof(ParentInternalAsync));
                     
-                // External self-loop - causes exit/re-entry
-                FSM.At(AsyncInternalTransitionTests.S.Parent)
-                    .On(AsyncInternalTransitionTests.T.UpdateExternal)
-                    .GoTo(AsyncInternalTransitionTests.S.Parent);
-                    
-                FSM.At(AsyncInternalTransitionTests.S.Outside)
-                    .On(AsyncInternalTransitionTests.T.Enter)
-                    .GoTo(AsyncInternalTransitionTests.S.Parent);
-                    
-                FSM.At(AsyncInternalTransitionTests.S.Parent)
-                    .On(AsyncInternalTransitionTests.T.Leave)
-                    .GoTo(AsyncInternalTransitionTests.S.Outside);
+                FSM.At(AsyncInternalTransitionTests.S.Child)
+                    .OnInternal(AsyncInternalTransitionTests.T.Refresh)
+                    .Guard(nameof(UseChildInternalGuard))
+                    .ActionAsync(nameof(ChildInternalAsync));
             }
 
-            private readonly List<string> _log = new();
-            private async Task OnParentEntryAsync() { _log.Add("ParentEntry"); await Task.Yield(); }
-            private async Task OnParentExitAsync() { _log.Add("ParentExit"); await Task.Yield(); }
-            private async Task OnChildEntryAsync() { _log.Add("ChildEntry"); await Task.Yield(); }
-            private async Task OnChildExitAsync() { _log.Add("ChildExit"); await Task.Yield(); }
-            private async Task ProcessInternalAsync() { _log.Add("InternalAction"); await Task.Yield(); }
+            public List<string> Log { get; } = new();
+            public bool UseChildInternal { get; set; }
+            
+            private async Task ParentInternalAsync() { await Task.Yield(); Log.Add("ParentInternal"); }
+            private async Task ChildInternalAsync() { await Task.Yield(); Log.Add("ChildInternal"); }
+            private bool UseChildInternalGuard() => UseChildInternal;
         }
     }
 
