@@ -392,7 +392,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
 
     #region Common Implementation Methods
 
-    /
+    
     protected void WriteTryFireStructure(
         string stateTypeForUsage,
         string triggerTypeForUsage,
