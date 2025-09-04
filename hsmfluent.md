@@ -3,41 +3,60 @@
 ## Overview
 This document describes the implementation of Hierarchical State Machine (HSM) support in the Fluent API parser for FastFsm. The implementation enables developers to define parent-child relationships between states using both explicit method calls and implicit naming conventions.
 
-## Implementation Status ✅
-The Fluent API HSM support is fully implemented and tested. All HSM features that are available in the legacy attribute-based API are now available in the Fluent API.
+## Implementation Status ⚠️ PARTIAL (60%)
+The Fluent API HSM support is **partially implemented**. Core parsing functionality works but critical features are missing. See detailed status below.
 
-## Key Features Implemented
+### Quick Status Summary
 
-### 1. Explicit Hierarchy Definition
-States can explicitly define their hierarchical relationships using fluent methods:
+| Feature | Status | Impact |
+|---------|--------|--------|
+| ChildOf/Initial parsing | ✅ Works | Core HSM structure |
+| History (Shallow/Deep) | ✅ Works | State memory |
+| Internal transitions | ✅ Works | Event handling |
+| Auto-inference from naming | ✅ Works | Developer convenience |
+| **Priority support** | ❌ **NOT IMPLEMENTED** | **Breaks complex HSMs** |
+| **Compile-time validations** | ❌ **MISSING** | **Runtime failures** |
+| **Test coverage** | ❌ **15% only** | **Unverified behavior** |
+| Production readiness | ❌ **NO** | **12-18h work needed** |
 
-```csharp
-FSM.State(HsmState.Working)
-   .Initial(HsmState.Working_Initializing)  // Define initial child
-   .OnEntry(nameof(OnWorkingEntry))
-   .OnExit(nameof(OnWorkingExit));
+## Implementation Analysis vs Developer Prompt
 
-FSM.State(HsmState.Working_Initializing)
-   .ChildOf(HsmState.Working)  // Define parent relationship
-   .OnEntry(nameof(OnInitializingEntry));
-```
+### ✅ Features Implemented (from prompt requirements)
 
-### 2. Automatic Hierarchy Inference from Naming Convention
-When `EnableHierarchy = true` is set on the `[StateMachine]` attribute, the parser automatically infers parent-child relationships from state naming patterns:
+#### 1. Core HSM Methods in Parser
+- **ChildOf** (lines 504-510) - Sets parent-child relationship
+- **Initial** (lines 512-518) - Sets initial child state
+- **HistoryShallow** (lines 520-525) - Shallow history mode
+- **HistoryDeep** (lines 527-532) - Deep history mode
+- **OnInternal** (line 400) - Internal transitions support
 
-- States with underscore-separated names (e.g., `Working_Initializing`) are automatically recognized as children of their prefix parent (`Working`)
-- Initial children are automatically detected based on common suffixes: "Initializing", "Initial", "Start", "Begin"
-- If no initial child is explicitly set, the first child in enum order becomes the initial
+#### 2. Model Field Mapping
+- Correctly maps to `StateModel.ParentState`
+- Correctly maps to `StateModel.InitialChildState`
+- Correctly maps to `StateModel.History` (enum)
+- Fixed ordinal value assignment from actual enum values
 
-### 3. History Mode Support
-States can define history modes for remembering the last active child:
+#### 3. Bonus Features (not in prompt)
+- **Automatic hierarchy inference** from naming convention (underscore pattern)
+- Auto-detection of initial states based on naming suffixes
 
-```csharp
-FSM.State(HsmState.HistoryParent)
-   .HistoryShallow()  // Shallow history - remembers direct child only
-   // or
-   .HistoryDeep()     // Deep history - remembers full descendant path
-```
+### ❌ Missing Features (required by prompt)
+
+#### 1. Compile-time Validations (CRITICAL)
+- **NO validation** for multiple `ChildOf` calls on same state
+- **NO validation** that `Initial()` points to actual child
+- **NO validation** that parent with children has `Initial()` set
+- **NO validation** for `History*()` on leaf states
+
+#### 2. Priority Support (CRITICAL for HSM)
+- `.Priority(int)` method exists in API but **NOT parsed**
+- `TransitionModel.Priority` property exists but never set by FluentParser
+- Legacy parser supports Priority correctly
+
+#### 3. Test Coverage (INSUFFICIENT)
+- Only **3 of 20** HSM machines have Fluent equivalents
+- Missing tests for: History modes, Internal transitions, error cases
+- No validation tests for incorrect configurations
 
 ## Parser Modifications in Detail
 
@@ -238,11 +257,35 @@ Where:
 - `/FastFsm.Tests/Features/Hsm/Runtime/HsmIsInHierarchyTests_FluentV2.cs` - Tests using NuGet package with naming convention
 - `/ParserComparison.Tests/DeepHierarchyComparisonTests.cs` - Parser parity tests
 
-## Known Limitations
+## Known Limitations and Critical Issues
 
-1. **NuGet Package API**: The current `Abstractions.Fluent` NuGet package (v0.0.0.5) includes the naming convention inference but doesn't expose the `ChildOf`/`Initial` methods in the public API. These are available only in local test DSL.
+### 🔴 Critical Missing Features
 
-2. **Exception Behavior**: When OnEntry throws an exception, the state has already been changed. This is generator behavior, not parser-specific.
+1. **Priority Support Not Implemented**
+   - `.Priority(int)` method exists in Fluent API but is **completely ignored** by parser
+   - This breaks HSM transition resolution when child and parent both handle same trigger
+   - Without Priority, complex HSMs cannot work correctly
+
+2. **No Compile-Time Validations**
+   - Parser accepts invalid configurations that should be compile-time errors:
+     - Multiple `ChildOf()` calls on same state
+     - `Initial()` pointing to non-child states  
+     - Parent states without `Initial()` when they have children
+     - History modes on leaf states
+   - These will cause runtime failures or incorrect behavior
+
+3. **Insufficient Test Coverage**
+   - 85% of HSM scenarios untested in Fluent API (17 of 20 machines)
+   - No tests for critical features: History, Priority, Internal transitions
+   - No negative tests for invalid configurations
+
+### ⚠️ Other Issues
+
+4. **NuGet Package Inconsistency**: The `Abstractions.Fluent` package has methods that don't all work:
+   - `Priority()` method exists but doesn't function
+   - Local test DSL differs from published package
+
+5. **Exception Behavior**: When OnEntry throws, state has already changed (generator issue, not parser)
 
 ## Migration Guide
 
@@ -292,6 +335,35 @@ The naming convention inference adds a small one-time overhead during code gener
       .WithHistory(HistoryMode.Shallow));
    ```
 
+## Required Work to Complete Implementation
+
+### Priority 1: Add Priority Support (2-4 hours)
+```csharp
+// In FluentParser.cs, add case around line 450:
+case "Priority":
+    if (currentTransition != null && invocation.ArgumentList.Arguments.Count > 0)
+    {
+        // Parse integer argument and set transition.Priority
+    }
+    break;
+```
+
+### Priority 2: Add Compile-Time Validations (4-6 hours)
+- Implement validation passes after model building
+- Add diagnostic reporting for invalid configurations
+- Follow existing diagnostic patterns in FluentParser
+
+### Priority 3: Complete Test Coverage (6-8 hours)  
+- Port remaining 17 HSM test machines to Fluent API
+- Add negative tests for each validation rule
+- Ensure JSON parity for all scenarios
+
 ## Conclusion
 
-The Fluent API HSM implementation successfully brings full hierarchical state machine support to the fluent interface, maintaining 100% feature parity with the legacy attribute-based API while adding convenient naming convention inference. The implementation is production-ready and fully tested.
+The Fluent API HSM implementation is **partially complete (60%)** with core parsing working but missing critical production features:
+
+- ❌ **Priority support** - API exists but not parsed (breaks complex HSMs)
+- ❌ **Compile-time validations** - Invalid configs accepted (runtime failures)
+- ❌ **Test coverage** - Only 15% scenarios tested (17 of 20 machines missing)
+
+**Current Status**: **NOT production-ready**. The implementation requires approximately 12-18 hours of additional work to meet the requirements specified in the original developer prompt and achieve parity with the attribute-based API.
