@@ -68,7 +68,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine(" };");
         
         // Helper method for state name lookup with bounds checking
-        Sb.AppendLine("        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        Sb.AppendLine(AggressiveInliningString);
         Sb.AppendLine($"        private static string NameOf({stateTypeForUsage} s) {{");
         Sb.AppendLine($"            int index = (int)s;");
         Sb.AppendLine($"            return (index >= 0 && index < s_stateNames.Length) ? s_stateNames[index] : (index == -1 ? \"<root>\" : s.ToString());");
@@ -96,7 +96,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             Sb.AppendLine("        };");
             
             // Helper method for trigger name lookup
-            Sb.AppendLine("        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+            Sb.AppendLine(AggressiveInliningString);
             Sb.AppendLine($"        private static string NameOfTrigger({triggerTypeForUsage} t) => s_triggerNameLookup.TryGetValue(t, out var name) ? name : t.ToString();");
         }
         
@@ -392,137 +392,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
 
     #region Common Implementation Methods
 
-    protected virtual void WriteStartMethod()
-    {
-        // For debugging: Always generate Start() method if there are hierarchy arrays
-        // Check if we have hierarchy by looking for parent/child relationships
-        bool hasHierarchy = Model.ParentOf.Any() || Model.InitialChildOf.Any() || Model.States.Values.Any(s => s.History != Generator.Model.HistoryMode.None);
-        
-        if (!Model.HierarchyEnabled && !hasHierarchy) 
-        {
-            return;
-        }
-        
-        if (IsAsyncMachine)
-        {
-            Sb.WriteSummary("Starts the state machine asynchronously and ensures proper HSM initialization.");
-            Sb.WriteParam("cancellationToken", "A token to observe for cancellation requests");
-            using (Sb.Block("public override async ValueTask StartAsync(CancellationToken cancellationToken = default)"))
-            {
-                Sb.AppendLine("if (IsStarted) return;");
-                Sb.AppendLine();
-                Sb.AppendLine("// For HSM: resolve composite initial state to leaf before calling OnInitialEntryAsync");
-                Sb.AppendLine("DescendToInitialIfComposite();");
-                Sb.AppendLine();
-                Sb.AppendLine("await base.StartAsync(cancellationToken).ConfigureAwait(" + Model.ContinueOnCapturedContext.ToString().ToLowerInvariant() + ");");
-                
-                // Log machine started
-                if (ShouldGenerateLogging)
-                {
-                    Sb.AppendLine();
-                    WriteLogStatement("Information",
-                        $"MachineStarted(_logger, _instanceId, NameOf({CurrentStateField}));");
-                }
-            }
-        }
-        else
-        {
-            Sb.WriteSummary("Starts the state machine and ensures proper HSM initialization.");
-            using (Sb.Block("public override void Start()"))
-            {
-                Sb.AppendLine("if (IsStarted) return;");
-                Sb.AppendLine();
-                Sb.AppendLine("// For HSM: resolve composite initial state to leaf before calling OnInitialEntry");
-                Sb.AppendLine("DescendToInitialIfComposite();");
-                Sb.AppendLine();
-                Sb.AppendLine("base.Start();");
-                
-                // Log machine started
-                if (ShouldGenerateLogging)
-                {
-                    Sb.AppendLine();
-                    WriteLogStatement("Information",
-                        $"MachineStarted(_logger, _instanceId, NameOf({CurrentStateField}));");
-                }
-            }
-        }
-        Sb.AppendLine();
-    }
-
-    //protected virtual void WriteOnInitialEntryMethod(string stateTypeForUsage)
-    //{
-    //    if (!ShouldGenerateInitialOnEntry())
-    //        return;
-            
-    //    using (Sb.Block("protected override void OnInitialEntry()"))
-    //    {
-    //        if (Model.HierarchyEnabled)
-    //        {
-    //            // For HSM: Build entry chain from root to current leaf and call each OnEntry
-    //            Sb.AppendLine("// Build entry chain from root to current leaf");
-    //            Sb.AppendLine($"var entryChain = new List<{stateTypeForUsage}>();");
-    //            Sb.AppendLine($"int currentIdx = (int){CurrentStateField};");
-    //            Sb.AppendLine();
-                
-    //            // Build chain from leaf to root
-    //            Sb.AppendLine("// Walk from leaf to root");
-    //            using (Sb.Block("while (currentIdx >= 0)"))
-    //            {
-    //                Sb.AppendLine($"entryChain.Add(({stateTypeForUsage})currentIdx);");
-    //                Sb.AppendLine("if ((uint)currentIdx >= (uint)g_parent.Length) break;");
-    //                Sb.AppendLine("currentIdx = g_parent[currentIdx];");
-    //            }
-    //            Sb.AppendLine();
-                
-    //            // Reverse to get root-to-leaf order
-    //            Sb.AppendLine("// Reverse to get root-to-leaf order");
-    //            Sb.AppendLine("entryChain.Reverse();");
-    //            Sb.AppendLine();
-                
-    //            // Call OnEntry for each state in the chain that has one
-    //            Sb.AppendLine("// Call OnEntry for each state in the chain");
-    //            using (Sb.Block("foreach (var state in entryChain)"))
-    //            {
-    //                using (Sb.Block("switch (state)"))
-    //                {
-    //                    foreach (var stateEntry in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
-    //                    {
-    //                        Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
-    //                        using (Sb.Indent())
-    //                        {
-    //                            // Direct call without WriteCallbackInvocation to avoid try-catch in constructor
-    //                            Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
-    //                            WriteLogStatement("Debug",
-    //                                $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
-    //                            Sb.AppendLine("break;");
-    //                        }
-    //                    }
-    //                }
-    //            }
-    //        }
-    //        else
-    //        {
-    //            // Non-HSM: Original single-state entry
-    //            using (Sb.Block($"switch ({CurrentStateField})"))
-    //            {
-    //                foreach (var stateEntry in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
-    //                {
-    //                    Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateEntry.Name)}:");
-    //                    using (Sb.Indent())
-    //                    {
-    //                        // Direct call without WriteCallbackInvocation to avoid try-catch in constructor
-    //                        Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
-    //                        WriteLogStatement("Debug",
-    //                            $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
-    //                        Sb.AppendLine("break;");
-    //                    }
-    //                }
-    //            }
-    //        }
-    //    }
-    //    Sb.AppendLine();
-    //}
-
+    /
     protected void WriteTryFireStructure(
         string stateTypeForUsage,
         string triggerTypeForUsage,
@@ -1074,7 +944,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                                         Sb.AppendLine($"// Candidate: {tr.FromState} -> {tr.ToState} (Priority: {tr.Priority})");
                                         
                                         // Generate inline candidate evaluation
-                                        GenerateInlineCandidateEvaluation(tr, item.Index, stateTypeForUsage, triggerTypeForUsage);
+                                        GenerateInlineCandidateEvaluation(tr, item.Index, stateTypeForUsage);
                                     }
                                     Sb.AppendLine("break;");
                                 }
@@ -1339,8 +1209,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
     private void GenerateInlineCandidateEvaluation(
         TransitionModel transition,
         int transitionIndex,
-        string stateTypeForUsage,
-        string triggerTypeForUsage)
+        string stateTypeForUsage)
     {
         using (Sb.Block(""))
         {
@@ -1356,20 +1225,19 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                 Sb.AppendLine("else");
                 using (Sb.Block(""))
                 {
-                    GenerateCandidateSelection(transition, transitionIndex, stateTypeForUsage);
+                    GenerateCandidateSelection(transition, stateTypeForUsage);
                 }
             }
             else
             {
                 // No guard - always evaluate
-                GenerateCandidateSelection(transition, transitionIndex, stateTypeForUsage);
+                GenerateCandidateSelection(transition, stateTypeForUsage);
             }
         }
     }
     
     private void GenerateCandidateSelection(
         TransitionModel transition,
-        int transitionIndex,
         string stateTypeForUsage)
     {
         // Compare with current best using priority rules
@@ -1513,8 +1381,6 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
     #endregion
 
     #region Virtual Methods for Customization
-
-    protected virtual bool ShouldGenerateInitialOnEntry() => Model.GenerationConfig.HasOnEntryExit;
 
     protected virtual bool ShouldGenerateOnEntryExit() => Model.GenerationConfig.HasOnEntryExit;
 
@@ -1762,127 +1628,6 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
     #endregion
 
     #region Common Methods
-
-    protected virtual void WriteCanFireMethod(string stateTypeForUsage, string triggerTypeForUsage)
-    {
-        Sb.WriteSummary("Checks if the specified trigger can be fired in the current state (runtime evaluation including guards)");
-        Sb.WriteParam("trigger", "The trigger to check");
-        Sb.WriteReturns("True if the trigger can be fired, false otherwise");
-        WriteMethodAttribute();
-        using (Sb.Block($"protected override bool CanFireInternal({triggerTypeForUsage} trigger)"))
-        {
-            if (Model.HierarchyEnabled)
-            {
-                // HSM: Walk up the parent chain
-                Sb.AppendLine($"int currentIndex = (int){CurrentStateField};");
-                Sb.AppendLine("int check = currentIndex;");
-                using (Sb.Block("while (check >= 0)"))
-                {
-                    Sb.AppendLine($"var enumState = ({stateTypeForUsage})check;");
-                    using (Sb.Block("switch (enumState)"))
-                    {
-                        var allHandledFromStates = Model.Transitions.Select(t => t.FromState).Distinct().OrderBy(s => s);
-
-                        foreach (var stateName in allHandledFromStates)
-                        {
-                            Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}:");
-                            using (Sb.Indent())
-                            {
-                                using (Sb.Block("switch (trigger)"))
-                                {
-                                    var transitionsFromThisState = Model.Transitions
-                                        .Where(t => t.FromState == stateName);
-
-                                    foreach (var transition in transitionsFromThisState)
-                                    {
-                                        Sb.AppendLine($"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}:");
-                                        using (Sb.Indent())
-                                        {
-                                            if (!string.IsNullOrEmpty(transition.GuardMethod))
-                                            {
-                                                // Generate guard call with exception handling
-                                                GuardGenerationHelper.EmitGuardCheck(
-                                                    Sb,
-                                                    transition,
-                                                    "guardResult",
-                                                    "null",
-                                                    IsAsyncMachine,
-                                                    wrapInTryCatch: true,
-                                                    Model.ContinueOnCapturedContext,
-                                                    handleResultAfterTry: true
-                                                );
-                                                Sb.AppendLine("return guardResult;");
-                                            }
-                                            else
-                                            {
-                                                Sb.AppendLine("return true;");
-                                            }
-                                        }
-                                    }
-                                    Sb.AppendLine("default: break;");
-                                }
-                                Sb.AppendLine("break;");
-                            }
-                        }
-                        Sb.AppendLine("default: break;");
-                    }
-                    Sb.AppendLine("check = (uint)check < (uint)g_parent.Length ? g_parent[check] : -1;");
-                }
-                Sb.AppendLine("return false;");
-            }
-            else
-            {
-                // Flat FSM: Original implementation
-                using (Sb.Block($"switch ({CurrentStateField})"))
-                {
-                    var allHandledFromStates = Model.Transitions.Select(t => t.FromState).Distinct().OrderBy(s => s);
-
-                    foreach (var stateName in allHandledFromStates)
-                    {
-                        Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(stateName)}:");
-                        using (Sb.Indent())
-                        {
-                            using (Sb.Block("switch (trigger)"))
-                            {
-                                var transitionsFromThisState = Model.Transitions
-                                    .Where(t => t.FromState == stateName);
-
-                                foreach (var transition in transitionsFromThisState)
-                                {
-                                    Sb.AppendLine($"case {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}:");
-                                    using (Sb.Indent())
-                                    {
-                                        if (!string.IsNullOrEmpty(transition.GuardMethod))
-                                        {
-                                            // Generate guard call with exception handling
-                                            GuardGenerationHelper.EmitGuardCheck(
-                                                Sb,
-                                                transition,
-                                                "guardResult",
-                                                "null",
-                                                IsAsyncMachine,
-                                                wrapInTryCatch: true,
-                                                Model.ContinueOnCapturedContext,
-                                                handleResultAfterTry: true
-                                            );
-                                            Sb.AppendLine("return guardResult;");
-                                        }
-                                        else
-                                        {
-                                            Sb.AppendLine("return true;");
-                                        }
-                                    }
-                                }
-                                Sb.AppendLine("default: return false;");
-                            }
-                        }
-                    }
-                    Sb.AppendLine("default: return false;");
-                }
-            }
-        }
-        Sb.AppendLine();
-    }
 
     protected virtual void WriteGetPermittedTriggersMethod(string stateTypeForUsage, string triggerTypeForUsage)
     {
@@ -2789,80 +2534,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             ? new HierarchicalTransitionPlanner() 
             : new FlatTransitionPlanner();
     }
-    
-    /// <summary>
-    /// Creates a build context for planning transitions
-    /// </summary>
-    protected TransitionBuildContext CreateBuildContext(TransitionModel transition)
-    {
-        var allStates = Model.States.Values
-            .OrderBy(s => s.OrdinalValue)
-            .Select(s => s.Name)
-            .ToList();
-        var currentStateIndex = allStates.IndexOf(transition.FromState);
-        
-        // Build hierarchy arrays if needed
-        int[] parentIndices = new int[allStates.Count];
-        int[] depths = new int[allStates.Count];
-        int[] initialChildIndices = new int[allStates.Count];
-        Generator.Model.HistoryMode[] historyModes = new Generator.Model.HistoryMode[allStates.Count];
-        
-        if (Model.HierarchyEnabled)
-        {
-            for (int i = 0; i < allStates.Count; i++)
-            {
-                var state = allStates[i];
-                
-                // Parent index
-                if (Model.ParentOf.TryGetValue(state, out var parent) && parent != null)
-                {
-                    parentIndices[i] = allStates.IndexOf(parent);
-                }
-                else
-                {
-                    parentIndices[i] = -1;
-                }
-                
-                // Depth
-                if (Model.Depth.TryGetValue(state, out var depth))
-                {
-                    depths[i] = depth;
-                }
-                
-                // Initial child
-                if (Model.InitialChildOf.TryGetValue(state, out var initial) && initial != null)
-                {
-                    initialChildIndices[i] = allStates.IndexOf(initial);
-                }
-                else
-                {
-                    initialChildIndices[i] = -1;
-                }
-                
-                // History mode
-                if (Model.HistoryOf.TryGetValue(state, out var history))
-                {
-                    historyModes[i] = history;
-                }
-            }
-        }
-        
-        return new TransitionBuildContext(
-            Model,
-            transition,
-            currentStateIndex,
-            IsAsyncMachine,
-            Model.GenerationConfig.HasPayload,
-            allStates,
-            parentIndices,
-            depths,
-            initialChildIndices,
-            historyModes);
-    }
-    
-   
 
-    
     #endregion
 
     #region Abstractions to be implemented by concrete generators
@@ -2870,7 +2542,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
     #endregion
     
     #region Helper Methods
-    private static void EmitXmlDocSummary(IndentedStringBuilder.IndentedStringBuilder sb, string text)
+    private static void EmitXmlDocSummary(IndentedStringBuilder.IndentedStringBuilder sb, string? text)
     {
         var normalized = global::System.Text.RegularExpressions.Regex.Replace(text ?? string.Empty, @"\s+", " ").Trim();
         sb.WriteSummary(normalized);
@@ -2915,7 +2587,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         // Collect all unique async action methods
         var asyncActionNames = Model.Transitions
             .Where(t => !string.IsNullOrEmpty(t.ActionMethod) && t.ActionIsAsync)
-            .Select(t => GetActionIdName(t))
+            .Select(GetActionIdName)
             .Distinct()
             .OrderBy(n => n)
             .ToList();
