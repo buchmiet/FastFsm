@@ -270,7 +270,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         {
             var stateNameRaw = stateGroup.Key;
             var stateFieldSuffix = MakeSafeMemberSuffix(stateNameRaw);
-            var stateEnumName = TypeHelper.EscapeIdentifier(stateNameRaw);
+            TypeHelper.EscapeIdentifier(stateNameRaw);
             var unguarded = stateGroup.Where(t => string.IsNullOrEmpty(t.GuardMethod))
                                       .Select(t => $"{triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(t.Trigger)}")
                                       .Distinct()
@@ -980,7 +980,6 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         // Check that it's really a "chain" (From -> To) without gaps
         // Nie wymuszamy cyklu, ale dopuszczamy go (A->B, B->C, C->A)
         var fromSet = new HashSet<string>(transitions.Select(t => t.FromState));
-        var toSet   = new HashSet<string>(transitions.Select(t => t.ToState));
         if (fromSet.Count < 2) return false; // co najmniej 2 stany, inaczej zysk marginalny
 
         return true;

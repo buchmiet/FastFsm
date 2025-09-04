@@ -122,8 +122,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             .OrderBy(s => s.OrdinalValue)
             .Select(s => s.Name)
             .ToList();
-        var stateCount = allStates.Count;
-        
+
         // Parent array (-1 for root states)
         Sb.Append("        private static readonly int[] g_parent = new int[] { ");
         var parentValues = allStates.Select(state =>
