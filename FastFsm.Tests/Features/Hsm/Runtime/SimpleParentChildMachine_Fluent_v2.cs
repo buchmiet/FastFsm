@@ -13,6 +13,7 @@ namespace FastFsm.Tests.Features.Hsm.Runtime
             // Define all states first
             .State(HsmState_Fluent_v2.Idle)
             .State(HsmState_Fluent_v2.Working)
+                // Note: Initial/ChildOf not yet in Abstractions.Fluent package
                 .OnEntry(nameof(OnWorkingEntry))
                 .OnExit(nameof(OnWorkingExit))
             .State(HsmState_Fluent_v2.Working_Initializing)
