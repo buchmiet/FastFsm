@@ -112,6 +112,12 @@ namespace Generator.Parsers
             
             // Build HSM hierarchy if enabled (must be done AFTER parsing all states)
             BuildHSMHierarchy(model, report);
+            
+            // Validate HSM configuration if hierarchy is enabled
+            if (model.HierarchyEnabled)
+            {
+                ValidateHsmModel(model, report);
+            }
 
             // Determine async mode: if any guard/action/entry/exit is async, mark machine as async.
             // This mirrors legacy parser behavior where async callbacks flip machine into async mode
@@ -530,6 +536,17 @@ namespace Generator.Parsers
                             ParseHistory(currentState, model, report, isShallow: false);
                         }
                         break;
+                    
+                    case "Priority":
+                        if (currentTransition != null)
+                        {
+                            ParsePriority(invocation, currentTransition, model, report);
+                        }
+                        else
+                        {
+                            ReportPriorityWithoutTransition(invocation);
+                        }
+                        break;
                 }
             }
             
@@ -556,10 +573,8 @@ namespace Generator.Parsers
             if (invocation.ArgumentList.Arguments.Count > 0)
             {
                 var arg = invocation.ArgumentList.Arguments[0];
-                if (arg.Expression is MemberAccessExpressionSyntax memberAccess)
+                if (TryExtractName(arg.Expression, out var triggerName, report))
                 {
-                    var triggerName = memberAccess.Name.Identifier.Text;
-
                     var transition = new TransitionModel
                     {
                         FromState = fromState,
@@ -702,10 +717,8 @@ namespace Generator.Parsers
             if (invocation.ArgumentList.Arguments.Count > 0)
             {
                 var arg = invocation.ArgumentList.Arguments[0];
-                if (arg.Expression is MemberAccessExpressionSyntax memberAccess)
+                if (TryExtractName(arg.Expression, out var stateName, report))
                 {
-                    var stateName = memberAccess.Name.Identifier.Text;
-                    
                     if (!model.States.ContainsKey(stateName))
                     {
                         model.States[stateName] = new StateModel
@@ -727,10 +740,8 @@ namespace Generator.Parsers
             if (invocation.ArgumentList.Arguments.Count > 0)
             {
                 var arg = invocation.ArgumentList.Arguments[0];
-                if (arg.Expression is MemberAccessExpressionSyntax memberAccess)
+                if (TryExtractName(arg.Expression, out var triggerName, report))
                 {
-                    var triggerName = memberAccess.Name.Identifier.Text;
-                    
                     // Create partial transition (will be completed by GoTo or Internal)
                     var transition = new TransitionModel
                     {
@@ -753,9 +764,8 @@ namespace Generator.Parsers
             if (invocation.ArgumentList.Arguments.Count > 0)
             {
                 var arg = invocation.ArgumentList.Arguments[0];
-                if (arg.Expression is MemberAccessExpressionSyntax memberAccess)
+                if (TryExtractName(arg.Expression, out var toStateName, report))
                 {
-                    var toStateName = memberAccess.Name.Identifier.Text;
                     transition.ToState = toStateName;
                     
                     // Ensure target state exists
@@ -1147,9 +1157,8 @@ namespace Generator.Parsers
                 var arg = invocation.ArgumentList.Arguments[0];
                 report?.Invoke($"[FluentParser] ChildOf argument type: {arg.Expression?.GetType().Name}");
                 
-                if (arg.Expression is MemberAccessExpressionSyntax memberAccess)
+                if (TryExtractName(arg.Expression, out var parentStateName, report))
                 {
-                    var parentStateName = memberAccess.Name.Identifier.Text;
                     state.ParentState = parentStateName;
                     
                     report?.Invoke($"[FluentParser] Successfully parsed ChildOf: {currentState} is child of {parentStateName}");
@@ -1191,9 +1200,8 @@ namespace Generator.Parsers
                 var arg = invocation.ArgumentList.Arguments[0];
                 report?.Invoke($"[FluentParser] Initial argument type: {arg.Expression?.GetType().Name}");
                 
-                if (arg.Expression is MemberAccessExpressionSyntax memberAccess)
+                if (TryExtractName(arg.Expression, out var initialStateName, report))
                 {
-                    var initialStateName = memberAccess.Name.Identifier.Text;
                     state.InitialChildState = initialStateName;
                     
                     report?.Invoke($"[FluentParser] Successfully parsed Initial: {initialStateName} is initial child of {currentState}");
@@ -1238,6 +1246,37 @@ namespace Generator.Parsers
             // Also set the enum property for compatibility
             state.History = isShallow ? Generator.Model.HistoryMode.Shallow : Generator.Model.HistoryMode.Deep;
             report?.Invoke($"[FluentParser] Set {currentState} history mode to {state.HistoryModeString}");
+        }
+        
+        private void ParsePriority(InvocationExpressionSyntax invocation, TransitionModel transition, StateMachineModel model, Action<string>? report)
+        {
+            if (invocation.ArgumentList.Arguments.Count == 1 &&
+                invocation.ArgumentList.Arguments[0].Expression is LiteralExpressionSyntax literal &&
+                literal.Token.Value is int priority)
+            {
+                transition.Priority = priority;
+                report?.Invoke($"[FluentParser] Set transition priority: {priority} for {transition.FromState} -> {transition.ToState ?? "(pending)"}");
+                return;
+            }
+            
+            // Report diagnostic for invalid priority argument
+            // Using FSM202 as a placeholder - would need proper RuleIdentifier
+            var descriptor = DiagnosticFactory.Get("FSM202");
+            _context.ReportDiagnostic(Diagnostic.Create(
+                descriptor,
+                invocation.GetLocation(),
+                "Priority must be an integer literal"));
+        }
+        
+        private void ReportPriorityWithoutTransition(InvocationExpressionSyntax invocation)
+        {
+            // Report diagnostic for Priority() called without active transition
+            // Using FSM203 as a placeholder - would need proper RuleIdentifier  
+            var descriptor = DiagnosticFactory.Get("FSM203");
+            _context.ReportDiagnostic(Diagnostic.Create(
+                descriptor,
+                invocation.GetLocation(),
+                "Priority() can only be called on a transition"));
         }
 
         private string? GetNamespace()
@@ -1440,6 +1479,172 @@ namespace Generator.Parsers
         /// <summary>
         /// Infers parent-child relationships from state naming convention (Parent_Child pattern)
         /// </summary>
+        private void ValidateHsmModel(StateMachineModel model, Action<string>? report)
+        {
+            report?.Invoke("[FluentParser] Starting HSM validation");
+            
+            // 1. Check for duplicate parent declarations (state has multiple parents)
+            foreach (var state in model.States.Values)
+            {
+                if (!string.IsNullOrEmpty(state.ParentState))
+                {
+                    // Check if this child is also marked as a parent of something else that creates a cycle
+                    var visited = new HashSet<string>();
+                    var current = state.ParentState;
+                    visited.Add(state.Name);
+                    
+                    while (current != null)
+                    {
+                        if (visited.Contains(current))
+                        {
+                            var descriptor = DiagnosticFactory.Get("FSM206"); // CircularParent
+                            _context.ReportDiagnostic(Diagnostic.Create(
+                                descriptor,
+                                Location.None,
+                                state.Name, current));
+                            break;
+                        }
+                        visited.Add(current);
+                        current = model.States.ContainsKey(current) ? model.States[current].ParentState : null;
+                    }
+                }
+            }
+            
+            // 2. Check Initial() must be child of current state
+            foreach (var state in model.States.Values)
+            {
+                if (!string.IsNullOrEmpty(state.InitialChildState))
+                {
+                    // Verify that InitialChildState is actually a child of this state
+                    if (model.States.TryGetValue(state.InitialChildState, out var initialChild))
+                    {
+                        if (initialChild.ParentState != state.Name)
+                        {
+                            var descriptor = DiagnosticFactory.Get("FSM201"); // InitialNotChild
+                            _context.ReportDiagnostic(Diagnostic.Create(
+                                descriptor,
+                                Location.None,
+                                state.InitialChildState, state.Name));
+                        }
+                    }
+                }
+            }
+            
+            // 3. Check composite states must have Initial
+            foreach (var state in model.States.Values)
+            {
+                if (state.ChildStates != null && state.ChildStates.Any())
+                {
+                    // This is a composite state
+                    if (string.IsNullOrEmpty(state.InitialChildState))
+                    {
+                        // Check if any child is marked as initial
+                        bool hasInitialChild = state.ChildStates.Any(childName => 
+                            model.States.ContainsKey(childName) && model.States[childName].IsInitial);
+                        
+                        if (!hasInitialChild)
+                        {
+                            var descriptor = DiagnosticFactory.Get("FSM204"); // MissingInitialForComposite
+                            _context.ReportDiagnostic(Diagnostic.Create(
+                                descriptor,
+                                Location.None,
+                                state.Name));
+                        }
+                    }
+                }
+            }
+            
+            // 4. Check history on leaf states
+            foreach (var state in model.States.Values)
+            {
+                if (state.History != Generator.Model.HistoryMode.None)
+                {
+                    // Check if this is a leaf state (no children)
+                    if (state.ChildStates == null || !state.ChildStates.Any())
+                    {
+                        var descriptor = DiagnosticFactory.Get("FSM205"); // HistoryOnLeaf
+                        _context.ReportDiagnostic(Diagnostic.Create(
+                            descriptor,
+                            Location.None,
+                            state.Name));
+                    }
+                }
+            }
+            
+            // 5. Check for multiple Initial() declarations for the same parent
+            var initialsByParent = new Dictionary<string, List<string>>();
+            foreach (var state in model.States.Values)
+            {
+                if (state.IsInitial && !string.IsNullOrEmpty(state.ParentState))
+                {
+                    if (!initialsByParent.ContainsKey(state.ParentState))
+                    {
+                        initialsByParent[state.ParentState] = new List<string>();
+                    }
+                    initialsByParent[state.ParentState].Add(state.Name);
+                }
+            }
+            
+            foreach (var kvp in initialsByParent)
+            {
+                if (kvp.Value.Count > 1)
+                {
+                    // Multiple initial states for the same parent
+                    var descriptor = DiagnosticFactory.Get("FSM207"); // MultipleInitialsPerParent
+                    var parentState = model.States.ContainsKey(kvp.Key) ? model.States[kvp.Key] : null;
+                    _context.ReportDiagnostic(Diagnostic.Create(
+                        descriptor,
+                        Location.None,
+                        kvp.Key, string.Join(", ", kvp.Value)));
+                }
+            }
+            
+            report?.Invoke("[FluentParser] HSM validation complete");
+        }
+        
+        /// <summary>
+        /// Extracts name from State.Name or Trigger.Name patterns.
+        /// Handles both MemberAccessExpressionSyntax (State.Name) and simple identifiers.
+        /// </summary>
+        private bool TryExtractName(ExpressionSyntax? expression, out string name, Action<string>? report = null)
+        {
+            name = string.Empty;
+            
+            if (expression == null)
+            {
+                report?.Invoke("[FluentParser] TryExtractName: expression is null");
+                return false;
+            }
+            
+            // Handle State.Name or Trigger.Name pattern
+            if (expression is MemberAccessExpressionSyntax memberAccess)
+            {
+                name = memberAccess.Name.Identifier.Text;
+                report?.Invoke($"[FluentParser] TryExtractName: extracted '{name}' from MemberAccess");
+                return true;
+            }
+            
+            // Handle simple identifier
+            if (expression is IdentifierNameSyntax identifier)
+            {
+                name = identifier.Identifier.Text;
+                report?.Invoke($"[FluentParser] TryExtractName: extracted '{name}' from Identifier");
+                return true;
+            }
+            
+            // Handle nameof(Method) pattern
+            if (expression is InvocationExpressionSyntax invocation &&
+                invocation.Expression is IdentifierNameSyntax id &&
+                id.Identifier.Text == "nameof" &&
+                invocation.ArgumentList.Arguments.Count > 0)
+            {
+                return TryExtractName(invocation.ArgumentList.Arguments[0].Expression, out name, report);
+            }
+            
+            report?.Invoke($"[FluentParser] TryExtractName: unsupported expression type {expression.GetType().Name}");
+            return false;
+        }
+        
         private void InferHierarchyFromNamingConvention(StateMachineModel model, Action<string>? report)
         {
             var stateNames = model.States.Keys.OrderBy(s => s.Length).ToList();
