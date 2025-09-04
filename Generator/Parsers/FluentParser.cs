@@ -254,6 +254,8 @@ namespace Generator.Parsers
 
         private bool ParseConfigureMethod(MethodDeclarationSyntax configureMethod, StateMachineModel model, Action<string>? report)
         {
+            report?.Invoke($"[FluentParser] ParseConfigureMethod called for method: {configureMethod.Identifier.Text}");
+            
             // Find the expression body or block body
             ExpressionSyntax? expression = null;
             
@@ -345,6 +347,10 @@ namespace Generator.Parsers
             var invocations = new List<InvocationExpressionSyntax>();
             CollectInvocations(expression, invocations);
             report?.Invoke($"[FluentParser] Found {invocations.Count} invocations in chain");
+            
+            // Debug: log all method names in chain
+            var methodNames = invocations.Select(inv => GetMethodName(inv) ?? "unknown").ToList();
+            report?.Invoke($"[FluentParser] Chain methods: {string.Join(" -> ", methodNames)}");
 
             foreach (var invocation in invocations)
             {
@@ -524,9 +530,14 @@ namespace Generator.Parsers
                         break;
                     
                     case "HistoryShallow":
+                        report?.Invoke($"[FluentParser] Processing HistoryShallow for state: {currentState ?? "null"}");
                         if (currentState != null)
                         {
                             ParseHistory(currentState, model, report, isShallow: true);
+                        }
+                        else
+                        {
+                            report?.Invoke("[FluentParser] WARNING: HistoryShallow called without current state context");
                         }
                         break;
                     

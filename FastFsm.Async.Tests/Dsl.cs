@@ -1,6 +1,6 @@
 namespace Dsl
 {
-    // Stubbed DSL for Fluent API testing
+    // Stubbed DSL for Fluent API testing (Async version)
     public static class FSM
     {
         public static FsmDsl State(object _) => new FsmDsl();
@@ -17,25 +17,23 @@ namespace Dsl
         
         // States and transitions
         public FsmDsl State(object _) => this;
-        public FsmDsl At(object _) => this;  // Alias for State
         public FsmDsl On(object _) => this;
         public FsmDsl OnInternal(object _) => this;
         public FsmDsl GoTo(object _) => this;
         public FsmDsl Internal() => this;
         
-        // Entry/Exit callbacks
+        // Entry/Exit callbacks - supporting async variants
         public FsmDsl OnEntry(string _) => this;
         public FsmDsl OnEntryAsync(string _) => this;
         public FsmDsl OnExit(string _) => this;
         public FsmDsl OnExitAsync(string _) => this;
         
-        // Guards and Actions
+        // Guards and Actions - supporting async variants
         public FsmDsl Guard(string _) => this;
         public FsmDsl GuardAsync(string _) => this;
         public FsmDsl Action(string _) => this;
         public FsmDsl ActionAsync(string _) => this;
         public FsmDsl Payload(System.Type _) => this;
-        public FsmDsl Payload<T>() => this; // Generic version
         public FsmDsl Priority(int _) => this;
         
         // Overloads for optional parameters

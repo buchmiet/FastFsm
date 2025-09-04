@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Abstractions.Attributes;
 using Xunit;
+using Dsl;
 
 namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
 {
@@ -359,4 +360,318 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
             private async Task OnParentEntryAsync() => await Task.CompletedTask;
         }
     }
+
+    #region Fluent API Versions
+
+    // 1) InitialChildMachineFluentFsm
+    public partial class AsyncInitialChildTestsFluent
+    {
+        [StateMachine(typeof(AsyncInitialChildTests.S), typeof(AsyncInitialChildTests.T), EnableHierarchy = true)]
+        public partial class InitialChildMachineFluentFsm
+        {
+            private void SetupStates()
+            {
+                FSM.State(AsyncInitialChildTests.S.Parent)
+                    .OnEntryAsync(nameof(OnParentEntryAsync))
+                    .Initial(AsyncInitialChildTests.S.Parent_A);
+                    
+                FSM.State(AsyncInitialChildTests.S.Parent_A)
+                    .ChildOf(AsyncInitialChildTests.S.Parent);
+                    
+                FSM.State(AsyncInitialChildTests.S.Parent_B)
+                    .ChildOf(AsyncInitialChildTests.S.Parent);
+                    
+                FSM.State(AsyncInitialChildTests.S.Outside);
+                
+                FSM.At(AsyncInitialChildTests.S.Outside)
+                    .On(AsyncInitialChildTests.T.EnterParent)
+                    .GoTo(AsyncInitialChildTests.S.Parent);
+                    
+                FSM.At(AsyncInitialChildTests.S.Parent_A)
+                    .On(AsyncInitialChildTests.T.Switch)
+                    .GoTo(AsyncInitialChildTests.S.Parent_B);
+                    
+                FSM.At(AsyncInitialChildTests.S.Parent)
+                    .On(AsyncInitialChildTests.T.LeaveParent)
+                    .GoTo(AsyncInitialChildTests.S.Outside);
+            }
+
+            private async Task OnParentEntryAsync() => await Task.Yield();
+        }
+    }
+
+    // 2) ShallowHistoryMachineFluentFsm
+    public partial class AsyncShallowHistoryTestsFluent
+    {
+        [StateMachine(typeof(AsyncShallowHistoryTests.S), typeof(AsyncShallowHistoryTests.T), EnableHierarchy = true)]
+        public partial class ShallowHistoryMachineFluentFsm
+        {
+            private void SetupStates()
+            {
+                FSM.State(AsyncShallowHistoryTests.S.Menu)
+                    .HistoryShallow()
+                    .OnEntryAsync(nameof(MenuEntryAsync))
+                    .Initial(AsyncShallowHistoryTests.S.Menu_Main);
+                    
+                FSM.State(AsyncShallowHistoryTests.S.Menu_Main)
+                    .ChildOf(AsyncShallowHistoryTests.S.Menu);
+                    
+                FSM.State(AsyncShallowHistoryTests.S.Menu_Settings)
+                    .ChildOf(AsyncShallowHistoryTests.S.Menu);
+                    
+                FSM.State(AsyncShallowHistoryTests.S.Outside);
+                
+                FSM.At(AsyncShallowHistoryTests.S.Outside)
+                    .On(AsyncShallowHistoryTests.T.Enter)
+                    .GoTo(AsyncShallowHistoryTests.S.Menu);
+                    
+                FSM.At(AsyncShallowHistoryTests.S.Menu_Main)
+                    .On(AsyncShallowHistoryTests.T.Next)
+                    .GoTo(AsyncShallowHistoryTests.S.Menu_Settings);
+                    
+                FSM.At(AsyncShallowHistoryTests.S.Menu)
+                    .On(AsyncShallowHistoryTests.T.Exit)
+                    .GoTo(AsyncShallowHistoryTests.S.Outside);
+            }
+
+            private async ValueTask MenuEntryAsync() => await Task.Yield();
+        }
+    }
+
+    // 3) DeepHistoryMachineFluentFsm
+    public partial class AsyncDeepHistoryTestsFluent
+    {
+        [StateMachine(typeof(AsyncDeepHistoryTests.S), typeof(AsyncDeepHistoryTests.T), EnableHierarchy = true)]
+        public partial class DeepHistoryMachineFluentFsm
+        {
+            private void SetupStates()
+            {
+                FSM.State(AsyncDeepHistoryTests.S.Work)
+                    .HistoryDeep()
+                    .OnEntryAsync(nameof(OnWorkEntryAsync))
+                    .Initial(AsyncDeepHistoryTests.S.Work_S1);
+                    
+                FSM.State(AsyncDeepHistoryTests.S.Work_S1)
+                    .ChildOf(AsyncDeepHistoryTests.S.Work)
+                    .Initial(AsyncDeepHistoryTests.S.Work_S1_Loading);
+                    
+                FSM.State(AsyncDeepHistoryTests.S.Work_S1_Loading)
+                    .ChildOf(AsyncDeepHistoryTests.S.Work_S1);
+                    
+                FSM.State(AsyncDeepHistoryTests.S.Work_S1_Calc)
+                    .ChildOf(AsyncDeepHistoryTests.S.Work_S1);
+                    
+                FSM.State(AsyncDeepHistoryTests.S.Out);
+                
+                FSM.At(AsyncDeepHistoryTests.S.Out)
+                    .On(AsyncDeepHistoryTests.T.EnterWork)
+                    .GoTo(AsyncDeepHistoryTests.S.Work);
+                    
+                FSM.At(AsyncDeepHistoryTests.S.Work_S1_Loading)
+                    .On(AsyncDeepHistoryTests.T.Next)
+                    .GoTo(AsyncDeepHistoryTests.S.Work_S1_Calc);
+                    
+                FSM.At(AsyncDeepHistoryTests.S.Work)
+                    .On(AsyncDeepHistoryTests.T.Abort)
+                    .GoTo(AsyncDeepHistoryTests.S.Out);
+            }
+
+            private async Task OnWorkEntryAsync() => await Task.Yield();
+        }
+    }
+
+    // 4) InternalMachineFluentFsm
+    public partial class AsyncInternalTransitionTestsFluent
+    {
+        [StateMachine(typeof(AsyncInternalTransitionTests.S), typeof(AsyncInternalTransitionTests.T), EnableHierarchy = true)]
+        public partial class InternalMachineFluentFsm
+        {
+            private void SetupStates()
+            {
+                FSM.State(AsyncInternalTransitionTests.S.Parent)
+                    .OnEntryAsync(nameof(OnParentEntryAsync))
+                    .OnExitAsync(nameof(OnParentExitAsync))
+                    .Initial(AsyncInternalTransitionTests.S.Parent_Child);
+                    
+                FSM.State(AsyncInternalTransitionTests.S.Parent_Child)
+                    .ChildOf(AsyncInternalTransitionTests.S.Parent)
+                    .OnEntryAsync(nameof(OnChildEntryAsync))
+                    .OnExitAsync(nameof(OnChildExitAsync));
+                    
+                FSM.State(AsyncInternalTransitionTests.S.Outside);
+                
+                // Internal transition - no state change, no exit/entry
+                FSM.At(AsyncInternalTransitionTests.S.Parent)
+                    .OnInternal(AsyncInternalTransitionTests.T.UpdateInternal)
+                    .ActionAsync(nameof(ProcessInternalAsync));
+                    
+                // External self-loop - causes exit/re-entry
+                FSM.At(AsyncInternalTransitionTests.S.Parent)
+                    .On(AsyncInternalTransitionTests.T.UpdateExternal)
+                    .GoTo(AsyncInternalTransitionTests.S.Parent);
+                    
+                FSM.At(AsyncInternalTransitionTests.S.Outside)
+                    .On(AsyncInternalTransitionTests.T.Enter)
+                    .GoTo(AsyncInternalTransitionTests.S.Parent);
+                    
+                FSM.At(AsyncInternalTransitionTests.S.Parent)
+                    .On(AsyncInternalTransitionTests.T.Leave)
+                    .GoTo(AsyncInternalTransitionTests.S.Outside);
+            }
+
+            private readonly List<string> _log = new();
+            private async Task OnParentEntryAsync() { _log.Add("ParentEntry"); await Task.Yield(); }
+            private async Task OnParentExitAsync() { _log.Add("ParentExit"); await Task.Yield(); }
+            private async Task OnChildEntryAsync() { _log.Add("ChildEntry"); await Task.Yield(); }
+            private async Task OnChildExitAsync() { _log.Add("ChildExit"); await Task.Yield(); }
+            private async Task ProcessInternalAsync() { _log.Add("InternalAction"); await Task.Yield(); }
+        }
+    }
+
+    // 5-7) Resolution Order Tests
+    public partial class AsyncResolutionOrderTestsFluent
+    {
+        // 5) PriorityMachineFluentFsm
+        [StateMachine(typeof(AsyncResolutionOrderTests.S), typeof(AsyncResolutionOrderTests.T), EnableHierarchy = true)]
+        public partial class PriorityMachineFluentFsm
+        {
+            public List<string> Log { get; } = new();
+            
+            private void SetupStates()
+            {
+                FSM.State(AsyncResolutionOrderTests.S.Parent)
+                    .OnEntryAsync(nameof(OnParentEntryAsync))
+                    .Initial(AsyncResolutionOrderTests.S.Child);
+                    
+                FSM.State(AsyncResolutionOrderTests.S.Child)
+                    .ChildOf(AsyncResolutionOrderTests.S.Parent);
+                    
+                FSM.State(AsyncResolutionOrderTests.S.ParentDone);
+                
+                // Parent has higher priority
+                FSM.At(AsyncResolutionOrderTests.S.Parent)
+                    .On(AsyncResolutionOrderTests.T.Go)
+                    .GoTo(AsyncResolutionOrderTests.S.ParentDone)
+                    .ActionAsync(nameof(P))
+                    .Priority(200);
+                    
+                // Child has lower priority
+                FSM.At(AsyncResolutionOrderTests.S.Child)
+                    .On(AsyncResolutionOrderTests.T.Go)
+                    .GoTo(AsyncResolutionOrderTests.S.Child)
+                    .ActionAsync(nameof(C))
+                    .Priority(100);
+            }
+
+            private async Task P() { await Task.Yield(); Log.Add("Parent"); }
+            private async Task C() { await Task.Yield(); Log.Add("Child"); }
+            private async Task OnParentEntryAsync() => await Task.CompletedTask;
+        }
+
+        // 6) ChildOverridesMachineFluentFsm
+        [StateMachine(typeof(AsyncResolutionOrderTests.S), typeof(AsyncResolutionOrderTests.T), EnableHierarchy = true)]
+        public partial class ChildOverridesMachineFluentFsm
+        {
+            public List<string> Log { get; } = new();
+            
+            private void SetupStates()
+            {
+                FSM.State(AsyncResolutionOrderTests.S.Parent)
+                    .OnEntryAsync(nameof(OnParentEntryAsync))
+                    .Initial(AsyncResolutionOrderTests.S.Child);
+                    
+                FSM.State(AsyncResolutionOrderTests.S.Child)
+                    .ChildOf(AsyncResolutionOrderTests.S.Parent);
+                
+                // Parent handles trigger
+                FSM.At(AsyncResolutionOrderTests.S.Parent)
+                    .On(AsyncResolutionOrderTests.T.Go)
+                    .GoTo(AsyncResolutionOrderTests.S.Parent)
+                    .ActionAsync(nameof(P))
+                    .Priority(100);
+                    
+                // Child also handles it - should override
+                FSM.At(AsyncResolutionOrderTests.S.Child)
+                    .On(AsyncResolutionOrderTests.T.Go)
+                    .GoTo(AsyncResolutionOrderTests.S.Child)
+                    .ActionAsync(nameof(C))
+                    .Priority(100);
+            }
+
+            private async Task P() { await Task.Yield(); Log.Add("Parent"); }
+            private async Task C() { await Task.Yield(); Log.Add("Child"); }
+            private async Task OnParentEntryAsync() => await Task.CompletedTask;
+        }
+
+        // 7) SourceOrderTieMachineFluentFsm
+        [StateMachine(typeof(AsyncResolutionOrderTests.S), typeof(AsyncResolutionOrderTests.T))]
+        public partial class SourceOrderTieMachineFluentFsm
+        {
+            public List<string> Log { get; } = new();
+            
+            private void SetupStates()
+            {
+                FSM.State(AsyncResolutionOrderTests.S.A)
+                    .OnEntryAsync(nameof(OnAEntryAsync));
+                FSM.State(AsyncResolutionOrderTests.S.B);
+                FSM.State(AsyncResolutionOrderTests.S.C);
+                
+                // Two transitions with same priority - first wins
+                FSM.At(AsyncResolutionOrderTests.S.A)
+                    .On(AsyncResolutionOrderTests.T.Go)
+                    .GoTo(AsyncResolutionOrderTests.S.B)
+                    .ActionAsync(nameof(First))
+                    .Priority(0);
+                    
+                FSM.At(AsyncResolutionOrderTests.S.A)
+                    .On(AsyncResolutionOrderTests.T.Go)
+                    .GoTo(AsyncResolutionOrderTests.S.C)
+                    .ActionAsync(nameof(Second))
+                    .Priority(0);
+            }
+
+            private async Task OnAEntryAsync() => await Task.CompletedTask;
+            private async Task First() { Log.Add("First"); await Task.Yield(); }
+            private async Task Second() { Log.Add("Second"); await Task.Yield(); }
+        }
+    }
+
+    // 8) InheritanceMachineFluentFsm
+    public partial class AsyncInheritanceAndIntrospectionTestsFluent
+    {
+        [StateMachine(typeof(AsyncInheritanceAndIntrospectionTests.S), typeof(AsyncInheritanceAndIntrospectionTests.T), EnableHierarchy = true)]
+        public partial class InheritanceMachineFluentFsm
+        {
+            private void SetupStates()
+            {
+                FSM.State(AsyncInheritanceAndIntrospectionTests.S.Parent)
+                    .OnEntryAsync(nameof(OnParentEntryAsync))
+                    .Initial(AsyncInheritanceAndIntrospectionTests.S.Parent_A);
+                    
+                FSM.State(AsyncInheritanceAndIntrospectionTests.S.Parent_A)
+                    .ChildOf(AsyncInheritanceAndIntrospectionTests.S.Parent);
+                    
+                FSM.State(AsyncInheritanceAndIntrospectionTests.S.Parent_B)
+                    .ChildOf(AsyncInheritanceAndIntrospectionTests.S.Parent);
+                    
+                FSM.State(AsyncInheritanceAndIntrospectionTests.S.Outside);
+                
+                FSM.At(AsyncInheritanceAndIntrospectionTests.S.Parent)
+                    .On(AsyncInheritanceAndIntrospectionTests.T.Leave)
+                    .GoTo(AsyncInheritanceAndIntrospectionTests.S.Outside);
+                    
+                FSM.At(AsyncInheritanceAndIntrospectionTests.S.Parent_A)
+                    .On(AsyncInheritanceAndIntrospectionTests.T.Next)
+                    .GoTo(AsyncInheritanceAndIntrospectionTests.S.Parent_B);
+                    
+                FSM.At(AsyncInheritanceAndIntrospectionTests.S.Outside)
+                    .On(AsyncInheritanceAndIntrospectionTests.T.Enter)
+                    .GoTo(AsyncInheritanceAndIntrospectionTests.S.Parent);
+            }
+
+            private async Task OnParentEntryAsync() => await Task.CompletedTask;
+        }
+    }
+
+    #endregion
 }
