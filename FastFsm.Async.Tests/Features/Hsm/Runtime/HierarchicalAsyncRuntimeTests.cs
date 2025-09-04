@@ -537,16 +537,16 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
                 // Parent has higher priority
                 FSM.At(AsyncResolutionOrderTests.S.Parent)
                     .On(AsyncResolutionOrderTests.T.Go)
-                    .GoTo(AsyncResolutionOrderTests.S.ParentDone)
                     .ActionAsync(nameof(P))
-                    .Priority(200);
+                    .Priority(200)
+                    .GoTo(AsyncResolutionOrderTests.S.ParentDone);
                     
                 // Child has lower priority
                 FSM.At(AsyncResolutionOrderTests.S.Child)
                     .On(AsyncResolutionOrderTests.T.Go)
-                    .GoTo(AsyncResolutionOrderTests.S.Child)
                     .ActionAsync(nameof(C))
-                    .Priority(100);
+                    .Priority(100)
+                    .GoTo(AsyncResolutionOrderTests.S.Child);
             }
 
             private async Task P() { await Task.Yield(); Log.Add("Parent"); }
@@ -572,16 +572,16 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
                 // Parent handles trigger
                 FSM.At(AsyncResolutionOrderTests.S.Parent)
                     .On(AsyncResolutionOrderTests.T.Go)
-                    .GoTo(AsyncResolutionOrderTests.S.Parent)
                     .ActionAsync(nameof(P))
-                    .Priority(100);
+                    .Priority(100)
+                    .GoTo(AsyncResolutionOrderTests.S.Parent);
                     
                 // Child also handles it - should override
                 FSM.At(AsyncResolutionOrderTests.S.Child)
                     .On(AsyncResolutionOrderTests.T.Go)
-                    .GoTo(AsyncResolutionOrderTests.S.Child)
                     .ActionAsync(nameof(C))
-                    .Priority(100);
+                    .Priority(100)
+                    .GoTo(AsyncResolutionOrderTests.S.Child);
             }
 
             private async Task P() { await Task.Yield(); Log.Add("Parent"); }
@@ -605,15 +605,15 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
                 // Two transitions with same priority - first wins
                 FSM.At(AsyncResolutionOrderTests.S.A)
                     .On(AsyncResolutionOrderTests.T.Go)
-                    .GoTo(AsyncResolutionOrderTests.S.B)
                     .ActionAsync(nameof(First))
-                    .Priority(0);
+                    .Priority(0)
+                    .GoTo(AsyncResolutionOrderTests.S.B);
                     
                 FSM.At(AsyncResolutionOrderTests.S.A)
                     .On(AsyncResolutionOrderTests.T.Go)
-                    .GoTo(AsyncResolutionOrderTests.S.C)
                     .ActionAsync(nameof(Second))
-                    .Priority(0);
+                    .Priority(0)
+                    .GoTo(AsyncResolutionOrderTests.S.C);
             }
 
             private async Task OnAEntryAsync() => await Task.CompletedTask;
