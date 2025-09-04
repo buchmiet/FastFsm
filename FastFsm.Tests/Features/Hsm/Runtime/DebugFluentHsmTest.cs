@@ -39,8 +39,11 @@ namespace FastFsm.Tests.Features.Hsm.Runtime
             {
                 m.Fire(HsmTrigger_Fluent.Start);
                 _output.WriteLine($"After Fire(Start): {m.CurrentState}");
+                _output.WriteLine($"CurrentState int value: {(int)m.CurrentState}");
+                _output.WriteLine($"Expected Working_Initializing int: {(int)HsmState_Fluent.Working_Initializing}");
                 _output.WriteLine($"IsInHierarchy(Working): {m.IsInHierarchy(HsmState_Fluent.Working)}");
                 _output.WriteLine($"IsInHierarchy(Working_Initializing): {m.IsInHierarchy(HsmState_Fluent.Working_Initializing)}");
+                _output.WriteLine($"IsInHierarchy(Completed): {m.IsInHierarchy(HsmState_Fluent.Completed)}");
             }
             else
             {
