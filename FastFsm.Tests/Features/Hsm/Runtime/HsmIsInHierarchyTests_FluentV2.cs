@@ -68,9 +68,9 @@ namespace FastFsm.Tests.Features.Hsm.Runtime
             m.Start();
             Assert.Equal(HsmState_Fluent_v2.Idle, m.CurrentState);
             
-            // Should transition from Idle to Working
+            // Should transition from Idle to Working (which auto-enters initial child Working_Initializing)
             m.Fire(HsmTrigger_Fluent_v2.Start);
-            Assert.Equal(HsmState_Fluent_v2.Working, m.CurrentState);
+            Assert.Equal(HsmState_Fluent_v2.Working_Initializing, m.CurrentState);
         }
     }
 }
