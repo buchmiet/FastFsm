@@ -145,7 +145,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
     // Emits optional partial hook for action exception reporting
     private void WriteActionExceptionHook()
     {
-        Sb.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        Sb.AppendLine(AggressiveInliningString);
         Sb.AppendLine("partial void OnActionException(string context, System.Exception ex);");
         Sb.AppendLine();
     }
@@ -167,7 +167,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             var evalName = $"EvaluateGuard__{from}__{trig}";
 
             // Core guard invocation without try/catch
-            Sb.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+            Sb.AppendLine(AggressiveInliningString);
             using (Sb.Block($"private bool {guardWrapper}(object? payload)"))
             {
                 // No guard method? Always true (shouldn't happen for this emission path)
@@ -194,7 +194,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             }
 
             // Safe wrapper that handles exceptions if FASTFSM_SAFE_GUARDS is enabled
-            Sb.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+            Sb.AppendLine(AggressiveInliningString);
             using (Sb.Block($"private bool {evalName}(object? payload)"))
             {
                 Sb.AppendLine("#if FASTFSM_SAFE_GUARDS");

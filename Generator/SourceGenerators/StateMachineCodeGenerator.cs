@@ -360,7 +360,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         Sb.AppendLine();
         
         // Emit FindLowestCommonAncestor helper — only for HSM
-        Sb.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        Sb.AppendLine(AggressiveInliningString);
         using (Sb.Block("protected int FindLowestCommonAncestor(int srcLeaf, int destLeaf)"))
         {
             Sb.AppendLine("if (srcLeaf == destLeaf) return srcLeaf;");

@@ -102,4 +102,8 @@ internal static class Strings
     public const string ValueTaskOpenFullName = "System.Threading.Tasks.ValueTask`1";
     public const string NamespaceStateMachineExceptions = "FastFsm.Exceptions";
 
+    //
+
+    public const string AggressiveInliningString =
+        "[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]";
 }

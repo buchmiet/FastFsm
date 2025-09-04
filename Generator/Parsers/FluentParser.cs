@@ -127,7 +127,7 @@ namespace Generator.Parsers
             
             foreach (var transition in model.Transitions)
             {
-                var key = (transition.FromState, transition.TriggerName, transition.Priority);
+                var key = (transition.FromState, transition.Trigger, transition.Priority);
                 if (!seenTransitions.Contains(key))
                 {
                     seenTransitions.Add(key);
@@ -135,7 +135,7 @@ namespace Generator.Parsers
                 }
                 else
                 {
-                    report?.Invoke($"[FluentParser] Duplicate transition ignored: {transition.FromState} + {transition.TriggerName} (Priority={transition.Priority}) -> {transition.ToState}");
+                    report?.Invoke($"[FluentParser] Duplicate transition ignored: {transition.FromState} + {transition.Trigger} (Priority={transition.Priority}) -> {transition.ToState}");
                 }
             }
             
