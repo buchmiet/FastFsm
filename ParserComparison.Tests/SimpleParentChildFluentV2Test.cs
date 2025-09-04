@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using Abstractions.Attributes;
-using Abstractions.Fluent;
+using Dsl;
 
 namespace ParserComparison.Tests
 {

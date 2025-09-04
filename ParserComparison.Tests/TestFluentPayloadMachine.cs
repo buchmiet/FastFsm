@@ -1,4 +1,5 @@
 using Abstractions.Attributes;
+using Dsl;
 
 namespace ParserComparison.Tests
 {

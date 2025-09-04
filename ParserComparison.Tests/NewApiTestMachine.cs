@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Abstractions.Attributes;
-using Abstractions.Fluent;
+using Dsl;
 
 namespace ParserComparison.Tests
 {
