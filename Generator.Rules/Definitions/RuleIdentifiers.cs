@@ -36,4 +36,8 @@ public static class RuleIdentifiers
     public const string AsyncMethodWithoutSuffix = "FSM205";             // Async method without *Async suffix (Explicit policy)
     public const string SyncMethodInRequiredAsyncMode = "FSM206";       // Sync method when AsyncPolicy.Required
 
+    // Global handler diagnostics
+    public const string DuplicateOnExceptionHandler = "FSM208";         // Multiple global OnException handlers
+    public const string InvalidOnExceptionSignature = "FSM209";         // Invalid OnException handler signature
+
 }

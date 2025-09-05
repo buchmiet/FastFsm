@@ -272,6 +272,23 @@ namespace Generator.Rules.Definitions
             defaultSeverity: RuleSeverity.Error,
             description: "When AsyncPolicy.Required is set, all handler methods must be async. Synchronous handlers are not allowed.");
 
+        // Global handler rules (OnException)
+        public static readonly RuleDefinition DuplicateOnExceptionHandler = new(
+            id: RuleIdentifiers.DuplicateOnExceptionHandler,  // FSM208
+            title: "Multiple global OnException handlers",
+            messageFormat: "Multiple global OnException handlers specified; only one is allowed.",
+            category: RuleCategories.FSM_Generator,
+            defaultSeverity: RuleSeverity.Error,
+            description: "FastFSM supports exactly one global exception handler per state machine. Remove duplicate OnException() calls.");
+
+        public static readonly RuleDefinition InvalidOnExceptionSignature = new(
+            id: RuleIdentifiers.InvalidOnExceptionSignature,  // FSM209
+            title: "Invalid OnException handler signature",
+            messageFormat: "Method '{0}' used as {1} has an invalid signature. Expected: {2}.",
+            category: RuleCategories.FSM_Generator,
+            defaultSeverity: RuleSeverity.Error,
+            description: "OnException handler must return ExceptionDirective or ValueTask<ExceptionDirective> and accept ExceptionContext<TState,TTrigger> as first parameter with optional CancellationToken.");
+
         public static readonly IReadOnlyList<RuleDefinition> All = new List<RuleDefinition>
         {
             DuplicateTransition,
@@ -303,6 +320,8 @@ namespace Generator.Rules.Definitions
             AsyncPathWithSyncFire,          // FSM204
             AsyncMethodWithoutSuffix,       // FSM205
             SyncMethodInRequiredAsyncMode,  // FSM206
+            DuplicateOnExceptionHandler,    // FSM208
+            InvalidOnExceptionSignature,    // FSM209
         }.AsReadOnly();
     }
 }
