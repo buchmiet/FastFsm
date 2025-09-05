@@ -20,7 +20,7 @@ namespace FastFsm.Tests
         {
             // Arrange
             var attrMachine = new BasicBenchmarkMachine(BenchmarkState.A);
-            var fluentMachine = new BasicBenchmarkMachineFluentAPI(BenchmarkState.A);
+            var fluentMachine = new BasicBenchmarkMachine_Fluent(BenchmarkState.A);
             attrMachine.Start();
             fluentMachine.Start();
 
@@ -46,7 +46,7 @@ namespace FastFsm.Tests
         {
             // Arrange
             var attrMachine = new WithGuardBenchmarkMachine(BenchmarkState.A);
-            var fluentMachine = new WithGuardBenchmarkMachineFluentAPI(BenchmarkState.A);
+            var fluentMachine = new WithGuardBenchmarkMachine_Fluent(BenchmarkState.A);
             attrMachine.Start();
             fluentMachine.Start();
 
@@ -83,7 +83,7 @@ namespace FastFsm.Tests
         {
             // Arrange
             var attrMachine = new GuardedCallbackMachine(GuardedState.A);
-            var fluentMachine = new GuardedCallbackMachineFluentAPI(GuardedState.A);
+            var fluentMachine = new GuardedCallbackMachine_Fluent(GuardedState.A);
             attrMachine.Start();
             fluentMachine.Start();
 
@@ -108,7 +108,7 @@ namespace FastFsm.Tests
         {
             // Arrange
             var attrMachine = new ComplexCallbackMachine(StateCallbackTests.ComplexCallbackState.Idle);
-            var fluentMachine = new ComplexCallbackMachineFluentAPI(StateCallbackTests.ComplexCallbackState.Idle);
+            var fluentMachine = new ComplexCallbackMachine_Fluent(StateCallbackTests.ComplexCallbackState.Idle);
             attrMachine.Start();
             fluentMachine.Start();
 
@@ -143,7 +143,7 @@ namespace FastFsm.Tests
         {
             // Arrange
             var attrMachine = new PayloadStateMachine(Machines.TestState.Initial);
-            var fluentMachine = new PayloadStateMachineFluentAPI(Machines.TestState.Initial);
+            var fluentMachine = new PayloadStateMachine_Fluent(Machines.TestState.Initial);
             attrMachine.Start();
             fluentMachine.Start();
 
@@ -176,7 +176,7 @@ namespace FastFsm.Tests
         {
             // Arrange & Act
             var attrMachine = new InitialStateMachine(StateCallbackTests.InitialState.Start);
-            var fluentMachine = new InitialStateMachineFluentAPI(StateCallbackTests.InitialState.Start);
+            var fluentMachine = new InitialStateMachine_Fluent(StateCallbackTests.InitialState.Start);
             attrMachine.Start();
             fluentMachine.Start();
 
@@ -204,7 +204,7 @@ namespace FastFsm.Tests
         {
             // Arrange
             var attrMachine = new MultipleCallbacksMachine(MultiState.A);
-            var fluentMachine = new MultipleCallbacksMachineFluentAPI(MultiState.A);
+            var fluentMachine = new MultipleCallbacksMachine_Fluent(MultiState.A);
             attrMachine.Start();
             fluentMachine.Start();
 
@@ -226,7 +226,7 @@ namespace FastFsm.Tests
         {
             // Arrange
             var attrMachine = new ExceptionCallbackMachine(StateCallbackTests.ExceptionState.A);
-            var fluentMachine = new ExceptionCallbackMachineFluentAPI(StateCallbackTests.ExceptionState.A);
+            var fluentMachine = new ExceptionCallbackMachine_Fluent(StateCallbackTests.ExceptionState.A);
             attrMachine.Start();
             fluentMachine.Start();
 
@@ -252,7 +252,7 @@ namespace FastFsm.Tests
         {
             // Arrange
             var attrMachine = new FullOrderMachine(OrderState.New);
-            var fluentMachine = new FullOrderMachineFluentAPI(OrderState.New);
+            var fluentMachine = new FullOrderMachine_Fluent(OrderState.New);
             attrMachine.Start();
             fluentMachine.Start();
 
@@ -299,7 +299,7 @@ namespace FastFsm.Tests
             // Actual performance should be measured with BenchmarkDotNet
             
             var attrMachine = new CoreBenchmarkMachine(BenchmarkState.A);
-            var fluentMachine = new CoreBenchmarkMachineFluentAPI(BenchmarkState.A);
+            var fluentMachine = new CoreBenchmarkMachine_Fluent(BenchmarkState.A);
             attrMachine.Start();
             fluentMachine.Start();
 

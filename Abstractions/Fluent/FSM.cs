@@ -19,6 +19,17 @@ namespace Abstractions.Fluent
         }
 
         /// <summary>
+        /// Set the exception handler for the state machine.
+        /// The handler method must accept ExceptionContext and return ExceptionDirective.
+        /// Equivalent to [OnException] attribute in attribute API.
+        /// </summary>
+        public static StateBuilder<TState> OnException<TState>(string methodName) where TState : Enum
+        {
+            // Runtime no-op - only used at compile time by source generator
+            return new StateBuilder<TState>();
+        }
+
+        /// <summary>
         /// Define a state in the state machine.
         /// </summary>
         public static StateBuilder<TState> State<TState>(TState state) where TState : Enum
@@ -41,6 +52,13 @@ namespace Abstractions.Fluent
     /// </summary>
     public sealed class StateBuilder<TState> where TState : Enum
     {
+        /// <summary>
+        /// Set the exception handler for the state machine.
+        /// The handler method must accept ExceptionContext and return ExceptionDirective.
+        /// Equivalent to [OnException] attribute in attribute API.
+        /// </summary>
+        public StateBuilder<TState> OnException(string methodName) => this;
+
         /// <summary>
         /// Set the parent state (for hierarchical state machines).
         /// </summary>

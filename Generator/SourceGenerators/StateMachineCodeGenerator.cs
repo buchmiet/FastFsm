@@ -1,5 +1,4 @@
 ﻿#nullable enable
-using Abstractions.Attributes;
 using Generator.Helpers;
 using Generator.Infrastructure;
 
@@ -8,7 +7,6 @@ using Generator.Planning;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using Generator.Log;
 using static Generator.Strings;
 
@@ -48,61 +46,58 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
     #region Common implementation snippets
 
     #region Hierarchical State Machine Support
-    
+
     /// <summary>
     /// Writes state and trigger name arrays for zero-allocation logging
     /// </summary>
     protected virtual void WriteStateAndTriggerNameArrays(string stateTypeForUsage, string triggerTypeForUsage)
     {
-        // Generate state names array for zero-allocation logging
+        // Collect states in ordinal order
         var allStates = Model.States.Values
             .OrderBy(s => s.OrdinalValue)
             .ToList();
-        
+
         Sb.AppendLine("// State and trigger name arrays for zero-allocation logging");
-        
-        // State names array
-        Sb.Append("        private static readonly string[] s_stateNames = new string[] { ");
+
+        // --- state names array ---
         var stateNames = allStates.Select(s => $"\"{s.Name}\"");
-        Sb.Append(string.Join(", ", stateNames));
-        Sb.AppendLine(" };");
-        
-        // Helper method for state name lookup with bounds checking
+        Sb.AppendLine($"private static readonly string[] s_stateNames = new[] {{ {string.Join(", ", stateNames)} }};");
+
+        // --- helper NameOf(state) ---
         Sb.AppendLine(AggressiveInliningString);
-        Sb.AppendLine($"        private static string NameOf({stateTypeForUsage} s) {{");
-        Sb.AppendLine($"            int index = (int)s;");
-        Sb.AppendLine($"            return (index >= 0 && index < s_stateNames.Length) ? s_stateNames[index] : (index == -1 ? \"<root>\" : s.ToString());");
-        Sb.AppendLine($"        }}");
-        
-        // Trigger names array - get unique triggers from transitions and sort them
+        using (Sb.Block($"private static string NameOf({stateTypeForUsage} s)"))
+        {
+            Sb.AppendLine("int index = (int)s;");
+            Sb.AppendLine("return (index >= 0 && index < s_stateNames.Length) ? s_stateNames[index] : (index == -1 ? \"<root>\" : s.ToString());");
+        }
+
+        // --- triggers: unique from transitions, sorted ---
         var allTriggers = Model.Transitions.Select(t => t.Trigger).Distinct().OrderBy(t => t).ToList();
         if (allTriggers.Count > 0)
         {
-            // For now, we'll use the trigger names from transitions
-            // In a more complete implementation, we'd need to get all enum values
-            // But for logging purposes, the transitions should cover the used triggers
-            Sb.Append("        private static readonly string[] s_triggerNames = new string[] { ");
+            // Trigger names array
             var triggerNames = allTriggers.Select(t => $"\"{t}\"");
-            Sb.Append(string.Join(", ", triggerNames));
-            Sb.AppendLine(" };");
-            
-            // Create a dictionary for lookup
-            Sb.AppendLine("        private static readonly System.Collections.Generic.Dictionary<" + triggerTypeForUsage + ", string> s_triggerNameLookup = new System.Collections.Generic.Dictionary<" + triggerTypeForUsage + ", string>");
-            Sb.AppendLine("        {");
-            foreach (var trigger in allTriggers)
+            Sb.AppendLine($"private static readonly string[] s_triggerNames = new[] {{ {string.Join(", ", triggerNames)} }};");
+
+            // Lookup dictionary: Trigger -> name
+            var dictType = $"System.Collections.Generic.Dictionary<{triggerTypeForUsage}, string>";
+            Sb.AppendLine($"private static readonly {dictType} s_triggerNameLookup = new {dictType}");
+            Sb.AppendLine("{");
+            using (Sb.Indent())
             {
-                Sb.AppendLine($"            {{ {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(trigger)}, \"{trigger}\" }},");
+                foreach (var trigger in allTriggers)
+                    Sb.AppendLine($"{{ {triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(trigger)}, \"{trigger}\" }},");
             }
-            Sb.AppendLine("        };");
-            
-            // Helper method for trigger name lookup
+            Sb.AppendLine("};");
+
+            // Helper NameOfTrigger(trigger)
             Sb.AppendLine(AggressiveInliningString);
-            Sb.AppendLine($"        private static string NameOfTrigger({triggerTypeForUsage} t) => s_triggerNameLookup.TryGetValue(t, out var name) ? name : t.ToString();");
+            Sb.AppendLine($"private static string NameOfTrigger({triggerTypeForUsage} t) => s_triggerNameLookup.TryGetValue(t, out var name) ? name : t.ToString();");
         }
-        
+
         Sb.AppendLine();
     }
-    
+
     /// <summary>
     /// Writes static hierarchy arrays if HSM is enabled
     /// </summary>
@@ -209,7 +204,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         // Generate all possible mask combinations (2^n where n is number of unique triggers)
         int maxMask = 1 << uniqueTriggers.Count;
         
-        Sb.AppendLine($"        // Precomputed permission arrays for all possible guard mask combinations");
+        Sb.AppendLine("        // Precomputed permission arrays for all possible guard mask combinations");
         Sb.AppendLine($"        private static readonly {triggerTypeForUsage}[][] s_perm__Mask = new {triggerTypeForUsage}[][]");
         Sb.AppendLine("        {");
         
@@ -382,7 +377,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
     /// </summary>
     protected virtual void WriteHierarchyRuntimeFieldsAndHelpers(string stateTypeForUsage)
     {
-        if (!Model.HierarchyEnabled) return;
+
         
         // All runtime fields and methods are now in the base class
         // We don't emit anything here anymore
@@ -461,13 +456,10 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         
         Sb.AppendLine();
         // No matching transition at this point
-        if (ShouldGenerateLogging)
-        {
-            WriteLogStatement("Warning",
-                $"UnhandledTrigger(_logger, _instanceId, NameOf({CurrentStateField}), NameOfTrigger(trigger));");
-            WriteLogStatement("Warning",
-                $"TransitionFailed(_logger, _instanceId, NameOf({CurrentStateField}), NameOfTrigger(trigger));");
-        }
+        WriteLogStatement("Warning",
+            $"UnhandledTrigger(_logger, _instanceId, NameOf({CurrentStateField}), NameOfTrigger(trigger));");
+        WriteLogStatement("Warning",
+            $"TransitionFailed(_logger, _instanceId, NameOf({CurrentStateField}), NameOfTrigger(trigger));");
         Sb.AppendLine("return false;");
     }
     
@@ -916,7 +908,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         using (Sb.Block("while (check >= 0)"))
         {
             Sb.AppendLine($"var enumState = ({stateTypeForUsage})check;");
-            Sb.AppendLine($"int depthFromCurrent = (check == currentIndex) ? 0 : (g_depth[currentIndex] - g_depth[check]);");
+            Sb.AppendLine("int depthFromCurrent = (check == currentIndex) ? 0 : (g_depth[currentIndex] - g_depth[check]);");
             Sb.AppendLine();
             
             // Group transitions by source state
@@ -944,7 +936,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                                         Sb.AppendLine($"// Candidate: {tr.FromState} -> {tr.ToState} (Priority: {tr.Priority})");
                                         
                                         // Generate inline candidate evaluation
-                                        GenerateInlineCandidateEvaluation(tr, item.Index, stateTypeForUsage);
+                                        GenerateInlineCandidateEvaluation(tr, stateTypeForUsage);
                                     }
                                     Sb.AppendLine("break;");
                                 }
@@ -970,13 +962,10 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         using (Sb.Block("if (!found)"))
         {
         // No matching transition - failure
-        if (ShouldGenerateLogging)
-        {
-            WriteLogStatement("Warning",
-                $"UnhandledTrigger(_logger, _instanceId, NameOf({CurrentStateField}), NameOfTrigger(trigger));");
-            WriteLogStatement("Warning",
-                $"TransitionFailed(_logger, _instanceId, NameOf({CurrentStateField}), NameOfTrigger(trigger));");
-        }
+        WriteLogStatement("Warning",
+            $"UnhandledTrigger(_logger, _instanceId, NameOf({CurrentStateField}), NameOfTrigger(trigger));");
+        WriteLogStatement("Warning",
+            $"TransitionFailed(_logger, _instanceId, NameOf({CurrentStateField}), NameOfTrigger(trigger));");
         Sb.AppendLine("return false;");
     }
         Sb.AppendLine();
@@ -994,11 +983,8 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             {
                 GenerateActionSwitch("bestActionId", isInternal: true);
             }
-            if (ShouldGenerateLogging)
-            {
-                WriteLogStatement("Debug",
-                    $"InternalTransitionOnAncestor(_logger, _instanceId, NameOf(({stateTypeForUsage})bestAncestorIndex), NameOf(_currentState), NameOfTrigger(trigger));");
-            }
+            WriteLogStatement("Debug",
+                $"InternalTransitionOnAncestor(_logger, _instanceId, NameOf(({stateTypeForUsage})bestAncestorIndex), NameOf(_currentState), NameOfTrigger(trigger));");
             Sb.AppendLine("return true; // state unchanged, no history recording");
         }
         using (Sb.Block("else"))
@@ -1021,32 +1007,42 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             Sb.AppendLine("int __exitCount = 0;");
             Sb.AppendLine("for (int s = srcLeaf; s != lca && s >= 0; s = g_parent[s]) { __exitCount++; }");
             Sb.AppendLine();
-            
+
             // Generate exit chain
             if (Model.GenerationConfig.HasOnEntryExit)
             {
                 Sb.AppendLine("// EXIT chain: from current leaf up to (but not including) LCA");
-                Sb.AppendLine("for (int s = srcLeaf; s != lca && s >= 0; s = g_parent[s]) {");
-                Sb.AppendLine($"    var exitState = ({stateTypeForUsage})s;");
-                Sb.AppendLine("    switch (exitState) {");
-                foreach (var state in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnExitMethod)))
+
+                using (Sb.Block("for (int s = srcLeaf; s != lca && s >= 0; s = g_parent[s])"))
                 {
-                    Sb.AppendLine($"        case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(state.Name)}:");
-                    Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
-                    Sb.AppendLine($"            try {{ {state.OnExitMethod}(); }}");
-                    Sb.AppendLine($"            catch (System.OperationCanceledException oce) {{ OnActionException(\"Exit:{state.Name}\", oce); return false; }}");
-                    Sb.AppendLine($"            catch (System.Exception ex) {{ OnActionException(\"Exit:{state.Name}\", ex); return false; }}");
-                    Sb.AppendLine("#else");
-                    Sb.AppendLine($"            {state.OnExitMethod}();");
-                    Sb.AppendLine("#endif");
-                    Sb.AppendLine("            break;");
+                    Sb.AppendLine($"var exitState = ({stateTypeForUsage})s;");
+
+                    using (Sb.Block("switch (exitState)"))
+                    {
+                        foreach (var state in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnExitMethod)))
+                        {
+                            Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(state.Name)}:");
+                            using (Sb.Block(string.Empty))
+                            {
+                                Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
+                                Sb.AppendLine($"try {{ {state.OnExitMethod}(); }}");
+                                Sb.AppendLine($"catch (System.OperationCanceledException oce) {{ OnActionException(\"Exit:{state.Name}\", oce); return false; }}");
+                                Sb.AppendLine($"catch (System.Exception ex) {{ OnActionException(\"Exit:{state.Name}\", ex); return false; }}");
+                                Sb.AppendLine("#else");
+                                Sb.AppendLine($"{state.OnExitMethod}();");
+                                Sb.AppendLine("#endif");
+                                Sb.AppendLine("break;");
+                            }
+                        }
+
+                        Sb.AppendLine("default: break;");
+                    }
                 }
-                Sb.AppendLine("        default: break;");
-                Sb.AppendLine("    }");
-                Sb.AppendLine("}");
+
                 Sb.AppendLine();
             }
-            
+
+
             // Change state and resolve composite
             Sb.AppendLine("// Assign state and resolve composite target");
             
@@ -1092,13 +1088,10 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             Sb.AppendLine("// Count entries from resolved state");
             Sb.AppendLine("int __entryCount = 0;");
             Sb.AppendLine("for (int s = (int)_currentState; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) { __entryCount++; }");
-            if (ShouldGenerateLogging)
-            {
-                WriteLogStatement("Debug",
-                    $"HierarchicalTransition(_logger, _instanceId, NameOf(({stateTypeForUsage})srcLeaf), NameOf(_currentState), NameOf(({stateTypeForUsage})lca), __exitCount, __entryCount);");
-                WriteLogStatement("Trace",
-                    $"ActivePath(_logger, _instanceId, DumpActivePath());");
-            }
+            WriteLogStatement("Debug",
+                $"HierarchicalTransition(_logger, _instanceId, NameOf(({stateTypeForUsage})srcLeaf), NameOf(_currentState), NameOf(({stateTypeForUsage})lca), __exitCount, __entryCount);");
+            WriteLogStatement("Trace",
+                "ActivePath(_logger, _instanceId, DumpActivePath());");
             Sb.AppendLine();
             
             // Generate enter chain
@@ -1112,84 +1105,112 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                     Sb.AppendLine("int entryCount = 0;");
                     Sb.AppendLine("var pool = System.Buffers.ArrayPool<int>.Shared;");
                     Sb.AppendLine("int[] entryPath = pool.Rent(g_depth[(int)_currentState] + 1);");
-                    Sb.AppendLine("try {");
-                    Sb.AppendLine("    for (int s = (int)_currentState; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {");
-                    Sb.AppendLine("        entryPath[entryCount++] = s;");
-                    Sb.AppendLine("    }");
-                    Sb.AppendLine("    // Execute entry callbacks in top-down order");
-                    Sb.AppendLine("    for (int i = entryCount - 1; i >= 0; i--) {");
-                    Sb.AppendLine($"        var entryState = ({stateTypeForUsage})entryPath[i];");
-                    Sb.AppendLine("        switch (entryState) {");
-                    foreach (var state in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
+
+                    using (Sb.Block("try"))
                     {
-                        Sb.AppendLine($"            case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(state.Name)}:");
-                        Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
-                        Sb.AppendLine("                try {");
-                        if (state.OnEntryIsAsync)
+                        using (Sb.Block("for (int s = (int)_currentState; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1)"))
                         {
-                            Sb.AppendLine($"                    var vt = {state.OnEntryMethod}();");
-                            Sb.AppendLine("                    if (!vt.IsCompletedSuccessfully)");
-                            Sb.AppendLine($"                        await vt{GetConfigureAwait()};");
+                            Sb.AppendLine("entryPath[entryCount++] = s;");
                         }
-                        else
+
+                        Sb.AppendLine("// Execute entry callbacks in top-down order");
+                        using (Sb.Block("for (int i = entryCount - 1; i >= 0; i--)"))
                         {
-                            Sb.AppendLine($"                    {state.OnEntryMethod}();");
+                            Sb.AppendLine($"var entryState = ({stateTypeForUsage})entryPath[i];");
+
+                            using (Sb.Block("switch (entryState)"))
+                            {
+                                foreach (var state in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
+                                {
+                                    Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(state.Name)}:");
+                                    using (Sb.Block(string.Empty))
+                                    {
+                                        Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
+                                        using (Sb.Block("try"))
+                                        {
+                                            if (state.OnEntryIsAsync)
+                                            {
+                                                Sb.AppendLine($"var vt = {state.OnEntryMethod}();");
+                                                Sb.AppendLine("if (!vt.IsCompletedSuccessfully)");
+                                                Sb.AppendLine($"    await vt{GetConfigureAwait()};");
+                                            }
+                                            else
+                                            {
+                                                Sb.AppendLine($"{state.OnEntryMethod}();");
+                                            }
+                                        }
+                                        Sb.AppendLine($"catch (System.OperationCanceledException oce) {{ OnActionException(\"Enter:{state.Name}\", oce); return false; }}");
+                                        Sb.AppendLine($"catch (System.Exception ex) {{ OnActionException(\"Enter:{state.Name}\", ex); return false; }}");
+                                        Sb.AppendLine("#else");
+                                        if (state.OnEntryIsAsync)
+                                        {
+                                            Sb.AppendLine($"var vt = {state.OnEntryMethod}();");
+                                            Sb.AppendLine("if (!vt.IsCompletedSuccessfully)");
+                                            Sb.AppendLine($"    await vt{GetConfigureAwait()};");
+                                        }
+                                        else
+                                        {
+                                            Sb.AppendLine($"{state.OnEntryMethod}();");
+                                        }
+                                        Sb.AppendLine("#endif");
+                                        Sb.AppendLine("break;");
+                                    }
+                                }
+
+                                Sb.AppendLine("default: break;");
+                            }
                         }
-                        Sb.AppendLine($"                }} catch (System.OperationCanceledException oce) {{ OnActionException(\"Enter:{state.Name}\", oce); return false; }}");
-                        Sb.AppendLine($"                  catch (System.Exception ex) {{ OnActionException(\"Enter:{state.Name}\", ex); return false; }}");
-                        Sb.AppendLine("#else");
-                        if (state.OnEntryIsAsync)
-                        {
-                            Sb.AppendLine($"                var vt = {state.OnEntryMethod}();");
-                            Sb.AppendLine("                if (!vt.IsCompletedSuccessfully)");
-                            Sb.AppendLine($"                    await vt{GetConfigureAwait()};");
-                        }
-                        else
-                        {
-                            Sb.AppendLine($"                {state.OnEntryMethod}();");
-                        }
-                        Sb.AppendLine("#endif");
-                        Sb.AppendLine("                break;");
                     }
-                    Sb.AppendLine("            default: break;");
-                    Sb.AppendLine("        }");
-                    Sb.AppendLine("    }");
-                    Sb.AppendLine("} finally {");
-                    Sb.AppendLine("    pool.Return(entryPath, clearArray: false);");
-                    Sb.AppendLine("}");
+
+                    using (Sb.Block("finally"))
+                    {
+                        Sb.AppendLine("pool.Return(entryPath, clearArray: false);");
+                    }
                 }
                 else
                 {
                     // Sync path: keep zero-alloc stackalloc
                     Sb.AppendLine("// Build entry path (stackalloc for zero-alloc)");
                     Sb.AppendLine("int entryCount = 0;");
-                    Sb.AppendLine($"Span<int> entryPath = stackalloc int[g_depth[(int)_currentState] + 1];");
-                    Sb.AppendLine("for (int s = (int)_currentState; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {");
-                    Sb.AppendLine("    entryPath[entryCount++] = s;");
-                    Sb.AppendLine("}");
-                    Sb.AppendLine("// Execute entry callbacks in top-down order");
-                    Sb.AppendLine("for (int i = entryCount - 1; i >= 0; i--) {");
-                    Sb.AppendLine($"    var entryState = ({stateTypeForUsage})entryPath[i];");
-                    Sb.AppendLine("    switch (entryState) {");
-                    foreach (var state in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
+                    Sb.AppendLine("Span<int> entryPath = stackalloc int[g_depth[(int)_currentState] + 1];");
+
+                    using (Sb.Block("for (int s = (int)_currentState; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1)"))
                     {
-                        Sb.AppendLine($"        case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(state.Name)}:");
-                        Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
-                        Sb.AppendLine($"            try {{ {state.OnEntryMethod}(); }}");
-                        Sb.AppendLine($"            catch (System.OperationCanceledException oce) {{ OnActionException(\"Enter:{state.Name}\", oce); return false; }}");
-                        Sb.AppendLine($"            catch (System.Exception ex) {{ OnActionException(\"Enter:{state.Name}\", ex); return false; }}");
-                        Sb.AppendLine("#else");
-                        Sb.AppendLine($"            {state.OnEntryMethod}();");
-                        Sb.AppendLine("#endif");
-                        Sb.AppendLine("            break;");
+                        Sb.AppendLine("entryPath[entryCount++] = s;");
                     }
-                    Sb.AppendLine("        default: break;");
-                    Sb.AppendLine("    }");
-                    Sb.AppendLine("}");
+
+                    Sb.AppendLine("// Execute entry callbacks in top-down order");
+                    using (Sb.Block("for (int i = entryCount - 1; i >= 0; i--)"))
+                    {
+                        Sb.AppendLine($"var entryState = ({stateTypeForUsage})entryPath[i];");
+
+                        using (Sb.Block("switch (entryState)"))
+                        {
+                            foreach (var state in Model.States.Values.Where(s => !string.IsNullOrEmpty(s.OnEntryMethod)))
+                            {
+                                Sb.AppendLine($"case {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(state.Name)}:");
+                                using (Sb.Block(string.Empty))
+                                {
+                                    Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
+                                    Sb.AppendLine($"try {{ {state.OnEntryMethod}(); }}");
+                                    Sb.AppendLine($"catch (System.OperationCanceledException oce) {{ OnActionException(\"Enter:{state.Name}\", oce); return false; }}");
+                                    Sb.AppendLine($"catch (System.Exception ex) {{ OnActionException(\"Enter:{state.Name}\", ex); return false; }}");
+                                    Sb.AppendLine("#else");
+                                    Sb.AppendLine($"{state.OnEntryMethod}();");
+                                    Sb.AppendLine("#endif");
+                                    Sb.AppendLine("break;");
+                                }
+                            }
+
+                            Sb.AppendLine("default: break;");
+                        }
+                    }
+
                     Sb.AppendLine();
                 }
+
             }
-            
+
             // Execute transition action if present
             if (IsAsyncMachine && HasAsyncActions())
             {
@@ -1208,7 +1229,6 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
     
     private void GenerateInlineCandidateEvaluation(
         TransitionModel transition,
-        int transitionIndex,
         string stateTypeForUsage)
     {
         using (Sb.Block(""))
@@ -1253,7 +1273,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         using (Sb.Block(""))
         {
             Sb.AppendLine("found = true;");
-            Sb.AppendLine($"bestPriority = priority;");
+            Sb.AppendLine("bestPriority = priority;");
             Sb.AppendLine("bestDepthFromCurrent = depthFromCurrent;");
             Sb.AppendLine("bestDeclOrder = declOrder;");
             Sb.AppendLine($"bestIsInternal = {(transition.IsInternal ? "true" : "false")};");
@@ -1307,7 +1327,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
     {
         // Always use GetCompositeEntryTarget for all external transitions
         // This ensures proper history handling even for leaf destinations
-        Sb.AppendLine($"// Set destination and resolve through GetCompositeEntryTarget");
+        Sb.AppendLine("// Set destination and resolve through GetCompositeEntryTarget");
         
         // SAVE COMPOSITE BEFORE ASSIGNING _currentState
         Sb.AppendLine($"int __targetComposite = (int){stateTypeForUsage}.{TypeHelper.EscapeIdentifier(targetState)};");
@@ -1794,7 +1814,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                 }
                 Sb.AppendLine();
                 Sb.AppendLine("// Copy from precomputed array to destination span");
-                Sb.AppendLine($"var result = s_perm__Mask[mask];");
+                Sb.AppendLine("var result = s_perm__Mask[mask];");
                 Sb.AppendLine("if (result.Length > destination.Length) return -1;");
                 Sb.AppendLine("for (int i = 0; i < result.Length; i++)");
                 Sb.AppendLine("{");

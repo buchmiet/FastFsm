@@ -539,6 +539,11 @@ namespace Generator.Parsers
                         }
                         break;
                     
+                    case "OnException":
+                        report?.Invoke($"[FluentParser] Processing OnException");
+                        ParseOnException(invocation, model, report);
+                        break;
+                    
                     case "ChildOf":
                         if (currentState != null)
                         {
@@ -1179,6 +1184,142 @@ namespace Generator.Parsers
             state.OnExitIsAsync = state.OnExitIsAsync || sig.IsAsync; // Preserve explicit async flag
             state.OnExitHasParameterlessOverload = sig.HasParameterless;
             state.OnExitExpectsPayload = sig.HasPayloadOnly || sig.HasPayloadAndToken;
+        }
+        
+        private void ParseOnException(InvocationExpressionSyntax invocation, StateMachineModel model, Action<string>? report)
+        {
+            report?.Invoke($"[FluentParser] ParseOnException called");
+            
+            if (invocation.ArgumentList.Arguments.Count > 0)
+            {
+                var arg = invocation.ArgumentList.Arguments[0];
+                if (arg.Expression is LiteralExpressionSyntax literal && literal.IsKind(SyntaxKind.StringLiteralExpression))
+                {
+                    var methodName = literal.Token.ValueText;
+                    report?.Invoke($"[FluentParser] OnException method name: {methodName}");
+                    
+                    if (_classSymbol == null)
+                    {
+                        report?.Invoke("[FluentParser] WARNING: Class symbol is null, cannot validate OnException handler");
+                        // Still set the model property for code generation
+                        model.ExceptionHandler = new ExceptionHandlerModel
+                        {
+                            MethodName = methodName,
+                            IsAsync = false,
+                            AcceptsCancellationToken = false,
+                            ExceptionContextClosedType = $"global::FastFsm.Exceptions.ExceptionContext<{model.StateType}, {model.TriggerType}>"
+                        };
+                        return;
+                    }
+                    
+                    // Find method overloads
+                    var overloads = _classSymbol.GetMembers(methodName)
+                        .OfType<IMethodSymbol>()
+                        .Where(m => !m.IsStatic && m.DeclaredAccessibility != Accessibility.Public)
+                        .ToList();
+                    
+                    if (!overloads.Any())
+                    {
+                        report?.Invoke($"[FluentParser] WARNING: OnException method '{methodName}' not found");
+                        return;
+                    }
+                    
+                    // Get state and trigger symbols for building ExceptionContext type
+                    var stateTypeSymbol = _compilation.GetTypeByMetadataName(model.StateType) as INamedTypeSymbol;
+                    var triggerTypeSymbol = _compilation.GetTypeByMetadataName(model.TriggerType) as INamedTypeSymbol;
+                    
+                    if (stateTypeSymbol == null || triggerTypeSymbol == null)
+                    {
+                        report?.Invoke($"[FluentParser] WARNING: Could not resolve state or trigger type symbols");
+                        // Fallback: create handler with string-based type
+                        model.ExceptionHandler = new ExceptionHandlerModel
+                        {
+                            MethodName = methodName,
+                            IsAsync = false,
+                            AcceptsCancellationToken = false,
+                            ExceptionContextClosedType = $"global::FastFsm.Exceptions.ExceptionContext<{model.StateType}, {model.TriggerType}>"
+                        };
+                        return;
+                    }
+                    
+                    // Construct closed ExceptionContext type
+                    var exceptionContextOpen = _compilation.GetTypeByMetadataName("FastFsm.Exceptions.ExceptionContext`2");
+                    if (exceptionContextOpen == null)
+                    {
+                        report?.Invoke("[FluentParser] WARNING: Could not find ExceptionContext type");
+                        return;
+                    }
+                    
+                    var exceptionContextClosed = exceptionContextOpen.Construct(stateTypeSymbol, triggerTypeSymbol);
+                    var exceptionDirectiveType = _compilation.GetTypeByMetadataName("FastFsm.Exceptions.ExceptionDirective");
+                    var cancellationTokenType = _compilation.GetTypeByMetadataName("System.Threading.CancellationToken");
+                    
+                    if (exceptionDirectiveType == null || cancellationTokenType == null)
+                    {
+                        report?.Invoke("[FluentParser] WARNING: Could not find ExceptionDirective or CancellationToken types");
+                        return;
+                    }
+                    
+                    // Find best overload
+                    IMethodSymbol? selectedMethod = null;
+                    
+                    // Priority 1: (ExceptionContext<TState,TTrigger>, CancellationToken)
+                    selectedMethod = overloads.FirstOrDefault(m =>
+                        m.Parameters.Length == 2 &&
+                        SymbolEqualityComparer.Default.Equals(m.Parameters[0].Type, exceptionContextClosed) &&
+                        SymbolEqualityComparer.Default.Equals(m.Parameters[1].Type, cancellationTokenType));
+                    
+                    // Priority 2: (ExceptionContext<TState,TTrigger>)
+                    if (selectedMethod == null)
+                    {
+                        selectedMethod = overloads.FirstOrDefault(m =>
+                            m.Parameters.Length == 1 &&
+                            SymbolEqualityComparer.Default.Equals(m.Parameters[0].Type, exceptionContextClosed));
+                    }
+                    
+                    if (selectedMethod == null)
+                    {
+                        report?.Invoke($"[FluentParser] WARNING: OnException method '{methodName}' has invalid signature");
+                        return;
+                    }
+                    
+                    // Validate return type
+                    bool isAsync = false;
+                    bool validReturnType = false;
+                    
+                    if (SymbolEqualityComparer.Default.Equals(selectedMethod.ReturnType, exceptionDirectiveType))
+                    {
+                        validReturnType = true;
+                        isAsync = false;
+                    }
+                    else if (selectedMethod.ReturnType is INamedTypeSymbol namedReturn &&
+                             namedReturn.IsGenericType &&
+                             namedReturn.ConstructedFrom.ToDisplayString() == "System.Threading.Tasks.ValueTask<TResult>" &&
+                             namedReturn.TypeArguments.Length == 1 &&
+                             SymbolEqualityComparer.Default.Equals(namedReturn.TypeArguments[0], exceptionDirectiveType))
+                    {
+                        validReturnType = true;
+                        isAsync = true;
+                    }
+                    
+                    if (!validReturnType)
+                    {
+                        report?.Invoke($"[FluentParser] WARNING: OnException method '{methodName}' has invalid return type");
+                        return;
+                    }
+                    
+                    // Success - create model
+                    model.ExceptionHandler = new ExceptionHandlerModel
+                    {
+                        MethodName = methodName,
+                        IsAsync = isAsync,
+                        AcceptsCancellationToken = selectedMethod.Parameters.Length == 2,
+                        ExceptionContextClosedType = _typeHelper.BuildFullTypeName(exceptionContextClosed)
+                    };
+                    
+                    report?.Invoke($"[FluentParser] Successfully parsed OnException handler: {methodName}, IsAsync={isAsync}, AcceptsCancellationToken={selectedMethod.Parameters.Length == 2}");
+                }
+            }
         }
         
         private void ParseChildOf(InvocationExpressionSyntax invocation, string currentState, StateMachineModel model, Action<string>? report)
