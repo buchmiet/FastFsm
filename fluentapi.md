@@ -48,6 +48,16 @@ public partial class SimpleMachine
 |--------|-------------|---------|
 | `.OnException(string methodName)` | Set exception handler | `.OnException(nameof(HandleException))` |
 
+Note on OnException:
+- Global handler: Applies to the entire machine (not per-state).
+- Order-independent: May appear at the beginning, middle, or end of the chain.
+- Single handler: Exactly one `OnException` is allowed; duplicates produce a compile-time diagnostic.
+- Allowed signatures:
+  - Sync: `ExceptionDirective Handle(ExceptionContext<TState, TTrigger> ctx)`
+  - Async: `ValueTask<ExceptionDirective> Handle(ExceptionContext<TState, TTrigger> ctx)`
+  - Both may optionally take `CancellationToken` as the second parameter.
+  - Not allowed: `Task<ExceptionDirective>`, `void`, missing `ExceptionContext<,>`, extra/invalid parameters.
+
 ### State Definition Methods
 
 | Method | Description | Example |
@@ -321,6 +331,7 @@ public partial class ExceptionHandlingMachine
 - Can optionally accept `CancellationToken` as second parameter
 - Must return `ExceptionDirective` or `ValueTask<ExceptionDirective>`
 - Can be synchronous or asynchronous
+- Exactly one global handler per machine is supported; multiple declarations result in a compile-time error.
 
 **ExceptionDirective Values:**
 - `Continue` - Swallow the exception and continue execution
@@ -338,6 +349,10 @@ public partial class ExceptionHandlingMachine
 - `OperationCanceledException` is always propagated, even if handler returns `Continue`
 - Exception handlers are called for all exceptions except `OperationCanceledException`
 - If no exception handler is defined, exceptions are propagated by default
+
+Troubleshooting OnException
+- `FSM209`: Invalid `OnException` handler signature. Ensure the handler returns `ExceptionDirective` or `ValueTask<ExceptionDirective>` and accepts `ExceptionContext<TState,TTrigger>` (optional `CancellationToken`).
+- `FSM208`: Multiple `OnException` handlers defined. Keep only one global handler in the chain.
 
 ### Internal Transitions
 
