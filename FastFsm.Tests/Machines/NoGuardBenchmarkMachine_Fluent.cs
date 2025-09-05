@@ -5,7 +5,7 @@ using static FastFsm.Tests.Features.Performance.BenchmarkTests;
 namespace FastFsm.Tests.Machines;
 
 [StateMachine(typeof(BenchmarkState), typeof(BenchmarkTrigger))]
-public partial class NoGuardBenchmarkMachineFluentAPI
+public partial class NoGuardBenchmarkMachine_Fluent
 {
     private static void Configure() => FSM
         .State<BenchmarkState>(BenchmarkState.A)

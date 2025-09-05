@@ -7,7 +7,7 @@ namespace FastFsm.Tests.Features.Exceptions
     /// Fluent API version of TestMachine
     /// </summary>
     [StateMachine(typeof(State), typeof(Trigger), GenerateExtensibleVersion = true)]
-    public partial class TestMachineFluentAPI
+    public partial class TestMachine_Fluent
     {
         private static void Configure() => FSM
             .State(State.Initial)

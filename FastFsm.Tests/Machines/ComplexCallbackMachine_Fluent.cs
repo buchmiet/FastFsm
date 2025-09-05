@@ -7,7 +7,7 @@ using FastFsm.Tests.Features.Core;
 namespace FastFsm.Tests.Machines
 {
     [StateMachine(typeof(StateCallbackTests.ComplexCallbackState), typeof(StateCallbackTests.ComplexCallbackTrigger))]
-    public partial class ComplexCallbackMachineFluentAPI
+    public partial class ComplexCallbackMachine_Fluent
     {
         public List<string> EventSequence { get; } = [];
         public bool ResourcesCleaned { get; private set; }

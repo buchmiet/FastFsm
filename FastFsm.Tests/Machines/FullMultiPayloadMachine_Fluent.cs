@@ -1,4 +1,4 @@
-// FastFsm.Tests/Machines/FullMultiPayloadMachineFluentAPI.cs
+// FastFsm.Tests/Machines/FullMultiPayloadMachine_Fluent.cs
 
 
 using FastFsm.Tests.Features.Integration;
@@ -13,7 +13,7 @@ namespace FastFsm.Tests.Machines
     [PayloadType(OrderTrigger.Process, typeof(AllFeaturesExtendedTests.OrderPayload))]
     [PayloadType(OrderTrigger.Pay, typeof(AllFeaturesExtendedTests.PaymentPayload))]
     [PayloadType(OrderTrigger.Ship, typeof(AllFeaturesExtendedTests.ShippingPayload))]
-    public partial class FullMultiPayloadMachineFluentAPI
+    public partial class FullMultiPayloadMachine_Fluent
     {
         private static void Configure() => FSM
             .State<OrderState>(OrderState.New)

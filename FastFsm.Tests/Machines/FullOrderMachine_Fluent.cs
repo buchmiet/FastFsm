@@ -8,7 +8,7 @@ namespace FastFsm.Tests.Machines
     // Full variant machine with single payload type and extensions
     [StateMachine(typeof(OrderState), typeof(OrderTrigger), GenerateExtensibleVersion = true)]
     [PayloadType(typeof(AllFeaturesExtendedTests.OrderPayload))]
-    public partial class FullOrderMachineFluentAPI
+    public partial class FullOrderMachine_Fluent
     {
         public decimal TotalProcessed { get; private set; }
         public List<int> ProcessedOrderIds { get; } = new();

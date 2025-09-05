@@ -42,6 +42,12 @@ public partial class SimpleMachine
 
 ## Complete DSL Reference
 
+### State Machine Configuration Methods
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `.OnException(string methodName)` | Set exception handler | `.OnException(nameof(HandleException))` |
+
 ### State Definition Methods
 
 | Method | Description | Example |
@@ -245,6 +251,93 @@ public partial class AsyncMachine
     }
 }
 ```
+
+### Exception Handling
+
+```csharp
+[StateMachine(typeof(State), typeof(Trigger))]
+public partial class ExceptionHandlingMachine
+{
+    public enum State { Idle, Processing, Failed, Done }
+    public enum Trigger { Start, Complete, Retry }
+    
+    private static void Configure() => FSM
+        .OnException<State>(nameof(HandleException))  // Set exception handler
+        .State(State.Idle)
+            .On(Trigger.Start)
+                .Action(nameof(StartProcessing))
+                .GoTo(State.Processing)
+        .State(State.Processing)
+            .OnEntry(nameof(OnProcessingEntry))
+            .On(Trigger.Complete)
+                .GoTo(State.Done)
+        .State(State.Failed)
+            .On(Trigger.Retry)
+                .GoTo(State.Idle)
+        .State(State.Done);
+    
+    private void StartProcessing()
+    {
+        // May throw exception
+        if (!IsSystemReady())
+            throw new InvalidOperationException("System not ready");
+    }
+    
+    private void OnProcessingEntry()
+    {
+        // May throw exception
+        ValidateConfiguration();
+    }
+    
+    // Exception handler signature options:
+    // 1. Synchronous: ExceptionDirective HandleException(ExceptionContext<State, Trigger> ctx)
+    // 2. Synchronous with token: ExceptionDirective HandleException(ExceptionContext<State, Trigger> ctx, CancellationToken ct)
+    // 3. Async: ValueTask<ExceptionDirective> HandleExceptionAsync(ExceptionContext<State, Trigger> ctx)
+    // 4. Async with token: ValueTask<ExceptionDirective> HandleExceptionAsync(ExceptionContext<State, Trigger> ctx, CancellationToken ct)
+    
+    private ExceptionDirective HandleException(ExceptionContext<State, Trigger> ctx)
+    {
+        // Log the exception
+        Console.WriteLine($"Exception in {ctx.Stage} during {ctx.From} -> {ctx.To}: {ctx.Exception.Message}");
+        
+        // Decide whether to continue or propagate
+        if (ctx.Exception is InvalidOperationException && ctx.Stage == TransitionStage.Action)
+        {
+            // Continue execution, swallow the exception
+            return ExceptionDirective.Continue;
+        }
+        
+        // Propagate the exception to the caller
+        return ExceptionDirective.Propagate;
+    }
+    
+    private bool IsSystemReady() => DateTime.Now.Second % 2 == 0; // Example condition
+    private void ValidateConfiguration() { /* validation logic */ }
+}
+```
+
+**Exception Handler Requirements:**
+- Must accept `ExceptionContext<TState, TTrigger>` as first parameter
+- Can optionally accept `CancellationToken` as second parameter
+- Must return `ExceptionDirective` or `ValueTask<ExceptionDirective>`
+- Can be synchronous or asynchronous
+
+**ExceptionDirective Values:**
+- `Continue` - Swallow the exception and continue execution
+- `Propagate` - Re-throw the exception to the caller
+
+**ExceptionContext Properties:**
+- `From` - The source state of the transition
+- `To` - The target state of the transition
+- `Trigger` - The trigger that initiated the transition
+- `Exception` - The exception that was thrown
+- `Stage` - Where the exception occurred (Guard, OnExit, OnEntry, Action)
+- `StateAlreadyChanged` - Whether the state was already changed when exception occurred
+
+**Important Notes:**
+- `OperationCanceledException` is always propagated, even if handler returns `Continue`
+- Exception handlers are called for all exceptions except `OperationCanceledException`
+- If no exception handler is defined, exceptions are propagated by default
 
 ### Internal Transitions
 
@@ -513,6 +606,13 @@ public partial class FluentMachine
 - Methods must be instance methods (not static) except Configure()
 
 ## Version History
+
+- **v0.8.0** - Added exception handling support:
+  - `.OnException()` method for defining exception handlers
+  - Full parity with attribute-based `[OnException]` functionality
+  - Support for both synchronous and asynchronous exception handlers
+  - `ExceptionContext` provides detailed information about exception location
+  - `ExceptionDirective` allows controlled exception handling (Continue/Propagate)
 
 - **v0.7.5** - Initial Fluent API release with full FSM and HSM support including:
   - Parent-child state relationships via `.ChildOf()` method
