@@ -2258,12 +2258,14 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         }
 
         // Success - create model
+        var stateUsage = _typeHelper.FormatTypeForUsage(model.StateType!, useGlobalPrefix: true);
+        var triggerUsage = _typeHelper.FormatTypeForUsage(model.TriggerType!, useGlobalPrefix: true);
         model.ExceptionHandler = new ExceptionHandlerModel
         {
             MethodName = methodName,
             IsAsync = isAsync,
             AcceptsCancellationToken = selectedMethod.Parameters.Length == 2,
-            ExceptionContextClosedType = _typeHelper.BuildFullTypeName(exceptionContextClosed)
+            ExceptionContextClosedType = $"global::FastFsm.Exceptions.ExceptionContext<{stateUsage}, {triggerUsage}>"
         };
         
         if (isContinueMachine)

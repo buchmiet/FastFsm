@@ -816,13 +816,10 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                         WriteLogStatement("Warning",
                             $"AsyncActionFailed(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {transition.FromState} -> {transition.ToState}\", ex);");
                     }
-                    
-                    var handler = Model.ExceptionHandler;
+                    // Create exception context
                     var stateType = GetTypeNameForUsage(Model.StateType);
                     var triggerType = GetTypeNameForUsage(Model.TriggerType);
-                    
-                    // Create exception context
-                    Sb.AppendLine($"var exceptionContext = new {handler.ExceptionContextClosedType}(");
+                    Sb.AppendLine($"var exceptionContext = new global::FastFsm.Exceptions.ExceptionContext<{stateType}, {triggerType}>(");
                     using (Sb.Indent())
                     {
                         Sb.AppendLine($"{stateType}.{TypeHelper.EscapeIdentifier(transition.FromState)},");
@@ -834,7 +831,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                     }
                     
                     // Call handler
-                    Sb.AppendLine($"var directive = {handler.MethodName}(exceptionContext);");
+                    Sb.AppendLine($"var directive = {Model.ExceptionHandler!.MethodName}(exceptionContext);");
                     
                     // Apply directive based on policy
                     using (Sb.Block("if (directive == ExceptionDirective.Propagate)"))
@@ -2455,7 +2452,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         var triggerType = GetTypeNameForUsage(Model.TriggerType);
 
         // Create exception context
-        Sb.AppendLine($"var exceptionContext = new {handler.ExceptionContextClosedType}(");
+        Sb.AppendLine($"var exceptionContext = new {TypeHelper.FormatTypeForUsage(handler.ExceptionContextClosedType, useGlobalPrefix: true)}(");
         using (Sb.Indent())
         {
             Sb.AppendLine($"{stateType}.{TypeHelper.EscapeIdentifier(fromState)},");
@@ -2504,7 +2501,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         var triggerType = GetTypeNameForUsage(Model.TriggerType);
 
         // Create exception context
-        Sb.AppendLine($"var exceptionContext = new {handler.ExceptionContextClosedType}(");
+        Sb.AppendLine($"var exceptionContext = new {TypeHelper.FormatTypeForUsage(handler.ExceptionContextClosedType, useGlobalPrefix: true)}(");
         using (Sb.Indent())
         {
             Sb.AppendLine($"{stateType}.{TypeHelper.EscapeIdentifier(fromState)},");
