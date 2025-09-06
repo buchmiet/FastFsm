@@ -2451,8 +2451,8 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         var stateType = GetTypeNameForUsage(Model.StateType);
         var triggerType = GetTypeNameForUsage(Model.TriggerType);
 
-        // Create exception context
-        Sb.AppendLine($"var exceptionContext = new {TypeHelper.FormatTypeForUsage(handler.ExceptionContextClosedType, useGlobalPrefix: true)}(");
+        // Create exception context (compose from components to handle nested types)
+        Sb.AppendLine($"var exceptionContext = new global::FastFsm.Exceptions.ExceptionContext<{stateType}, {triggerType}>(");
         using (Sb.Indent())
         {
             Sb.AppendLine($"{stateType}.{TypeHelper.EscapeIdentifier(fromState)},");
@@ -2500,8 +2500,8 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         var stateType = GetTypeNameForUsage(Model.StateType);
         var triggerType = GetTypeNameForUsage(Model.TriggerType);
 
-        // Create exception context
-        Sb.AppendLine($"var exceptionContext = new {TypeHelper.FormatTypeForUsage(handler.ExceptionContextClosedType, useGlobalPrefix: true)}(");
+        // Create exception context (compose from components to handle nested types)
+        Sb.AppendLine($"var exceptionContext = new global::FastFsm.Exceptions.ExceptionContext<{stateType}, {triggerType}>(");
         using (Sb.Indent())
         {
             Sb.AppendLine($"{stateType}.{TypeHelper.EscapeIdentifier(fromState)},");

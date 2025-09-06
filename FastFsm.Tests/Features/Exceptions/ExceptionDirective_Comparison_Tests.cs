@@ -1,5 +1,3 @@
-// TEMP disabled due to generator nested-type ExceptionContext formatting; see issue note.
-#if false
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -322,4 +320,3 @@ public partial class ExceptionDirective_Comparison_Tests
     }
     #endregion
 }
-#endif
