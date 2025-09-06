@@ -57,8 +57,8 @@ public class ExceptionDirective_Comparison_Tests
         public List<string> Log { get; } = new();
 
         private static void Configure() => FSM
-            .State<CompState>(CompState.Idle)
-                .OnException(nameof(HandleException))
+            .OnException<CompState>(nameof(HandleException))
+            .State(CompState.Idle)
                 .On(CompTrigger.Start).GoTo(CompState.Running)
             .State(CompState.Running)
                 .OnEntry(nameof(OnEntryRunning));
@@ -118,8 +118,8 @@ public class ExceptionDirective_Comparison_Tests
         public List<string> Log { get; } = new();
 
         private static void Configure() => FSM
-            .State<CompState>(CompState.Idle)
-                .OnException(nameof(HandleException))
+            .OnException<CompState>(nameof(HandleException))
+            .State(CompState.Idle)
                 .On(CompTrigger.Process).Action(nameof(ProcessAction)).GoTo(CompState.Running);
 
         private void ProcessAction()
@@ -182,8 +182,8 @@ public class ExceptionDirective_Comparison_Tests
         public List<string> Log { get; } = new();
 
         private static void Configure() => FSM
-            .State<CompState>(CompState.Idle)
-                .OnException(nameof(HandleExceptionAsync))
+            .OnException<CompState>(nameof(HandleExceptionAsync))
+            .State(CompState.Idle)
                 .OnExitAsync(nameof(OnExitIdleAsync))
                 .On(CompTrigger.Start).GoTo(CompState.Running)
             .State(CompState.Running);
@@ -306,8 +306,8 @@ public class ExceptionDirective_Comparison_Tests
         public Action<ExceptionContext<CompState, CompTrigger>>? CaptureContext { get; set; }
 
         private static void Configure() => FSM
-            .State<CompState>(CompState.Idle)
-                .OnException(nameof(HandleException))
+            .OnException<CompState>(nameof(HandleException))
+            .State(CompState.Idle)
                 .On(CompTrigger.Process).Action(nameof(ProcessAction)).GoTo(CompState.Running);
 
         private void ProcessAction() => throw new InvalidOperationException("Test exception");

@@ -31,8 +31,8 @@ public partial class AsyncOceOnEntryMachine_Fluent
     public bool ThrowOceOnEntryB { get; set; }
 
     private static void Configure() => FSM
-        .State<CSState>(CSState.A)
-            .OnException(nameof(HandleAsync))
+        .OnException<CSState>(nameof(HandleAsync))
+        .State(CSState.A)
             .On(CSTrigger.Go).GoTo(CSState.B)
         .State(CSState.B)
             .OnEntryAsync(nameof(OnEntryBAsync));
