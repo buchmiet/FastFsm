@@ -511,7 +511,6 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         {
             if (IsAsyncMachine)
             {
-                // Async semantics: always convert OnExit exceptions into failed transition (return false)
                 using (Sb.Block("try"))
                 {
                     CallbackGenerationHelper.EmitOnExitCall(
@@ -536,10 +535,18 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                     WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
                     Sb.AppendLine("return false;");
                 }
-                using (Sb.Block("catch (System.Exception)"))
+                using (Sb.Block("catch (System.Exception ex)"))
                 {
-                    WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-                    Sb.AppendLine("return false;");
+                    if (Model.ExceptionHandler != null)
+                    {
+                        // Handle via global exception policy and continue transition on Continue
+                        EmitExceptionHandlerCall(transition.FromState, transition.ToState, transition.Trigger, "TransitionStage.OnExit", false);
+                    }
+                    else
+                    {
+                        WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                        Sb.AppendLine("return false;");
+                    }
                 }
             }
             else
@@ -569,10 +576,17 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                     WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
                     Sb.AppendLine("return false;");
                 }
-                using (Sb.Block("catch (System.Exception)"))
+                using (Sb.Block("catch (System.Exception ex)"))
                 {
-                    WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-                    Sb.AppendLine("return false;");
+                    if (Model.ExceptionHandler != null)
+                    {
+                        EmitExceptionHandlerCall(transition.FromState, transition.ToState, transition.Trigger, "TransitionStage.OnExit", false);
+                    }
+                    else
+                    {
+                        WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
+                        Sb.AppendLine("return false;");
+                    }
                 }
                 Sb.AppendLine("#else");
                 CallbackGenerationHelper.EmitOnExitCall(
@@ -1999,32 +2013,6 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         string toState,
         string trigger)
     {
-        if (Model.ExceptionHandler == null)
-        {
-            // No exception handler - wrap with FASTFSM_SAFE_ACTIONS to optionally swallow exceptions
-            Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
-            using (Sb.Block("try"))
-            {
-                WriteOnEntryCall(toStateDef, expectedPayloadType);
-                WriteLogStatement("Debug",
-                    $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{toState}\");");
-            }
-            using (Sb.Block("catch (System.OperationCanceledException)"))
-            {
-                Sb.AppendLine("return false;");
-            }
-            using (Sb.Block("catch (System.Exception)"))
-            {
-                Sb.AppendLine("return false;");
-            }
-            Sb.AppendLine("#else");
-            WriteOnEntryCall(toStateDef, expectedPayloadType);
-            WriteLogStatement("Debug",
-                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{toState}\");");
-            Sb.AppendLine("#endif");
-            return;
-        }
-
         // Wrap in try/catch with exception policy
         using (Sb.Block("try"))
         {
@@ -2034,7 +2022,15 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         }
         using (Sb.Block("catch (Exception ex) when (ex is not System.OperationCanceledException)"))
         {
-            EmitExceptionHandlerCall(fromState, toState, trigger, "TransitionStage.OnEntry", true);
+            if (Model.ExceptionHandler != null)
+            {
+                EmitExceptionHandlerCall(fromState, toState, trigger, "TransitionStage.OnEntry", true);
+            }
+            else
+            {
+                // No handler configured: behave like FASTFSM_SAFE_ACTIONS=false (rethrow)
+                Sb.AppendLine("throw;");
+            }
         }
     }
 

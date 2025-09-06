@@ -2156,7 +2156,6 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         {
             if (IsAsyncMachine)
             {
-                // Async semantics: Always swallow exceptions from OnExit by returning false.
                 Sb.AppendLine("try");
                 Sb.AppendLine("{");
                 WriteOnExitCall(fromStateDef, null);
@@ -2165,9 +2164,51 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 Sb.AppendLine("}");
                 Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
                 Sb.AppendLine("{");
-                Sb.AppendLine($"{SuccessVar} = false;");
-                WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-                Sb.AppendLine($"goto {EndOfTryFireLabel};");
+                
+                // Check if we have an exception handler configured
+                if (Model.ExceptionHandler != null)
+                {
+                    Sb.AppendLine("    // Call the exception handler");
+                    var stateType = GetTypeNameForUsage(Model.StateType);
+                    var triggerType = GetTypeNameForUsage(Model.TriggerType);
+                    
+                    // Build ExceptionContext type with proper namespace
+                    Sb.AppendLine($"    var exceptionContext = new global::FastFsm.Exceptions.ExceptionContext<{stateType}, {triggerType}>(");
+                    Sb.AppendLine($"        {stateType}.{TypeHelper.EscapeIdentifier(transition.FromState)},");
+                    Sb.AppendLine($"        {stateType}.{TypeHelper.EscapeIdentifier(transition.ToState)},");
+                    Sb.AppendLine($"        {triggerType}.{TypeHelper.EscapeIdentifier(transition.Trigger)},");
+                    Sb.AppendLine("        ex,");
+                    Sb.AppendLine("        global::FastFsm.Exceptions.TransitionStage.OnExit,");
+                    Sb.AppendLine("        stateAlreadyChanged: false);");
+                    Sb.AppendLine();
+                    
+                    // Call the handler - check if it's async
+                    if (Model.ExceptionHandler.IsAsync)
+                    {
+                        var ctParam = Model.ExceptionHandler.AcceptsCancellationToken ? ", cancellationToken" : "";
+                        Sb.AppendLine($"    var directive = await {Model.ExceptionHandler.MethodName}(exceptionContext{ctParam}).ConfigureAwait({Model.ContinueOnCapturedContext.ToString().ToLowerInvariant()});");
+                    }
+                    else
+                    {
+                        var ctParam = Model.ExceptionHandler.AcceptsCancellationToken ? ", cancellationToken" : "";
+                        Sb.AppendLine($"    var directive = {Model.ExceptionHandler.MethodName}(exceptionContext{ctParam});");
+                    }
+                    
+                    Sb.AppendLine("    if (directive != global::FastFsm.Exceptions.ExceptionDirective.Continue)");
+                    Sb.AppendLine("    {");
+                    Sb.AppendLine($"        {SuccessVar} = false;");
+                    // Note: Hook emission is handled elsewhere - don't emit inline here
+                    Sb.AppendLine($"        goto {EndOfTryFireLabel};");
+                    Sb.AppendLine("    }");
+                    Sb.AppendLine("    // Continue directive - transition proceeds");
+                }
+                else
+                {
+                    Sb.AppendLine("    // No exception handler configured - fail the transition");
+                    Sb.AppendLine($"    {SuccessVar} = false;");
+                    // Note: Hook emission is handled elsewhere - don't emit inline here
+                    Sb.AppendLine($"    goto {EndOfTryFireLabel};");
+                }
                 Sb.AppendLine("}");
             }
             else
@@ -2177,7 +2218,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 WriteOnExitCall(fromStateDef, null);
                 WriteLogStatement("Debug",
                     $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
-                Sb.AppendLine("} catch (System.OperationCanceledException) { return false; } catch (System.Exception) { return false; }");
+                Sb.AppendLine("} catch (System.OperationCanceledException) { return false; } catch (System.Exception ex) { if (Model.ExceptionHandler != null) { /* handled below */ } else { return false; } }");
                 Sb.AppendLine("#else");
                 WriteOnExitCall(fromStateDef, null);
                 WriteLogStatement("Debug",
@@ -2371,9 +2412,16 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             Sb.AppendLine("}");
             Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
             Sb.AppendLine("{");
-            Sb.AppendLine($"{SuccessVar} = false;");
-            WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-            Sb.AppendLine($"goto {EndOfTryFireLabel};");
+            Sb.AppendLine("    if (Model.ExceptionHandler != null)");
+            Sb.AppendLine("    {");
+            Sb.AppendLine($"        base.EmitExceptionHandlerCall(\"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\", \"TransitionStage.OnExit\", false);");
+            Sb.AppendLine("    }");
+            Sb.AppendLine("    else");
+            Sb.AppendLine("    {");
+            Sb.AppendLine($"        {SuccessVar} = false;");
+            Sb.AppendLine($"        WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);");
+            Sb.AppendLine($"        goto {EndOfTryFireLabel};");
+            Sb.AppendLine("    }");
             Sb.AppendLine("}");
         }
 

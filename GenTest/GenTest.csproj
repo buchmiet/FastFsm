@@ -15,6 +15,11 @@
     <!-- Exclude test files from compilation -->
     <Compile Remove="test_*.cs" />
     <None Include="test_*.cs" />
+    <!-- Exclude previous generated outputs from compilation -->
+    <Compile Remove="output_lifecycle/**/*.*" />
+    <Compile Remove="output_lifecycle.bak/**/*.*" />
+    <Compile Remove="output_tmp/**/*.*" />
+    <None Include="output_*/**/*.*" />
   </ItemGroup>
 
   <ItemGroup>

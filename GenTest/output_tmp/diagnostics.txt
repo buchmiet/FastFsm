@@ -1,0 +1,1 @@
+(1,1): info FSM997: Skipped state machine candidate AsyncOnExitContinueMachine: No [StateMachine] attribute
