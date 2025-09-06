@@ -621,57 +621,13 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             Model.States.TryGetValue(transition.ToState, out var toStateDef) &&
             !string.IsNullOrEmpty(toStateDef.OnEntryMethod))
         {
-            Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
-            using (Sb.Block("try"))
-            {
-                CallbackGenerationHelper.EmitOnEntryCall(
-                    Sb,
-                    toStateDef,
-                    transition.ExpectedPayloadType,
-                    null,
-                    "null",
-                    IsAsyncMachine,
-                    wrapInTryCatch: false,
-                    Model.ContinueOnCapturedContext,
-                    isSinglePayload: false,
-                    isMultiPayload: false,
-                    cancellationTokenVar: null,
-                    treatCancellationAsFailure: false
-                );
-            WriteLogStatement("Debug",
-                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
-            }
-            using (Sb.Block("catch (System.OperationCanceledException)"))
-            {
-                WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-                Sb.AppendLine("return false;");
-            }
-            using (Sb.Block("catch (System.Exception ex)"))
-            {
-                // Log callback exception for OnEntry
-                WriteLogStatement("Warning",
-                    $"CallbackException(_logger, _instanceId, \"OnEntry\", \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\", ex);");
-                WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-                Sb.AppendLine("return false;");
-            }
-            Sb.AppendLine("#else");
-            CallbackGenerationHelper.EmitOnEntryCall(
-                Sb,
+            // Use unified exception policy for OnEntry (respects global OnException handler)
+            EmitOnEntryWithExceptionPolicy(
                 toStateDef,
                 transition.ExpectedPayloadType,
-                null,
-                "null",
-                IsAsyncMachine,
-                wrapInTryCatch: false,
-                Model.ContinueOnCapturedContext,
-                isSinglePayload: false,
-                isMultiPayload: false,
-                cancellationTokenVar: null,
-                treatCancellationAsFailure: false
-            );
-            WriteLogStatement("Debug",
-                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
-            Sb.AppendLine("#endif");
+                transition.FromState,
+                transition.ToState,
+                transition.Trigger);
         }
 
         // Action (if present)
