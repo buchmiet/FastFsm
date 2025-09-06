@@ -33,7 +33,7 @@ public partial class MiddlePositionMachine_Fluent
     private static void Configure() => FSM
         .State(MPState.A)
             .On(MPTrigger.Go).Action(nameof(Throw)).GoTo(MPState.B)
-        .OnException<MPState>(nameof(Handle))
+        .OnException(nameof(Handle))
         .State(MPState.B);
 
     private void Throw() => throw new InvalidOperationException("boom");
@@ -50,7 +50,7 @@ public partial class EndPositionMachine_Fluent
         .State(EPState.A)
             .On(EPTrigger.Go).Action(nameof(Throw)).GoTo(EPState.B)
         .State(EPState.B)
-        .OnException<EPState>(nameof(Handle));
+        .OnException(nameof(Handle));
 
     private void Throw() => throw new InvalidOperationException("boom");
     private ExceptionDirective Handle(ExceptionContext<EPState, EPTrigger> ctx) => ExceptionDirective.Continue;
@@ -58,4 +58,3 @@ public partial class EndPositionMachine_Fluent
 
 public enum EPState { A, B }
 public enum EPTrigger { Go }
-
