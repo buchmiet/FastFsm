@@ -26,8 +26,8 @@ public class ExceptionDirective_Continue_Action_Tests_Fluent
 public partial class ContinueOnActionMachine_Fluent
 {
     private static void Configure() => FSM
-        .State<ASState>(ASState.A)
-            .OnException(nameof(Handle))
+        .OnException<ASState>(nameof(Handle))
+        .State(ASState.A)
             .On(ASTrigger.Go).Action(nameof(DoWork)).GoTo(ASState.B)
         .State(ASState.B);
 
