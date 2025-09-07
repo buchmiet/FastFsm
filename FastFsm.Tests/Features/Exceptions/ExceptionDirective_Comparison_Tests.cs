@@ -22,7 +22,7 @@ public partial class ExceptionDirective_Comparison_Tests
     #region Continue on OnEntry - Legacy
     [StateMachine(typeof(CompState), typeof(CompTrigger))]
     [OnException(nameof(HandleException))]
-    public partial class OnEntryContinueMachine_Legacy
+    public partial class OnEntryContinueMachineLegacy
     {
         public bool ThrowOnEntry { get; set; }
         public List<string> Log { get; } = new();
@@ -51,7 +51,7 @@ public partial class ExceptionDirective_Comparison_Tests
 
     #region Continue on OnEntry - Fluent
     [StateMachine(typeof(CompState), typeof(CompTrigger))]
-    public partial class OnEntryContinueMachine_Fluent
+    public partial class OnEntryContinueMachineFluent
     {
         public bool ThrowOnEntry { get; set; }
         public List<string> Log { get; } = new();
@@ -84,7 +84,7 @@ public partial class ExceptionDirective_Comparison_Tests
     #region Propagate on Action - Legacy
     [StateMachine(typeof(CompState), typeof(CompTrigger))]
     [OnException(nameof(HandleException))]
-    public partial class ActionPropagateMachine_Legacy
+    public partial class ActionPropagateMachineLegacy
     {
         public bool ThrowInAction { get; set; }
         public List<string> Log { get; } = new();
@@ -112,7 +112,7 @@ public partial class ExceptionDirective_Comparison_Tests
 
     #region Propagate on Action - Fluent
     [StateMachine(typeof(CompState), typeof(CompTrigger))]
-    public partial class ActionPropagateMachine_Fluent
+    public partial class ActionPropagateMachineFluent
     {
         public bool ThrowInAction { get; set; }
         public List<string> Log { get; } = new();
@@ -143,7 +143,7 @@ public partial class ExceptionDirective_Comparison_Tests
     #region Async Handler - Legacy
     [StateMachine(typeof(CompState), typeof(CompTrigger))]
     [OnException(nameof(HandleExceptionAsync))]
-    public partial class AsyncHandlerMachine_Legacy
+    public partial class AsyncHandlerMachineLegacy
     {
         public bool ThrowInOnExit { get; set; }
         public List<string> Log { get; } = new();
@@ -176,7 +176,7 @@ public partial class ExceptionDirective_Comparison_Tests
 
     #region Async Handler - Fluent
     [StateMachine(typeof(CompState), typeof(CompTrigger))]
-    public partial class AsyncHandlerMachine_Fluent
+    public partial class AsyncHandlerMachineFluent
     {
         public bool ThrowInOnExit { get; set; }
         public List<string> Log { get; } = new();
@@ -213,8 +213,8 @@ public partial class ExceptionDirective_Comparison_Tests
     [Fact]
     public void OnEntry_Continue_BehaviorIdentical()
     {
-        var legacy = new OnEntryContinueMachine_Legacy(CompState.Idle) { ThrowOnEntry = true };
-        var fluent = new OnEntryContinueMachine_Fluent(CompState.Idle) { ThrowOnEntry = true };
+        var legacy = new OnEntryContinueMachineLegacy(CompState.Idle) { ThrowOnEntry = true };
+        var fluent = new OnEntryContinueMachineFluent(CompState.Idle) { ThrowOnEntry = true };
 
         legacy.Start();
         fluent.Start();
@@ -235,8 +235,8 @@ public partial class ExceptionDirective_Comparison_Tests
     [Fact]
     public void Action_Propagate_BehaviorIdentical()
     {
-        var legacy = new ActionPropagateMachine_Legacy(CompState.Idle) { ThrowInAction = true };
-        var fluent = new ActionPropagateMachine_Fluent(CompState.Idle) { ThrowInAction = true };
+        var legacy = new ActionPropagateMachineLegacy(CompState.Idle) { ThrowInAction = true };
+        var fluent = new ActionPropagateMachineFluent(CompState.Idle) { ThrowInAction = true };
 
         legacy.Start();
         fluent.Start();
@@ -260,8 +260,8 @@ public partial class ExceptionDirective_Comparison_Tests
     [Fact]
     public async Task AsyncHandler_Continue_BehaviorIdentical()
     {
-        var legacy = new AsyncHandlerMachine_Legacy(CompState.Idle) { ThrowInOnExit = true };
-        var fluent = new AsyncHandlerMachine_Fluent(CompState.Idle) { ThrowInOnExit = true };
+        var legacy = new AsyncHandlerMachineLegacy(CompState.Idle) { ThrowInOnExit = true };
+        var fluent = new AsyncHandlerMachineFluent(CompState.Idle) { ThrowInOnExit = true };
 
         await legacy.StartAsync();
         await fluent.StartAsync();
@@ -284,7 +284,7 @@ public partial class ExceptionDirective_Comparison_Tests
     {
         ExceptionContext<CompState, CompTrigger>? capturedContext = null;
 
-        var machine = new ContextCaptureMachine_Fluent(CompState.Idle);
+        var machine = new ContextCaptureMachineFluent(CompState.Idle);
         machine.CaptureContext = ctx => capturedContext = ctx;
         machine.Start();
 
@@ -301,7 +301,7 @@ public partial class ExceptionDirective_Comparison_Tests
 
     #region Context Capture Machine
     [StateMachine(typeof(CompState), typeof(CompTrigger))]
-    public partial class ContextCaptureMachine_Fluent
+    public partial class ContextCaptureMachineFluent
     {
         public Action<ExceptionContext<CompState, CompTrigger>>? CaptureContext { get; set; }
 

@@ -9,10 +9,10 @@ namespace FastFsm.Tests.Features.Hsm.CompileTime
         public void DumpActivePath_ShowsParentToLeaf()
         {
             // Using the existing valid HSM from HsmParsingCompilationTests:
-            var m = new HsmParsingCompilationTests.SimpleParentChildMachine(HsmParsingCompilationTests.HsmState.Idle);
+            var m = new HsmParsingCompilationTestsLegacy.SimpleParentChildMachineLegacy(HsmState.Idle);
             m.Start();
             // Fire transition to enter composite 'Working' -> auto-enter initial child 'Working_Initializing'
-            m.Fire(HsmParsingCompilationTests.HsmTrigger.Start);
+            m.Fire(HsmTrigger.Start);
 
             var path = m.DumpActivePath();
             // The transition from Idle to Working actually enters Working_Initializing directly

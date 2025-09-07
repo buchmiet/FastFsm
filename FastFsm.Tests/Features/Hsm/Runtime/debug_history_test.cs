@@ -9,29 +9,29 @@ namespace FastFsm.Tests.Features.Hsm.Runtime
         [Fact]
         public void Debug_ShallowHistory_Test()
         {
-            var m = new ShallowHistoryTests.ShallowHistoryMachine(ShallowHistoryTests.S.Outside);
+            var m = new ShallowHistoryTestsLegacy.ShallowHistoryMachineLegacy(ShallowHistoryTestsLegacy.S.Outside);
             m.Start();
             
             Console.WriteLine($"Initial state: {m.CurrentState}");
             
             // Enter parent → initial child
-            m.Fire(ShallowHistoryTests.T.Enter);
+            m.Fire(ShallowHistoryTestsLegacy.T.Enter);
             Console.WriteLine($"After Enter: {m.CurrentState}");
             
             // Move to another child
-            m.Fire(ShallowHistoryTests.T.Next);
+            m.Fire(ShallowHistoryTestsLegacy.T.Next);
             Console.WriteLine($"After Next: {m.CurrentState}");
             
             // Exit composite
-            m.Fire(ShallowHistoryTests.T.Exit);
+            m.Fire(ShallowHistoryTestsLegacy.T.Exit);
             Console.WriteLine($"After Exit: {m.CurrentState}");
             
             // Re‑enter → shallow history brings us back to Settings
-            m.Fire(ShallowHistoryTests.T.Enter);
+            m.Fire(ShallowHistoryTestsLegacy.T.Enter);
             Console.WriteLine($"After re-Enter: {m.CurrentState}");
             
             // Expected: Menu_Settings, Actual: ?
-            Assert.Equal(ShallowHistoryTests.S.Menu_Settings, m.CurrentState);
+            Assert.Equal(ShallowHistoryTestsLegacy.S.Menu_Settings, m.CurrentState);
         }
     }
 }
