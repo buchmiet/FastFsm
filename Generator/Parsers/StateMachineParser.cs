@@ -1,20 +1,19 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using Generator.Infrastructure;
 using Generator.Rules.Contexts;
 using Generator.Rules.Definitions;
 using Generator.Rules.Rules;
 using Generator.SourceGenerators;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
 using Abstractions.Attributes;
 using Generator.Model;
 using static Generator.Strings;
-using static Microsoft.CodeAnalysis.SpecialType;
 using Generator.Helpers;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Generator.Parsers;
 
@@ -27,9 +26,6 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
     private readonly MissingStateMachineAttributeRule _missingStateMachineAttributeRule = new();
     private readonly UnreachableStateRule _unreachableStateRule = new();
     private readonly GuardWithPayloadInNonPayloadMachineRule _guardWithPayloadRule = new();
-    private readonly MissingPayloadTypeRule _missingPayloadTypeRule = new();
-    private readonly ConflictingPayloadRule _conflictingPayloadRule = new();
-    private readonly InvalidVariantConfigRule _invalidVariantConfigRule = new();
     private readonly InvalidGuardTaskReturnTypeRule _invalidGuardTaskReturnTypeRule = new();
     private readonly AsyncCallbackInSyncMachineRule _asyncCallbackInSyncMachineRule = new();
     private readonly InvalidAsyncVoidRule _invalidAsyncVoidRule = new();
@@ -38,7 +34,6 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
     private readonly InvalidHierarchyConfigurationRule _invalidHierarchyConfigRule = new();
     private readonly MultipleInitialSubstatesRule _multipleInitialSubstatesRule = new();
     private readonly InvalidHistoryConfigurationRule _invalidHistoryConfigRule = new();
-    private readonly ConflictingTransitionTargetsRule _conflictingTransitionTargetsRule = new();
     private readonly TypeSystemHelper _typeHelper = new TypeSystemHelper();
     private readonly AsyncSignatureAnalyzer _asyncAnalyzer = new AsyncSignatureAnalyzer(new TypeSystemHelper());
     private readonly HashSet<TransitionDefinition> _processedTransitionsInCurrentFsm = [];
@@ -238,7 +233,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         // === SEKCJA 1: Pobieranie semantic model i class symbol ===
         report?.Invoke("Section 1: Getting semantic model and class symbol");
         var semanticModel = compilation.GetSemanticModel(classDeclaration.SyntaxTree);
-        if (semanticModel.GetDeclaredSymbol(classDeclaration) is not INamedTypeSymbol classSymbol)
+        if (ModelExtensions.GetDeclaredSymbol(semanticModel, classDeclaration) is not INamedTypeSymbol classSymbol)
         {
             report?.Invoke("ERROR: Failed to get class symbol");
             return false;
@@ -491,7 +486,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
                 
                 if (enumDecl != null)
                 {
-                    stateTypeArg = localSemanticModel.GetDeclaredSymbol(enumDecl) as INamedTypeSymbol;
+                    stateTypeArg = ModelExtensions.GetDeclaredSymbol(localSemanticModel, enumDecl) as INamedTypeSymbol;
                 }
                 
                 // If still not found, try GetTypeByMetadataName as fallback
@@ -525,7 +520,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
                 
                 if (enumDecl != null)
                 {
-                    triggerTypeArg = localSemanticModel.GetDeclaredSymbol(enumDecl) as INamedTypeSymbol;
+                    triggerTypeArg = ModelExtensions.GetDeclaredSymbol(localSemanticModel, enumDecl) as INamedTypeSymbol;
                 }
                 
                 // If still not found, try GetTypeByMetadataName as fallback
@@ -1383,7 +1378,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         bool isAsyncOce = classSymbolContainingMethods.Name.Contains("AsyncOceOnEntryMachine");
             
         // Potrzebne tylko do walidacji (brak zmian)
-        var voidType = compilation.GetSpecialType(System_Void);
+        var voidType = compilation.GetSpecialType(SpecialType.System_Void);
 
         // Przechodzimy po wszystkich metodach klasy
         foreach (var methodSymbol in classSymbolContainingMethods.GetMembers()

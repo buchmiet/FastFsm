@@ -12,7 +12,6 @@ public static class RuleIdentifiers
     public const string InvalidEnumValueInTransition = "FSM006";
     public const string MissingPayloadType = "FSM007";
     public const string ConflictingPayloadConfiguration = "FSM008";
-    public const string InvalidForcedVariantConfiguration = "FSM009";
     public const string GuardWithPayloadInNonPayloadMachine = "FSM010";
     public const string MixedSyncAsyncCallbacks = "FSM011";
     public const string InvalidGuardTaskReturnType = "FSM012";

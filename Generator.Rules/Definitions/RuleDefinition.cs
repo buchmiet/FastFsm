@@ -118,13 +118,6 @@ namespace Generator.Rules.Definitions
             defaultSeverity: RuleSeverity.Error,
             description: "WithPayload variant supports only single payload type. For multiple payload types use Full variant.");
 
-        public static readonly RuleDefinition InvalidForcedVariantConfiguration = new(
-            id: RuleIdentifiers.InvalidForcedVariantConfiguration,
-            title: "Invalid forced variant configuration",
-            messageFormat: "Forced '{0}' variant conflicts with {1}. {2}",
-            category: RuleCategories.FSM_Generator,
-            defaultSeverity: RuleSeverity.Error,
-            description: "Forced variant has conflicting configuration that prevents proper code generation.");
 
 
         public static readonly RuleDefinition GuardWithPayloadInNonPayloadMachine = new(
@@ -299,7 +292,7 @@ namespace Generator.Rules.Definitions
             InvalidEnumValueInTransition,
             MissingPayloadType,
             ConflictingPayloadConfiguration,
-            InvalidForcedVariantConfiguration,
+
             GuardWithPayloadInNonPayloadMachine,
             MixedSyncAsyncCallbacks,
             InvalidGuardTaskReturnType,
