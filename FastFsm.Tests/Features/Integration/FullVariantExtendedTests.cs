@@ -8,6 +8,7 @@ using System.Reflection;
 using FastFsm.Contracts;
 using Xunit;
 using Xunit.Abstractions;
+using FastFsm.Tests.Machines;
 
 namespace FastFsm.Tests.Features.Integration
 {
@@ -191,7 +192,7 @@ namespace FastFsm.Tests.Features.Integration
 
 
         [Fact]
-        public void PayloadMap_ShouldPointTo_CompileTimeTypes()
+        public void PayloadMap_ShouldPointTo_CompileTimeTypes_Legacy()
         {
             // 1. Utwórz instancję (konstruktor NIE wywołuje TryFire)
             var machine = new FullMultiPayloadMachine(OrderState.New, extensions: null);
@@ -224,7 +225,7 @@ namespace FastFsm.Tests.Features.Integration
         }
 
         [Fact]
-        public void AllFeatures_MultiplePayloadTypes_SingleTransition()
+        public void AllFeatures_MultiplePayloadTypes_SingleTransition_Legacy()
         {
             // Arrange
             var typeTracker = new PayloadTypeTracker();
@@ -368,6 +369,66 @@ namespace FastFsm.Tests.Features.Integration
             public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext { }
             public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext { }
             public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext { }
+        }
+
+        // ===== TESTY DLA WERSJI FLUENT =====
+
+        [Fact]
+        public void PayloadMap_ShouldPointTo_CompileTimeTypes_Fluent()
+        {
+            // 1. Utwórz instancję Fluent
+            var machine = new FullMultiPayloadMachineFluent(OrderState.New, extensions: null);
+            machine.Start();
+
+            // 2. Wyciągnij prywatne, statyczne pole _payloadMap
+            var field = typeof(FullMultiPayloadMachineFluent)
+                .GetField("_payloadMap",
+                    BindingFlags.NonPublic | BindingFlags.Static);
+
+            Assert.NotNull(field);
+            var map = (Dictionary<OrderTrigger, Type>)field!.GetValue(null)!;
+
+            // 3. Assercje: czy to *te same* obiekty Type?
+            Assert.Same(typeof(OrderPayload), map[OrderTrigger.Process]);
+            Assert.Same(typeof(PaymentPayload), map[OrderTrigger.Pay]);
+            Assert.Same(typeof(ShippingPayload), map[OrderTrigger.Ship]);
+        }
+
+        [Fact]
+        public void AllFeatures_MultiplePayloadTypes_SingleTransition_Fluent()
+        {
+            // Arrange
+            var typeTracker = new PayloadTypeTracker();
+            var machine = new FullMultiPayloadMachineFluent(OrderState.New, new[] { typeTracker });
+            machine.Start();
+
+            // Act - Process transition with OrderPayload
+            var processResult = machine.TryFire(OrderTrigger.Process, new OrderPayload { OrderId = 1 });
+            
+            // Assert
+            Assert.True(processResult);
+            Assert.Equal(OrderState.Processing, machine.CurrentState);
+            Assert.Contains(1, machine.ProcessedOrderIds);
+        }
+
+        [Fact]
+        public void Fluent_Should_Handle_Different_Payload_Types()
+        {
+            // Arrange
+            var machine = new FullMultiPayloadMachineFluent(OrderState.Processing);
+            machine.Start();
+
+            // Act & Assert - Pay with PaymentPayload
+            var payResult = machine.TryFire(OrderTrigger.Pay, new PaymentPayload { OrderId = 123, Amount = 100, PaymentMethod = "Credit Card" });
+            Assert.True(payResult);
+            Assert.Equal(OrderState.Paid, machine.CurrentState);
+            Assert.Contains(123, machine.ProcessedPaymentIds);
+
+            // Act & Assert - Ship with ShippingPayload
+            var shipResult = machine.TryFire(OrderTrigger.Ship, new ShippingPayload { OrderId = 456, Carrier = "FedEx" });
+            Assert.True(shipResult);
+            Assert.Equal(OrderState.Shipped, machine.CurrentState);
+            Assert.Contains(456, machine.ShippedTrackingNumbers);
         }
     }
 

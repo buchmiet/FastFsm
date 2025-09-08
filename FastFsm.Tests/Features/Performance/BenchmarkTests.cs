@@ -14,7 +14,7 @@ namespace FastFsm.Tests.Features.Performance
         public void Core_MillionTransitions_PerformanceTest()
         {
             // Arrange
-            var machine = new CoreBenchmarkMachine(BenchmarkState.A);
+            var machine = new CoreBenchmarkMachineFluent(BenchmarkState.A);
             machine.Start();
             const int iterations = 1_000_000;
 
@@ -50,7 +50,7 @@ namespace FastFsm.Tests.Features.Performance
         public void CoreWithCallbacks_MillionTransitions_PerformanceTest()
         {
             // Arrange
-            var machine = new BasicBenchmarkMachine(BenchmarkState.A);
+            var machine = new BasicBenchmarkMachineFluent(BenchmarkState.A);
             machine.Start();
             const int iterations = 1_000_000;
 
@@ -88,7 +88,7 @@ namespace FastFsm.Tests.Features.Performance
             const int iterations = 100_000;
 
             // Core baseline
-            var pureMachine = new CoreBenchmarkMachine(BenchmarkState.A);
+            var pureMachine = new CoreBenchmarkMachineFluent(BenchmarkState.A);
             pureMachine.Start();
             var sw1 = Stopwatch.StartNew();
             for (int i = 0; i < iterations; i++)
@@ -99,7 +99,7 @@ namespace FastFsm.Tests.Features.Performance
             var pureTime = sw1.Elapsed.TotalMilliseconds;
 
             // Core + callbacks
-            var basicMachine = new BasicBenchmarkMachine(BenchmarkState.A);
+            var basicMachine = new BasicBenchmarkMachineFluent(BenchmarkState.A);
             basicMachine.Start();
             var sw2 = Stopwatch.StartNew();
             for (int i = 0; i < iterations; i++)
@@ -128,7 +128,7 @@ namespace FastFsm.Tests.Features.Performance
             const int warmupIterations = 100_000;
 
             // Warmup dla obu maszyn
-            var noGuardMachine = new NoGuardBenchmarkMachine(BenchmarkState.A);
+            var noGuardMachine = new NoGuardBenchmarkMachineFluent(BenchmarkState.A);
             noGuardMachine.Start();
             var withGuardMachine = new WithGuardBenchmarkMachine(BenchmarkState.A);
             withGuardMachine.Start();
@@ -140,7 +140,7 @@ namespace FastFsm.Tests.Features.Performance
             }
 
             // Reset maszyn
-            noGuardMachine = new NoGuardBenchmarkMachine(BenchmarkState.A);
+            noGuardMachine = new NoGuardBenchmarkMachineFluent(BenchmarkState.A);
             noGuardMachine.Start();
             withGuardMachine = new WithGuardBenchmarkMachine(BenchmarkState.A);
             withGuardMachine.Start();

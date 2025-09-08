@@ -12,7 +12,7 @@ namespace FastFsm.Tests.Features.EdgeCases
         public void EmptyStateMachine_WithNoTransitions_ShouldCompileAndWork()
         {
             // Arrange & Act
-            var machine = new NoTransitionsMachine(EmptyState.Only);
+            var machine = new NoTransitionsMachineLegacy(EmptyState.Only);
             machine.Start();
 
             // Assert
@@ -29,7 +29,7 @@ namespace FastFsm.Tests.Features.EdgeCases
         public void StateMachine_WithSingleState_CanHaveSelfTransition()
         {
             // Arrange
-            var machine = new Machines.SingleStateMachine(SingleState.Only);
+            var machine = new Machines.SingleStateMachineFluent(SingleState.Only);
             machine.Start();
 
             // Act & Assert
@@ -37,7 +37,7 @@ namespace FastFsm.Tests.Features.EdgeCases
             Assert.True(machine.TryFire(SingleTrigger.Loop));
             Assert.Equal(SingleState.Only, machine.CurrentState);
 
-            var typedMachine = machine as Machines.SingleStateMachine;
+            var typedMachine = machine as Machines.SingleStateMachineFluent;
             Assert.Equal(1, typedMachine?.ActionCount);
         }
 
@@ -45,7 +45,7 @@ namespace FastFsm.Tests.Features.EdgeCases
         public void StateMachine_WithUnreachableStates_ShouldStillFunction()
         {
             // Arrange
-            var machine = new Machines.UnreachableMachine(UnreachableState.Start);
+            var machine = new Machines.UnreachableMachineFluent(UnreachableState.Start);
             machine.Start();
 
             // Act & Assert
@@ -68,9 +68,9 @@ namespace FastFsm.Tests.Features.EdgeCases
         public void StateMachine_WithOnlyInternalTransitions_NeverChangesState()
         {
             // Arrange
-            var machine = new Machines.InternalOnlyMachine(InternalOnlyState.Static);
+            var machine = new Machines.InternalOnlyMachineFluent(InternalOnlyState.Static);
             machine.Start();
-            var typedMachine = machine as Machines.InternalOnlyMachine;
+            var typedMachine = machine as Machines.InternalOnlyMachineFluent;
 
             // Act
             for (int i = 0; i < 10; i++)
