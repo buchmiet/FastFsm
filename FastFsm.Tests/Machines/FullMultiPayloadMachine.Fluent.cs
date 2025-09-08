@@ -15,6 +15,11 @@ namespace FastFsm.Tests.Machines
     [PayloadType(OrderTrigger.Ship, typeof(AllFeaturesExtendedTests.ShippingPayload))]
     public partial class FullMultiPayloadMachineFluent
     {
+        public List<int> ProcessedOrderIds { get; } = new();
+        public decimal TotalProcessed { get; private set; }
+        public List<int> ProcessedPaymentIds { get; } = new();
+        public List<int> ShippedTrackingNumbers { get; } = new();
+
         private static void Configure() => FSM
             .State<OrderState>(OrderState.New)
                 .On(OrderTrigger.Process).Action(nameof(HandleOrder)).GoTo(OrderState.Processing)
@@ -23,8 +28,20 @@ namespace FastFsm.Tests.Machines
             .State(OrderState.Paid)
                 .On(OrderTrigger.Ship).Action(nameof(HandleShipping)).GoTo(OrderState.Shipped);
 
-        private void HandleOrder(AllFeaturesExtendedTests.OrderPayload order) { }
-        private void HandlePayment(AllFeaturesExtendedTests.PaymentPayload payment) { }
-        private void HandleShipping(AllFeaturesExtendedTests.ShippingPayload shipping) { }
+        private void HandleOrder(AllFeaturesExtendedTests.OrderPayload order) 
+        {
+            ProcessedOrderIds.Add(order.OrderId);
+            TotalProcessed += order.Amount;
+        }
+        
+        private void HandlePayment(AllFeaturesExtendedTests.PaymentPayload payment) 
+        {
+            ProcessedPaymentIds.Add(payment.OrderId);
+        }
+        
+        private void HandleShipping(AllFeaturesExtendedTests.ShippingPayload shipping) 
+        {
+            ShippedTrackingNumbers.Add(shipping.OrderId);
+        }
     }
 }

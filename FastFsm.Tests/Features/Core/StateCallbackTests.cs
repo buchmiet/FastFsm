@@ -12,7 +12,7 @@ public class StateCallbackTests(ITestOutputHelper output)
     public void OnEntryOnExit_ExecutionOrder_IsCorrect()
     {
         // Arrange
-        var machine = new Machines.CallbackOrderMachine(CallbackState.A);
+        var machine = new Machines.CallbackOrderMachineFluent(CallbackState.A);
         machine.Start();
         var typedMachine = machine;
 
@@ -54,7 +54,7 @@ public class StateCallbackTests(ITestOutputHelper output)
     public void InternalTransition_DoesNotTrigger_OnEntryOnExit()
     {
         // Arrange
-        var machine = new Machines.InternalTransitionMachine(InternalState.Active);
+        var machine = new Machines.InternalTransitionMachineFluent(InternalState.Active);
         machine.Start();
         var typedMachine = machine;
 
@@ -113,7 +113,7 @@ public class StateCallbackTests(ITestOutputHelper output)
     public void SelfTransition_Triggers_OnExitAndOnEntry()
     {
         // Arrange
-        var machine = new Machines.SelfTransitionMachine(SelfState.Active);
+        var machine = new Machines.SelfTransitionMachineFluent(SelfState.Active);
         machine.Start();
         var typedMachine = machine;
 

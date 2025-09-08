@@ -44,7 +44,7 @@ namespace FastFsm.Tests.Features.Extensions
             // Arrange
             var ext1 = new TestExtension();
             var ext2 = new TestExtension();
-            var machine = new ExtensionsMachine(ExtState.Idle, [ext1]);
+            var machine = new ExtensionsMachineLegacy(ExtState.Idle, [ext1]);
             machine.Start();
 
             // Act & Assert - Initial extension works
@@ -72,7 +72,7 @@ namespace FastFsm.Tests.Features.Extensions
         {
             // Arrange
             var extension = new TestExtension();
-            var machine = new ExtensionsMachine(ExtState.Idle, [extension]);
+            var machine = new ExtensionsMachineLegacy(ExtState.Idle, [extension]);
             machine.Start();
 
             // Act
@@ -88,7 +88,7 @@ namespace FastFsm.Tests.Features.Extensions
         {
             // Arrange
             var extension = new TestExtension();
-            var machine = new ExtensionsMachine(ExtState.Complete, [extension]);
+            var machine = new ExtensionsMachineLegacy(ExtState.Complete, [extension]);
             machine.Start();
 
             // Act
@@ -104,7 +104,7 @@ namespace FastFsm.Tests.Features.Extensions
         public void Extensions_WithoutExtensions_MachineStillWorks()
         {
             // Arrange
-            var machine = new ExtensionsMachine(ExtState.Idle, null);
+            var machine = new ExtensionsMachineLegacy(ExtState.Idle, null);
             machine.Start();
 
             // Act
@@ -121,7 +121,7 @@ namespace FastFsm.Tests.Features.Extensions
             // Arrange
             var faultyExtension = new FaultyExtension();
             var goodExtension = new TestExtension();
-            var machine = new ExtensionsMachine(ExtState.Idle, new IStateMachineExtension[] { faultyExtension, goodExtension });
+            var machine = new ExtensionsMachineLegacy(ExtState.Idle, new IStateMachineExtension[] { faultyExtension, goodExtension });
             machine.Start();
 
             // Act
