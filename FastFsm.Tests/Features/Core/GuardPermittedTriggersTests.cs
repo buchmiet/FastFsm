@@ -1,4 +1,5 @@
-﻿using Abstractions.Attributes;
+﻿
+using Abstractions.Attributes;
 using Xunit;
 
 namespace FastFsm.Tests.Features.Core

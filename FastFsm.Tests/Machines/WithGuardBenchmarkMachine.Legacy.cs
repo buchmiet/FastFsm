@@ -1,17 +1,18 @@
 ﻿using Abstractions.Attributes;
 using Abstractions.Fluent;
-using static FastFsm.Tests.Features.Performance.BenchmarkTests;
+using FastFsm.Tests.Features.Performance;
+
 
 namespace FastFsm.Tests.Machines
 {
-    [StateMachine(typeof(BenchmarkState), typeof(BenchmarkTrigger))]
-    public partial class WithGuardBenchmarkMachine
+    [StateMachine(typeof(BenchmarkTestsLegacy.BenchmarkState), typeof(BenchmarkTestsLegacy.BenchmarkTrigger))]
+    public partial class WithGuardBenchmarkMachineLegacy
     {
         private int _counter;
         public bool ShouldAllow { get; set; } = true;
 
-        [Transition(BenchmarkState.A, BenchmarkTrigger.Next, BenchmarkState.B, Guard = nameof(CanTransition))]
-        [Transition(BenchmarkState.B, BenchmarkTrigger.Next, BenchmarkState.A, Guard = nameof(CanTransition))]
+        [Transition(BenchmarkTestsLegacy.BenchmarkState.A, BenchmarkTestsLegacy.BenchmarkTrigger.Next, BenchmarkTestsLegacy.BenchmarkState.B, Guard = nameof(CanTransition))]
+        [Transition(BenchmarkTestsLegacy.BenchmarkState.B, BenchmarkTestsLegacy.BenchmarkTrigger.Next, BenchmarkTestsLegacy.BenchmarkState.A, Guard = nameof(CanTransition))]
         private void Configure() { }
 
         private bool CanTransition()

@@ -12,7 +12,7 @@ namespace FastFsm.Tests.Features.Core
         public void Core_BasicTransitions_WorkCorrectly()
         {
             // Arrange
-            var machine = new CoreBenchmarkMachine(BenchmarkTests.BenchmarkState.A);
+            var machine = new CoreBenchmarkMachineFluent(BenchmarkTests.BenchmarkState.A);
             machine.Start();
             // Act & Assert
             machine.CurrentState.ShouldBe(BenchmarkTests.BenchmarkState.A);
@@ -30,7 +30,7 @@ namespace FastFsm.Tests.Features.Core
         public void Core_InvalidTransition_ReturnsFalse()
         {
             // Arrange
-            var machine = new CoreBenchmarkMachine(BenchmarkTests.BenchmarkState.A);
+            var machine = new CoreBenchmarkMachineFluent(BenchmarkTests.BenchmarkState.A);
             machine.Start();
 
             // Act - Try invalid trigger
@@ -45,7 +45,7 @@ namespace FastFsm.Tests.Features.Core
         public void Core_Fire_ThrowsOnInvalidTransition()
         {
             // Arrange
-            var machine = new CoreBenchmarkMachine(BenchmarkTests.BenchmarkState.A);
+            var machine = new CoreBenchmarkMachineFluent(BenchmarkTests.BenchmarkState.A);
             machine.Start();
 
             // Act & Assert
@@ -57,7 +57,7 @@ namespace FastFsm.Tests.Features.Core
         public void Core_GetPermittedTriggers_ReturnsCorrectTriggers()
         {
             // Arrange
-            var machine = new CoreBenchmarkMachine(BenchmarkTests.BenchmarkState.B);
+            var machine = new CoreBenchmarkMachineFluent(BenchmarkTests.BenchmarkState.B);
             machine.Start();
 
             // Act
@@ -72,7 +72,7 @@ namespace FastFsm.Tests.Features.Core
         public void Core_CanFire_ChecksTransitions()
         {
             // Arrange
-            var machine = new CoreBenchmarkMachine(BenchmarkTests.BenchmarkState.C);
+            var machine = new CoreBenchmarkMachineFluent(BenchmarkTests.BenchmarkState.C);
             machine.Start();
 
             // Act & Assert
@@ -85,12 +85,12 @@ namespace FastFsm.Tests.Features.Core
         {
             // Arrange
             var initialMemory = GC.GetTotalMemory(true);
-            var machines = new CoreBenchmarkMachine[1000];
+            var machines = new CoreBenchmarkMachineFluent[1000];
 
             // Act
             for (int i = 0; i < machines.Length; i++)
             {
-                machines[i] = new CoreBenchmarkMachine(BenchmarkTests.BenchmarkState.A);
+                machines[i] = new CoreBenchmarkMachineFluent(BenchmarkTests.BenchmarkState.A);
                 machines[i].Start();
             }
 

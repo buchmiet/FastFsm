@@ -1,12 +1,13 @@
 using Abstractions.Attributes;
-using static FastFsm.Tests.Features.Performance.BenchmarkTests;
+using FastFsm.Tests.Features.Performance;
+
 
 namespace FastFsm.Tests.Machines;
 
-[StateMachine(typeof(BenchmarkState), typeof(BenchmarkTrigger))]
+[StateMachine(typeof(BenchmarkTestsLegacy.BenchmarkState), typeof(BenchmarkTestsLegacy.BenchmarkTrigger))]
 public partial class NoGuardBenchmarkMachineLegacy
 {
-    [Transition(BenchmarkState.A, BenchmarkTrigger.Next, BenchmarkState.B)]
-    [Transition(BenchmarkState.B, BenchmarkTrigger.Next, BenchmarkState.A)]
+    [Transition(BenchmarkTestsLegacy.BenchmarkState.A, BenchmarkTestsLegacy.BenchmarkTrigger.Next, BenchmarkTestsLegacy.BenchmarkState.B)]
+    [Transition(BenchmarkTestsLegacy.BenchmarkState.B, BenchmarkTestsLegacy.BenchmarkTrigger.Next, BenchmarkTestsLegacy.BenchmarkState.A)]
     private void ConfigureTransitions() { }
 }

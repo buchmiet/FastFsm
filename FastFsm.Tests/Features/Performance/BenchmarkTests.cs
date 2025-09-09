@@ -130,7 +130,7 @@ namespace FastFsm.Tests.Features.Performance
             // Warmup dla obu maszyn
             var noGuardMachine = new NoGuardBenchmarkMachineFluent(BenchmarkState.A);
             noGuardMachine.Start();
-            var withGuardMachine = new WithGuardBenchmarkMachine(BenchmarkState.A);
+            var withGuardMachine = new WithGuardBenchmarkMachineFluent(BenchmarkState.A);
             withGuardMachine.Start();
 
             for (int i = 0; i < warmupIterations; i++)
@@ -142,7 +142,7 @@ namespace FastFsm.Tests.Features.Performance
             // Reset maszyn
             noGuardMachine = new NoGuardBenchmarkMachineFluent(BenchmarkState.A);
             noGuardMachine.Start();
-            withGuardMachine = new WithGuardBenchmarkMachine(BenchmarkState.A);
+            withGuardMachine = new WithGuardBenchmarkMachineFluent(BenchmarkState.A);
             withGuardMachine.Start();
 
             // Pomiar bez guards - wielokrotne próby
@@ -200,7 +200,7 @@ namespace FastFsm.Tests.Features.Performance
         public void GuardEvaluation_RealWorldPerformance()
         {
             // Test symulujący bardziej realistyczne użycie
-            var machine = new WithGuardBenchmarkMachine(BenchmarkState.A);
+            var machine = new WithGuardBenchmarkMachineFluent(BenchmarkState.A);
             machine.Start();
             const int operations = 1_000_000;
 

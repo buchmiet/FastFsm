@@ -1,15 +1,16 @@
 ﻿using Abstractions.Attributes;
-using static FastFsm.Tests.Features.Performance.BenchmarkTests;
+using FastFsm.Tests.Features.Performance;
+
 
 namespace FastFsm.Tests.Machines
 {
-    [StateMachine(typeof(BenchmarkState), typeof(BenchmarkTrigger))]
-    public partial class CoreBenchmarkMachine
+    [StateMachine(typeof(BenchmarkTestsLegacy.BenchmarkState), typeof(BenchmarkTestsLegacy.BenchmarkTrigger))]
+    public partial class CoreBenchmarkMachineLegacy
     {
-        [Transition(BenchmarkState.A, BenchmarkTrigger.Next, BenchmarkState.B)]
-        [Transition(BenchmarkState.B, BenchmarkTrigger.Next, BenchmarkState.C)]
-        [Transition(BenchmarkState.C, BenchmarkTrigger.Next, BenchmarkState.D)]
-        [Transition(BenchmarkState.D, BenchmarkTrigger.Next, BenchmarkState.A)]
+        [Transition(BenchmarkTestsLegacy.BenchmarkState.A, BenchmarkTestsLegacy.BenchmarkTrigger.Next, BenchmarkTestsLegacy.BenchmarkState.B)]
+        [Transition(BenchmarkTestsLegacy.BenchmarkState.B, BenchmarkTestsLegacy.BenchmarkTrigger.Next, BenchmarkTestsLegacy.BenchmarkState.C)]
+        [Transition(BenchmarkTestsLegacy.BenchmarkState.C, BenchmarkTestsLegacy.BenchmarkTrigger.Next, BenchmarkTestsLegacy.BenchmarkState.D)]
+        [Transition(BenchmarkTestsLegacy.BenchmarkState.D, BenchmarkTestsLegacy.BenchmarkTrigger.Next, BenchmarkTestsLegacy.BenchmarkState.A)]
         private void Configure() { }
     }
 }
