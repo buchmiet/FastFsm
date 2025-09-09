@@ -5,7 +5,7 @@ using static FastFsm.Tests.Features.Core.StateCallbackTests;
 namespace FastFsm.Tests.Machines
 {
     [StateMachine(typeof(MultiState), typeof(MultiTrigger))]
-    public partial class MultipleCallbacksMachine
+    public partial class MultipleCallbacksMachineLegacy
     {
         public List<string> Log { get; } = [];
 

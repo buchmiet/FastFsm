@@ -12,12 +12,12 @@ public class StateCallbackTestsLegacy(ITestOutputHelper output)
     public void Legacy_OnEntryOnExit_ExecutionOrder_IsCorrect()
     {
         // Arrange
-        var machine = new Machines.CallbackOrderMachineLegacy(CallbackState.A);
+        var machine = new Machines.CallbackOrderMachineLegacy(StateCallbackTests.CallbackState.A);
         machine.Start();
         var typedMachine = machine;
 
         // Act - Transition A -> B
-        machine.Fire(CallbackTrigger.Next);
+        machine.Fire(StateCallbackTests.CallbackTrigger.Next);
 
         // Assert
         var expected = new[] { "Exit-A", "Entry-B", "Action-A-to-B" };
@@ -25,7 +25,7 @@ public class StateCallbackTestsLegacy(ITestOutputHelper output)
 
         // Act - Transition B -> C
         typedMachine.ExecutionLog.Clear();
-        machine.Fire(CallbackTrigger.Next);
+        machine.Fire(StateCallbackTests.CallbackTrigger.Next);
 
         // Assert
         expected = new[] { "Exit-B", "Entry-C", "Action-B-to-C" };
@@ -36,7 +36,7 @@ public class StateCallbackTestsLegacy(ITestOutputHelper output)
     public void Legacy_InitialState_OnEntry_IsCalledInConstructor()
     {
         // Arrange & Act
-        var machine = new Machines.InitialStateMachine(InitialState.Start);
+        var machine = new Machines.InitialStateMachine(StateCallbackTests.InitialState.Start);
         machine.Start();
         var typedMachine = machine;
 
@@ -45,7 +45,7 @@ public class StateCallbackTestsLegacy(ITestOutputHelper output)
         Assert.Equal("OnEntry-Start", typedMachine.EventLog[0]);
 
         // Further transitions work normally
-        machine.Fire(InitialTrigger.Go);
+        machine.Fire(StateCallbackTests.InitialTrigger.Go);
         Assert.Equal(3, typedMachine.EventLog.Count); // +OnExit-Start, +OnEntry-Next
     }
 
@@ -53,7 +53,7 @@ public class StateCallbackTestsLegacy(ITestOutputHelper output)
     public void Legacy_InternalTransition_DoesNotTrigger_OnEntryOnExit()
     {
         // Arrange
-        var machine = new Machines.InternalTransitionMachineLegacy(InternalState.Active);
+        var machine = new Machines.InternalTransitionMachineLegacy(StateCallbackTests.InternalState.Active);
         machine.Start();
         var typedMachine = machine;
 
@@ -61,15 +61,15 @@ public class StateCallbackTestsLegacy(ITestOutputHelper output)
         typedMachine.EventLog.Clear();
 
         // Act - Internal transition
-        machine.Fire(InternalTrigger.Update);
+        machine.Fire(StateCallbackTests.InternalTrigger.Update);
 
         // Assert - Only action executed, no OnEntry/OnExit
         Assert.Single(typedMachine.EventLog);
         Assert.Equal("InternalAction", typedMachine.EventLog[0]);
-        Assert.Equal(InternalState.Active, machine.CurrentState);
+        Assert.Equal(StateCallbackTests.InternalState.Active, machine.CurrentState);
 
         // Act - Normal transition
-        machine.Fire(InternalTrigger.Deactivate);
+        machine.Fire(StateCallbackTests.InternalTrigger.Deactivate);
 
         // Assert - OnExit and OnEntry called
         Assert.Equal(3, typedMachine.EventLog.Count);
@@ -81,7 +81,7 @@ public class StateCallbackTestsLegacy(ITestOutputHelper output)
     public void Legacy_FailedGuard_DoesNotTrigger_OnExitOnEntry()
     {
         // Arrange
-        var machine = new Machines.GuardedCallbackMachine(GuardedState.A);
+        var machine = new Machines.GuardedCallbackMachine(StateCallbackTests.GuardedState.A);
         machine.Start();
         var typedMachine = machine;
 
@@ -90,16 +90,16 @@ public class StateCallbackTestsLegacy(ITestOutputHelper output)
 
         // Act - Try transition with failing guard
         typedMachine.AllowTransition = false;
-        var result = machine.TryFire(GuardedTrigger.Go);
+        var result = machine.TryFire(StateCallbackTests.GuardedTrigger.Go);
 
         // Assert
         Assert.False(result);
         Assert.Empty(typedMachine.EventLog); // No callbacks executed
-        Assert.Equal(GuardedState.A, machine.CurrentState);
+        Assert.Equal(StateCallbackTests.GuardedState.A, machine.CurrentState);
 
         // Act - Enable guard and retry
         typedMachine.AllowTransition = true;
-        result = machine.TryFire(GuardedTrigger.Go);
+        result = machine.TryFire(StateCallbackTests.GuardedTrigger.Go);
 
         // Assert
         Assert.True(result);
@@ -112,7 +112,7 @@ public class StateCallbackTestsLegacy(ITestOutputHelper output)
     public void Legacy_SelfTransition_Triggers_OnExitAndOnEntry()
     {
         // Arrange
-        var machine = new Machines.SelfTransitionMachineLegacy(SelfState.Active);
+        var machine = new Machines.SelfTransitionMachineLegacy(StateCallbackTests.SelfState.Active);
         machine.Start();
         var typedMachine = machine;
 
@@ -120,7 +120,7 @@ public class StateCallbackTestsLegacy(ITestOutputHelper output)
         typedMachine.EventLog.Clear();
 
         // Act - Self transition (not internal)
-        machine.Fire(SelfTrigger.Refresh);
+        machine.Fire(StateCallbackTests.SelfTrigger.Refresh);
 
         // Assert - OnExit and OnEntry are called, then Action
         Assert.Equal(3, typedMachine.EventLog.Count);
@@ -129,41 +129,41 @@ public class StateCallbackTestsLegacy(ITestOutputHelper output)
         Assert.Equal("RefreshAction", typedMachine.EventLog[2]);
 
         // State remains Active (self-transition)
-        Assert.Equal(SelfState.Active, machine.CurrentState);
+        Assert.Equal(StateCallbackTests.SelfState.Active, machine.CurrentState);
     }
 
     [Fact]
     public void Legacy_StateCallbacks_WithExceptions_HandledCorrectly()
     {
         // Arrange
-        var machine = new Machines.ExceptionCallbackMachine(ExceptionState.A);
+        var machine = new Machines.ExceptionCallbackMachine(StateCallbackTests.ExceptionState.A);
         machine.Start();
         var typedMachine = machine;
 
         // Act & Assert - OnExit throws -> exception and state WITHOUT change
         typedMachine.ThrowInOnExit = true;
-        Assert.Throws<InvalidOperationException>(() => machine.Fire(ExceptionTrigger.Go));
-        Assert.Equal(ExceptionState.A, machine.CurrentState); // state unchanged
+        Assert.Throws<InvalidOperationException>(() => machine.Fire(StateCallbackTests.ExceptionTrigger.Go));
+        Assert.Equal(StateCallbackTests.ExceptionState.A, machine.CurrentState); // state unchanged
 
         // Act & Assert - OnEntry throws -> exception, BUT state ALREADY changed
         typedMachine.ThrowInOnExit = false;
         typedMachine.ThrowInOnEntry = true;
-        Assert.Throws<InvalidOperationException>(() => machine.Fire(ExceptionTrigger.Go));
-        Assert.Equal(ExceptionState.B, machine.CurrentState); // state already changed
+        Assert.Throws<InvalidOperationException>(() => machine.Fire(StateCallbackTests.ExceptionTrigger.Go));
+        Assert.Equal(StateCallbackTests.ExceptionState.B, machine.CurrentState); // state already changed
     }
 
     [Fact]
     public void Legacy_ComplexStateCallbacks_WithMultipleStates_WorkCorrectly()
     {
         // Arrange
-        var machine = new Machines.ComplexCallbackMachine(ComplexCallbackState.Idle);
+        var machine = new Machines.ComplexCallbackMachine(StateCallbackTests.ComplexCallbackState.Idle);
         machine.Start();
         var typedMachine = machine;
 
         // Act - Full workflow
-        machine.Fire(ComplexCallbackTrigger.Start);
-        machine.Fire(ComplexCallbackTrigger.Process);
-        machine.Fire(ComplexCallbackTrigger.Complete);
+        machine.Fire(StateCallbackTests.ComplexCallbackTrigger.Start);
+        machine.Fire(StateCallbackTests.ComplexCallbackTrigger.Process);
+        machine.Fire(StateCallbackTests.ComplexCallbackTrigger.Complete);
 
         // Assert
         var expectedSequence = new[]
@@ -191,7 +191,7 @@ public class StateCallbackTestsLegacy(ITestOutputHelper output)
         // The generator should handle multiple [State] attributes for the same state
         // by either using the last one or combining them
 
-        var machine = new Machines.MultipleCallbacksMachine(MultiState.A);
+        var machine = new Machines.MultipleCallbacksMachine(StateCallbackTests.MultiState.A);
         machine.Start();
         var typedMachine = machine;
 

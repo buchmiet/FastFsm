@@ -19,7 +19,7 @@ namespace FastFsm.Tests
         public void BasicBenchmark_AttributeVsFluentAPI_ShouldBehaveIdentically()
         {
             // Arrange
-            var attrMachine = new BasicBenchmarkMachine(BenchmarkState.A);
+            var attrMachine = new BasicBenchmarkMachineLegacy(BenchmarkState.A);
             var fluentMachine = new BasicBenchmarkMachineFluent(BenchmarkState.A);
             attrMachine.Start();
             fluentMachine.Start();
@@ -45,7 +45,7 @@ namespace FastFsm.Tests
         public void WithGuardBenchmark_AttributeVsFluentAPI_GuardsShouldWorkIdentically()
         {
             // Arrange
-            var attrMachine = new WithGuardBenchmarkMachine(BenchmarkState.A);
+            var attrMachine = new WithGuardBenchmarkMachineLegacy(BenchmarkState.A);
             var fluentMachine = new WithGuardBenchmarkMachineFluent(BenchmarkState.A);
             attrMachine.Start();
             fluentMachine.Start();
@@ -203,7 +203,7 @@ namespace FastFsm.Tests
         public void MultipleCallbacks_AttributeVsFluentAPI_AllCallbacksShouldExecute()
         {
             // Arrange
-            var attrMachine = new MultipleCallbacksMachine(MultiState.A);
+            var attrMachine = new MultipleCallbacksMachineLegacy(MultiState.A);
             var fluentMachine = new MultipleCallbacksMachineFluent(MultiState.A);
             attrMachine.Start();
             fluentMachine.Start();
@@ -298,7 +298,7 @@ namespace FastFsm.Tests
             // This test verifies that both versions compile to similar code
             // Actual performance should be measured with BenchmarkDotNet
             
-            var attrMachine = new CoreBenchmarkMachine(BenchmarkState.A);
+            var attrMachine = new CoreBenchmarkMachineLegacy(BenchmarkState.A);
             var fluentMachine = new CoreBenchmarkMachineFluent(BenchmarkState.A);
             attrMachine.Start();
             fluentMachine.Start();

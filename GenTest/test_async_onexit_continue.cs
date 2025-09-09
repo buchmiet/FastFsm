@@ -25,6 +25,3 @@ public partial class AsyncOnExitContinueMachine
         return FastFsm.Exceptions.ExceptionDirective.Continue;
     }
 }
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Generator")]
-using Abstractions.Attributes;
-using FastFsm.Exceptions;

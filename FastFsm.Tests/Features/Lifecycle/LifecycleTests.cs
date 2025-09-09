@@ -14,7 +14,7 @@ namespace FastFsm.Tests.Features.Lifecycle
         [Fact]
         public void Machine_Throws_Before_Start()
         {
-            var machine = new CoreBenchmarkMachine(BenchmarkState.A);
+            var machine = new CoreBenchmarkMachineFluent(BenchmarkState.A);
 
             // TryFire without Start() should throw
             Assert.Throws<InvalidOperationException>(
@@ -24,7 +24,7 @@ namespace FastFsm.Tests.Features.Lifecycle
         [Fact]
         public void Machine_Works_After_Start()
         {
-            var machine = new CoreBenchmarkMachine(BenchmarkState.A);
+            var machine = new CoreBenchmarkMachineFluent(BenchmarkState.A);
             machine.Start();
 
             Assert.True(machine.TryFire(BenchmarkTrigger.Next));
