@@ -1,11 +1,12 @@
+using FastFsm.Tests.Features.Core;
+using FastFsm.Tests.Features.Performance;
+using FastFsm.Tests.Machines;
+using Shouldly;
 using System;
 using System.Linq;
 using Xunit;
-using FastFsm.Tests.Machines;
-using static FastFsm.Tests.Features.Performance.BenchmarkTests;
-using FastFsm.Tests.Features.Core;
 using static FastFsm.Tests.Features.Core.StateCallbackTests;
-using Shouldly;
+using static FastFsm.Tests.Features.Performance.BenchmarkTests;
 
 namespace FastFsm.Tests
 {
@@ -19,25 +20,25 @@ namespace FastFsm.Tests
         public void BasicBenchmark_AttributeVsFluentAPI_ShouldBehaveIdentically()
         {
             // Arrange
-            var attrMachine = new BasicBenchmarkMachineLegacy(BenchmarkState.A);
+            var attrMachine = new BasicBenchmarkMachineLegacy(BenchmarkTestsLegacy.BenchmarkState.A);
             var fluentMachine = new BasicBenchmarkMachineFluent(BenchmarkState.A);
             attrMachine.Start();
             fluentMachine.Start();
 
             // Act & Assert - both should transition identically
-            attrMachine.CurrentState.ShouldBe(BenchmarkState.A);
+            attrMachine.CurrentState.ShouldBe(BenchmarkTestsLegacy.BenchmarkState.A);
             fluentMachine.CurrentState.ShouldBe(BenchmarkState.A);
 
-            attrMachine.Fire(BenchmarkTrigger.Next);
+            attrMachine.Fire(BenchmarkTestsLegacy.BenchmarkTrigger.Next);
             fluentMachine.Fire(BenchmarkTrigger.Next);
 
-            attrMachine.CurrentState.ShouldBe(BenchmarkState.B);
+            attrMachine.CurrentState.ShouldBe(BenchmarkTestsLegacy.BenchmarkState.B);
             fluentMachine.CurrentState.ShouldBe(BenchmarkState.B);
 
-            attrMachine.Fire(BenchmarkTrigger.Next);
+            attrMachine.Fire(BenchmarkTestsLegacy.BenchmarkTrigger.Next);
             fluentMachine.Fire(BenchmarkTrigger.Next);
 
-            attrMachine.CurrentState.ShouldBe(BenchmarkState.C);
+            attrMachine.CurrentState.ShouldBe(BenchmarkTestsLegacy.BenchmarkState.C);
             fluentMachine.CurrentState.ShouldBe(BenchmarkState.C);
         }
 
@@ -45,7 +46,7 @@ namespace FastFsm.Tests
         public void WithGuardBenchmark_AttributeVsFluentAPI_GuardsShouldWorkIdentically()
         {
             // Arrange
-            var attrMachine = new WithGuardBenchmarkMachineLegacy(BenchmarkState.A);
+            var attrMachine = new WithGuardBenchmarkMachineLegacy(BenchmarkTestsLegacy.BenchmarkState.A);
             var fluentMachine = new WithGuardBenchmarkMachineFluent(BenchmarkState.A);
             attrMachine.Start();
             fluentMachine.Start();
@@ -54,7 +55,7 @@ namespace FastFsm.Tests
             attrMachine.ShouldAllow = false;
             fluentMachine.ShouldAllow = false;
 
-            var attrCanFire = attrMachine.CanFire(BenchmarkTrigger.Next);
+            var attrCanFire = attrMachine.CanFire(BenchmarkTestsLegacy.BenchmarkTrigger.Next);
             var fluentCanFire = fluentMachine.CanFire(BenchmarkTrigger.Next);
 
             attrCanFire.ShouldBe(false);
@@ -64,17 +65,17 @@ namespace FastFsm.Tests
             attrMachine.ShouldAllow = true;
             fluentMachine.ShouldAllow = true;
 
-            attrCanFire = attrMachine.CanFire(BenchmarkTrigger.Next);
+            attrCanFire = attrMachine.CanFire(BenchmarkTestsLegacy.BenchmarkTrigger.Next);
             fluentCanFire = fluentMachine.CanFire(BenchmarkTrigger.Next);
 
             attrCanFire.ShouldBe(true);
             fluentCanFire.ShouldBe(true);
 
             // Fire and verify state change
-            attrMachine.Fire(BenchmarkTrigger.Next);
+            attrMachine.Fire(BenchmarkTestsLegacy.BenchmarkTrigger.Next);
             fluentMachine.Fire(BenchmarkTrigger.Next);
 
-            attrMachine.CurrentState.ShouldBe(BenchmarkState.B);
+            attrMachine.CurrentState.ShouldBe(BenchmarkTestsLegacy.BenchmarkState.B);
             fluentMachine.CurrentState.ShouldBe(BenchmarkState.B);
         }
 
@@ -298,7 +299,7 @@ namespace FastFsm.Tests
             // This test verifies that both versions compile to similar code
             // Actual performance should be measured with BenchmarkDotNet
             
-            var attrMachine = new CoreBenchmarkMachineLegacy(BenchmarkState.A);
+            var attrMachine = new CoreBenchmarkMachineLegacy(BenchmarkTestsLegacy.BenchmarkState.A);
             var fluentMachine = new CoreBenchmarkMachineFluent(BenchmarkState.A);
             attrMachine.Start();
             fluentMachine.Start();
@@ -308,7 +309,7 @@ namespace FastFsm.Tests
             // Warm up
             for (int i = 0; i < 10; i++)
             {
-                attrMachine.Fire(BenchmarkTrigger.Next);
+                attrMachine.Fire(BenchmarkTestsLegacy.BenchmarkTrigger.Next);
                 fluentMachine.Fire(BenchmarkTrigger.Next);
             }
 
@@ -317,11 +318,11 @@ namespace FastFsm.Tests
             // Run iterations
             for (int i = 0; i < iterations; i++)
             {
-                attrMachine.Fire(BenchmarkTrigger.Next);
+                attrMachine.Fire(BenchmarkTestsLegacy.BenchmarkTrigger.Next);
                 fluentMachine.Fire(BenchmarkTrigger.Next);
                 
                 // States cycle through A->B->C->D->A
-                attrMachine.CurrentState.ShouldBe(fluentMachine.CurrentState);
+                attrMachine.CurrentState.ToString().ShouldBe(fluentMachine.CurrentState.ToString());
             }
         }
     }

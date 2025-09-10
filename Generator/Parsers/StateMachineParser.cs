@@ -389,14 +389,8 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             report?.Invoke("[Lenient Mode] Enabled: using syntax-only parsing for types due to limited compilation context");
             
             // Emit info diagnostic for lenient mode
-            EmitLegacy(
-                context,
-                "FSM998",
-                "Lenient compilation mode enabled",
-                "Using syntax-only parsing for types in limited compilation context",
-                "FSM.Generator.Discovery",
-                RuleSeverity.Info,
-                classDeclaration.GetLocation());
+            EmitRulePreformatted(context, RuleIdentifiers.DiscoveryOrTrace, classDeclaration.GetLocation(),
+                "Using syntax-only parsing for types in limited compilation context", RuleSeverity.Info);
         }
 
         // ── Guard before running the rule:
@@ -742,9 +736,8 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             report?.Invoke($"Enum-only fallback applied: {currentModel.States.Count} states from enum");
             
             // Report FSM994 diagnostic
-            EmitLegacy(context, "FSM994", "Enum-only states fallback",
-                "Enum-only states fallback applied for '{0}' — 0 [State] attributes found; using all enum members as states",
-                "FSM.Generator", RuleSeverity.Info, classDeclaration.GetLocation(),
+            EmitRule(context, RuleIdentifiers.EnumOnlyStatesFallback,
+                classDeclaration.GetLocation(),
                 string.IsNullOrEmpty(currentModel.Namespace) ? currentModel.ClassName : $"{currentModel.Namespace}.{currentModel.ClassName}");
         }
 
@@ -872,18 +865,14 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         if (externalCount == 0 && internalCount > 0)
         {
             report?.Invoke($"Internal-only machine detected: {internalCount} internal transitions");
-            EmitLegacy(context, "FSM982", "Internal-only machine",
-                "Machine '{0}' has only internal transitions ({1}) - generating with internal-only support",
-                "FSM.Generator.Parser", RuleSeverity.Info, classDeclaration.GetLocation(),
-                currentModel.ClassName, internalCount);
+            EmitRulePreformatted(context, RuleIdentifiers.DiscoveryOrTrace, classDeclaration.GetLocation(),
+                $"Machine '{currentModel.ClassName}' has only internal transitions ({internalCount}) - generating with internal-only support", RuleSeverity.Info);
         }
         else if (totalCount == 0)
         {
             report?.Invoke("No-transitions machine detected");
-            EmitLegacy(context, "FSM981", "No transitions",
-                "Machine '{0}' has no transitions - generating minimal API skeleton",
-                "FSM.Generator.Parser", RuleSeverity.Info, classDeclaration.GetLocation(),
-                currentModel.ClassName);
+            EmitRulePreformatted(context, RuleIdentifiers.DiscoveryOrTrace, classDeclaration.GetLocation(),
+                $"Machine '{currentModel.ClassName}' has no transitions - generating minimal API skeleton", RuleSeverity.Info);
         }
         
         // Skip reachability validation for internal-only or no-transitions machines
@@ -912,17 +901,15 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         if (criticalErrorOccurred && !isLenientMode)
         {
             report?.Invoke($"ERROR: Critical error occurred for {currentModel.ClassName} - returning false");
-            EmitLegacy(context, "FSM999", "Parser critical error",
-                $"Critical error occurred while parsing {currentModel.ClassName}, code generation skipped",
-                "FSM.Generator", RuleSeverity.Warning, classDeclaration.GetLocation());
+            EmitRulePreformatted(context, RuleIdentifiers.DiscoveryOrTrace, classDeclaration.GetLocation(),
+                $"Critical error occurred while parsing {currentModel.ClassName}, code generation skipped", RuleSeverity.Warning);
             return false;
         }
         else if (criticalErrorOccurred && isLenientMode)
         {
             report?.Invoke($"[Lenient Mode] Critical error occurred but continuing in lenient mode for {currentModel.ClassName}");
-            EmitLegacy(context, "FSM996", "Lenient mode parsing with errors",
-                $"Parsing completed with errors in lenient mode for {currentModel.ClassName}",
-                "FSM.Generator", RuleSeverity.Info, classDeclaration.GetLocation());
+            EmitRulePreformatted(context, RuleIdentifiers.DiscoveryOrTrace, classDeclaration.GetLocation(),
+                $"Parsing completed with errors in lenient mode for {currentModel.ClassName}", RuleSeverity.Info);
         }
 
         currentModel.GenerationConfig.IsAsync = isMachineAsyncMode ?? false;
@@ -932,21 +919,11 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             report?.Invoke($"[DEBUG AOE] Final state - IsAsync: {currentModel.GenerationConfig.IsAsync}, ExceptionHandler: {currentModel.ExceptionHandler != null}");
 
         // FSM990_HSM_FLAG: Log at parser output (feature flags summary)
-        context.ReportDiagnostic(Diagnostic.Create(
-            new DiagnosticDescriptor(
-                "FSM990_HSM_FLAG",
-                "HSM Flag Tracking",
-                "[1-Parser] {0}: HierarchyEnabled={1}, UsedEnumOnlyFallback={2}, HasPayload={3}, HasExtensions={4}, HasCallbacks={5}",
-                "FSM.Generator",
-                DiagnosticSeverity.Info,
-                isEnabledByDefault: true),
-            classDeclaration.GetLocation(),
-            currentModel.ClassName,
-            currentModel.HierarchyEnabled,
-            currentModel.UsedEnumOnlyFallback,
-            currentModel.GenerationConfig.HasPayload,
-            currentModel.GenerationConfig.HasExtensions,
-            currentModel.GenerationConfig.HasOnEntryExit));
+        {
+            var d = DiagnosticFactory.Get(RuleIdentifiers.HsmFlagTracking);
+            var msg = $"[1-Parser] {currentModel.ClassName}: HierarchyEnabled={currentModel.HierarchyEnabled}, UsedEnumOnlyFallback={currentModel.UsedEnumOnlyFallback}, HasPayload={currentModel.GenerationConfig.HasPayload}, HasExtensions={currentModel.GenerationConfig.HasExtensions}, HasCallbacks={currentModel.GenerationConfig.HasOnEntryExit}";
+            context.ReportDiagnostic(Diagnostic.Create(d, classDeclaration.GetLocation(), msg));
+        }
         
         model = currentModel;
         report?.Invoke("=== SUCCESS: TryParse completed successfully ===");
@@ -1009,9 +986,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         var location = classSymbol.Locations.FirstOrDefault() ?? Location.None;
         
         // Report FSM989 diagnostic
-        EmitLegacy(context, "FSM989", "Configuration sections",
-            "{0} - StatesFrom: {1} | TransitionsFrom: {2} (ext={3}) | InternalFrom: {4} (int={5}) | PayloadTypes: {6}",
-            "FSM.Generator.Parser", RuleSeverity.Info, location,
+        EmitRule(context, RuleIdentifiers.ConfigurationSections, location,
             fullName, stateMethods, transitionMethods, externalCount,
             internalMethods, internalCount, payloadTypeCount);
     }
@@ -1223,9 +1198,10 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
                 if (actionMethodNameFromCtor == null)
                 {
                     criticalErrorOccurred = true;
-                    EmitLegacy(context, "FSM983", "Missing action method",
+                    // Report missing action method for InternalTransition
+                    EmitRulePreformatted(context, RuleIdentifiers.InvalidMethodSignature, attrLocation,
                         "InternalTransition attribute requires an Action method name, either as third constructor argument or Action named parameter",
-                        "FSM.Generator.Parser", RuleSeverity.Error, attrLocation);
+                        RuleSeverity.Error);
                     continue;
                 }
 

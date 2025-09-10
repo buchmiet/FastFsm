@@ -1,19 +1,23 @@
 ﻿
 using Abstractions.Attributes;
+using Abstractions.Fluent;
 using Xunit;
 
 namespace FastFsm.Tests.Features.Core
 {
     public class GuardPermittedTriggersTests
     {
-        [Fact]
-        public void PermittedTriggers_ReflectCurrentGuardState()
+        public enum ApiType { Fluent, Legacy }
+
+        [Theory]
+        [InlineData(ApiType.Fluent)]
+        [InlineData(ApiType.Legacy)]
+        public void PermittedTriggers_ReflectCurrentGuardState(ApiType apiType)
         {
-            var machine = new GuardPermittedMachine(State.Idle)
-            {
-                // guard initially false
-                Allow = false
-            };
+            dynamic machine = apiType == ApiType.Fluent
+                ? new GuardPermittedMachineFluent(State.Idle) { Allow = false }
+                : new GuardPermittedMachineLegacy(State.Idle) { Allow = false };
+            
             machine.Start();
 
             Assert.DoesNotContain(Trigger.Run, machine.GetPermittedTriggers());
@@ -22,13 +26,11 @@ namespace FastFsm.Tests.Features.Core
             machine.Allow = true;
             Assert.Contains(Trigger.Run, machine.GetPermittedTriggers());
         }
-
-      
     }
 
-    // ── mini-FSM ───────────────────────────────────────────────────────────────
+    // ── Legacy API mini-FSM ───────────────────────────────────────────────────────────────
     [StateMachine(typeof(State), typeof(Trigger))]
-    public partial class GuardPermittedMachine
+    public partial class GuardPermittedMachineLegacy
     {
         public bool Allow { get; set; }
 
@@ -37,6 +39,21 @@ namespace FastFsm.Tests.Features.Core
         [Transition(State.Idle, Trigger.Run, State.Done,
             Guard = nameof(CanRun))]
         private void Configure() { }
+    }
+
+    // ── Fluent API mini-FSM ───────────────────────────────────────────────────────────────
+    [StateMachine(typeof(State), typeof(Trigger))]
+    public partial class GuardPermittedMachineFluent
+    {
+        public bool Allow { get; set; }
+
+        private bool CanRun() => Allow;
+
+        private static void Configure() => FSM
+            .State(State.Idle)
+                .On(Trigger.Run)
+                    .Guard(nameof(CanRun))
+                    .GoTo(State.Done);
     }
 
     public enum State { Idle, Done }

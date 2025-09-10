@@ -1488,23 +1488,15 @@ namespace Generator.Parsers
             }
             
             // Report diagnostic for invalid priority argument
-            // Using FSM202 as a placeholder - would need proper RuleIdentifier
-            var descriptor = DiagnosticFactory.Get("FSM202");
-            _context.ReportDiagnostic(Diagnostic.Create(
-                descriptor,
-                invocation.GetLocation(),
-                "Priority must be an integer literal"));
+            var descriptor = DiagnosticFactory.Get(RuleIdentifiers.InvalidPriorityArgument);
+            _context.ReportDiagnostic(Diagnostic.Create(descriptor, invocation.GetLocation()));
         }
         
         private void ReportPriorityWithoutTransition(InvocationExpressionSyntax invocation)
         {
             // Report diagnostic for Priority() called without active transition
-            // Using FSM203 as a placeholder - would need proper RuleIdentifier  
-            var descriptor = DiagnosticFactory.Get("FSM203");
-            _context.ReportDiagnostic(Diagnostic.Create(
-                descriptor,
-                invocation.GetLocation(),
-                "Priority() can only be called on a transition"));
+            var descriptor = DiagnosticFactory.Get(RuleIdentifiers.PriorityWithoutActiveTransition);
+            _context.ReportDiagnostic(Diagnostic.Create(descriptor, invocation.GetLocation()));
         }
 
         private string? GetNamespace()

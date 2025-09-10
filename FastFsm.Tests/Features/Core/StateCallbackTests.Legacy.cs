@@ -191,7 +191,7 @@ public class StateCallbackTestsLegacy(ITestOutputHelper output)
         // The generator should handle multiple [State] attributes for the same state
         // by either using the last one or combining them
 
-        var machine = new Machines.MultipleCallbacksMachine(StateCallbackTests.MultiState.A);
+        var machine = new Machines.MultipleCallbacksMachineLegacy(StateCallbackTests.MultiState.A);
         machine.Start();
         var typedMachine = machine;
 
