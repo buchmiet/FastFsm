@@ -1,6 +1,7 @@
 ﻿using Generator.DependencyInjection;
 using Generator.Helpers;
 using Generator.Model;
+using Generator.Rules.Definitions;
 using Generator.Parsers;
 using Generator.SourceGenerators;
 using Microsoft.CodeAnalysis;
@@ -392,16 +393,10 @@ public class StateMachineGenerator : IIncrementalGenerator
         var debugName = GetFullTypeName(candidate.Symbol);
         if (debugName.Contains("InternalOnlyMachine") || debugName.Contains("InternalTransitionMachine") || debugName.Contains("InternalPayloadMachine"))
         {
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    "FSM989D",
-                    "Debug entry",
-                    "ENTERING ProcessCandidateAndGenerate for: {0}",
-                    "FSM.Generator",
-                    DiagnosticSeverity.Warning,
-                    true),
-                Location.None,
-                debugName));
+            {
+                var descriptor = DiagnosticFactory.Get(RuleIdentifiers.DebugEntry);
+                context.ReportDiagnostic(Diagnostic.Create(descriptor, Location.None, debugName));
+            }
         }
         
         // Report MSBuild properties for valid candidates
@@ -416,16 +411,12 @@ public class StateMachineGenerator : IIncrementalGenerator
             var flagLogging = BuildProperties.GetGenerateLogging(globalOptions);
             var flagDi = BuildProperties.GetGenerateDI(globalOptions);
             
-            context.ReportDiagnostic(Diagnostic.Create(
-                FSM995_MSBuildProps,
-                Location.None,
-                emitFiles ?? "(not set)",
-                outputPath ?? "(not set)"));
-            context.ReportDiagnostic(Diagnostic.Create(
-                FSM990_LogProps,
-                Location.None,
-                flagLogging,
-                flagDi));
+            {
+                var d1 = DiagnosticFactory.Get(RuleIdentifiers.MsBuildAnalyzerProperties);
+                context.ReportDiagnostic(Diagnostic.Create(d1, Location.None, emitFiles ?? "(not set)", outputPath ?? "(not set)"));
+                var d2 = DiagnosticFactory.Get(RuleIdentifiers.LogProps);
+                context.ReportDiagnostic(Diagnostic.Create(d2, Location.None, flagLogging, flagDi));
+            }
         }
         
         var fullName = GetFullTypeName(candidate.Symbol);
@@ -433,26 +424,19 @@ public class StateMachineGenerator : IIncrementalGenerator
         // Report that we're processing this candidate
         if (fullName.Contains("InternalOnlyMachine") || fullName.Contains("InternalTransitionMachine") || fullName.Contains("InternalPayloadMachine"))
         {
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    "FSM990",
-                    "Processing candidate",
-                    "Processing candidate: {0}",
-                    "FSM.Generator",
-                    DiagnosticSeverity.Info,
-                    true),
-                candidate.ClassDeclaration.GetLocation(),
-                fullName));
+            {
+                var descriptor = DiagnosticFactory.Get(RuleIdentifiers.ProcessingCandidate);
+                context.ReportDiagnostic(Diagnostic.Create(descriptor, candidate.ClassDeclaration.GetLocation(), fullName));
+            }
         }
         
         // Handle pre-parse skipped candidates (those with a skip reason)
         if (!string.IsNullOrEmpty(candidate.SkipReason))
         {
-            context.ReportDiagnostic(Diagnostic.Create(
-                FSM997_SkippedCandidate,
-                candidate.ClassDeclaration.GetLocation(),
-                fullName,
-                candidate.SkipReason));
+            {
+                var descriptor = DiagnosticFactory.Get(RuleIdentifiers.SkippedCandidate);
+                context.ReportDiagnostic(Diagnostic.Create(descriptor, candidate.ClassDeclaration.GetLocation(), fullName, candidate.SkipReason));
+            }
             return;
         }
         
@@ -469,27 +453,16 @@ public class StateMachineGenerator : IIncrementalGenerator
             if (fullName.Contains("InternalOnlyMachine") || fullName.Contains("InternalTransitionMachine") || fullName.Contains("InternalPayloadMachine"))
             {
                 // Report that we're about to parse this machine
-                context.ReportDiagnostic(Diagnostic.Create(
-                    new DiagnosticDescriptor(
-                        "FSM998A",
-                        "Starting parse",
-                        "Starting parse for: {0}",
-                        "FSM.Generator.Parser",
-                        DiagnosticSeverity.Warning,
-                        true),
-                    candidate.ClassDeclaration.GetLocation(),
-                    fullName));
+                {
+                    var descriptor = DiagnosticFactory.Get(RuleIdentifiers.StartingParse);
+                    context.ReportDiagnostic(Diagnostic.Create(descriptor, candidate.ClassDeclaration.GetLocation(), fullName));
+                }
                     
-                report = msg => context.ReportDiagnostic(Diagnostic.Create(
-                    new DiagnosticDescriptor(
-                        "FSM998",
-                        "Parser trace",
-                        "{0}",
-                        "FSM.Generator.Parser",
-                        DiagnosticSeverity.Warning,
-                        true),
-                    candidate.ClassDeclaration.GetLocation(),
-                    msg));
+                report = msg =>
+                {
+                    var d = DiagnosticFactory.Get(RuleIdentifiers.DiscoveryOrTrace);
+                    context.ReportDiagnostic(Diagnostic.Create(d, candidate.ClassDeclaration.GetLocation(), msg));
+                };
             }
             
             var parseResult = parser.TryParse(candidate.ClassDeclaration, out model, report);
@@ -505,16 +478,11 @@ public class StateMachineGenerator : IIncrementalGenerator
                 {
                     // Use fluent model for generation
                     model = fluentModel;
-                    context.ReportDiagnostic(Diagnostic.Create(
-                        new DiagnosticDescriptor(
-                            "FSM998",
-                            "Using Fluent API parser",
-                            "Using Fluent API parser for '{0}'",
-                            "FastFsm",
-                            DiagnosticSeverity.Info,
-                            true),
-                        candidate.ClassDeclaration.GetLocation(),
-                        fullName));
+                    {
+                        var d = DiagnosticFactory.Get(RuleIdentifiers.DiscoveryOrTrace);
+                        var message = $"Using Fluent API parser for '{fullName}'";
+                        context.ReportDiagnostic(Diagnostic.Create(d, candidate.ClassDeclaration.GetLocation(), message));
+                    }
                 }
                 else
                 {
@@ -540,27 +508,21 @@ public class StateMachineGenerator : IIncrementalGenerator
                     if (fluentIsRicher)
                     {
                         model = fluentModel;
-                        context.ReportDiagnostic(Diagnostic.Create(
-                            new DiagnosticDescriptor(
-                                "FSM998",
-                                "Using Fluent API parser (enum-only fallback override)",
-                                "Using Fluent model instead of enum-only attribute fallback for '{0}'",
-                                "FastFsm",
-                                DiagnosticSeverity.Info,
-                                true),
-                            candidate.ClassDeclaration.GetLocation(),
-                            fullName));
+                        {
+                            var d = DiagnosticFactory.Get(RuleIdentifiers.DiscoveryOrTrace);
+                            var message = $"Using Fluent model instead of enum-only attribute fallback for '{fullName}'";
+                            context.ReportDiagnostic(Diagnostic.Create(d, candidate.ClassDeclaration.GetLocation(), message));
+                        }
                     }
                 }
             }
         }
         catch (Exception ex)
         {
-            context.ReportDiagnostic(Diagnostic.Create(
-                FSM997_SkippedCandidate,
-                candidate.ClassDeclaration.GetLocation(),
-                fullName,
-                $"Parser exception: {ex.Message}"));
+            {
+                var d = DiagnosticFactory.Get(RuleIdentifiers.SkippedCandidate);
+                context.ReportDiagnostic(Diagnostic.Create(d, candidate.ClassDeclaration.GetLocation(), fullName, $"Parser exception: {ex.Message}"));
+            }
             return;
         }
         
@@ -570,11 +532,10 @@ public class StateMachineGenerator : IIncrementalGenerator
             // Assert model is not null
             if (model == null)
             {
-                context.ReportDiagnostic(Diagnostic.Create(
-                    FSM997_SkippedCandidate,
-                    candidate.ClassDeclaration.GetLocation(),
-                    fullName,
-                    "model=null at output"));
+                {
+                    var d = DiagnosticFactory.Get(RuleIdentifiers.SkippedCandidate);
+                    context.ReportDiagnostic(Diagnostic.Create(d, candidate.ClassDeclaration.GetLocation(), fullName, "model=null at output"));
+                }
                 return;
             }
             
@@ -604,13 +565,16 @@ public class StateMachineGenerator : IIncrementalGenerator
             bool hasPayload = payloadTypesCount > 0 || !string.IsNullOrEmpty(model.DefaultPayloadType);
             
             // Report features summary (without variants)
-            context.ReportDiagnostic(Diagnostic.Create(
-                FSM991_Variant,
-                candidate.ClassDeclaration.GetLocation(),
-                fullName,
-                $"features: payload={(model.GenerationConfig.HasPayload ? 1:0)}, ext={(model.GenerationConfig.HasExtensions ? 1:0)}, callbacks={(model.GenerationConfig.HasOnEntryExit ? 1:0)}",
-                internalCount > 0 && externalCount == 0,
-                hasPayload));
+            {
+                var d = DiagnosticFactory.Get(RuleIdentifiers.VariantDecision);
+                context.ReportDiagnostic(Diagnostic.Create(
+                    d,
+                    candidate.ClassDeclaration.GetLocation(),
+                    fullName,
+                    $"features: payload={(model.GenerationConfig.HasPayload ? 1:0)}, ext={(model.GenerationConfig.HasExtensions ? 1:0)}, callbacks={(model.GenerationConfig.HasOnEntryExit ? 1:0)}",
+                    internalCount > 0 && externalCount == 0,
+                    hasPayload));
+            }
             
             // Get configuration
             model.GenerateLogging = BuildProperties.GetGenerateLogging(optionsProvider.GlobalOptions);
@@ -624,32 +588,18 @@ public class StateMachineGenerator : IIncrementalGenerator
             var className = model.ClassName;
             var accessibility = "public"; // We generate public partial classes
             
-            context.ReportDiagnostic(Diagnostic.Create(
-                FSM992_DeclarationPlan,
-                candidate.ClassDeclaration.GetLocation(),
-                fullName,
-                ns,
-                nesting,
-                className,
-                accessibility,
-                true));
+            {
+                var d = DiagnosticFactory.Get(RuleIdentifiers.DeclarationPlan);
+                context.ReportDiagnostic(Diagnostic.Create(d, candidate.ClassDeclaration.GetLocation(), fullName, ns, nesting, className, accessibility, true));
+            }
             
             // Create appropriate generator
             // FSM990_HSM_FLAG: Log at generator entry
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    "FSM990_HSM_FLAG",
-                    "HSM Flag Tracking",
-                    "[3-GenEntry] {0}: HierarchyEnabled={1}, Features payload={2} ext={3} callbacks={4}",
-                    "FSM.Generator",
-                    DiagnosticSeverity.Info,
-                    isEnabledByDefault: true),
-                Location.None,
-                model.ClassName,
-                model.HierarchyEnabled,
-                model.GenerationConfig.HasPayload,
-                model.GenerationConfig.HasExtensions,
-                model.GenerationConfig.HasOnEntryExit));
+            {
+                var d = DiagnosticFactory.Get(RuleIdentifiers.HsmFlagTracking);
+                var msg = $"[3-GenEntry] {model.ClassName}: HierarchyEnabled={model.HierarchyEnabled}, Features payload={model.GenerationConfig.HasPayload} ext={model.GenerationConfig.HasExtensions} callbacks={model.GenerationConfig.HasOnEntryExit}";
+                context.ReportDiagnostic(Diagnostic.Create(d, Location.None, msg));
+            }
             
             // Use flattened unified generator
             var generator = new Generator.SourceGenerators.UnifiedStateMachineGenerator(model);
@@ -704,16 +654,10 @@ FluentParser Model:
             // Check if generated source is valid
             if (string.IsNullOrWhiteSpace(source) || source.Length == 0)
             {
-            context.ReportDiagnostic(Diagnostic.Create(
-                FSM993_EmptyCode,
-                candidate.ClassDeclaration.GetLocation(),
-                fullName,
-                "<no-variant>",
-                totalStates,
-                internalCount,
-                externalCount,
-                payloadTypesCount,
-                model.UsedEnumOnlyFallback));
+            {
+                var d = DiagnosticFactory.Get(RuleIdentifiers.EmptyCodeGenerated);
+                context.ReportDiagnostic(Diagnostic.Create(d, candidate.ClassDeclaration.GetLocation(), fullName, "<no-variant>", totalStates, internalCount, externalCount, payloadTypesCount, model.UsedEnumOnlyFallback));
+            }
                 
                 // Do NOT call AddSource for empty code
                 return;
@@ -728,11 +672,10 @@ FluentParser Model:
             context.AddSource(hintName, SourceText.From(source, Encoding.UTF8));
             
             // Report success
-            context.ReportDiagnostic(Diagnostic.Create(
-                FSM996_AddSourceOk,
-                candidate.ClassDeclaration.GetLocation(),
-                hintName,
-                source.Length));
+            {
+                var d = DiagnosticFactory.Get(RuleIdentifiers.AddSourceOk);
+                context.ReportDiagnostic(Diagnostic.Create(d, candidate.ClassDeclaration.GetLocation(), hintName, source.Length));
+            }
 
             // Add logging helper if enabled (now using LoggingClassGenerator as single source of truth)
             if (model.GenerateLogging)
@@ -744,30 +687,24 @@ FluentParser Model:
 
                 // Pre-AddSource diagnostic with summary
                 var firstLine2 = loggingSource.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
-                context.ReportDiagnostic(Diagnostic.Create(
-                    FSM990_LogHelperPreAdd,
-                    candidate.ClassDeclaration.GetLocation(),
-                    model.GenerateLogging,
-                    model.Namespace ?? string.Empty,
-                    model.ClassName,
-                    simpleLoggingHint2,
-                    firstLine2.Length > 120 ? firstLine2.Substring(0, 120) + "…" : firstLine2));
+                {
+                    var d = DiagnosticFactory.Get(RuleIdentifiers.LogHelperPreAdd);
+                    context.ReportDiagnostic(Diagnostic.Create(d, candidate.ClassDeclaration.GetLocation(), model.GenerateLogging, model.Namespace ?? string.Empty, model.ClassName, simpleLoggingHint2, firstLine2.Length > 120 ? firstLine2.Substring(0, 120) + "…" : firstLine2));
+                }
 
                 context.AddSource(simpleLoggingHint2, SourceText.From(loggingSource, Encoding.UTF8));
-                context.ReportDiagnostic(Diagnostic.Create(
-                    FSM996_AddSourceOk,
-                    candidate.ClassDeclaration.GetLocation(),
-                    simpleLoggingHint2,
-                    loggingSource.Length));
+                {
+                    var d = DiagnosticFactory.Get(RuleIdentifiers.AddSourceOk);
+                    context.ReportDiagnostic(Diagnostic.Create(d, candidate.ClassDeclaration.GetLocation(), simpleLoggingHint2, loggingSource.Length));
+                }
             }
         }
         catch (Exception ex)
         {
-            context.ReportDiagnostic(Diagnostic.Create(
-                FSM997_SkippedCandidate,
-                candidate.ClassDeclaration.GetLocation(),
-                fullName,
-                $"Generation exception: {ex.GetType().Name}: {ex.Message}"));
+            {
+                var d = DiagnosticFactory.Get(RuleIdentifiers.SkippedCandidate);
+                context.ReportDiagnostic(Diagnostic.Create(d, candidate.ClassDeclaration.GetLocation(), fullName, $"Generation exception: {ex.GetType().Name}: {ex.Message}"));
+            }
         }
     }
 
@@ -801,11 +738,11 @@ FluentParser Model:
                 sb.AppendLine();
                 
                 // Report discovery as warning for visibility
-                context.ReportDiagnostic(Diagnostic.Create(
-                    FSM998_CandidateFound,
-                    location,
-                    fqn,
-                    Path.GetFileName(filePath)));
+                {
+                    var d = DiagnosticFactory.Get(RuleIdentifiers.DiscoveryOrTrace);
+                    var message = $"Discovered [StateMachine]: {fqn} in {Path.GetFileName(filePath)}";
+                    context.ReportDiagnostic(Diagnostic.Create(d, location, message));
+                }
             }
             
             sb.AppendLine("/*");
@@ -820,19 +757,17 @@ FluentParser Model:
         {
             context.AddSource(hintName, SourceText.From(content, Encoding.UTF8));
             // Note: discovery dump is not tracked in the main index
-            context.ReportDiagnostic(Diagnostic.Create(
-                FSM996_AddSourceOk,
-                Location.None,
-                hintName,
-                content.Length));
+            {
+                var d = DiagnosticFactory.Get(RuleIdentifiers.AddSourceOk);
+                context.ReportDiagnostic(Diagnostic.Create(d, Location.None, hintName, content.Length));
+            }
         }
         catch (Exception ex)
         {
-            context.ReportDiagnostic(Diagnostic.Create(
-                FSM997_SkippedCandidate,
-                Location.None,
-                hintName,
-                $"AddSource failed: {ex.GetType().Name}: {ex.Message}"));
+            {
+                var d = DiagnosticFactory.Get(RuleIdentifiers.SkippedCandidate);
+                context.ReportDiagnostic(Diagnostic.Create(d, Location.None, hintName, $"AddSource failed: {ex.GetType().Name}: {ex.Message}"));
+            }
             throw;
         }
     }
@@ -994,11 +929,10 @@ FluentParser Model:
                 // Check if class is partial
                 if (!classDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
                 {
-                    context.ReportDiagnostic(Diagnostic.Create(
-                        FSM997_SkippedCandidate,
-                        classDeclaration.GetLocation(),
-                        fullName,
-                        "Class is not partial"));
+                    {
+                        var d = DiagnosticFactory.Get(RuleIdentifiers.SkippedCandidate);
+                        context.ReportDiagnostic(Diagnostic.Create(d, classDeclaration.GetLocation(), fullName, "Class is not partial"));
+                    }
                     continue;
                 }
 
@@ -1027,11 +961,10 @@ FluentParser Model:
                             ? $"Parser validation failed. Last messages: {parserMessages.ToString().Replace("\r\n", " ").Replace("\n", " ").Substring(0, System.Math.Min(200, parserMessages.Length))}"
                             : "Parser validation failed";
                         
-                        context.ReportDiagnostic(Diagnostic.Create(
-                            FSM997_SkippedCandidate,
-                            classDeclaration.GetLocation(),
-                            fullName,
-                            reason));
+                        {
+                            var d = DiagnosticFactory.Get(RuleIdentifiers.SkippedCandidate);
+                            context.ReportDiagnostic(Diagnostic.Create(d, classDeclaration.GetLocation(), fullName, reason));
+                        }
                         continue;
                     }
                     
@@ -1057,20 +990,19 @@ FluentParser Model:
                     // Log internal-only status for debugging
                     if (isInternalOnly)
                     {
-                        context.ReportDiagnostic(Diagnostic.Create(
-                            FSM998_CandidateFound,
-                            classDeclaration.GetLocation(),
-                            fullName,
-                            $"Internal-only machine with {internalCount} internal transitions"));
+                        {
+                            var d = DiagnosticFactory.Get(RuleIdentifiers.DiscoveryOrTrace);
+                            var message = $"Internal-only machine with {internalCount} internal transitions";
+                            context.ReportDiagnostic(Diagnostic.Create(d, classDeclaration.GetLocation(), message));
+                        }
                     }
                 }
                 catch (Exception ex)
                 {
-                    context.ReportDiagnostic(Diagnostic.Create(
-                        FSM997_SkippedCandidate,
-                        classDeclaration.GetLocation(),
-                        fullName,
-                        $"Parser exception: {ex.Message}"));
+                    {
+                        var d = DiagnosticFactory.Get(RuleIdentifiers.SkippedCandidate);
+                        context.ReportDiagnostic(Diagnostic.Create(d, classDeclaration.GetLocation(), fullName, $"Parser exception: {ex.Message}"));
+                    }
                     continue;
                 }
 
@@ -1108,29 +1040,28 @@ FluentParser Model:
                     }
                     catch (Exception genEx)
                     {
-                        context.ReportDiagnostic(Diagnostic.Create(
-                            FSM997_SkippedCandidate,
-                            classDeclaration.GetLocation(),
-                            fullName,
-                            $"SKIP: Generator exception. REASON={genEx.GetType().Name}: {genEx.Message}"));
+                    {
+                        var d = DiagnosticFactory.Get(RuleIdentifiers.SkippedCandidate);
+                        context.ReportDiagnostic(Diagnostic.Create(d, classDeclaration.GetLocation(), fullName, $"SKIP: Generator exception. REASON={genEx.GetType().Name}: {genEx.Message}"));
+                    }
                         continue;
                     }
                     
                     // Log the generated source length for debugging
-                    context.ReportDiagnostic(Diagnostic.Create(
-                        FSM998_CandidateFound,
-                        classDeclaration.GetLocation(),
-                        fullName,
-                        $"Generated source length: {source?.Length ?? 0} chars (features: payload={(model.GenerationConfig.HasPayload ? 1:0)}, ext={(model.GenerationConfig.HasExtensions ? 1:0)}, callbacks={(model.GenerationConfig.HasOnEntryExit ? 1:0)})"));
+                    {
+                        var d = DiagnosticFactory.Get(RuleIdentifiers.DiscoveryOrTrace);
+                        var message = $"Generated source length: {source?.Length ?? 0} chars (features: payload={(model.GenerationConfig.HasPayload ? 1:0)}, ext={(model.GenerationConfig.HasExtensions ? 1:0)}, callbacks={(model.GenerationConfig.HasOnEntryExit ? 1:0)})";
+                        context.ReportDiagnostic(Diagnostic.Create(d, classDeclaration.GetLocation(), message));
+                    }
                     
                     // Check if generated source is empty or too small
                     if (string.IsNullOrWhiteSpace(source) || source.Length < 100)
                     {
-                        context.ReportDiagnostic(Diagnostic.Create(
-                            FSM997_SkippedCandidate,
-                            classDeclaration.GetLocation(),
-                            fullName,
-                            $"SKIP: Generated source is empty or too small. REASON=Generator produced invalid output, Size={source?.Length ?? 0} chars, Summary: internalOnly={isInternalOnly}, hasExternal={externalCount > 0}, hasInternal={internalCount > 0}, states={model.States?.Count ?? 0}, transitions={model.Transitions?.Count ?? 0}"));
+                        {
+                            var d = DiagnosticFactory.Get(RuleIdentifiers.SkippedCandidate);
+                            var message = $"SKIP: Generated source is empty or too small. REASON=Generator produced invalid output, Size={source?.Length ?? 0} chars, Summary: internalOnly={isInternalOnly}, hasExternal={externalCount > 0}, hasInternal={internalCount > 0}, states={model.States?.Count ?? 0}, transitions={model.Transitions?.Count ?? 0}";
+                            context.ReportDiagnostic(Diagnostic.Create(d, classDeclaration.GetLocation(), fullName, message));
+                        }
                         continue;
                     }
 
@@ -1142,19 +1073,17 @@ FluentParser Model:
                     {
                         context.AddSource(hintName, SourceText.From(source, Encoding.UTF8));
                         addedSources.Add(hintName);
-                        context.ReportDiagnostic(Diagnostic.Create(
-                            FSM996_AddSourceOk,
-                            classDeclaration.GetLocation(),
-                            hintName,
-                            source.Length));
+                        {
+                            var d = DiagnosticFactory.Get(RuleIdentifiers.AddSourceOk);
+                            context.ReportDiagnostic(Diagnostic.Create(d, classDeclaration.GetLocation(), hintName, source.Length));
+                        }
                     }
                     catch (Exception ex)
                     {
-                        context.ReportDiagnostic(Diagnostic.Create(
-                            FSM997_SkippedCandidate,
-                            classDeclaration.GetLocation(),
-                            hintName,
-                            $"AddSource failed: {ex.GetType().Name}: {ex.Message}"));
+                        {
+                            var d = DiagnosticFactory.Get(RuleIdentifiers.SkippedCandidate);
+                            context.ReportDiagnostic(Diagnostic.Create(d, classDeclaration.GetLocation(), hintName, $"AddSource failed: {ex.GetType().Name}: {ex.Message}"));
+                        }
                         throw;
                     }
 
@@ -1206,43 +1135,36 @@ FluentParser Model:
 
                         // Pre-AddSource diagnostic with summary
                         var firstLine = loggingSource.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
-                        context.ReportDiagnostic(Diagnostic.Create(
-                            FSM990_LogHelperPreAdd,
-                            classDeclaration.GetLocation(),
-                            model.GenerateLogging,
-                            model.Namespace ?? string.Empty,
-                            model.ClassName,
-                            loggingHintName,
-                            firstLine.Length > 120 ? firstLine.Substring(0, 120) + "…" : firstLine));
+                        {
+                            var d = DiagnosticFactory.Get(RuleIdentifiers.LogHelperPreAdd);
+                            context.ReportDiagnostic(Diagnostic.Create(d, classDeclaration.GetLocation(), model.GenerateLogging, model.Namespace ?? string.Empty, model.ClassName, loggingHintName, firstLine.Length > 120 ? firstLine.Substring(0, 120) + "…" : firstLine));
+                        }
 
                         try
                         {
                             context.AddSource(loggingHintName, SourceText.From(loggingSource, Encoding.UTF8));
                             addedSources.Add(loggingHintName);
-                            context.ReportDiagnostic(Diagnostic.Create(
-                                FSM996_AddSourceOk,
-                                classDeclaration.GetLocation(),
-                                loggingHintName,
-                                loggingSource.Length));
+                            {
+                                var d = DiagnosticFactory.Get(RuleIdentifiers.AddSourceOk);
+                                context.ReportDiagnostic(Diagnostic.Create(d, classDeclaration.GetLocation(), loggingHintName, loggingSource.Length));
+                            }
                         }
                         catch (Exception ex)
                         {
-                            context.ReportDiagnostic(Diagnostic.Create(
-                                FSM997_SkippedCandidate,
-                                classDeclaration.GetLocation(),
-                                loggingHintName,
-                                $"AddSource failed: {ex.GetType().Name}: {ex.Message}"));
+                            {
+                                var d = DiagnosticFactory.Get(RuleIdentifiers.SkippedCandidate);
+                                context.ReportDiagnostic(Diagnostic.Create(d, classDeclaration.GetLocation(), loggingHintName, $"AddSource failed: {ex.GetType().Name}: {ex.Message}"));
+                            }
                         }
                     }
                 }
                 catch (Exception ex)
                 {
                     // Report the exception as a diagnostic
-                    context.ReportDiagnostic(Diagnostic.Create(
-                        FSM997_SkippedCandidate,
-                        classDeclaration.GetLocation(),
-                        fullName,
-                        $"Generation exception: {ex.Message}"));
+                    {
+                        var d = DiagnosticFactory.Get(RuleIdentifiers.SkippedCandidate);
+                        context.ReportDiagnostic(Diagnostic.Create(d, classDeclaration.GetLocation(), fullName, $"Generation exception: {ex.Message}"));
+                    }
                 }
             }
         }
@@ -1302,19 +1224,17 @@ FluentParser Model:
         try
         {
             context.AddSource("__FastFsm.AddedSources.g.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
-            context.ReportDiagnostic(Diagnostic.Create(
-                FSM996_AddSourceOk,
-                Location.None,
-                "__FastFsm.AddedSources.g.cs",
-                sb.ToString().Length));
+            {
+                var d = DiagnosticFactory.Get(RuleIdentifiers.AddSourceOk);
+                context.ReportDiagnostic(Diagnostic.Create(d, Location.None, "__FastFsm.AddedSources.g.cs", sb.ToString().Length));
+            }
         }
         catch (Exception ex)
         {
-            context.ReportDiagnostic(Diagnostic.Create(
-                FSM997_SkippedCandidate,
-                Location.None,
-                "__FastFsm.AddedSources.g.cs",
-                $"AddSource failed: {ex.GetType().Name}: {ex.Message}"));
+            {
+                var d = DiagnosticFactory.Get(RuleIdentifiers.SkippedCandidate);
+                context.ReportDiagnostic(Diagnostic.Create(d, Location.None, "__FastFsm.AddedSources.g.cs", $"AddSource failed: {ex.GetType().Name}: {ex.Message}"));
+            }
         }
     }
 }

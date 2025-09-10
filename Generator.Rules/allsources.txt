@@ -1,4 +1,104 @@
-./Contexts/AsyncCallbackInSyncMachineContext.cs
+./Contexts/GuardWithPayloadContext.cs
+﻿namespace Generator.Rules.Contexts;
+
+public class GuardWithPayloadContext(
+    string guardMethodName,
+    bool guardExpectsPayload,
+    bool machineHasPayload)
+{
+    public string GuardMethodName { get; } = guardMethodName;
+    public bool GuardExpectsPayload { get; } = guardExpectsPayload;
+    public bool MachineHasPayload { get; } = machineHasPayload;
+}./Contexts/UnreachableStateContext.cs
+﻿using System.Collections.Generic;
+using Generator.Rules.Definitions;
+
+namespace Generator.Rules.Contexts;
+
+public class UnreachableStateContext( // Zmieniona nazwa klasy
+    string initialState,
+    IReadOnlyList<string> allStateNames,
+    IReadOnlyList<TransitionDefinition> allTransitions) // Zmieniony typ dla allTransitions
+{
+    /// <summary>
+    /// The designated initial state of the state machine.
+    /// If not explicitly defined, a default might be assumed by the rule (e.g., the first state alphabetically).
+    /// </summary>
+    public string InitialState { get; } = initialState;
+
+    /// <summary>
+    /// A list of all unique state names defined for the state machine.
+    /// </summary>
+    public IReadOnlyList<string> AllDefinedStateNames { get; } = allStateNames;
+
+    /// <summary>
+    /// A list of all transitions defined in the state machine.
+    /// The rule will use the <see cref="TransitionDefinition.ToState"/> property
+    /// to determine reachability.
+    /// </summary>
+    public IReadOnlyList<TransitionDefinition> AllTransitions { get; } = allTransitions;
+}./Contexts/MixedModeValidationContext.cs
+﻿namespace Generator.Rules.Contexts;
+
+/// <summary>
+/// Context for validating that a state machine does not mix synchronous and asynchronous callbacks.
+/// </summary>
+public class MixedModeValidationContext(
+    string methodName,
+    string callbackMode,
+    string machineMode)
+{
+    /// <summary>
+    /// The name of the method that caused the conflict.
+    /// </summary>
+    public string MethodName { get; } = methodName;
+
+    /// <summary>
+    /// The mode of the conflicting callback (e.g., "asynchronous").
+    /// </summary>
+    public string CallbackMode { get; } = callbackMode;
+
+    /// <summary>
+    /// The established mode of the state machine (e.g., "synchronous").
+    /// </summary>
+    public string MachineMode { get; } = machineMode;
+}./Contexts/MethodSignatureValidationContext.cs
+namespace Generator.Rules.Contexts
+{
+    // Kontekst dla walidacji sygnatury metody callback
+    public class MethodSignatureValidationContext(
+        string methodName,
+        string callbackType,
+        string expectedReturnType,
+        bool parametersAllowed)
+    {
+        public string MethodName { get; } = methodName;
+        public string CallbackType { get; } = callbackType; // "Guard", "Action", "OnEntry", "OnExit"
+        public string ExpectedReturnType { get; } = expectedReturnType; // Np. "bool" lub "void"
+        public bool ParametersAllowed { get; } = parametersAllowed; // Dla Pure/Basic zazwyczaj false
+
+        // Informacje o rzeczywistej metodzie znalezionej przez parser/analyzer
+        public bool MethodFound { get; set; }
+        public string ActualReturnType { get; set; } = string.Empty;
+        public int ActualParameterCount { get; set; }
+        public string? ExpectedParameterType { get; set; } // Oczekiwany typ parametru (jeśli payload)
+        public string? ActualParameterType { get; set; }   // Rzeczywisty typ parametru znaleziony
+    }
+}./Contexts/InvalidAsyncVoidContext.cs
+namespace Generator.Rules.Contexts;
+
+/// <summary>
+/// Context for FSM014 - Invalid async void validation.
+/// </summary>
+public class InvalidAsyncVoidContext(
+    string methodName,
+    string returnType,
+    bool isAsync)
+{
+    public string MethodName { get; } = methodName;
+    public string ReturnType { get; } = returnType;
+    public bool IsAsync { get; } = isAsync;
+}./Contexts/AsyncCallbackInSyncMachineContext.cs
 namespace Generator.Rules.Contexts;
 
 /// <summary>
@@ -14,19 +114,64 @@ public class AsyncCallbackInSyncMachineContext(
     public bool IsCallbackAsync { get; } = isCallbackAsync;
     public bool IsMachineAsync { get; } = isMachineAsync;
     public bool IsMachineEstablished { get; } = isMachineEstablished;
-}./Contexts/AttributeTypeValidationContext.cs
+}./Contexts/InvalidGuardTaskReturnTypeContext.cs
+namespace Generator.Rules.Contexts;
+
+/// <summary>
+/// Context for FSM012 - Invalid async guard return type validation.
+/// </summary>
+public class InvalidGuardTaskReturnTypeContext(
+    string methodName,
+    string actualReturnType,
+    bool isAsync)
+{
+    public string MethodName { get; } = methodName;
+    public string ActualReturnType { get; } = actualReturnType;
+    public bool IsAsync { get; } = isAsync;
+}./Contexts/EnumValueValidationContext.cs
 ﻿namespace Generator.Rules.Contexts;
 
-public class AttributeTypeValidationContext(
-    string stateTypeName,
-    bool isStateTypeEnum,
-    string triggerTypeName,
-    bool isTriggerTypeEnum)
+public class EnumValueValidationContext(string enumTypeName, string providedValueString, bool isValueDefinedInEnum)
 {
-    public string StateTypeName { get; } = stateTypeName; // Nazwa typu podanego dla stanu
-    public bool IsStateTypeEnum { get; } = isStateTypeEnum;
-    public string TriggerTypeName { get; } = triggerTypeName; // Nazwa typu podanego dla triggera
-    public bool IsTriggerTypeEnum { get; } = isTriggerTypeEnum;
+    public string EnumTypeName { get; } = enumTypeName;
+    public string ProvidedValueString { get; } = providedValueString; // Wartość podana w atrybucie jako string
+    public bool IsValueDefinedInEnum { get; } = isValueDefinedInEnum; // Czy parser/analyzer znalazł tę wartość w enumie
+}./Contexts/MixedModeRule.cs
+﻿using System.Collections.Generic;
+using Generator.Rules.Definitions;
+using Generator.Rules.Rules;
+
+namespace Generator.Rules.Contexts;
+
+/// <summary>
+/// FSM011 - Validates that a state machine does not mix sync and async callbacks.
+/// </summary>
+public class MixedModeRule : IValidationRule<MixedModeValidationContext>
+{
+    public IEnumerable<ValidationResult> Validate(MixedModeValidationContext context)
+    {
+        // Ta reguła jest prosta, bo cała logika wykrywania konfliktu
+        // jest w parserze. Reguła tylko formatuje komunikat.
+        if (context.CallbackMode != context.MachineMode)
+        {
+            string message = string.Format(
+                DefinedRules.MixedSyncAsyncCallbacks.MessageFormat,
+                context.MethodName,
+                context.CallbackMode,
+                context.MachineMode
+            );
+
+            yield return ValidationResult.Fail(
+                RuleIdentifiers.MixedSyncAsyncCallbacks,
+                message,
+                DefinedRules.MixedSyncAsyncCallbacks.DefaultSeverity
+            );
+        }
+        else
+        {
+            yield return ValidationResult.Success();
+        }
+    }
 }./Contexts/CircularHierarchyContext.cs
 using System.Collections.Generic;
 
@@ -59,16 +204,7 @@ namespace Generator.Rules.Contexts
         }
     }
 }
-./Contexts/ConflictingPayloadContext.cs
-﻿namespace Generator.Rules.Contexts;
-
-public class ConflictingPayloadContext(
-    bool isWithPayloadVariant,
-    int triggerSpecificPayloadCount)
-{
-    public bool IsWithPayloadVariant { get; } = isWithPayloadVariant;
-    public int TriggerSpecificPayloadCount { get; } = triggerSpecificPayloadCount;
-}./Contexts/ConflictingTransitionTargetsContext.cs
+./Contexts/ConflictingTransitionTargetsContext.cs
 namespace Generator.Rules.Contexts;
 
 /// <summary>
@@ -82,99 +218,39 @@ public class ConflictingTransitionTargetsContext(
     public string CompositeStateName { get; } = compositeStateName;
     public string ActualTarget { get; } = actualTarget;
     public string Reason { get; } = reason; // "history", "initial", or "first-child"
-}./Contexts/DuplicateTransitionContext.cs
-﻿using System.Collections.Generic;
-using Generator.Rules.Definitions;
+}./Contexts/MultipleInitialSubstatesContext.cs
+using System.Collections.Generic;
 
-namespace Generator.Rules.Contexts;
-
-/// <summary>
-/// Context for validating a single transition against a set of already processed transitions
-/// to detect duplicates based on FromState and Trigger.
-/// </summary>
-public class DuplicateTransitionContext(
-    TransitionDefinition currentTransition,
-    HashSet<TransitionDefinition> processedTransitions)
+namespace Generator.Rules.Contexts
 {
     /// <summary>
-    /// The current transition being checked for duplication.
+    /// Represents the context for a rule detecting multiple initial substates within a composite state.
     /// </summary>
-    public TransitionDefinition CurrentTransition { get; } = currentTransition;
+    public class MultipleInitialSubstatesContext
+    {
+        /// <summary>
+        /// Gets the name of the parent composite state.
+        /// </summary>
+        public string ParentStateName { get; }
 
-    /// <summary>
-    /// A set of transitions that have already been processed.
-    /// The <see cref="TransitionDefinition.Equals(object?)"/> and <see cref="TransitionDefinition.GetHashCode()"/>
-    /// methods of <see cref="TransitionDefinition"/> (which compare FromState and Trigger)
-    /// will be used by the HashSet to determine uniqueness.
-    /// </summary>
-    public HashSet<TransitionDefinition> ProcessedTransitions { get; } = processedTransitions;
-}./Contexts/EnumValueValidationContext.cs
-﻿namespace Generator.Rules.Contexts;
+        /// <summary>
+        /// Gets the list of states incorrectly marked as initial substates.
+        /// </summary>
+        public List<string> InitialSubstates { get; }
 
-public class EnumValueValidationContext(string enumTypeName, string providedValueString, bool isValueDefinedInEnum)
-{
-    public string EnumTypeName { get; } = enumTypeName;
-    public string ProvidedValueString { get; } = providedValueString; // Wartość podana w atrybucie jako string
-    public bool IsValueDefinedInEnum { get; } = isValueDefinedInEnum; // Czy parser/analyzer znalazł tę wartość w enumie
-}./Contexts/ForcedVariantValidationContext.cs
-﻿namespace Generator.Rules.Contexts;
-
-public class ForcedVariantValidationContext(
-    string variant,  // "Pure", "WithPayload", "Full" etc.
-    bool isForced,
-    bool hasDefaultPayloadType,
-    bool hasTriggerPayloadTypes,
-    bool hasOnEntryExit,
-    bool hasExtensions,
-    bool generateExtensibleVersion)
-{
-    public string Variant { get; } = variant;
-    public bool IsForced { get; } = isForced;
-    public bool HasDefaultPayloadType { get; } = hasDefaultPayloadType;
-    public bool HasTriggerPayloadTypes { get; } = hasTriggerPayloadTypes;
-    public bool HasOnEntryExit { get; } = hasOnEntryExit;
-    public bool HasExtensions { get; } = hasExtensions;
-    public bool GenerateExtensibleVersion { get; } = generateExtensibleVersion;
-}./Contexts/GuardWithPayloadContext.cs
-﻿namespace Generator.Rules.Contexts;
-
-public class GuardWithPayloadContext(
-    string guardMethodName,
-    bool guardExpectsPayload,
-    bool machineHasPayload)
-{
-    public string GuardMethodName { get; } = guardMethodName;
-    public bool GuardExpectsPayload { get; } = guardExpectsPayload;
-    public bool MachineHasPayload { get; } = machineHasPayload;
-}./Contexts/InvalidAsyncVoidContext.cs
-namespace Generator.Rules.Contexts;
-
-/// <summary>
-/// Context for FSM014 - Invalid async void validation.
-/// </summary>
-public class InvalidAsyncVoidContext(
-    string methodName,
-    string returnType,
-    bool isAsync)
-{
-    public string MethodName { get; } = methodName;
-    public string ReturnType { get; } = returnType;
-    public bool IsAsync { get; } = isAsync;
-}./Contexts/InvalidGuardTaskReturnTypeContext.cs
-namespace Generator.Rules.Contexts;
-
-/// <summary>
-/// Context for FSM012 - Invalid async guard return type validation.
-/// </summary>
-public class InvalidGuardTaskReturnTypeContext(
-    string methodName,
-    string actualReturnType,
-    bool isAsync)
-{
-    public string MethodName { get; } = methodName;
-    public string ActualReturnType { get; } = actualReturnType;
-    public bool IsAsync { get; } = isAsync;
-}./Contexts/InvalidHierarchyConfigurationContext.cs
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MultipleInitialSubstatesContext"/> class.
+        /// </summary>
+        /// <param name="parentStateName">The name of the parent composite state.</param>
+        /// <param name="initialSubstates">The list of states incorrectly marked as initial substates.</param>
+        public MultipleInitialSubstatesContext(string parentStateName, List<string> initialSubstates)
+        {
+            ParentStateName = parentStateName;
+            InitialSubstates = initialSubstates ?? new List<string>();
+        }
+    }
+}
+./Contexts/InvalidHierarchyConfigurationContext.cs
 namespace Generator.Rules.Contexts;
 
 /// <summary>
@@ -216,6 +292,95 @@ public class InvalidHierarchyConfigurationContext
         HasInitialSubstate = hasInitialSubstate;
         HasHistory = hasHistory;
     }
+}./Contexts/OrphanSubstateContext.cs
+namespace Generator.Rules.Contexts
+{
+    /// <summary>
+    /// Represents the context for a rule detecting an orphan substate that references a non-existent parent.
+    /// </summary>
+    public class OrphanSubstateContext
+    {
+        /// <summary>
+        /// Gets the name of the orphan substate.
+        /// </summary>
+        public string SubstateName { get; }
+
+        /// <summary>
+        /// Gets the name of the non-existent parent state.
+        /// </summary>
+        public string ParentStateName { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether the parent exists.
+        /// </summary>
+        public bool ParentExists { get; }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="OrphanSubstateContext"/> class.
+        /// </summary>
+        /// <param name="substateName">The name of the orphan substate.</param>
+        /// <param name="parentStateName">The name of the non-existent parent state.</param>
+        /// <param name="parentExists">Indicates whether the parent exists.</param>
+        public OrphanSubstateContext(string substateName, string parentStateName, bool parentExists)
+        {
+            SubstateName = substateName;
+            ParentStateName = parentStateName;
+            ParentExists = parentExists;
+        }
+    }
+}
+./Contexts/DuplicateTransitionContext.cs
+﻿using System.Collections.Generic;
+using Generator.Rules.Definitions;
+
+namespace Generator.Rules.Contexts;
+
+/// <summary>
+/// Context for validating a single transition against a set of already processed transitions
+/// to detect duplicates based on FromState and Trigger.
+/// </summary>
+public class DuplicateTransitionContext(
+    TransitionDefinition currentTransition,
+    HashSet<TransitionDefinition> processedTransitions)
+{
+    /// <summary>
+    /// The current transition being checked for duplication.
+    /// </summary>
+    public TransitionDefinition CurrentTransition { get; } = currentTransition;
+
+    /// <summary>
+    /// A set of transitions that have already been processed.
+    /// The <see cref="TransitionDefinition.Equals(object?)"/> and <see cref="TransitionDefinition.GetHashCode()"/>
+    /// methods of <see cref="TransitionDefinition"/> (which compare FromState and Trigger)
+    /// will be used by the HashSet to determine uniqueness.
+    /// </summary>
+    public HashSet<TransitionDefinition> ProcessedTransitions { get; } = processedTransitions;
+}./Contexts/MissingStateMachineAttributeValidationContext.cs
+﻿namespace Generator.Rules.Contexts;
+
+public class MissingStateMachineAttributeValidationContext(
+    bool hasAttribute,
+    int argCount,
+    string className,
+    bool isPartial)
+{
+    public bool HasStateMachineAttribute { get; } = hasAttribute;
+    public int FsmAttributeConstructorArgCount { get; } = argCount; 
+    public string ClassName { get; } = className;
+    public bool IsClassPartial { get; } = isPartial; 
+}./Contexts/AttributeTypeValidationContext.cs
+﻿namespace Generator.Rules.Contexts;
+
+public class AttributeTypeValidationContext(
+    string stateTypeName,
+    bool isStateTypeEnum,
+    string triggerTypeName,
+    bool isTriggerTypeEnum)
+{
+    public string StateTypeName { get; } = stateTypeName; // Nazwa typu podanego dla stanu
+    public bool IsStateTypeEnum { get; } = isStateTypeEnum;
+    public string TriggerTypeName { get; } = triggerTypeName; // Nazwa typu podanego dla triggera
+    public bool IsTriggerTypeEnum { get; } = isTriggerTypeEnum;
 }./Contexts/InvalidHistoryConfigurationContext.cs
 namespace Generator.Rules.Contexts
 {
@@ -260,224 +425,184 @@ namespace Generator.Rules.Contexts
         }
     }
 }
-./Contexts/InvalidVariantConfigContext.cs
-﻿namespace Generator.Rules.Contexts;
+./Definitions/ValidationResult.cs
+using System;
 
-public class InvalidVariantConfigContext(
-    string variantName,
-    string conflictType,
-    bool hasConflict)
+namespace Generator.Rules.Definitions
 {
-    public string VariantName { get; } = variantName;
-    public string ConflictType { get; } = conflictType; // "PayloadTypes", "Extensions", "OnEntryExit"
-    public bool HasConflict { get; } = hasConflict;
-}./Contexts/MethodSignatureValidationContext.cs
-namespace Generator.Rules.Contexts
-{
-    // Kontekst dla walidacji sygnatury metody callback
-    public class MethodSignatureValidationContext(
-        string methodName,
-        string callbackType,
-        string expectedReturnType,
-        bool parametersAllowed)
+    /// <summary>
+    /// Validation outcome returned by rules; either success or failure with message/severity.
+    /// </summary>
+    public class ValidationResult
     {
-        public string MethodName { get; } = methodName;
-        public string CallbackType { get; } = callbackType; // "Guard", "Action", "OnEntry", "OnExit"
-        public string ExpectedReturnType { get; } = expectedReturnType; // Np. "bool" lub "void"
-        public bool ParametersAllowed { get; } = parametersAllowed; // Dla Pure/Basic zazwyczaj false
+        public bool IsValid { get; }
+        public string? RuleId { get; }
+        public string? Message { get; }
+        public RuleSeverity Severity { get; }
 
-        // Informacje o rzeczywistej metodzie znalezionej przez parser/analyzer
-        public bool MethodFound { get; set; }
-        public string ActualReturnType { get; set; } = string.Empty;
-        public int ActualParameterCount { get; set; }
-        public string? ExpectedParameterType { get; set; } // Oczekiwany typ parametru (jeśli payload)
-        public string? ActualParameterType { get; set; }   // Rzeczywisty typ parametru znaleziony
-    }
-}./Contexts/MissingPayloadTypeContext.cs
-﻿namespace Generator.Rules.Contexts;
-
-public class MissingPayloadTypeContext(
-    string variant,
-    bool hasDefaultPayloadType,
-    bool hasTriggerPayloadTypes,
-    bool isForced)
-{
-    public string Variant { get; } = variant;
-    public bool HasDefaultPayloadType { get; } = hasDefaultPayloadType;
-    public bool HasTriggerPayloadTypes { get; } = hasTriggerPayloadTypes;
-    public bool IsForced { get; } = isForced;
-}./Contexts/MissingStateMachineAttributeValidationContext.cs
-﻿namespace Generator.Rules.Contexts;
-
-public class MissingStateMachineAttributeValidationContext(
-    bool hasAttribute,
-    int argCount,
-    string className,
-    bool isPartial)
-{
-    public bool HasStateMachineAttribute { get; } = hasAttribute;
-    public int FsmAttributeConstructorArgCount { get; } = argCount; 
-    public string ClassName { get; } = className;
-    public bool IsClassPartial { get; } = isPartial; 
-}./Contexts/MixedModeRule.cs
-﻿using System.Collections.Generic;
-using Generator.Rules.Definitions;
-using Generator.Rules.Rules;
-
-namespace Generator.Rules.Contexts;
-
-/// <summary>
-/// FSM011 - Validates that a state machine does not mix sync and async callbacks.
-/// </summary>
-public class MixedModeRule : IValidationRule<MixedModeValidationContext>
-{
-    public IEnumerable<ValidationResult> Validate(MixedModeValidationContext context)
-    {
-        // Ta reguła jest prosta, bo cała logika wykrywania konfliktu
-        // jest w parserze. Reguła tylko formatuje komunikat.
-        if (context.CallbackMode != context.MachineMode)
+        private ValidationResult(bool isValid, string? ruleId, string? message, RuleSeverity severity)
         {
-            string message = string.Format(
-                DefinedRules.MixedSyncAsyncCallbacks.MessageFormat,
-                context.MethodName,
-                context.CallbackMode,
-                context.MachineMode
-            );
-
-            yield return ValidationResult.Fail(
-                RuleIdentifiers.MixedSyncAsyncCallbacks,
-                message,
-                DefinedRules.MixedSyncAsyncCallbacks.DefaultSeverity
-            );
+            IsValid = isValid;
+            RuleId = ruleId;
+            Message = message;
+            Severity = severity;
         }
-        else
-        {
-            yield return ValidationResult.Success();
-        }
-    }
-}./Contexts/MixedModeValidationContext.cs
-﻿namespace Generator.Rules.Contexts;
-
-/// <summary>
-/// Context for validating that a state machine does not mix synchronous and asynchronous callbacks.
-/// </summary>
-public class MixedModeValidationContext(
-    string methodName,
-    string callbackMode,
-    string machineMode)
-{
-    /// <summary>
-    /// The name of the method that caused the conflict.
-    /// </summary>
-    public string MethodName { get; } = methodName;
-
-    /// <summary>
-    /// The mode of the conflicting callback (e.g., "asynchronous").
-    /// </summary>
-    public string CallbackMode { get; } = callbackMode;
-
-    /// <summary>
-    /// The established mode of the state machine (e.g., "synchronous").
-    /// </summary>
-    public string MachineMode { get; } = machineMode;
-}./Contexts/MultipleInitialSubstatesContext.cs
-using System.Collections.Generic;
-
-namespace Generator.Rules.Contexts
-{
-    /// <summary>
-    /// Represents the context for a rule detecting multiple initial substates within a composite state.
-    /// </summary>
-    public class MultipleInitialSubstatesContext
-    {
-        /// <summary>
-        /// Gets the name of the parent composite state.
-        /// </summary>
-        public string ParentStateName { get; }
 
         /// <summary>
-        /// Gets the list of states incorrectly marked as initial substates.
+        /// Represents a 'no issues' result; IsValid = true. Severity value is not meaningful.
         /// </summary>
-        public List<string> InitialSubstates { get; }
+        public static ValidationResult Success() => new(true, null, null, RuleSeverity.Info);
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="MultipleInitialSubstatesContext"/> class.
+        /// Creates a failure; IsValid = false; ruleId and message must be non-empty.
         /// </summary>
-        /// <param name="parentStateName">The name of the parent composite state.</param>
-        /// <param name="initialSubstates">The list of states incorrectly marked as initial substates.</param>
-        public MultipleInitialSubstatesContext(string parentStateName, List<string> initialSubstates)
+        public static ValidationResult Fail(string ruleId, string message, RuleSeverity severity)
         {
-            ParentStateName = parentStateName;
-            InitialSubstates = initialSubstates ?? new List<string>();
+            if (string.IsNullOrEmpty(ruleId)) throw new ArgumentNullException(nameof(ruleId));
+            if (string.IsNullOrEmpty(message)) throw new ArgumentNullException(nameof(message));
+            return new ValidationResult(false, ruleId, message, severity);
         }
     }
+}./Definitions/TransitionDefinition.cs
+﻿namespace Generator.Rules.Definitions;
+
+public class TransitionDefinition(string fromState, string trigger, string? toState = null)
+{
+    public string FromState { get; } = fromState;
+    public string Trigger { get; } = trigger;
+    public string? ToState { get; } = toState;
+
+    /// <summary>
+    /// Determines whether the specified object is equal to the current object.
+    /// For TransitionDefinition, equality for use in sets (like for duplicate detection)
+    /// is based on FromState and Trigger only. ToState is not considered.
+    /// </summary>
+    public override bool Equals(object? obj)
+    {
+        if (obj is not TransitionDefinition other)
+            return false;
+
+        // For the purpose of duplicate transition detection (FSM001),
+        // only FromState and Trigger are considered. ToState can differ.
+        return FromState == other.FromState && Trigger == other.Trigger;
+    }
+
+    /// <summary>
+    /// Serves as the default hash function.
+    /// The hash code is based on FromState and Trigger only, to align with Equals behavior.
+    /// </summary>
+    public override int GetHashCode()
+    {
+        return (FromState, Trigger).GetHashCode();
+    }
+
+
+    public bool EqualsIncludingToState(TransitionDefinition? other)
+    {
+        if (other is null)
+            return false;
+
+        return FromState == other.FromState &&
+               Trigger == other.Trigger &&
+               ToState == other.ToState;
+    }
+}./Definitions/RuleSeverity.cs
+﻿namespace Generator.Rules.Definitions;
+
+public enum RuleSeverity
+{
+    Error,
+    Warning,
+    Info
+
+}./Definitions/SeverityDefaults.cs
+namespace Generator.Rules.Definitions
+{
+    /// <summary>
+    /// Roslyn-free severity helpers for consumers that don't reference Microsoft.CodeAnalysis.
+    /// </summary>
+    public static class SeverityDefaults
+    {
+        /// <summary>
+        /// Lightweight local copy of a severity enum to avoid referencing Roslyn from this assembly.
+        /// </summary>
+        public enum DiagnosticSeverityCompat
+        {
+            Hidden = 0,
+            Info   = 1,
+            Warning= 2,
+            Error  = 3
+        }
+
+        /// <summary>
+        /// Converts a <see cref="RuleSeverity"/> to <see cref="DiagnosticSeverityCompat"/>.
+        /// </summary>
+        public static DiagnosticSeverityCompat ToDiagnosticSeverityCompat(RuleSeverity s)
+            => s switch
+            {
+                RuleSeverity.Error   => DiagnosticSeverityCompat.Error,
+                RuleSeverity.Warning => DiagnosticSeverityCompat.Warning,
+                _                    => DiagnosticSeverityCompat.Info,
+            };
+    }
+}./Definitions/RuleIdentifiers.cs
+﻿
+
+namespace Generator.Rules.Definitions;
+
+public static class RuleIdentifiers
+{
+    public const string DuplicateTransition = "FSM001";
+    public const string UnreachableState = "FSM002";
+    public const string InvalidMethodSignature = "FSM003";
+    public const string MissingStateMachineAttribute = "FSM004";
+    public const string InvalidTypesInAttribute = "FSM005";
+    public const string InvalidEnumValueInTransition = "FSM006";
+    // Removed: FSM007 MissingPayloadType, FSM008 ConflictingPayloadConfiguration (unused)
+    public const string GuardWithPayloadInNonPayloadMachine = "FSM010";
+    public const string MixedSyncAsyncCallbacks = "FSM011";
+    public const string InvalidGuardTaskReturnType = "FSM012";
+    public const string AsyncCallbackInSyncMachine = "FSM013";
+    public const string InvalidAsyncVoid = "FSM014";
+    
+    // HSM-specific diagnostics
+    public const string CircularHierarchy = "FSM100";                     // Cyclical hierarchy
+    public const string OrphanSubstate = "FSM101";                       // Multiple or divergent parent  
+    public const string InvalidHierarchyConfiguration = "FSM102";        // Composite without initial state
+    public const string MultipleInitialSubstates = "FSM103";             // Multiple initial children
+    public const string InvalidHistoryConfiguration = "FSM104";          // History on non-composite
+    // Removed: FSM105 ConflictingTransitionTargets (unused)
+
+    // Fluent API-specific diagnostics
+    public const string OpenTransition = "FSM200";                       // Transition not finalized with GoTo/Internal
+    public const string AutoFinalizedTransition = "FSM201";              // Transition auto-finalized as internal
+    public const string MultiplePayloadsOnTransition = "FSM202";         // Multiple Payload() calls on same transition
+    // Removed: FSM203/204/205/206 (unused Fluent/Async diagnostics)
+    public const string InvalidPriorityArgument = "FSM207";             // Priority() must take integer literal
+
+    // Global handler diagnostics
+    public const string DuplicateOnExceptionHandler = "FSM208";         // Multiple global OnException handlers
+    public const string InvalidOnExceptionSignature = "FSM209";         // Invalid OnException handler signature
+    public const string PriorityWithoutActiveTransition = "FSM210";     // Priority() called without active transition
+
+    // Generator infrastructure diagnostics (logging, discovery, config)
+    public const string DebugEntry = "FSM989D";                          // Debug entry traces
+    public const string ConfigurationSections = "FSM989";                // Parser/config sections summary
+    public const string VariantDecision = "FSM991";                      // Variant/features decision summary
+    public const string DeclarationPlan = "FSM992";                      // Declaration plan summary
+    public const string EmptyCodeGenerated = "FSM993";                   // Empty/too small generated code
+    public const string EnumOnlyStatesFallback = "FSM994";               // Enum-only fallback info
+    public const string MsBuildAnalyzerProperties = "FSM995";            // MSBuild analyzer properties
+    public const string AddSourceOk = "FSM996";                           // AddSource succeeded
+    public const string SkippedCandidate = "FSM997";                      // Skipped candidate with reason
+    public const string DiscoveryOrTrace = "FSM998";                      // Discovery or parser trace
+    public const string StartingParse = "FSM998A";                        // Starting parse trace
+    public const string ProcessingCandidate = "FSM990";                   // Processing candidate
+    public const string LogHelperPreAdd = "FSM990_PRE";                   // Logging helper pre-AddSource
+    public const string LogProps = "FSM990_PROP";                          // MSBuild logging flags
+    public const string HsmFlagTracking = "FSM990_HSM_FLAG";              // HSM flag tracking
 }
-./Contexts/OrphanSubstateContext.cs
-namespace Generator.Rules.Contexts
-{
-    /// <summary>
-    /// Represents the context for a rule detecting an orphan substate that references a non-existent parent.
-    /// </summary>
-    public class OrphanSubstateContext
-    {
-        /// <summary>
-        /// Gets the name of the orphan substate.
-        /// </summary>
-        public string SubstateName { get; }
-
-        /// <summary>
-        /// Gets the name of the non-existent parent state.
-        /// </summary>
-        public string ParentStateName { get; }
-
-        /// <summary>
-        /// Gets a value indicating whether the parent exists.
-        /// </summary>
-        public bool ParentExists { get; }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="OrphanSubstateContext"/> class.
-        /// </summary>
-        /// <param name="substateName">The name of the orphan substate.</param>
-        /// <param name="parentStateName">The name of the non-existent parent state.</param>
-        /// <param name="parentExists">Indicates whether the parent exists.</param>
-        public OrphanSubstateContext(string substateName, string parentStateName, bool parentExists)
-        {
-            SubstateName = substateName;
-            ParentStateName = parentStateName;
-            ParentExists = parentExists;
-        }
-    }
-}
-./Contexts/UnreachableStateContext.cs
-﻿using System.Collections.Generic;
-using Generator.Rules.Definitions;
-
-namespace Generator.Rules.Contexts;
-
-public class UnreachableStateContext( // Zmieniona nazwa klasy
-    string initialState,
-    IReadOnlyList<string> allStateNames,
-    IReadOnlyList<TransitionDefinition> allTransitions) // Zmieniony typ dla allTransitions
-{
-    /// <summary>
-    /// The designated initial state of the state machine.
-    /// If not explicitly defined, a default might be assumed by the rule (e.g., the first state alphabetically).
-    /// </summary>
-    public string InitialState { get; } = initialState;
-
-    /// <summary>
-    /// A list of all unique state names defined for the state machine.
-    /// </summary>
-    public IReadOnlyList<string> AllDefinedStateNames { get; } = allStateNames;
-
-    /// <summary>
-    /// A list of all transitions defined in the state machine.
-    /// The rule will use the <see cref="TransitionDefinition.ToState"/> property
-    /// to determine reachability.
-    /// </summary>
-    public IReadOnlyList<TransitionDefinition> AllTransitions { get; } = allTransitions;
-}./Definitions/RuleCatalog.cs
+./Definitions/RuleCatalog.cs
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -553,7 +678,28 @@ namespace Generator.Rules.Definitions
         /// </summary>
         public static IReadOnlyList<RuleDefinition> All => DefinedRules.All;
     }
-}./Definitions/RuleCategories.cs
+}./Definitions/RuleLookup.cs
+using System.Collections.Generic;
+
+namespace Generator.Rules.Definitions
+{
+    /// <summary>
+    /// Stable facade for accessing rule definitions. Wraps <see cref="RuleCatalog"/>.
+    /// Prefer using this type from external code to avoid direct dependency on the catalog internals.
+    /// </summary>
+    public static class RuleLookup
+    {
+        /// <summary>Gets a rule definition by ID or throws if unknown.</summary>
+        public static RuleDefinition Get(string id) => RuleCatalog.Get(id);
+
+        /// <summary>Tries to get a rule definition by ID.</summary>
+        public static bool TryGet(string id, out RuleDefinition def) => RuleCatalog.TryGet(id, out def!);
+
+        /// <summary>Returns the immutable list of all rule definitions.</summary>
+        public static IReadOnlyList<RuleDefinition> All => RuleCatalog.All;
+    }
+}
+./Definitions/RuleCategories.cs
 namespace Generator.Rules.Definitions
 {
     /// <summary>Central constants for rule categories used in the FSM generator.</summary>
@@ -562,8 +708,13 @@ namespace Generator.Rules.Definitions
         public const string FSM_Generator       = "FSM.Generator";
         public const string FSM_Generator_Async = "FSM.Generator.Async";
         public const string FSM_Generator_HSM   = "FSM.Generator.HSM";
+        public const string FSM_Generator_Config = "FSM.Generator.Config";
+        public const string FSM_Generator_AddSource = "FSM.Generator.AddSource";
+        public const string FSM_Generator_Parser = "FSM.Generator.Parser";
+        public const string FSM_Generator_Discovery = "FSM.Generator.Discovery";
     }
-}./Definitions/RuleDefinition.cs
+}
+./Definitions/RuleDefinition.cs
 using System.Collections.Generic;
 using Generator.Rules.Definitions;
 
@@ -668,29 +819,8 @@ namespace Generator.Rules.Definitions
             defaultSeverity: RuleSeverity.Error,
             description: "Enum values in transition attributes must be valid members of the specified enum type.");
 
-        public static readonly RuleDefinition MissingPayloadType = new(
-            id: RuleIdentifiers.MissingPayloadType,
-            title: "Missing payload type definition",
-            messageFormat: "State machine forced to use '{0}' variant but no payload type is defined. Add [PayloadType] attribute or change the generation mode.",
-            category: RuleCategories.FSM_Generator,
-            defaultSeverity: RuleSeverity.Error,
-            description: "WithPayload and Full variants require at least one payload type to be defined via [PayloadType] attribute.");
+        // Removed: FSM007 & FSM008 (unused)
 
-        public static readonly RuleDefinition ConflictingPayloadConfiguration = new(
-            id: RuleIdentifiers.ConflictingPayloadConfiguration,
-            title: "Conflicting payload configuration",
-            messageFormat: "Forced 'WithPayload' variant expects single payload type but found {0} trigger-specific types. Use 'Full' variant or remove Force to allow auto-detection.",
-            category: RuleCategories.FSM_Generator,
-            defaultSeverity: RuleSeverity.Error,
-            description: "WithPayload variant supports only single payload type. For multiple payload types use Full variant.");
-
-        public static readonly RuleDefinition InvalidForcedVariantConfiguration = new(
-            id: RuleIdentifiers.InvalidForcedVariantConfiguration,
-            title: "Invalid forced variant configuration",
-            messageFormat: "Forced '{0}' variant conflicts with {1}. {2}",
-            category: RuleCategories.FSM_Generator,
-            defaultSeverity: RuleSeverity.Error,
-            description: "Forced variant has conflicting configuration that prevents proper code generation.");
 
 
         public static readonly RuleDefinition GuardWithPayloadInNonPayloadMachine = new(
@@ -773,13 +903,7 @@ namespace Generator.Rules.Definitions
             defaultSeverity: RuleSeverity.Warning,
             description: "Only composite states (states with children) can have history mode. History remembers which child was last active.");
 
-        public static readonly RuleDefinition ConflictingTransitionTargets = new(
-            id: RuleIdentifiers.ConflictingTransitionTargets,  // FSM105
-            title: "Transition to composite without explicit child",
-            messageFormat: "Transition to composite state '{0}' without explicit target substate. The state machine will enter '{1}' (reason: {2}). To be explicit, transition directly to the desired substate.",
-            category: RuleCategories.FSM_Generator_HSM,
-            defaultSeverity: RuleSeverity.Info,
-            description: "When transitioning to a composite state without specifying a target substate, the entry point is determined by: 1) History mode (if set and previously visited), 2) Initial substate (if defined), or 3) First defined child.");
+        // Removed: FSM105 (unused)
 
         // Fluent API rules (FSM200-FSM206)
         public static readonly RuleDefinition OpenTransition = new(
@@ -806,37 +930,15 @@ namespace Generator.Rules.Definitions
             defaultSeverity: RuleSeverity.Warning,
             description: "Each transition should have at most one payload type. Multiple Payload() calls will use the last specified type.");
 
-        public static readonly RuleDefinition IncompatibleHandlerSignature = new(
-            id: RuleIdentifiers.IncompatibleHandlerSignature,  // FSM203
-            title: "Incompatible handler signature",
-            messageFormat: "Handler method '{0}' has signature '{1}' which is incompatible with expected signature '{2}' for {3}.",
+        // Removed: FSM203/204/205/206 (unused)
+
+        public static readonly RuleDefinition InvalidPriorityArgument = new(
+            id: RuleIdentifiers.InvalidPriorityArgument,  // FSM207
+            title: "Invalid priority argument",
+            messageFormat: "Priority() requires an integer literal value.",
             category: RuleCategories.FSM_Generator,
-            defaultSeverity: RuleSeverity.Error,
-            description: "Handler methods must have compatible signatures. Guards return bool/Task<bool>, actions are void/Task, and payload parameters must match the transition's payload type.");
-
-        public static readonly RuleDefinition AsyncPathWithSyncFire = new(
-            id: RuleIdentifiers.AsyncPathWithSyncFire,  // FSM204
-            title: "Async path requires FireAsync",
-            messageFormat: "State machine has async handlers in path from '{0}' on trigger '{1}'. Use FireAsync() instead of Fire() for proper async execution.",
-            category: RuleCategories.FSM_Generator_Async,
             defaultSeverity: RuleSeverity.Warning,
-            description: "When any handler in the transition path is async, you must use FireAsync() to properly await the async operations. Fire() will not work correctly with async handlers.");
-
-        public static readonly RuleDefinition AsyncMethodWithoutSuffix = new(
-            id: RuleIdentifiers.AsyncMethodWithoutSuffix,  // FSM205
-            title: "Async method without *Async suffix",
-            messageFormat: "Method '{0}' is async but doesn't use *Async suffix. With AsyncPolicy.Explicit, async methods must use OnEntryAsync/OnExitAsync/GuardAsync/ActionAsync.",
-            category: RuleCategories.FSM_Generator_Async,
-            defaultSeverity: RuleSeverity.Error,
-            description: "When AsyncPolicy.Explicit is set, all async methods must use the *Async suffix convention (e.g., OnEntryAsync instead of OnEntry).");
-
-        public static readonly RuleDefinition SyncMethodInRequiredAsyncMode = new(
-            id: RuleIdentifiers.SyncMethodInRequiredAsyncMode,  // FSM206
-            title: "Synchronous method in Required async mode",
-            messageFormat: "Method '{0}' is synchronous but AsyncPolicy.Required demands all handlers be async. Change to async or switch to AsyncPolicy.Implicit/Explicit.",
-            category: RuleCategories.FSM_Generator_Async,
-            defaultSeverity: RuleSeverity.Error,
-            description: "When AsyncPolicy.Required is set, all handler methods must be async. Synchronous handlers are not allowed.");
+            description: "The Priority() fluent call accepts only an integer literal argument used for transition ordering.");
 
         // Global handler rules (OnException)
         public static readonly RuleDefinition DuplicateOnExceptionHandler = new(
@@ -855,6 +957,135 @@ namespace Generator.Rules.Definitions
             defaultSeverity: RuleSeverity.Error,
             description: "OnException handler must return ExceptionDirective or ValueTask<ExceptionDirective> and accept ExceptionContext<TState,TTrigger> as first parameter with optional CancellationToken.");
 
+        public static readonly RuleDefinition PriorityWithoutActiveTransition = new(
+            id: RuleIdentifiers.PriorityWithoutActiveTransition,  // FSM210
+            title: "Priority() without active transition",
+            messageFormat: "Priority() can only be called while configuring a transition.",
+            category: RuleCategories.FSM_Generator,
+            defaultSeverity: RuleSeverity.Error,
+            description: "Priority() is valid only in the context of an active transition builder (after On()/OnInternal()).");
+
+        // Generator infrastructure diagnostics (logging, discovery, config)
+        public static readonly RuleDefinition DebugEntry = new(
+            id: RuleIdentifiers.DebugEntry, // FSM989D
+            title: "Debug entry",
+            messageFormat: "ENTERING ProcessCandidateAndGenerate for: {0}",
+            category: RuleCategories.FSM_Generator,
+            defaultSeverity: RuleSeverity.Warning,
+            description: "Debug trace emitted when entering key generator phases.");
+
+        public static readonly RuleDefinition ConfigurationSections = new(
+            id: RuleIdentifiers.ConfigurationSections, // FSM989
+            title: "Configuration sections",
+            messageFormat: "{0} - StatesFrom: {1} | TransitionsFrom: {2} (ext={3}) | InternalFrom: {4} (int={5}) | PayloadTypes: {6}",
+            category: RuleCategories.FSM_Generator_Parser,
+            defaultSeverity: RuleSeverity.Info,
+            description: "Summary of configuration sources discovered during parsing (methods contributing [State], [Transition], internal transitions and payload types).");
+
+        public static readonly RuleDefinition VariantDecision = new(
+            id: RuleIdentifiers.VariantDecision, // FSM991
+            title: "Variant decision",
+            messageFormat: "{0} -> {1}; internalOnly={2}; payloadPresent={3}",
+            category: RuleCategories.FSM_Generator,
+            defaultSeverity: RuleSeverity.Info,
+            description: "Generator variant/features summary (payload, extensions, callbacks, internal-only). The second argument typically encodes feature flags.");
+
+        public static readonly RuleDefinition DeclarationPlan = new(
+            id: RuleIdentifiers.DeclarationPlan, // FSM992
+            title: "Declaration plan",
+            messageFormat: "DECLARATION_PLAN for {0}: ns='{1}', nesting='{2}', class='{3}', accessibility='{4}', partial={5}",
+            category: RuleCategories.FSM_Generator,
+            defaultSeverity: RuleSeverity.Info,
+            description: "Planned namespace, nesting and class accessibility for the generated state machine.");
+
+        public static readonly RuleDefinition EmptyCodeGenerated = new(
+            id: RuleIdentifiers.EmptyCodeGenerated, // FSM993
+            title: "Empty code generated",
+            messageFormat: "EMPTY_CODE for {0}; variant={1}; states={2}; transitions int={3}, ext={4}; payloads={5}; enumFallback={6}",
+            category: RuleCategories.FSM_Generator,
+            defaultSeverity: RuleSeverity.Warning,
+            description: "Indicates that the generator produced empty or too small output for a candidate; includes basic metrics for diagnosis.");
+
+        public static readonly RuleDefinition EnumOnlyStatesFallback = new(
+            id: RuleIdentifiers.EnumOnlyStatesFallback, // FSM994
+            title: "Enum-only states fallback",
+            messageFormat: "Enum-only states fallback applied for '{0}' — 0 [State] attributes found; using all enum members as states",
+            category: RuleCategories.FSM_Generator,
+            defaultSeverity: RuleSeverity.Info,
+            description: "Fallback path when no [State] attributes are found: all enum members are used as states.");
+
+        public static readonly RuleDefinition MsBuildAnalyzerProperties = new(
+            id: RuleIdentifiers.MsBuildAnalyzerProperties, // FSM995
+            title: "MSBuild analyzer properties",
+            messageFormat: "EmitCompilerGeneratedFiles={0}; CompilerGeneratedFilesOutputPath={1}",
+            category: RuleCategories.FSM_Generator_Config,
+            defaultSeverity: RuleSeverity.Info,
+            description: "Displays analyzer-related MSBuild properties to aid debugging of generated files.");
+
+        public static readonly RuleDefinition AddSourceOk = new(
+            id: RuleIdentifiers.AddSourceOk, // FSM996
+            title: "AddSource succeeded",
+            messageFormat: "AddSource ok: {0} (len={1})",
+            category: RuleCategories.FSM_Generator_AddSource,
+            defaultSeverity: RuleSeverity.Info,
+            description: "Indicates a successful AddSource call with the hint name and content length.");
+
+        public static readonly RuleDefinition SkippedCandidate = new(
+            id: RuleIdentifiers.SkippedCandidate, // FSM997
+            title: "State machine candidate skipped",
+            messageFormat: "Skipped state machine candidate {0}: {1}",
+            category: RuleCategories.FSM_Generator_Discovery,
+            defaultSeverity: RuleSeverity.Info,
+            description: "Provides the reason why a discovered state machine candidate was skipped.");
+
+        public static readonly RuleDefinition DiscoveryOrTrace = new(
+            id: RuleIdentifiers.DiscoveryOrTrace, // FSM998
+            title: "Generator trace",
+            messageFormat: "{0}",
+            category: RuleCategories.FSM_Generator_Discovery,
+            defaultSeverity: RuleSeverity.Info,
+            description: "Generic trace or discovery diagnostic used for parser traces or additional info.");
+
+        public static readonly RuleDefinition StartingParse = new(
+            id: RuleIdentifiers.StartingParse, // FSM998A
+            title: "Starting parse",
+            messageFormat: "Starting parse for: {0}",
+            category: RuleCategories.FSM_Generator_Parser,
+            defaultSeverity: RuleSeverity.Info,
+            description: "Marks the start of parsing a specific candidate class.");
+
+        public static readonly RuleDefinition ProcessingCandidate = new(
+            id: RuleIdentifiers.ProcessingCandidate, // FSM990
+            title: "Processing candidate",
+            messageFormat: "Processing candidate: {0}",
+            category: RuleCategories.FSM_Generator,
+            defaultSeverity: RuleSeverity.Info,
+            description: "Indicates that a discovered candidate is being processed by the generator.");
+
+        public static readonly RuleDefinition LogHelperPreAdd = new(
+            id: RuleIdentifiers.LogHelperPreAdd, // FSM990_PRE
+            title: "Logging helper pre-AddSource",
+            messageFormat: "GenerateLogging={0}; ns='{1}'; class='{2}'; hint='{3}'; first='{4}'",
+            category: RuleCategories.FSM_Generator_AddSource,
+            defaultSeverity: RuleSeverity.Info,
+            description: "Summary emitted before adding the optional logging helper source file.");
+
+        public static readonly RuleDefinition LogProps = new(
+            id: RuleIdentifiers.LogProps, // FSM990_PROP
+            title: "MSBuild logging flags",
+            messageFormat: "FsmGenerateLogging={0}; FsmGenerateDI={1}",
+            category: RuleCategories.FSM_Generator_Config,
+            defaultSeverity: RuleSeverity.Info,
+            description: "Shows effective MSBuild flags controlling optional logging and DI generation.");
+
+        public static readonly RuleDefinition HsmFlagTracking = new(
+            id: RuleIdentifiers.HsmFlagTracking, // FSM990_HSM_FLAG
+            title: "HSM Flag Tracking",
+            messageFormat: "{0}",
+            category: RuleCategories.FSM_Generator,
+            defaultSeverity: RuleSeverity.Info,
+            description: "Diagnostic used to surface HSM-related feature flags and checkpoints during generation and in generated code comments.");
+
         public static readonly IReadOnlyList<RuleDefinition> All = new List<RuleDefinition>
         {
             DuplicateTransition,
@@ -863,9 +1094,6 @@ namespace Generator.Rules.Definitions
             MissingStateMachineAttribute,
             InvalidTypesInAttribute,
             InvalidEnumValueInTransition,
-            MissingPayloadType,
-            ConflictingPayloadConfiguration,
-            InvalidForcedVariantConfiguration,
             GuardWithPayloadInNonPayloadMachine,
             MixedSyncAsyncCallbacks,
             InvalidGuardTaskReturnType,
@@ -877,206 +1105,36 @@ namespace Generator.Rules.Definitions
             InvalidHierarchyConfiguration,  // FSM102
             MultipleInitialSubstates,       // FSM103
             InvalidHistoryConfiguration,    // FSM104
-            ConflictingTransitionTargets,   // FSM105
+            // FSM105 removed
             // Fluent API rules (FSM200-FSM206)
             OpenTransition,                 // FSM200
             AutoFinalizedTransition,        // FSM201
             MultiplePayloadsOnTransition,   // FSM202
-            IncompatibleHandlerSignature,   // FSM203
-            AsyncPathWithSyncFire,          // FSM204
-            AsyncMethodWithoutSuffix,       // FSM205
-            SyncMethodInRequiredAsyncMode,  // FSM206
+            InvalidPriorityArgument,        // FSM207
             DuplicateOnExceptionHandler,    // FSM208
             InvalidOnExceptionSignature,    // FSM209
+            PriorityWithoutActiveTransition,// FSM210
+
+            // Generator infrastructure
+            DebugEntry,                    // FSM989D
+            ConfigurationSections,         // FSM989
+            VariantDecision,               // FSM991
+            DeclarationPlan,               // FSM992
+            EmptyCodeGenerated,            // FSM993
+            EnumOnlyStatesFallback,        // FSM994
+            MsBuildAnalyzerProperties,     // FSM995
+            AddSourceOk,                   // FSM996
+            SkippedCandidate,              // FSM997
+            DiscoveryOrTrace,              // FSM998
+            StartingParse,                 // FSM998A
+            ProcessingCandidate,           // FSM990
+            LogHelperPreAdd,               // FSM990_PRE
+            LogProps,                      // FSM990_PROP
+            HsmFlagTracking,               // FSM990_HSM_FLAG
         }.AsReadOnly();
     }
 }
-./Definitions/RuleIdentifiers.cs
-﻿
-
-namespace Generator.Rules.Definitions;
-
-public static class RuleIdentifiers
-{
-    public const string DuplicateTransition = "FSM001";
-    public const string UnreachableState = "FSM002";
-    public const string InvalidMethodSignature = "FSM003";
-    public const string MissingStateMachineAttribute = "FSM004";
-    public const string InvalidTypesInAttribute = "FSM005";
-    public const string InvalidEnumValueInTransition = "FSM006";
-    public const string MissingPayloadType = "FSM007";
-    public const string ConflictingPayloadConfiguration = "FSM008";
-    public const string InvalidForcedVariantConfiguration = "FSM009";
-    public const string GuardWithPayloadInNonPayloadMachine = "FSM010";
-    public const string MixedSyncAsyncCallbacks = "FSM011";
-    public const string InvalidGuardTaskReturnType = "FSM012";
-    public const string AsyncCallbackInSyncMachine = "FSM013";
-    public const string InvalidAsyncVoid = "FSM014";
-    
-    // HSM-specific diagnostics
-    public const string CircularHierarchy = "FSM100";                     // Cyclical hierarchy
-    public const string OrphanSubstate = "FSM101";                       // Multiple or divergent parent  
-    public const string InvalidHierarchyConfiguration = "FSM102";        // Composite without initial state
-    public const string MultipleInitialSubstates = "FSM103";             // Multiple initial children
-    public const string InvalidHistoryConfiguration = "FSM104";          // History on non-composite
-    public const string ConflictingTransitionTargets = "FSM105";         // Transition to composite without explicit child
-
-    // Fluent API-specific diagnostics
-    public const string OpenTransition = "FSM200";                       // Transition not finalized with GoTo/Internal
-    public const string AutoFinalizedTransition = "FSM201";              // Transition auto-finalized as internal
-    public const string MultiplePayloadsOnTransition = "FSM202";         // Multiple Payload() calls on same transition
-    public const string IncompatibleHandlerSignature = "FSM203";         // Handler signature doesn't match requirements
-    public const string AsyncPathWithSyncFire = "FSM204";                // Using Fire() when path has async handlers
-    public const string AsyncMethodWithoutSuffix = "FSM205";             // Async method without *Async suffix (Explicit policy)
-    public const string SyncMethodInRequiredAsyncMode = "FSM206";       // Sync method when AsyncPolicy.Required
-
-    // Global handler diagnostics
-    public const string DuplicateOnExceptionHandler = "FSM208";         // Multiple global OnException handlers
-    public const string InvalidOnExceptionSignature = "FSM209";         // Invalid OnException handler signature
-
-}
-./Definitions/RuleLookup.cs
-using System.Collections.Generic;
-
-namespace Generator.Rules.Definitions
-{
-    /// <summary>
-    /// Stable facade for accessing rule definitions. Wraps <see cref="RuleCatalog"/>.
-    /// Prefer using this type from external code to avoid direct dependency on the catalog internals.
-    /// </summary>
-    public static class RuleLookup
-    {
-        /// <summary>Gets a rule definition by ID or throws if unknown.</summary>
-        public static RuleDefinition Get(string id) => RuleCatalog.Get(id);
-
-        /// <summary>Tries to get a rule definition by ID.</summary>
-        public static bool TryGet(string id, out RuleDefinition def) => RuleCatalog.TryGet(id, out def!);
-
-        /// <summary>Returns the immutable list of all rule definitions.</summary>
-        public static IReadOnlyList<RuleDefinition> All => RuleCatalog.All;
-    }
-}
-./Definitions/RuleSeverity.cs
-﻿namespace Generator.Rules.Definitions;
-
-public enum RuleSeverity
-{
-    Error,
-    Warning,
-    Info
-
-}./Definitions/SeverityDefaults.cs
-namespace Generator.Rules.Definitions
-{
-    /// <summary>
-    /// Roslyn-free severity helpers for consumers that don't reference Microsoft.CodeAnalysis.
-    /// </summary>
-    public static class SeverityDefaults
-    {
-        /// <summary>
-        /// Lightweight local copy of a severity enum to avoid referencing Roslyn from this assembly.
-        /// </summary>
-        public enum DiagnosticSeverityCompat
-        {
-            Hidden = 0,
-            Info   = 1,
-            Warning= 2,
-            Error  = 3
-        }
-
-        /// <summary>
-        /// Converts a <see cref="RuleSeverity"/> to <see cref="DiagnosticSeverityCompat"/>.
-        /// </summary>
-        public static DiagnosticSeverityCompat ToDiagnosticSeverityCompat(RuleSeverity s)
-            => s switch
-            {
-                RuleSeverity.Error   => DiagnosticSeverityCompat.Error,
-                RuleSeverity.Warning => DiagnosticSeverityCompat.Warning,
-                _                    => DiagnosticSeverityCompat.Info,
-            };
-    }
-}./Definitions/TransitionDefinition.cs
-﻿namespace Generator.Rules.Definitions;
-
-public class TransitionDefinition(string fromState, string trigger, string? toState = null)
-{
-    public string FromState { get; } = fromState;
-    public string Trigger { get; } = trigger;
-    public string? ToState { get; } = toState;
-
-    /// <summary>
-    /// Determines whether the specified object is equal to the current object.
-    /// For TransitionDefinition, equality for use in sets (like for duplicate detection)
-    /// is based on FromState and Trigger only. ToState is not considered.
-    /// </summary>
-    public override bool Equals(object? obj)
-    {
-        if (obj is not TransitionDefinition other)
-            return false;
-
-        // For the purpose of duplicate transition detection (FSM001),
-        // only FromState and Trigger are considered. ToState can differ.
-        return FromState == other.FromState && Trigger == other.Trigger;
-    }
-
-    /// <summary>
-    /// Serves as the default hash function.
-    /// The hash code is based on FromState and Trigger only, to align with Equals behavior.
-    /// </summary>
-    public override int GetHashCode()
-    {
-        return (FromState, Trigger).GetHashCode();
-    }
-
-
-    public bool EqualsIncludingToState(TransitionDefinition? other)
-    {
-        if (other is null)
-            return false;
-
-        return FromState == other.FromState &&
-               Trigger == other.Trigger &&
-               ToState == other.ToState;
-    }
-}./Definitions/ValidationResult.cs
-using System;
-
-namespace Generator.Rules.Definitions
-{
-    /// <summary>
-    /// Validation outcome returned by rules; either success or failure with message/severity.
-    /// </summary>
-    public class ValidationResult
-    {
-        public bool IsValid { get; }
-        public string? RuleId { get; }
-        public string? Message { get; }
-        public RuleSeverity Severity { get; }
-
-        private ValidationResult(bool isValid, string? ruleId, string? message, RuleSeverity severity)
-        {
-            IsValid = isValid;
-            RuleId = ruleId;
-            Message = message;
-            Severity = severity;
-        }
-
-        /// <summary>
-        /// Represents a 'no issues' result; IsValid = true. Severity value is not meaningful.
-        /// </summary>
-        public static ValidationResult Success() => new(true, null, null, RuleSeverity.Info);
-
-        /// <summary>
-        /// Creates a failure; IsValid = false; ruleId and message must be non-empty.
-        /// </summary>
-        public static ValidationResult Fail(string ruleId, string message, RuleSeverity severity)
-        {
-            if (string.IsNullOrEmpty(ruleId)) throw new ArgumentNullException(nameof(ruleId));
-            if (string.IsNullOrEmpty(message)) throw new ArgumentNullException(nameof(message));
-            return new ValidationResult(false, ruleId, message, severity);
-        }
-    }
-}./obj/Debug/netstandard2.0/.NETStandard,Version=v2.0.AssemblyAttributes.cs
+./obj/Debug/netstandard2.0/.NETStandard,Version=v2.0.AssemblyAttributes.cs
 // <autogenerated />
 using System;
 using System.Reflection;
@@ -1098,7 +1156,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Generator.Rules")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7391b6601adf91aba16b24af2eb5beeb5953a62d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0febf83a01cdeb3f5151e5d9208aacb1ef7aff96")]
 [assembly: System.Reflection.AssemblyProductAttribute("Generator.Rules")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Generator.Rules")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
@@ -1126,14 +1184,71 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Generator.Rules")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7391b6601adf91aba16b24af2eb5beeb5953a62d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0febf83a01cdeb3f5151e5d9208aacb1ef7aff96")]
 [assembly: System.Reflection.AssemblyProductAttribute("Generator.Rules")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Generator.Rules")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
 
 // Generated by the MSBuild WriteCodeFragment class.
 
-./Rules/AsyncCallbackInSyncMachineRule.cs
+./Rules/InvalidAsyncVoidRule.cs
+using System.Collections.Generic;
+using Generator.Rules.Contexts;
+using Generator.Rules.Definitions;
+
+namespace Generator.Rules.Rules;
+
+/// <summary>
+/// FSM014 - Warns about async void callbacks which should be async Task or async ValueTask.
+/// </summary>
+public class InvalidAsyncVoidRule : IValidationRule<InvalidAsyncVoidContext>
+{
+    public IEnumerable<ValidationResult> Validate(InvalidAsyncVoidContext context)
+    {
+        // Check if method is async and returns void
+        if (context.IsAsync && context.ReturnType == "void")
+        {
+            string message = string.Format(
+                DefinedRules.InvalidAsyncVoid.MessageFormat,
+                context.MethodName);
+
+            yield return ValidationResult.Fail(
+                RuleIdentifiers.InvalidAsyncVoid,
+                message,
+                DefinedRules.InvalidAsyncVoid.DefaultSeverity);
+        }
+        else
+        {
+            yield return ValidationResult.Success();
+        }
+    }
+}./Rules/GuardWithPayloadInNonPayloadMachineRule.cs
+﻿using System.Collections.Generic;
+using Generator.Rules.Contexts;
+using Generator.Rules.Definitions;
+
+namespace Generator.Rules.Rules;
+
+/// <summary>
+/// FSM010 – Guard expects payload, ale maszyna nie obsługuje payloadów.
+/// </summary>
+public class GuardWithPayloadInNonPayloadMachineRule
+    : IValidationRule<GuardWithPayloadContext>
+{
+    public IEnumerable<ValidationResult> Validate(GuardWithPayloadContext context)
+    {
+        if (context.GuardExpectsPayload && !context.MachineHasPayload)
+        {
+            yield return ValidationResult.Fail(
+                RuleIdentifiers.GuardWithPayloadInNonPayloadMachine,
+                $"Guard method '{context.GuardMethodName}' expects a payload parameter, " +
+                "but the state machine is configured without payload support. " +
+                "Either remove the parameter from the guard method or configure the state machine " +
+                "with payload support using [PayloadType] attribute.",
+                RuleSeverity.Error);
+        }
+    }
+}./Rules/AsyncCallbackInSyncMachineRule.cs
 using System.Collections.Generic;
 using Generator.Rules.Contexts;
 using Generator.Rules.Definitions;
@@ -1165,7 +1280,7 @@ public class AsyncCallbackInSyncMachineRule : IValidationRule<AsyncCallbackInSyn
             yield return ValidationResult.Success();
         }
     }
-}./Rules/CircularHierarchyRule.cs
+}./Rules/MultipleInitialSubstatesRule.cs
 using System.Collections.Generic;
 using System.Linq;
 using Generator.Rules.Contexts;
@@ -1174,82 +1289,29 @@ using Generator.Rules.Definitions;
 namespace Generator.Rules.Rules;
 
 /// <summary>
-/// FSM100 - Validates that state hierarchies do not contain circular dependencies.
+/// FSM103 - Validates that a composite state doesn't have multiple initial substates.
 /// </summary>
-public class CircularHierarchyRule : IValidationRule<CircularHierarchyContext>
+public class MultipleInitialSubstatesRule : IValidationRule<MultipleInitialSubstatesContext>
 {
-    public IEnumerable<ValidationResult> Validate(CircularHierarchyContext context)
+    public IEnumerable<ValidationResult> Validate(MultipleInitialSubstatesContext context)
     {
-        if (context.CyclePath != null && context.CyclePath.Any())
+        if (context.InitialSubstates != null && context.InitialSubstates.Count > 1)
         {
-            string cyclePath = string.Join(" -> ", context.CyclePath);
             string message = string.Format(
-                DefinedRules.CircularHierarchy.MessageFormat,
-                context.StateName,
-                cyclePath);
+                DefinedRules.MultipleInitialSubstates.MessageFormat,
+                context.ParentStateName,
+                context.InitialSubstates[0],
+                context.InitialSubstates[1]);
 
             yield return ValidationResult.Fail(
-                RuleIdentifiers.CircularHierarchy,
+                RuleIdentifiers.MultipleInitialSubstates,
                 message,
-                DefinedRules.CircularHierarchy.DefaultSeverity);
+                DefinedRules.MultipleInitialSubstates.DefaultSeverity);
         }
         else
         {
             yield return ValidationResult.Success();
         }
-    }
-}./Rules/ConflictingPayloadRule.cs
-﻿using Generator.Rules.Contexts;
-using Generator.Rules.Definitions;
-using System.Collections.Generic;
-
-namespace Generator.Rules.Rules;
-
-public class ConflictingPayloadRule : IValidationRule<ConflictingPayloadContext>
-{
-    public IEnumerable<ValidationResult> Validate(ConflictingPayloadContext context)
-    {
-        if (context.IsWithPayloadVariant && context.TriggerSpecificPayloadCount > 0)
-        {
-            string message = string.Format(
-                DefinedRules.ConflictingPayloadConfiguration.MessageFormat,
-                context.TriggerSpecificPayloadCount);
-
-            yield return ValidationResult.Fail(
-                RuleIdentifiers.ConflictingPayloadConfiguration,
-                message,
-                DefinedRules.ConflictingPayloadConfiguration.DefaultSeverity);
-        }
-        else
-        {
-            yield return ValidationResult.Success();
-        }
-    }
-}./Rules/ConflictingTransitionTargetsRule.cs
-using System.Collections.Generic;
-using Generator.Rules.Contexts;
-using Generator.Rules.Definitions;
-
-namespace Generator.Rules.Rules;
-
-/// <summary>
-/// FSM105 - Informs about implicit transition targets to composite states.
-/// </summary>
-public class ConflictingTransitionTargetsRule : IValidationRule<ConflictingTransitionTargetsContext>
-{
-    public IEnumerable<ValidationResult> Validate(ConflictingTransitionTargetsContext context)
-    {
-        // This is an informational diagnostic - always emit when called
-        string message = string.Format(
-            DefinedRules.ConflictingTransitionTargets.MessageFormat,
-            context.CompositeStateName,
-            context.ActualTarget,
-            context.Reason);
-
-        yield return ValidationResult.Fail(
-            RuleIdentifiers.ConflictingTransitionTargets,
-            message,
-            DefinedRules.ConflictingTransitionTargets.DefaultSeverity);
     }
 }./Rules/DuplicateTransitionRule.cs
 ﻿
@@ -1293,33 +1355,7 @@ public class DuplicateTransitionRule : IValidationRule<DuplicateTransitionContex
             yield return ValidationResult.Success();
         }
     }
-}./Rules/GuardWithPayloadInNonPayloadMachineRule.cs
-﻿using System.Collections.Generic;
-using Generator.Rules.Contexts;
-using Generator.Rules.Definitions;
-
-namespace Generator.Rules.Rules;
-
-/// <summary>
-/// FSM010 – Guard expects payload, ale maszyna nie obsługuje payloadów.
-/// </summary>
-public class GuardWithPayloadInNonPayloadMachineRule
-    : IValidationRule<GuardWithPayloadContext>
-{
-    public IEnumerable<ValidationResult> Validate(GuardWithPayloadContext context)
-    {
-        if (context.GuardExpectsPayload && !context.MachineHasPayload)
-        {
-            yield return ValidationResult.Fail(
-                RuleIdentifiers.GuardWithPayloadInNonPayloadMachine,
-                $"Guard method '{context.GuardMethodName}' expects a payload parameter, " +
-                "but the state machine is configured without payload support. " +
-                "Either remove the parameter from the guard method or configure the state machine " +
-                "with payload support using [PayloadType] attribute.",
-                RuleSeverity.Error);
-        }
-    }
-}./Rules/InvalidAsyncVoidRule.cs
+}./Rules/OrphanSubstateRule.cs
 using System.Collections.Generic;
 using Generator.Rules.Contexts;
 using Generator.Rules.Definitions;
@@ -1327,23 +1363,53 @@ using Generator.Rules.Definitions;
 namespace Generator.Rules.Rules;
 
 /// <summary>
-/// FSM014 - Warns about async void callbacks which should be async Task or async ValueTask.
+/// FSM101 - Validates that all substates have existing parent states.
 /// </summary>
-public class InvalidAsyncVoidRule : IValidationRule<InvalidAsyncVoidContext>
+public class OrphanSubstateRule : IValidationRule<OrphanSubstateContext>
 {
-    public IEnumerable<ValidationResult> Validate(InvalidAsyncVoidContext context)
+    public IEnumerable<ValidationResult> Validate(OrphanSubstateContext context)
     {
-        // Check if method is async and returns void
-        if (context.IsAsync && context.ReturnType == "void")
+        if (!context.ParentExists)
         {
             string message = string.Format(
-                DefinedRules.InvalidAsyncVoid.MessageFormat,
-                context.MethodName);
+                DefinedRules.OrphanSubstate.MessageFormat,
+                context.SubstateName,
+                context.ParentStateName);
 
             yield return ValidationResult.Fail(
-                RuleIdentifiers.InvalidAsyncVoid,
+                RuleIdentifiers.OrphanSubstate,
                 message,
-                DefinedRules.InvalidAsyncVoid.DefaultSeverity);
+                DefinedRules.OrphanSubstate.DefaultSeverity);
+        }
+        else
+        {
+            yield return ValidationResult.Success();
+        }
+    }
+}./Rules/InvalidHierarchyConfigurationRule.cs
+using System.Collections.Generic;
+using Generator.Rules.Contexts;
+using Generator.Rules.Definitions;
+
+namespace Generator.Rules.Rules;
+
+/// <summary>
+/// FSM102 - Validates that composite states have proper initial substate configuration.
+/// </summary>
+public class InvalidHierarchyConfigurationRule : IValidationRule<InvalidHierarchyConfigurationContext>
+{
+    public IEnumerable<ValidationResult> Validate(InvalidHierarchyConfigurationContext context)
+    {
+        if (context.IsComposite && !context.HasInitialSubstate && !context.HasHistory)
+        {
+            string message = string.Format(
+                DefinedRules.InvalidHierarchyConfiguration.MessageFormat,
+                context.CompositeStateName);
+
+            yield return ValidationResult.Fail(
+                RuleIdentifiers.InvalidHierarchyConfiguration,
+                message,
+                DefinedRules.InvalidHierarchyConfiguration.DefaultSeverity);
         }
         else
         {
@@ -1386,68 +1452,122 @@ public class InvalidEnumValueInTransitionRule : IValidationRule<EnumValueValidat
             yield return ValidationResult.Success();
         }
     }
-}./Rules/InvalidGuardTaskReturnTypeRule.cs
-using System.Collections.Generic;
+}./Rules/MissingStateMachineAttributeRule.cs
+﻿using System.Collections.Generic;
 using Generator.Rules.Contexts;
 using Generator.Rules.Definitions;
 
 namespace Generator.Rules.Rules;
 
 /// <summary>
-/// FSM012 - Validates that async guards return ValueTask&lt;bool&gt; instead of Task&lt;bool&gt;.
+/// Validates presence and correctness of the [StateMachine] attribute on FSM classes.
 /// </summary>
-public class InvalidGuardTaskReturnTypeRule : IValidationRule<InvalidGuardTaskReturnTypeContext>
+public class MissingStateMachineAttributeRule : IValidationRule<MissingStateMachineAttributeValidationContext>
 {
-    public IEnumerable<ValidationResult> Validate(InvalidGuardTaskReturnTypeContext context)
-    {
-        // Only check if the method is async and returns Task<bool>
-        if (context.IsAsync && context.ActualReturnType == "System.Threading.Tasks.Task<bool>")
-        {
-            string message = string.Format(
-                DefinedRules.InvalidGuardTaskReturnType.MessageFormat,
-                context.MethodName);
+    private const string MissingAttributeFormat = "Class '{0}' is missing the [StateMachine(typeof(StateEnum), typeof(TriggerEnum))] attribute.";
+    private const string MissingArgumentsFormat = "The [StateMachine] attribute on class '{0}' requires at least two arguments (state type and trigger type).";
+    private const string NotPartialFormat = "Class '{0}' with [StateMachine] attribute must be declared as partial.";
 
+    public IEnumerable<ValidationResult> Validate(MissingStateMachineAttributeValidationContext context)
+    {
+        if (!context.HasStateMachineAttribute)
+        {
+            string message = string.Format(MissingAttributeFormat, context.ClassName);
             yield return ValidationResult.Fail(
-                RuleIdentifiers.InvalidGuardTaskReturnType,
+                RuleIdentifiers.MissingStateMachineAttribute,
                 message,
-                DefinedRules.InvalidGuardTaskReturnType.DefaultSeverity);
+                DefinedRules.MissingStateMachineAttribute.DefaultSeverity
+            );
+            yield break;
         }
-        else
+
+        bool errorFound = false;
+
+        if (context.FsmAttributeConstructorArgCount < 2)
+        {
+            errorFound = true;
+            string message = string.Format(MissingArgumentsFormat, context.ClassName);
+            yield return ValidationResult.Fail(
+                RuleIdentifiers.MissingStateMachineAttribute,
+                message,
+                DefinedRules.MissingStateMachineAttribute.DefaultSeverity
+            );
+        }
+
+        if (!context.IsClassPartial)
+        {
+            errorFound = true;
+            string message = string.Format(NotPartialFormat, context.ClassName);
+            yield return ValidationResult.Fail(
+                RuleIdentifiers.MissingStateMachineAttribute,
+                message,
+                DefinedRules.MissingStateMachineAttribute.DefaultSeverity
+            );
+        }
+
+        // Additional scenario for FSM004: class has transition attributes but is missing [StateMachine].
+        // This is outside the scope of this rule with this context.
+
+        if (!errorFound)
         {
             yield return ValidationResult.Success();
         }
     }
-}./Rules/InvalidHierarchyConfigurationRule.cs
-using System.Collections.Generic;
+}
+./Rules/InvalidTypesInAttributeRule.cs
+﻿using System.Collections.Generic;
 using Generator.Rules.Contexts;
 using Generator.Rules.Definitions;
 
 namespace Generator.Rules.Rules;
 
 /// <summary>
-/// FSM102 - Validates that composite states have proper initial substate configuration.
+/// Validates that types used in [StateMachineAttribute] are enums.
 /// </summary>
-public class InvalidHierarchyConfigurationRule : IValidationRule<InvalidHierarchyConfigurationContext>
+public class InvalidTypesInAttributeRule : IValidationRule<AttributeTypeValidationContext>
 {
-    public IEnumerable<ValidationResult> Validate(InvalidHierarchyConfigurationContext context)
+    private const string UnknownType = "Unknown Type";
+    private const string StateTypeNotEnumFormat = "Type provided for State ('{0}') in [StateMachineAttribute] must be an enum.";
+    private const string TriggerTypeNotEnumFormat = "Type provided for Trigger ('{0}') in [StateMachineAttribute] must be an enum.";
+
+    public IEnumerable<ValidationResult> Validate(AttributeTypeValidationContext context)
     {
-        if (context.IsComposite && !context.HasInitialSubstate && !context.HasHistory)
+        if (!context.IsStateTypeEnum || !context.IsTriggerTypeEnum)
         {
-            string message = string.Format(
-                DefinedRules.InvalidHierarchyConfiguration.MessageFormat,
-                context.CompositeStateName);
+            string stateTypeName = context.StateTypeName ?? UnknownType;
+            string triggerTypeName = context.TriggerTypeName ?? UnknownType;
+
+            string finalMessage;
+            if (!context.IsStateTypeEnum && !context.IsTriggerTypeEnum)
+            {
+                // Both types are invalid
+                finalMessage = string.Format(
+                    DefinedRules.InvalidTypesInAttribute.MessageFormat,
+                    stateTypeName,
+                    triggerTypeName);
+            }
+            else if (!context.IsStateTypeEnum)
+            {
+                finalMessage = string.Format(StateTypeNotEnumFormat, stateTypeName);
+            }
+            else // !context.IsTriggerTypeEnum
+            {
+                finalMessage = string.Format(TriggerTypeNotEnumFormat, triggerTypeName);
+            }
 
             yield return ValidationResult.Fail(
-                RuleIdentifiers.InvalidHierarchyConfiguration,
-                message,
-                DefinedRules.InvalidHierarchyConfiguration.DefaultSeverity);
+                RuleIdentifiers.InvalidTypesInAttribute,
+                finalMessage,
+                DefinedRules.InvalidTypesInAttribute.DefaultSeverity
+            );
         }
         else
         {
             yield return ValidationResult.Success();
         }
     }
-}./Rules/InvalidHistoryConfigurationRule.cs
+}
+./Rules/InvalidHistoryConfigurationRule.cs
 using System.Collections.Generic;
 using Generator.Rules.Contexts;
 using Generator.Rules.Definitions;
@@ -1640,260 +1760,31 @@ namespace Generator.Rules.Rules
             return lastDot >= 0 ? fullyQualifiedName.Substring(lastDot + 1) : fullyQualifiedName;
         }
     }
-}./Rules/InvalidTypesInAttributeRule.cs
-﻿using System.Collections.Generic;
+}./Rules/InvalidGuardTaskReturnTypeRule.cs
+using System.Collections.Generic;
 using Generator.Rules.Contexts;
 using Generator.Rules.Definitions;
 
 namespace Generator.Rules.Rules;
 
 /// <summary>
-/// Validates that types used in [StateMachineAttribute] are enums.
+/// FSM012 - Validates that async guards return ValueTask&lt;bool&gt; instead of Task&lt;bool&gt;.
 /// </summary>
-public class InvalidTypesInAttributeRule : IValidationRule<AttributeTypeValidationContext>
+public class InvalidGuardTaskReturnTypeRule : IValidationRule<InvalidGuardTaskReturnTypeContext>
 {
-    private const string UnknownType = "Unknown Type";
-    private const string StateTypeNotEnumFormat = "Type provided for State ('{0}') in [StateMachineAttribute] must be an enum.";
-    private const string TriggerTypeNotEnumFormat = "Type provided for Trigger ('{0}') in [StateMachineAttribute] must be an enum.";
-
-    public IEnumerable<ValidationResult> Validate(AttributeTypeValidationContext context)
+    public IEnumerable<ValidationResult> Validate(InvalidGuardTaskReturnTypeContext context)
     {
-        if (!context.IsStateTypeEnum || !context.IsTriggerTypeEnum)
-        {
-            string stateTypeName = context.StateTypeName ?? UnknownType;
-            string triggerTypeName = context.TriggerTypeName ?? UnknownType;
-
-            string finalMessage;
-            if (!context.IsStateTypeEnum && !context.IsTriggerTypeEnum)
-            {
-                // Both types are invalid
-                finalMessage = string.Format(
-                    DefinedRules.InvalidTypesInAttribute.MessageFormat,
-                    stateTypeName,
-                    triggerTypeName);
-            }
-            else if (!context.IsStateTypeEnum)
-            {
-                finalMessage = string.Format(StateTypeNotEnumFormat, stateTypeName);
-            }
-            else // !context.IsTriggerTypeEnum
-            {
-                finalMessage = string.Format(TriggerTypeNotEnumFormat, triggerTypeName);
-            }
-
-            yield return ValidationResult.Fail(
-                RuleIdentifiers.InvalidTypesInAttribute,
-                finalMessage,
-                DefinedRules.InvalidTypesInAttribute.DefaultSeverity
-            );
-        }
-        else
-        {
-            yield return ValidationResult.Success();
-        }
-    }
-}
-./Rules/InvalidVariantConfigRule.cs
-﻿using Generator.Rules.Contexts;
-using Generator.Rules.Definitions;
-using System.Collections.Generic;
-
-namespace Generator.Rules.Rules;
-
-public class InvalidVariantConfigRule : IValidationRule<InvalidVariantConfigContext>
-{
-    public IEnumerable<ValidationResult> Validate(InvalidVariantConfigContext context)
-    {
-        if (!context.HasConflict)
-        {
-            yield return ValidationResult.Success();
-            yield break;
-        }
-
-        string reason = context.ConflictType switch
-        {
-            "PayloadTypes" => "Remove PayloadType attributes or use WithPayload/Full variant.",
-            "Extensions" => "Set GenerateExtensibleVersion=true or use different variant.",
-            "OnEntryExit" => "Remove OnEntry/OnExit methods or use Basic/WithExtensions/Full variant.",
-            _ => "Check variant requirements."
-        };
-
-        string message = string.Format(
-            DefinedRules.InvalidForcedVariantConfiguration.MessageFormat,
-            context.VariantName,
-            context.ConflictType,
-            reason);
-
-        yield return ValidationResult.Fail(
-            RuleIdentifiers.InvalidForcedVariantConfiguration,
-            message,
-            DefinedRules.InvalidForcedVariantConfiguration.DefaultSeverity);
-    }
-}./Rules/IValidationRule.cs
-﻿using System.Collections.Generic;
-using Generator.Rules.Definitions;
-
-namespace Generator.Rules.Rules;
-
-public interface IValidationRule<in TContext> where TContext : class
-{
-    IEnumerable<ValidationResult> Validate(TContext context);
-}./Rules/MissingPayloadTypeRule.cs
-﻿using Generator.Rules.Contexts;
-using Generator.Rules.Definitions;
-using System.Collections.Generic;
-
-namespace Generator.Rules.Rules;
-
-public class MissingPayloadTypeRule : IValidationRule<MissingPayloadTypeContext>
-{
-    public IEnumerable<ValidationResult> Validate(MissingPayloadTypeContext context)
-    {
-        if (!context.IsForced)
-        {
-            yield return ValidationResult.Success();
-            yield break;
-        }
-
-        bool requiresPayload = context.Variant == "WithPayload" || context.Variant == "Full";
-        bool hasPayload = context.HasDefaultPayloadType || context.HasTriggerPayloadTypes;
-
-        if (requiresPayload && !hasPayload)
+        // Only check if the method is async and returns Task<bool>
+        if (context.IsAsync && context.ActualReturnType == "System.Threading.Tasks.Task<bool>")
         {
             string message = string.Format(
-                DefinedRules.MissingPayloadType.MessageFormat,
-                context.Variant);
+                DefinedRules.InvalidGuardTaskReturnType.MessageFormat,
+                context.MethodName);
 
             yield return ValidationResult.Fail(
-                RuleIdentifiers.MissingPayloadType,
+                RuleIdentifiers.InvalidGuardTaskReturnType,
                 message,
-                DefinedRules.MissingPayloadType.DefaultSeverity);
-        }
-        else
-        {
-            yield return ValidationResult.Success();
-        }
-    }
-}./Rules/MissingStateMachineAttributeRule.cs
-﻿using System.Collections.Generic;
-using Generator.Rules.Contexts;
-using Generator.Rules.Definitions;
-
-namespace Generator.Rules.Rules;
-
-/// <summary>
-/// Validates presence and correctness of the [StateMachine] attribute on FSM classes.
-/// </summary>
-public class MissingStateMachineAttributeRule : IValidationRule<MissingStateMachineAttributeValidationContext>
-{
-    private const string MissingAttributeFormat = "Class '{0}' is missing the [StateMachine(typeof(StateEnum), typeof(TriggerEnum))] attribute.";
-    private const string MissingArgumentsFormat = "The [StateMachine] attribute on class '{0}' requires at least two arguments (state type and trigger type).";
-    private const string NotPartialFormat = "Class '{0}' with [StateMachine] attribute must be declared as partial.";
-
-    public IEnumerable<ValidationResult> Validate(MissingStateMachineAttributeValidationContext context)
-    {
-        if (!context.HasStateMachineAttribute)
-        {
-            string message = string.Format(MissingAttributeFormat, context.ClassName);
-            yield return ValidationResult.Fail(
-                RuleIdentifiers.MissingStateMachineAttribute,
-                message,
-                DefinedRules.MissingStateMachineAttribute.DefaultSeverity
-            );
-            yield break;
-        }
-
-        bool errorFound = false;
-
-        if (context.FsmAttributeConstructorArgCount < 2)
-        {
-            errorFound = true;
-            string message = string.Format(MissingArgumentsFormat, context.ClassName);
-            yield return ValidationResult.Fail(
-                RuleIdentifiers.MissingStateMachineAttribute,
-                message,
-                DefinedRules.MissingStateMachineAttribute.DefaultSeverity
-            );
-        }
-
-        if (!context.IsClassPartial)
-        {
-            errorFound = true;
-            string message = string.Format(NotPartialFormat, context.ClassName);
-            yield return ValidationResult.Fail(
-                RuleIdentifiers.MissingStateMachineAttribute,
-                message,
-                DefinedRules.MissingStateMachineAttribute.DefaultSeverity
-            );
-        }
-
-        // Additional scenario for FSM004: class has transition attributes but is missing [StateMachine].
-        // This is outside the scope of this rule with this context.
-
-        if (!errorFound)
-        {
-            yield return ValidationResult.Success();
-        }
-    }
-}
-./Rules/MultipleInitialSubstatesRule.cs
-using System.Collections.Generic;
-using System.Linq;
-using Generator.Rules.Contexts;
-using Generator.Rules.Definitions;
-
-namespace Generator.Rules.Rules;
-
-/// <summary>
-/// FSM103 - Validates that a composite state doesn't have multiple initial substates.
-/// </summary>
-public class MultipleInitialSubstatesRule : IValidationRule<MultipleInitialSubstatesContext>
-{
-    public IEnumerable<ValidationResult> Validate(MultipleInitialSubstatesContext context)
-    {
-        if (context.InitialSubstates != null && context.InitialSubstates.Count > 1)
-        {
-            string message = string.Format(
-                DefinedRules.MultipleInitialSubstates.MessageFormat,
-                context.ParentStateName,
-                context.InitialSubstates[0],
-                context.InitialSubstates[1]);
-
-            yield return ValidationResult.Fail(
-                RuleIdentifiers.MultipleInitialSubstates,
-                message,
-                DefinedRules.MultipleInitialSubstates.DefaultSeverity);
-        }
-        else
-        {
-            yield return ValidationResult.Success();
-        }
-    }
-}./Rules/OrphanSubstateRule.cs
-using System.Collections.Generic;
-using Generator.Rules.Contexts;
-using Generator.Rules.Definitions;
-
-namespace Generator.Rules.Rules;
-
-/// <summary>
-/// FSM101 - Validates that all substates have existing parent states.
-/// </summary>
-public class OrphanSubstateRule : IValidationRule<OrphanSubstateContext>
-{
-    public IEnumerable<ValidationResult> Validate(OrphanSubstateContext context)
-    {
-        if (!context.ParentExists)
-        {
-            string message = string.Format(
-                DefinedRules.OrphanSubstate.MessageFormat,
-                context.SubstateName,
-                context.ParentStateName);
-
-            yield return ValidationResult.Fail(
-                RuleIdentifiers.OrphanSubstate,
-                message,
-                DefinedRules.OrphanSubstate.DefaultSeverity);
+                DefinedRules.InvalidGuardTaskReturnType.DefaultSeverity);
         }
         else
         {
@@ -2005,4 +1896,46 @@ public class UnreachableStateRule : IValidationRule<UnreachableStateContext>
             // Could merge this, but leaving for clarity.
         }
     }
+}./Rules/CircularHierarchyRule.cs
+using System.Collections.Generic;
+using System.Linq;
+using Generator.Rules.Contexts;
+using Generator.Rules.Definitions;
+
+namespace Generator.Rules.Rules;
+
+/// <summary>
+/// FSM100 - Validates that state hierarchies do not contain circular dependencies.
+/// </summary>
+public class CircularHierarchyRule : IValidationRule<CircularHierarchyContext>
+{
+    public IEnumerable<ValidationResult> Validate(CircularHierarchyContext context)
+    {
+        if (context.CyclePath != null && context.CyclePath.Any())
+        {
+            string cyclePath = string.Join(" -> ", context.CyclePath);
+            string message = string.Format(
+                DefinedRules.CircularHierarchy.MessageFormat,
+                context.StateName,
+                cyclePath);
+
+            yield return ValidationResult.Fail(
+                RuleIdentifiers.CircularHierarchy,
+                message,
+                DefinedRules.CircularHierarchy.DefaultSeverity);
+        }
+        else
+        {
+            yield return ValidationResult.Success();
+        }
+    }
+}./Rules/IValidationRule.cs
+﻿using System.Collections.Generic;
+using Generator.Rules.Definitions;
+
+namespace Generator.Rules.Rules;
+
+public interface IValidationRule<in TContext> where TContext : class
+{
+    IEnumerable<ValidationResult> Validate(TContext context);
 }
