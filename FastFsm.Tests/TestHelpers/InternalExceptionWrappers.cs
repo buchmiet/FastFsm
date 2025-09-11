@@ -17,11 +17,11 @@ namespace FastFsm.Tests.TestHelpers
     {
         private readonly InternalTransitionMachineFluent _machine;
         
-        public InternalTransitionMachineFluentWrapper(string initialStateName)
+        public InternalTransitionMachineFluentWrapper(string? initialStateName)
         {
-            var state = string.IsNullOrEmpty(initialStateName) ? 
-                StateCallbackTests.InternalState.Active : 
-                (StateCallbackTests.InternalState)Enum.Parse(typeof(StateCallbackTests.InternalState), initialStateName);
+            var resolvedName = InitialStateResolver.ResolveOrDefault<StateCallbackTests.InternalState>(
+                "InternalTransition", initialStateName);
+            var state = (StateCallbackTests.InternalState)Enum.Parse(typeof(StateCallbackTests.InternalState), resolvedName);
             _machine = new InternalTransitionMachineFluent(state);
         }
         
@@ -33,13 +33,13 @@ namespace FastFsm.Tests.TestHelpers
         
         public bool TryFire(object trigger, object? payload = null)
         {
-            var typedTrigger = (StateCallbackTests.InternalTrigger)Enum.Parse(typeof(StateCallbackTests.InternalTrigger), trigger.ToString()!);
+            var typedTrigger = (StateCallbackTests.InternalTrigger)EnumConverterV2.ConvertTrigger(trigger, "InternalTransition", StateMachineWrapperFactory.ApiType.Fluent);
             return payload == null ? _machine.TryFire(typedTrigger) : _machine.TryFire(typedTrigger, payload);
         }
         
         public void Fire(object trigger, object? payload = null)
         {
-            var typedTrigger = (StateCallbackTests.InternalTrigger)Enum.Parse(typeof(StateCallbackTests.InternalTrigger), trigger.ToString()!);
+            var typedTrigger = (StateCallbackTests.InternalTrigger)EnumConverterV2.ConvertTrigger(trigger, "InternalTransition", StateMachineWrapperFactory.ApiType.Fluent);
             if (payload == null)
                 _machine.Fire(typedTrigger);
             else
@@ -48,7 +48,7 @@ namespace FastFsm.Tests.TestHelpers
         
         public bool CanFire(object trigger)
         {
-            var typedTrigger = (StateCallbackTests.InternalTrigger)Enum.Parse(typeof(StateCallbackTests.InternalTrigger), trigger.ToString()!);
+            var typedTrigger = (StateCallbackTests.InternalTrigger)EnumConverterV2.ConvertTrigger(trigger, "InternalTransition", StateMachineWrapperFactory.ApiType.Fluent);
             return _machine.CanFire(typedTrigger);
         }
         
@@ -83,11 +83,11 @@ namespace FastFsm.Tests.TestHelpers
     {
         private readonly InternalTransitionMachineLegacy _machine;
         
-        public InternalTransitionMachineLegacyWrapper(string initialStateName)
+        public InternalTransitionMachineLegacyWrapper(string? initialStateName)
         {
-            var state = string.IsNullOrEmpty(initialStateName) ? 
-                StateCallbackTests.InternalState.Active : 
-                (StateCallbackTests.InternalState)Enum.Parse(typeof(StateCallbackTests.InternalState), initialStateName);
+            var resolvedName = InitialStateResolver.ResolveOrDefault<StateCallbackTests.InternalState>(
+                "InternalTransition", initialStateName);
+            var state = (StateCallbackTests.InternalState)Enum.Parse(typeof(StateCallbackTests.InternalState), resolvedName);
             _machine = new InternalTransitionMachineLegacy(state);
         }
         
@@ -99,13 +99,13 @@ namespace FastFsm.Tests.TestHelpers
         
         public bool TryFire(object trigger, object? payload = null)
         {
-            var typedTrigger = (StateCallbackTests.InternalTrigger)Enum.Parse(typeof(StateCallbackTests.InternalTrigger), trigger.ToString()!);
+            var typedTrigger = (StateCallbackTests.InternalTrigger)EnumConverterV2.ConvertTrigger(trigger, "InternalTransition", StateMachineWrapperFactory.ApiType.Legacy);
             return payload == null ? _machine.TryFire(typedTrigger) : _machine.TryFire(typedTrigger, payload);
         }
         
         public void Fire(object trigger, object? payload = null)
         {
-            var typedTrigger = (StateCallbackTests.InternalTrigger)Enum.Parse(typeof(StateCallbackTests.InternalTrigger), trigger.ToString()!);
+            var typedTrigger = (StateCallbackTests.InternalTrigger)EnumConverterV2.ConvertTrigger(trigger, "InternalTransition", StateMachineWrapperFactory.ApiType.Legacy);
             if (payload == null)
                 _machine.Fire(typedTrigger);
             else
@@ -114,7 +114,7 @@ namespace FastFsm.Tests.TestHelpers
         
         public bool CanFire(object trigger)
         {
-            var typedTrigger = (StateCallbackTests.InternalTrigger)Enum.Parse(typeof(StateCallbackTests.InternalTrigger), trigger.ToString()!);
+            var typedTrigger = (StateCallbackTests.InternalTrigger)EnumConverterV2.ConvertTrigger(trigger, "InternalTransition", StateMachineWrapperFactory.ApiType.Legacy);
             return _machine.CanFire(typedTrigger);
         }
         
@@ -149,11 +149,11 @@ namespace FastFsm.Tests.TestHelpers
     {
         private readonly ExceptionCallbackMachineFluent _machine;
         
-        public ExceptionCallbackMachineFluentWrapper(string initialStateName)
+        public ExceptionCallbackMachineFluentWrapper(string? initialStateName)
         {
-            var state = string.IsNullOrEmpty(initialStateName) ? 
-                StateCallbackTests.ExceptionState.A : 
-                (StateCallbackTests.ExceptionState)Enum.Parse(typeof(StateCallbackTests.ExceptionState), initialStateName);
+            var resolvedName = InitialStateResolver.ResolveOrDefault<StateCallbackTests.ExceptionState>(
+                "ExceptionCallback", initialStateName);
+            var state = (StateCallbackTests.ExceptionState)Enum.Parse(typeof(StateCallbackTests.ExceptionState), resolvedName);
             _machine = new ExceptionCallbackMachineFluent(state);
         }
         
@@ -165,7 +165,7 @@ namespace FastFsm.Tests.TestHelpers
         
         public bool TryFire(object trigger, object? payload = null)
         {
-            var typedTrigger = (StateCallbackTests.ExceptionTrigger)Enum.Parse(typeof(StateCallbackTests.ExceptionTrigger), trigger.ToString()!);
+            var typedTrigger = (StateCallbackTests.ExceptionTrigger)EnumConverterV2.ConvertTrigger(trigger, "ExceptionCallback", StateMachineWrapperFactory.ApiType.Fluent);
             
             // This machine has async actions, so sync path should throw or bridge to async
             try
@@ -181,7 +181,7 @@ namespace FastFsm.Tests.TestHelpers
         
         public void Fire(object trigger, object? payload = null)
         {
-            var typedTrigger = (StateCallbackTests.ExceptionTrigger)Enum.Parse(typeof(StateCallbackTests.ExceptionTrigger), trigger.ToString()!);
+            var typedTrigger = (StateCallbackTests.ExceptionTrigger)EnumConverterV2.ConvertTrigger(trigger, "ExceptionCallback", StateMachineWrapperFactory.ApiType.Fluent);
             
             try
             {
@@ -199,7 +199,7 @@ namespace FastFsm.Tests.TestHelpers
         
         public bool CanFire(object trigger)
         {
-            var typedTrigger = (StateCallbackTests.ExceptionTrigger)Enum.Parse(typeof(StateCallbackTests.ExceptionTrigger), trigger.ToString()!);
+            var typedTrigger = (StateCallbackTests.ExceptionTrigger)EnumConverterV2.ConvertTrigger(trigger, "ExceptionCallback", StateMachineWrapperFactory.ApiType.Fluent);
             return _machine.CanFire(typedTrigger);
         }
         
@@ -222,7 +222,7 @@ namespace FastFsm.Tests.TestHelpers
         
         public async ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default)
         {
-            var typedTrigger = (StateCallbackTests.ExceptionTrigger)Enum.Parse(typeof(StateCallbackTests.ExceptionTrigger), trigger.ToString()!);
+            var typedTrigger = (StateCallbackTests.ExceptionTrigger)EnumConverterV2.ConvertTrigger(trigger, "ExceptionCallback", StateMachineWrapperFactory.ApiType.Fluent);
             
             if (_machine is IStateMachineAsync<StateCallbackTests.ExceptionState, StateCallbackTests.ExceptionTrigger> asyncMachine)
             {
@@ -234,7 +234,7 @@ namespace FastFsm.Tests.TestHelpers
         
         public async ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default)
         {
-            var typedTrigger = (StateCallbackTests.ExceptionTrigger)Enum.Parse(typeof(StateCallbackTests.ExceptionTrigger), trigger.ToString()!);
+            var typedTrigger = (StateCallbackTests.ExceptionTrigger)EnumConverterV2.ConvertTrigger(trigger, "ExceptionCallback", StateMachineWrapperFactory.ApiType.Legacy);
             
             if (_machine is IStateMachineAsync<StateCallbackTests.ExceptionState, StateCallbackTests.ExceptionTrigger> asyncMachine)
             {
@@ -254,11 +254,11 @@ namespace FastFsm.Tests.TestHelpers
     {
         private readonly ExceptionCallbackMachine _machine;
         
-        public ExceptionCallbackMachineLegacyWrapper(string initialStateName)
+        public ExceptionCallbackMachineLegacyWrapper(string? initialStateName)
         {
-            var state = string.IsNullOrEmpty(initialStateName) ? 
-                StateCallbackTests.ExceptionState.A : 
-                (StateCallbackTests.ExceptionState)Enum.Parse(typeof(StateCallbackTests.ExceptionState), initialStateName);
+            var resolvedName = InitialStateResolver.ResolveOrDefault<StateCallbackTests.ExceptionState>(
+                "ExceptionCallback", initialStateName);
+            var state = (StateCallbackTests.ExceptionState)Enum.Parse(typeof(StateCallbackTests.ExceptionState), resolvedName);
             _machine = new ExceptionCallbackMachine(state);
         }
         
@@ -270,7 +270,7 @@ namespace FastFsm.Tests.TestHelpers
         
         public bool TryFire(object trigger, object? payload = null)
         {
-            var typedTrigger = (StateCallbackTests.ExceptionTrigger)Enum.Parse(typeof(StateCallbackTests.ExceptionTrigger), trigger.ToString()!);
+            var typedTrigger = (StateCallbackTests.ExceptionTrigger)EnumConverterV2.ConvertTrigger(trigger, "ExceptionCallback", StateMachineWrapperFactory.ApiType.Legacy);
             
             try
             {

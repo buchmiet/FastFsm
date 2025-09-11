@@ -14,10 +14,11 @@ namespace FastFsm.Tests.TestHelpers
     {
         private readonly GuardPermittedMachineFluent _machine;
         
-        public GuardPermittedFluentWrapper(string initialStateName)
+        public GuardPermittedFluentWrapper(string? initialStateName)
         {
-            var state = EnumConverter.ConvertEnum<State>(
-                EnumConverter.ConvertEnum(typeof(State), initialStateName));
+            var resolvedName = InitialStateResolver.ResolveOrDefault<State>(
+                "GuardPermitted", initialStateName);
+            var state = (State)Enum.Parse(typeof(State), resolvedName);
             _machine = new GuardPermittedMachineFluent(state);
         }
         
@@ -35,7 +36,7 @@ namespace FastFsm.Tests.TestHelpers
         
         public bool TryFire(object trigger, object? payload = null)
         {
-            var typedTrigger = EnumConverter.ConvertEnum<Trigger>(trigger);
+            var typedTrigger = (Trigger)EnumConverterV2.ConvertTrigger(trigger, "GuardPermitted", StateMachineWrapperFactory.ApiType.Fluent);
             return payload == null 
                 ? _machine.TryFire(typedTrigger) 
                 : _machine.TryFire(typedTrigger, payload);
@@ -43,7 +44,7 @@ namespace FastFsm.Tests.TestHelpers
         
         public void Fire(object trigger, object? payload = null)
         {
-            var typedTrigger = EnumConverter.ConvertEnum<Trigger>(trigger);
+            var typedTrigger = (Trigger)EnumConverterV2.ConvertTrigger(trigger, "GuardPermitted", StateMachineWrapperFactory.ApiType.Fluent);
             if (payload == null)
                 _machine.Fire(typedTrigger);
             else
@@ -52,7 +53,7 @@ namespace FastFsm.Tests.TestHelpers
         
         public bool CanFire(object trigger)
         {
-            var typedTrigger = EnumConverter.ConvertEnum<Trigger>(trigger);
+            var typedTrigger = (Trigger)EnumConverterV2.ConvertTrigger(trigger, "GuardPermitted", StateMachineWrapperFactory.ApiType.Fluent);
             return _machine.CanFire(typedTrigger);
         }
         
@@ -87,10 +88,11 @@ namespace FastFsm.Tests.TestHelpers
     {
         private readonly GuardPermittedMachineLegacy _machine;
         
-        public GuardPermittedLegacyWrapper(string initialStateName)
+        public GuardPermittedLegacyWrapper(string? initialStateName)
         {
-            var state = EnumConverter.ConvertEnum<State>(
-                EnumConverter.ConvertEnum(typeof(State), initialStateName));
+            var resolvedName = InitialStateResolver.ResolveOrDefault<State>(
+                "GuardPermitted", initialStateName);
+            var state = (State)Enum.Parse(typeof(State), resolvedName);
             _machine = new GuardPermittedMachineLegacy(state);
         }
         
@@ -108,7 +110,7 @@ namespace FastFsm.Tests.TestHelpers
         
         public bool TryFire(object trigger, object? payload = null)
         {
-            var typedTrigger = EnumConverter.ConvertEnum<Trigger>(trigger);
+            var typedTrigger = (Trigger)EnumConverterV2.ConvertTrigger(trigger, "GuardPermitted", StateMachineWrapperFactory.ApiType.Legacy);
             return payload == null 
                 ? _machine.TryFire(typedTrigger) 
                 : _machine.TryFire(typedTrigger, payload);
@@ -116,7 +118,7 @@ namespace FastFsm.Tests.TestHelpers
         
         public void Fire(object trigger, object? payload = null)
         {
-            var typedTrigger = EnumConverter.ConvertEnum<Trigger>(trigger);
+            var typedTrigger = (Trigger)EnumConverterV2.ConvertTrigger(trigger, "GuardPermitted", StateMachineWrapperFactory.ApiType.Legacy);
             if (payload == null)
                 _machine.Fire(typedTrigger);
             else
@@ -125,7 +127,7 @@ namespace FastFsm.Tests.TestHelpers
         
         public bool CanFire(object trigger)
         {
-            var typedTrigger = EnumConverter.ConvertEnum<Trigger>(trigger);
+            var typedTrigger = (Trigger)EnumConverterV2.ConvertTrigger(trigger, "GuardPermitted", StateMachineWrapperFactory.ApiType.Legacy);
             return _machine.CanFire(typedTrigger);
         }
         

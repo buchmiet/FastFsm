@@ -7,19 +7,41 @@ using System.Reflection;
 namespace FastFsm.Tests.TestHelpers
 {
     /// <summary>
-    /// Enhanced enum converter with bidirectional mapping and alias support
+    /// Enhanced enum converter with bidirectional mapping, auto-aliasing, and normalization support
     /// </summary>
     public static class EnumConverterV2
     {
         private static readonly ConcurrentDictionary<Type, EnumTypeInfo> _typeCache = new();
+        private static readonly ConcurrentDictionary<(string machine, Type from, Type to), Dictionary<string, string>> _autoMaps = new();
         
         /// <summary>
         /// Manual mapping overrides for specific machine types
-        /// Key: "MachineName.Direction.SourceValue" -> "TargetValue"
+        /// Key: "MachineName" -> Dictionary of mappings
+        /// Inner dictionary: "Direction.SourceValue" -> "TargetValue" or just "SourceValue" -> "TargetValue"
         /// </summary>
         public static readonly Dictionary<string, Dictionary<string, string>> Maps = new()
         {
-            // Example: Maps["CoreBenchmark"] = new() { ["Fluent.StateA"] = "State_A" };
+            // Add manual overrides only where auto-aliasing fails
+            ["GuardPermitted"] = new()
+            {
+                // Both use same enum, no mapping needed
+            },
+            ["InternalTransition"] = new()
+            {
+                // Both use same enum, no mapping needed
+            },
+            ["PayloadStateMachine"] = new()
+            {
+                // Both use same enum, no mapping needed
+            },
+            ["FullMultiPayload"] = new()
+            {
+                // Both use same enum, no mapping needed
+            },
+            ["ExceptionCallback"] = new()
+            {
+                // Both use same enum, no mapping needed
+            }
         };
 
         private class EnumTypeInfo
@@ -30,6 +52,104 @@ namespace FastFsm.Tests.TestHelpers
         }
 
         /// <summary>
+        /// Normalizes enum names for matching (removes non-alphanumeric, converts to uppercase)
+        /// </summary>
+        private static string Normalize(string name)
+        {
+            return new string(name.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
+        }
+
+        /// <summary>
+        /// Builds automatic mapping between enum types based on normalized names
+        /// </summary>
+        private static Dictionary<string, string> BuildAutoMap(Type fromEnum, Type toEnum)
+        {
+            var fromNames = Enum.GetNames(fromEnum);
+            var toNames = Enum.GetNames(toEnum);
+
+            // Group target names by normalized form
+            var toByNorm = toNames
+                .GroupBy(Normalize)
+                .ToDictionary(g => g.Key, g => g.ToArray(), StringComparer.Ordinal);
+
+            var map = new Dictionary<string, string>(StringComparer.Ordinal);
+
+            foreach (var fromName in fromNames)
+            {
+                var normalizedKey = Normalize(fromName);
+                if (toByNorm.TryGetValue(normalizedKey, out var candidates))
+                {
+                    // Prefer exact case match, otherwise first candidate
+                    var exactMatch = candidates.FirstOrDefault(t => 
+                        string.Equals(t, fromName, StringComparison.Ordinal));
+                    map[fromName] = exactMatch ?? candidates[0];
+                }
+            }
+
+            return map;
+        }
+
+        /// <summary>
+        /// Core conversion logic with auto-aliasing and normalization
+        /// </summary>
+        private static string ConvertCore(string machineName, Type fromEnum, Type toEnum, string sourceName, string direction)
+        {
+            // 1) If same enum type, return as-is
+            if (fromEnum == toEnum)
+                return sourceName;
+
+            // 2) Direct exact name match in target enum
+            var targetNames = Enum.GetNames(toEnum);
+            if (targetNames.Contains(sourceName, StringComparer.Ordinal))
+                return sourceName;
+
+            // 3) Check manual mappings
+            if (Maps.TryGetValue(machineName, out var machineMap))
+            {
+                // Try with direction prefix
+                var keyWithDirection = $"{direction}.{sourceName}";
+                if (machineMap.TryGetValue(keyWithDirection, out var mapped))
+                    return mapped;
+                
+                // Try without direction (bidirectional mapping)
+                if (machineMap.TryGetValue(sourceName, out mapped))
+                    return mapped;
+            }
+
+            // 4) Use auto-generated mapping
+            var autoMap = _autoMaps.GetOrAdd(
+                (machineName, fromEnum, toEnum),
+                _ => BuildAutoMap(fromEnum, toEnum));
+            
+            if (autoMap.TryGetValue(sourceName, out var autoMapped))
+                return autoMapped;
+
+            // 5) Try normalized single name matching
+            var normalized = Normalize(sourceName);
+            var toByNorm = targetNames.ToLookup(Normalize, StringComparer.Ordinal);
+            var normalizedMatch = toByNorm[normalized].FirstOrDefault();
+            if (normalizedMatch != null)
+                return normalizedMatch;
+
+            // 6) Check for aliases on target type
+            var targetInfo = GetOrCreateTypeInfo(toEnum);
+            foreach (var kvp in targetInfo.Aliases)
+            {
+                if (kvp.Value.Contains(sourceName))
+                    return kvp.Key;
+            }
+
+            // 7) Fail with detailed error
+            var availableValues = string.Join(", ", targetNames);
+            throw new InvalidOperationException(
+                $"Enum mapping failed (machine: {machineName}, direction: {direction}, " +
+                $"from: {fromEnum.Name}, to: {toEnum.Name}, value: {sourceName}). " +
+                $"Available target values: [{availableValues}]. " +
+                $"Hint: Add mapping to EnumConverterV2.Maps[\"{machineName}\"][\"{direction}.{sourceName}\"] = \"<TargetName>\" " +
+                $"or ensure consistent naming between enums.");
+        }
+
+        /// <summary>
         /// Converts a Legacy enum value to Fluent
         /// </summary>
         public static TFluent ToFluent<TFluent>(object legacyValue, string machineName) 
@@ -37,15 +157,25 @@ namespace FastFsm.Tests.TestHelpers
         {
             if (legacyValue == null)
                 throw new ArgumentNullException(nameof(legacyValue));
+                
+            // SHORT-CIRCUIT: If already the target type, no conversion needed
+            if (legacyValue is TFluent fluentTyped)
+                return fluentTyped;
+                
+            // SHORT-CIRCUIT: If same type but different instance
+            if (legacyValue.GetType() == typeof(TFluent))
+                return (TFluent)legacyValue;
 
             var sourceName = legacyValue.ToString()!;
-            var targetName = MapName(machineName, "ToFluent", sourceName, legacyValue.GetType(), typeof(TFluent));
+            var targetName = ConvertCore(machineName, legacyValue.GetType(), typeof(TFluent), sourceName, "ToFluent");
             
             var info = GetOrCreateTypeInfo(typeof(TFluent));
             if (info.ValuesByName.TryGetValue(targetName, out var result))
                 return (TFluent)result;
 
-            throw CreateMappingException(machineName, "ToFluent", legacyValue.GetType(), typeof(TFluent), sourceName);
+            // This shouldn't happen if ConvertCore succeeded
+            throw new InvalidOperationException(
+                $"Internal error: ConvertCore returned '{targetName}' but it's not in target enum {typeof(TFluent).Name}");
         }
 
         /// <summary>
@@ -56,15 +186,25 @@ namespace FastFsm.Tests.TestHelpers
         {
             if (fluentValue == null)
                 throw new ArgumentNullException(nameof(fluentValue));
+                
+            // SHORT-CIRCUIT: If already the target type, no conversion needed
+            if (fluentValue is TLegacy legacyTyped)
+                return legacyTyped;
+                
+            // SHORT-CIRCUIT: If same type but different instance
+            if (fluentValue.GetType() == typeof(TLegacy))
+                return (TLegacy)fluentValue;
 
             var sourceName = fluentValue.ToString()!;
-            var targetName = MapName(machineName, "ToLegacy", sourceName, fluentValue.GetType(), typeof(TLegacy));
+            var targetName = ConvertCore(machineName, fluentValue.GetType(), typeof(TLegacy), sourceName, "ToLegacy");
             
             var info = GetOrCreateTypeInfo(typeof(TLegacy));
             if (info.ValuesByName.TryGetValue(targetName, out var result))
                 return (TLegacy)result;
 
-            throw CreateMappingException(machineName, "ToLegacy", fluentValue.GetType(), typeof(TLegacy), sourceName);
+            // This shouldn't happen if ConvertCore succeeded
+            throw new InvalidOperationException(
+                $"Internal error: ConvertCore returned '{targetName}' but it's not in target enum {typeof(TLegacy).Name}");
         }
 
         /// <summary>
@@ -108,136 +248,102 @@ namespace FastFsm.Tests.TestHelpers
         /// <summary>
         /// Validates enum parity between Fluent and Legacy types
         /// </summary>
+        public static (bool isValid, List<string> errors) ValidateEnumParity<TFluent, TLegacy>(string machineName)
+            where TFluent : struct, Enum
+            where TLegacy : struct, Enum
+        {
+            var errors = new List<string>();
+            
+            // SHORT-CIRCUIT: If same type, they're already in parity
+            if (typeof(TFluent) == typeof(TLegacy))
+            {
+                return (true, errors); // No conversion needed, perfect parity
+            }
+            
+            var fluentNames = Enum.GetNames(typeof(TFluent));
+            var legacyNames = Enum.GetNames(typeof(TLegacy));
+
+            // Check if all Fluent values can map to Legacy
+            foreach (var fluentName in fluentNames)
+            {
+                try
+                {
+                    var fluentValue = Enum.Parse<TFluent>(fluentName);
+                    var _ = ToLegacy<TLegacy>(fluentValue, machineName);
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"Fluent -> Legacy: {fluentName} failed: {ex.Message}");
+                }
+            }
+
+            // Check if all Legacy values can map to Fluent
+            foreach (var legacyName in legacyNames)
+            {
+                try
+                {
+                    var legacyValue = Enum.Parse<TLegacy>(legacyName);
+                    var _ = ToFluent<TFluent>(legacyValue, machineName);
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"Legacy -> Fluent: {legacyName} failed: {ex.Message}");
+                }
+            }
+
+            return (errors.Count == 0, errors);
+        }
+
+        /// <summary>
+        /// Validates enum parity between Fluent and Legacy types (out parameter version for reflection)
+        /// </summary>
         public static bool ValidateEnumParity<TFluent, TLegacy>(string machineName, out string report)
             where TFluent : struct, Enum
             where TLegacy : struct, Enum
         {
-            var fluentInfo = GetOrCreateTypeInfo(typeof(TFluent));
-            var legacyInfo = GetOrCreateTypeInfo(typeof(TLegacy));
+            var result = ValidateEnumParity<TFluent, TLegacy>(machineName);
             
-            var fluentNames = new HashSet<string>(fluentInfo.ValuesByName.Keys, StringComparer.Ordinal);
-            var legacyNames = new HashSet<string>(legacyInfo.ValuesByName.Keys, StringComparer.Ordinal);
-            
-            // Apply manual mappings and aliases
-            var mappedFluent = new HashSet<string>(StringComparer.Ordinal);
-            var mappedLegacy = new HashSet<string>(StringComparer.Ordinal);
-            
-            foreach (var fluentName in fluentNames)
+            if (result.errors != null && result.errors.Count > 0)
             {
-                var mappedName = MapName(machineName, "ToLegacy", fluentName, typeof(TFluent), typeof(TLegacy));
-                if (legacyNames.Contains(mappedName) || legacyInfo.Aliases.ContainsKey(mappedName))
-                {
-                    mappedFluent.Add(fluentName);
-                    mappedLegacy.Add(mappedName);
-                }
-            }
-            
-            foreach (var legacyName in legacyNames)
-            {
-                var mappedName = MapName(machineName, "ToFluent", legacyName, typeof(TLegacy), typeof(TFluent));
-                if (fluentNames.Contains(mappedName) || fluentInfo.Aliases.ContainsKey(mappedName))
-                {
-                    mappedLegacy.Add(legacyName);
-                    mappedFluent.Add(mappedName);
-                }
-            }
-            
-            var missingInLegacy = fluentNames.Except(mappedFluent).ToList();
-            var missingInFluent = legacyNames.Except(mappedLegacy).ToList();
-            
-            var reportLines = new List<string>();
-            reportLines.Add($"=== Enum Parity Report for {machineName} ===");
-            reportLines.Add($"Fluent Type: {typeof(TFluent).Name}");
-            reportLines.Add($"Legacy Type: {typeof(TLegacy).Name}");
-            reportLines.Add("");
-            
-            bool hasIssues = false;
-            
-            if (missingInLegacy.Any())
-            {
-                hasIssues = true;
-                reportLines.Add("❌ Missing in Legacy:");
-                foreach (var name in missingInLegacy.OrderBy(x => x))
-                {
-                    reportLines.Add($"  - {name}");
-                    reportLines.Add($"    Hint: Add to Maps[\"{machineName}\"][\"ToLegacy.{name}\"] = \"<LegacyName>\"");
-                }
-                reportLines.Add("");
-            }
-            
-            if (missingInFluent.Any())
-            {
-                hasIssues = true;
-                reportLines.Add("❌ Missing in Fluent:");
-                foreach (var name in missingInFluent.OrderBy(x => x))
-                {
-                    reportLines.Add($"  - {name}");
-                    reportLines.Add($"    Hint: Add to Maps[\"{machineName}\"][\"ToFluent.{name}\"] = \"<FluentName>\"");
-                }
-                reportLines.Add("");
-            }
-            
-            if (!hasIssues)
-            {
-                reportLines.Add("✅ Full parity achieved!");
+                report = $"Enum parity issues for {machineName}:\n" + string.Join("\n", result.errors);
             }
             else
             {
-                reportLines.Add("Suggested Aliases:");
-                
-                // Try to suggest mappings based on similarity
-                foreach (var fluentName in missingInLegacy)
-                {
-                    var similar = FindSimilarName(fluentName, legacyNames);
-                    if (similar != null)
-                    {
-                        reportLines.Add($"  Maps[\"{machineName}\"][\"ToLegacy.{fluentName}\"] = \"{similar}\";");
-                    }
-                }
-                
-                foreach (var legacyName in missingInFluent)
-                {
-                    var similar = FindSimilarName(legacyName, fluentNames);
-                    if (similar != null)
-                    {
-                        reportLines.Add($"  Maps[\"{machineName}\"][\"ToFluent.{legacyName}\"] = \"{similar}\";");
-                    }
-                }
+                report = $"✓ Enum parity OK for {machineName}";
             }
             
-            report = string.Join(Environment.NewLine, reportLines);
-            return !hasIssues;
+            return result.isValid;
         }
 
         /// <summary>
         /// Extension method to convert any enum to concrete trigger type
         /// </summary>
-        public static object ToConcreteTrigger(this object value, StateMachineWrapperFactory.ApiType api, string machineName)
+        public static object ConvertTrigger(
+            object value,
+            string machineName,
+            StateMachineWrapperFactory.ApiType api)
         {
             if (value == null) return null!;
-            
-            var registry = MachineRegistry.GetMachineInfo(machineName);
-            if (registry == null)
-                throw new InvalidOperationException($"Machine '{machineName}' not registered");
-            
-            if (api == StateMachineWrapperFactory.ApiType.Fluent)
+
+            // Resolve target enum type from MachineTypeRegistry (single source of truth)
+            var targetApi = api == StateMachineWrapperFactory.ApiType.Fluent ? Api.Fluent : Api.Legacy;
+            var targetType = MachineTypeRegistry.GetTriggerType(machineName, targetApi);
+
+            // Pass-through if already of the correct type
+            if (value.GetType() == targetType)
+                return value;
+
+            // Convert using strong generic path
+            if (targetApi == Api.Fluent)
             {
-                if (value.GetType() == registry.FluentTriggerType)
-                    return value;
-                
-                // Convert from Legacy to Fluent
                 var method = typeof(EnumConverterV2).GetMethod(nameof(ToFluent))!
-                    .MakeGenericMethod(registry.FluentTriggerType);
+                    .MakeGenericMethod(targetType);
                 return method.Invoke(null, new[] { value, machineName })!;
             }
             else
             {
-                if (value.GetType() == registry.LegacyTriggerType)
-                    return value;
-                
-                // Convert from Fluent to Legacy
                 var method = typeof(EnumConverterV2).GetMethod(nameof(ToLegacy))!
-                    .MakeGenericMethod(registry.LegacyTriggerType);
+                    .MakeGenericMethod(targetType);
                 return method.Invoke(null, new[] { value, machineName })!;
             }
         }
@@ -245,56 +351,34 @@ namespace FastFsm.Tests.TestHelpers
         /// <summary>
         /// Extension method to convert any enum to concrete state type
         /// </summary>
-        public static object ToConcreteState(this object value, StateMachineWrapperFactory.ApiType api, string machineName)
+        public static object ConvertState(
+            object value,
+            string machineName,
+            StateMachineWrapperFactory.ApiType api)
         {
             if (value == null) return null!;
-            
-            var registry = MachineRegistry.GetMachineInfo(machineName);
-            if (registry == null)
-                throw new InvalidOperationException($"Machine '{machineName}' not registered");
-            
-            if (api == StateMachineWrapperFactory.ApiType.Fluent)
+
+            // Resolve target enum type from MachineTypeRegistry (single source of truth)
+            var targetApi = api == StateMachineWrapperFactory.ApiType.Fluent ? Api.Fluent : Api.Legacy;
+            var targetType = MachineTypeRegistry.GetStateType(machineName, targetApi);
+
+            // Pass-through if already of the correct type
+            if (value.GetType() == targetType)
+                return value;
+
+            // Convert using strong generic path
+            if (targetApi == Api.Fluent)
             {
-                if (value.GetType() == registry.FluentStateType)
-                    return value;
-                
-                // Convert from Legacy to Fluent
                 var method = typeof(EnumConverterV2).GetMethod(nameof(ToFluent))!
-                    .MakeGenericMethod(registry.FluentStateType);
+                    .MakeGenericMethod(targetType);
                 return method.Invoke(null, new[] { value, machineName })!;
             }
             else
             {
-                if (value.GetType() == registry.LegacyStateType)
-                    return value;
-                
-                // Convert from Fluent to Legacy
                 var method = typeof(EnumConverterV2).GetMethod(nameof(ToLegacy))!
-                    .MakeGenericMethod(registry.LegacyStateType);
+                    .MakeGenericMethod(targetType);
                 return method.Invoke(null, new[] { value, machineName })!;
             }
-        }
-
-        private static string MapName(string machineName, string direction, string sourceName, Type sourceType, Type targetType)
-        {
-            // Check manual mappings first
-            if (Maps.TryGetValue(machineName, out var machineMap))
-            {
-                var key = $"{direction}.{sourceName}";
-                if (machineMap.TryGetValue(key, out var mapped))
-                    return mapped;
-            }
-            
-            // Check for aliases on the target type
-            var targetInfo = GetOrCreateTypeInfo(targetType);
-            foreach (var kvp in targetInfo.Aliases)
-            {
-                if (kvp.Value.Contains(sourceName))
-                    return kvp.Key;
-            }
-            
-            // Default: use the same name
-            return sourceName;
         }
 
         private static EnumTypeInfo GetOrCreateTypeInfo(Type enumType)
@@ -309,7 +393,7 @@ namespace FastFsm.Tests.TestHelpers
                     info.ValuesByName[name] = value;
                     info.NamesByValue[value] = name;
                     
-                    // Check for aliases
+                    // Check for aliases via attributes
                     var field = type.GetField(name);
                     if (field != null)
                     {
@@ -321,7 +405,7 @@ namespace FastFsm.Tests.TestHelpers
                         {
                             info.Aliases[name] = aliases;
                             
-                            // Also add reverse mappings
+                            // Add reverse mappings
                             foreach (var alias in aliases)
                             {
                                 info.ValuesByName[alias] = value;
@@ -334,46 +418,27 @@ namespace FastFsm.Tests.TestHelpers
             });
         }
 
-        private static string? FindSimilarName(string name, IEnumerable<string> candidates)
+        /// <summary>
+        /// Gets auto-generated mapping information for diagnostics
+        /// </summary>
+        public static string GetAutoMapDiagnostics(string machineName, Type fromEnum, Type toEnum)
         {
-            // Simple similarity: case-insensitive match
-            var lower = name.ToLowerInvariant();
-            var exact = candidates.FirstOrDefault(c => c.ToLowerInvariant() == lower);
-            if (exact != null) return exact;
-            
-            // Try removing underscores
-            var withoutUnderscore = name.Replace("_", "");
-            exact = candidates.FirstOrDefault(c => c.Replace("_", "").Equals(withoutUnderscore, StringComparison.OrdinalIgnoreCase));
-            if (exact != null) return exact;
-            
-            // Try adding underscores (for hierarchical states)
-            if (name.Contains("_"))
-            {
-                var parts = name.Split('_');
-                if (parts.Length == 2)
-                {
-                    // Try without underscore
-                    var combined = parts[0] + parts[1];
-                    exact = candidates.FirstOrDefault(c => c.Equals(combined, StringComparison.OrdinalIgnoreCase));
-                    if (exact != null) return exact;
-                }
-            }
-            
-            return null;
-        }
+            var autoMap = _autoMaps.GetOrAdd(
+                (machineName, fromEnum, toEnum),
+                _ => BuildAutoMap(fromEnum, toEnum));
 
-        private static InvalidOperationException CreateMappingException(
-            string machineName, string direction, Type sourceType, Type targetType, string valueName)
-        {
-            var targetInfo = GetOrCreateTypeInfo(targetType);
-            var availableValues = string.Join(", ", targetInfo.ValuesByName.Keys.OrderBy(x => x));
-            
-            return new InvalidOperationException(
-                $"Enum mapping failed (machine: {machineName}, direction: {direction}, " +
-                $"sourceType: {sourceType.Name}, targetType: {targetType.Name}, value: {valueName}). " +
-                $"Available target values: [{availableValues}]. " +
-                $"Hint: Add to Maps[\"{machineName}\"][\"{direction}.{valueName}\"] = \"<TargetName>\" " +
-                $"or add [EnumAlias(\"{valueName}\")] attribute on the target enum value.");
+            var lines = new List<string>
+            {
+                $"Auto-map for {machineName} ({fromEnum.Name} -> {toEnum.Name}):",
+                $"  Total mappings: {autoMap.Count}"
+            };
+
+            foreach (var kvp in autoMap.OrderBy(x => x.Key))
+            {
+                lines.Add($"  {kvp.Key} -> {kvp.Value}");
+            }
+
+            return string.Join(Environment.NewLine, lines);
         }
     }
 }

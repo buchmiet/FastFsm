@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Shouldly;
 using FastFsm.Tests.Machines;
 using FastFsm.Tests.Features.Performance;
@@ -61,7 +62,9 @@ namespace FastFsm.Tests.Features.Core
             result.ShouldBeTrue();
             Assert.Equal(stateB, machine.CurrentState);
 
-            result = machine.TryFire(triggerNext);
+            result = apiType == ApiType.Fluent
+                ? ((CoreBenchmarkMachineFluent)machine).TryFire((BenchmarkTests.BenchmarkTrigger)triggerNext)
+                : ((CoreBenchmarkMachineLegacy)machine).TryFire((BenchmarkTestsLegacy.BenchmarkTrigger)triggerNext);
             result.ShouldBeTrue();
             Assert.Equal(stateC, machine.CurrentState);
         }
@@ -79,7 +82,9 @@ namespace FastFsm.Tests.Features.Core
             machine.Start();
 
             // Act - Try invalid trigger
-            var result = machine.TryFire(triggerPrevious);
+            bool result = apiType == ApiType.Fluent
+                ? ((CoreBenchmarkMachineFluent)machine).TryFire((BenchmarkTests.BenchmarkTrigger)triggerPrevious)
+                : ((CoreBenchmarkMachineLegacy)machine).TryFire((BenchmarkTestsLegacy.BenchmarkTrigger)triggerPrevious);
 
             // Assert
             result.ShouldBeFalse();
@@ -99,8 +104,16 @@ namespace FastFsm.Tests.Features.Core
             machine.Start();
 
             // Act & Assert
-            Should.Throw<InvalidOperationException>(() =>
-                machine.Fire(triggerPrevious));
+            if (apiType == ApiType.Fluent)
+            {
+                Should.Throw<InvalidOperationException>(() =>
+                    ((CoreBenchmarkMachineFluent)machine).Fire((BenchmarkTests.BenchmarkTrigger)triggerPrevious));
+            }
+            else
+            {
+                Should.Throw<InvalidOperationException>(() =>
+                    ((CoreBenchmarkMachineLegacy)machine).Fire((BenchmarkTestsLegacy.BenchmarkTrigger)triggerPrevious));
+            }
         }
 
         [Theory]
@@ -119,8 +132,9 @@ namespace FastFsm.Tests.Features.Core
             var permittedTriggers = machine.GetPermittedTriggers();
 
             // Assert
-            permittedTriggers.ShouldContain(triggerNext);
-            permittedTriggers.Count.ShouldBe(1);
+            var triggers = ((System.Collections.IEnumerable)permittedTriggers).Cast<object>().ToList();
+            Assert.Contains(triggerNext, triggers);
+            triggers.Count.ShouldBe(1);
         }
 
         [Theory]
@@ -137,8 +151,16 @@ namespace FastFsm.Tests.Features.Core
             machine.Start();
 
             // Act & Assert
-            machine.CanFire(triggerNext).ShouldBeTrue();
-            machine.CanFire(triggerPrevious).ShouldBeFalse();
+            if (apiType == ApiType.Fluent)
+            {
+                ((CoreBenchmarkMachineFluent)machine).CanFire((BenchmarkTests.BenchmarkTrigger)triggerNext).ShouldBeTrue();
+                ((CoreBenchmarkMachineFluent)machine).CanFire((BenchmarkTests.BenchmarkTrigger)triggerPrevious).ShouldBeFalse();
+            }
+            else
+            {
+                ((CoreBenchmarkMachineLegacy)machine).CanFire((BenchmarkTestsLegacy.BenchmarkTrigger)triggerNext).ShouldBeTrue();
+                ((CoreBenchmarkMachineLegacy)machine).CanFire((BenchmarkTestsLegacy.BenchmarkTrigger)triggerPrevious).ShouldBeFalse();
+            }
         }
 
         [Theory]
