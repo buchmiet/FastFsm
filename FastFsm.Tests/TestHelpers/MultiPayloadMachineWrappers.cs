@@ -14,9 +14,11 @@ namespace FastFsm.Tests.TestHelpers
     {
         private readonly MultiPayloadMachineFluent _machine;
         
-        public MultiPayloadMachineFluentWrapper(string initialStateName)
+        public MultiPayloadMachineFluentWrapper(string? initialStateName)
         {
-            var state = (MultiState)Enum.Parse(typeof(MultiState), initialStateName);
+            var resolvedName = InitialStateResolver.ResolveOrDefault<MultiState>(
+                "FullMultiPayload", initialStateName);
+            var state = (MultiState)Enum.Parse(typeof(MultiState), resolvedName);
             _machine = new MultiPayloadMachineFluent(state);
         }
         
@@ -178,9 +180,11 @@ namespace FastFsm.Tests.TestHelpers
     {
         private readonly MultiPayloadMachineLegacy _machine;
         
-        public MultiPayloadMachineLegacyWrapper(string initialStateName)
+        public MultiPayloadMachineLegacyWrapper(string? initialStateName)
         {
-            var state = (MultiState)Enum.Parse(typeof(MultiState), initialStateName);
+            var resolvedName = InitialStateResolver.ResolveOrDefault<MultiState>(
+                "FullMultiPayload", initialStateName);
+            var state = (MultiState)Enum.Parse(typeof(MultiState), resolvedName);
             _machine = new MultiPayloadMachineLegacy(state);
         }
         

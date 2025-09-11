@@ -38,20 +38,5 @@ public static class RuleIdentifiers
     public const string InvalidOnExceptionSignature = "FSM3060";                 // was FSM209
     public const string PriorityWithoutActiveTransition = "FSM3040";             // was FSM210
 
-    // E. Generator infrastructure diagnostics (logging, discovery, config) (9000–9099)
-    public const string DebugEntry = "FSM9000";                                   // was FSM989D (merged into Processing candidate)
-    public const string ConfigurationSections = "FSM9010";                        // was FSM989
-    public const string VariantDecision = "FSM9009";                              // was FSM991
-    public const string DeclarationPlan = "FSM9001";                              // was FSM992
-    public const string EmptyCodeGenerated = "FSM9002";                           // was FSM993
-    public const string EnumOnlyStatesFallback = "FSM9003";                       // was FSM994
-    public const string MsBuildAnalyzerProperties = "FSM9004";                    // was FSM995
-    public const string AddSourceOk = "FSM9005";                                   // was FSM996
-    public const string SkippedCandidate = "FSM9006";                              // was FSM997
-    public const string DiscoveryOrTrace = "FSM9007";                              // was FSM998
-    public const string StartingParse = "FSM9008";                                 // was FSM998A
-    public const string ProcessingCandidate = "FSM9000";                           // was FSM990
-    public const string LogHelperPreAdd = "FSM9012";                               // was FSM990_PRE
-    public const string LogProps = "FSM9013";                                      // was FSM990_PROP
-    public const string HsmFlagTracking = "FSM9011";                               // was FSM990_HSM_FLAG
+    // E. Generator infrastructure diagnostics removed (9000–9013)
 }

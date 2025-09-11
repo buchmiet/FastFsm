@@ -1,84 +1,38 @@
 # FastFSM Diagnostics (v0.7.5)
 
-Ustandaryzowana taksonomia i numeracja z buforami. Prefiks FSM + cztery cyfry.
+Standardized taxonomy and numbering. Prefix FSM + four digits.
 
-## A. Model & Deklaracje (0100–0599)
+## A. Model & Declarations (0100–0599)
 
-- FSM0100 — Brak atrybutu [StateMachine].
-- FSM0101 — Typy TState/TTrigger muszą być enumami.
-- FSM0200 — Nieprawidłowa wartość enuma w atrybucie.
-- FSM0300 — Nieprawidłowa sygnatura metody (guard/action/callback).
-- FSM0301 — Guard z payloadem bez wsparcia payload.
-- FSM0302 — async void niedozwolone.
-- FSM0400 — Zduplikowane przejście.
-- FSM0500 — Stan nieosiągalny.
+- FSM0100 — Potentially missing StateMachine attribute: If this class is intended to be a FSM, it needs the [StateMachine] attribute and must be declared as partial.
+- FSM0101 — State/Trigger types must be enums: The StateType and TriggerType arguments of the StateMachineAttribute must be enum types.
+- FSM0200 — Invalid enum value in transition: Enum values in transition attributes must be valid members of the specified enum type.
+- FSM0300 — Invalid method signature for FSM callback: Guard, Action, OnEntry, or OnExit methods must have a specific signature (e.g., guards return bool; actions are void; both can optionally take object? payload).
+- FSM0301 — Guard with payload in non-payload machine: Guards that expect payload parameters cannot be used in state machines without payload support.
+- FSM0302 — Callback returns 'async void': 'async void' methods are fire-and-forget and can lead to unhandled exceptions and race conditions. State machine callbacks should always be awaitable.
+- FSM0400 — Duplicate transition detected: There are multiple transitions defined for the same 'from state' and 'trigger'. The generator will only consider the first one encountered.
+- FSM0500 — Unreachable state detected: A state exists in the state enum that may not be reachable from the initial state or any other state via the defined transitions. This is a simplified check.
 
-## B. Spójność async (1100–1199)
+## B. Async Consistency (1100–1199)
 
-- FSM1100 — Mieszanie sync/async w jednej maszynie.
-- FSM1110 — Zły typ zwrotny async guard (Task<bool> zamiast ValueTask<bool>).
-- FSM1120 — Async callback w maszynie synchronicznej.
+- FSM1100 — Mixed synchronous and asynchronous callbacks: All state machine callbacks (OnEntry, OnExit, Action, Guard) must be either all synchronous or all asynchronous to ensure consistent behavior.
+- FSM1110 — Invalid async guard return type: Using Task<bool> for guards causes unnecessary memory allocations. Use ValueTask<bool> for optimal performance.
+- FSM1120 — Asynchronous callback in synchronous state machine: A state machine must be consistently synchronous or asynchronous. Mixing callback types can lead to unexpected behavior and deadlocks.
 
-## C. HSM – hierarchia (2000–2099)
+## C. HSM – Hierarchy (2000–2099)
 
-- FSM2000 — Cykl w hierarchii.
-- FSM2010 — „Sierota”/brakujący rodzic.
-- FSM2020 — Kompozyt bez stanu początkowego.
-- FSM2030 — Wiele stanów początkowych.
-- FSM2040 — Historia na nie‑kompozycie.
+- FSM2000 — Circular hierarchy detected: A state cannot be its own ancestor or descendant; remove circular parent-child relationships.
+- FSM2010 — Multiple or divergent parent: All parent states referenced by substates must be defined; check for typos or missing [State] on parent.
+- FSM2020 — Composite without initial state: Composite states must have an initial substate to determine which child state to enter. Either define an initial substate or use history mode.
+- FSM2030 — Multiple initial children: A composite state can only have one initial substate. Remove duplicate initial markers.
+- FSM2040 — History on non-composite: Only composite states (states with children) can have history mode. History remembers which child was last active.
 
 ## D. Fluent DSL (3000–3099)
 
-- FSM3000 — Niedomknięte przejście.
-- FSM3010 — Auto‑domknięcie jako internal.
-- FSM3020 — Wiele wywołań Payload().
-- FSM3030 — Priority() wymaga literału int.
-- FSM3040 — Priority() poza kontekstem przejścia.
-- FSM3050 — Wiele globalnych OnException.
-- FSM3060 — Nieprawidłowa sygnatura OnException.
-
-## E. Trace/Discovery (9000–9099) — domyślnie wyłączone
-
-- FSM9000 — Processing candidate.
-- FSM9001 — Declaration plan.
-- FSM9002 — Empty code generated.
-- FSM9003 — Enum‑only states fallback.
-- FSM9004 — MSBuild analyzer props.
-- FSM9005 — AddSource ok.
-- FSM9006 — Skipped candidate.
-- FSM9007 — Generator trace.
-- FSM9008 — Starting parse.
-- FSM9009 — Variant decision.
-- FSM9010 — Parser/config sections.
-- FSM9011 — HSM flag tracking.
-- FSM9012 — Pre‑AddSource log helper.
-- FSM9013 — MSBuild logging flags.
-
-## Migracja: stare → nowe
-
-- FSM001 → FSM0400
-- FSM002 → FSM0500
-- FSM003 → FSM0300
-- FSM004 → FSM0100
-- FSM005 → FSM0101
-- FSM006 → FSM0200
-- FSM010 → FSM0301
-- FSM011 → FSM1100
-- FSM012 → FSM1110
-- FSM013 → FSM1120
-- FSM014 → FSM0302
-- FSM100 → FSM2000
-- FSM101 → FSM2010
-- FSM102 → FSM2020
-- FSM103 → FSM2030
-- FSM104 → FSM2040
-- FSM200 → FSM3000
-- FSM201 → FSM3010
-- FSM202 → FSM3020
-- FSM207 → FSM3030
-- FSM208 → FSM3050
-- FSM209 → FSM3060
-- FSM210 → FSM3040
-- FSM989..998A → FSM9000..9013
-
-Uwagi: Wszystkie diagnostyki są zdefiniowane centralnie w Generator.Rules i emitowane poprzez DiagnosticFactory/RuleLookup. Ślady 9000+ mają IsEnabledByDefault=false i można je włączyć lokalnie.
+- FSM3000 — Open transition not finalized: Every transition must be finalized with either GoTo(targetState) for external transitions or Internal() for internal transitions.
+- FSM3010 — Transition auto-finalized as internal: When a new On() or State() is encountered without finalizing the previous transition, it is auto-finalized as internal. This may not be intended.
+- FSM3020 — Multiple payload definitions on transition: Each transition should have at most one payload type. Multiple Payload() calls use the last specified type.
+- FSM3030 — Invalid priority argument: The Priority() fluent call accepts only an integer literal argument used for transition ordering.
+- FSM3040 — Priority() without active transition: Priority() is valid only in the context of an active transition builder (after On()/OnInternal()).
+- FSM3050 — Multiple global OnException handlers: Exactly one global exception handler is allowed. Remove duplicates.
+- FSM3060 — Invalid OnException handler signature: Handler must return ExceptionDirective or ValueTask<ExceptionDirective> and accept ExceptionContext<TState,TTrigger> as first parameter with optional CancellationToken.

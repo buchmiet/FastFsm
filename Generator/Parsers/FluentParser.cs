@@ -22,6 +22,8 @@ namespace Generator.Parsers
         private readonly TypeSystemHelper _typeHelper = new();
         private CallbackSignatureAnalyzer? _callbackAnalyzer;
         private INamedTypeSymbol? _stateEnumSymbol;
+        // Track whether .OnException() was specified at least once in the current class
+        private bool _onExceptionSpecified;
 
         public FluentParser(Compilation compilation, SourceProductionContext context)
         {
@@ -1236,7 +1238,19 @@ namespace Generator.Parsers
 
                 report?.Invoke($"[FluentParser] OnException method name: {methodName}");
 
-                // Enforce a single global handler
+                // Enforce a single global handler regardless of signature validity.
+                // If we've already seen any OnException(), report duplicate immediately.
+                if (_onExceptionSpecified)
+                {
+                    var dupDescriptor = DiagnosticFactory.Get(RuleIdentifiers.DuplicateOnExceptionHandler);
+                    _context.ReportDiagnostic(Diagnostic.Create(dupDescriptor, invocation.GetLocation()));
+                    return;
+                }
+
+                // Mark that we have seen an OnException directive so subsequent calls trigger duplicate.
+                _onExceptionSpecified = true;
+
+                // Additionally, if a valid handler was already captured in the model for any reason, block duplicates.
                 if (model.ExceptionHandler != null)
                 {
                     var dupDescriptor = DiagnosticFactory.Get(RuleIdentifiers.DuplicateOnExceptionHandler);

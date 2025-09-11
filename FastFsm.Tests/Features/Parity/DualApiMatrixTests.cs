@@ -25,10 +25,10 @@ namespace FastFsm.Tests.Features.Parity
 
         public static IEnumerable<object[]> GetAllMachinesAndApis()
         {
-            foreach (var machine in MachineRegistry.GetAllMachines().Where(m => m.WrapperFactory != null))
+            foreach (var machineName in MatrixConfig.GetAllMachineNames())
             {
-                yield return new object[] { machine.Name, ApiType.Fluent };
-                yield return new object[] { machine.Name, ApiType.Legacy };
+                yield return new object[] { machineName, ApiType.Fluent };
+                yield return new object[] { machineName, ApiType.Legacy };
             }
         }
 
@@ -36,14 +36,13 @@ namespace FastFsm.Tests.Features.Parity
         [MemberData(nameof(GetAllMachinesAndApis))]
         public void Machine_BasicOperations_WorkOnBothApis(string machineName, ApiType apiType)
         {
-            var machine = MachineRegistry.GetMachineInfo(machineName);
-            machine.ShouldNotBeNull($"Machine {machineName} not found in registry");
-            machine.WrapperFactory.ShouldNotBeNull($"Machine {machineName} has no wrapper factory");
+            var config = MatrixConfig.GetConfig(machineName);
+            config.ShouldNotBeNull($"Machine {machineName} not found in MatrixConfig");
             
             try
             {
-                // Create wrapper
-                var wrapper = machine.WrapperFactory(apiType, null);
+                // Create wrapper using factory
+                var wrapper = StateMachineWrapperFactory.Create(machineName, apiType, config.InitialState);
                 wrapper.ShouldNotBeNull($"Failed to create {apiType} wrapper for {machineName}");
                 
                 // Start machine
@@ -57,20 +56,24 @@ namespace FastFsm.Tests.Features.Parity
                 var permittedTriggers = wrapper.GetPermittedTriggers();
                 permittedTriggers.ShouldNotBeNull($"{machineName} ({apiType}) GetPermittedTriggers returned null");
                 
-                // If there are permitted triggers, try to fire one
-                if (permittedTriggers.Any())
+                // Try to execute the configured trigger sequence
+                if (config.TriggerSequence.Length > 0)
                 {
-                    var firstTrigger = permittedTriggers.First();
+                    var firstTrigger = config.TriggerSequence[0];
                     var canFire = wrapper.CanFire(firstTrigger);
                     
                     if (canFire)
                     {
                         // Prepare payload if needed
                         object? payload = null;
-                        if (wrapper.Caps.Has(ApiCapabilities.HasDefaultPayload) || 
-                            wrapper.Caps.Has(ApiCapabilities.HasMultiPayloads))
+                        if (config.Payloads.Length > 0)
                         {
-                            payload = CreateDummyPayload();
+                            payload = config.Payloads[0];
+                        }
+                        else if (wrapper.Caps.Has(ApiCapabilities.HasDefaultPayload) || 
+                                 wrapper.Caps.Has(ApiCapabilities.HasMultiPayloads))
+                        {
+                            payload = MatrixConfig.CreateDummyPayload();
                         }
                         
                         // Try to fire the trigger
@@ -132,14 +135,13 @@ namespace FastFsm.Tests.Features.Parity
         [MemberData(nameof(GetAllMachinesAndApis))]
         public async void Machine_AsyncOperations_WorkOnBothApis(string machineName, ApiType apiType)
         {
-            var machine = MachineRegistry.GetMachineInfo(machineName);
-            machine.ShouldNotBeNull($"Machine {machineName} not found in registry");
-            machine.WrapperFactory.ShouldNotBeNull($"Machine {machineName} has no wrapper factory");
+            var config = MatrixConfig.GetConfig(machineName);
+            config.ShouldNotBeNull($"Machine {machineName} not found in MatrixConfig");
             
             try
             {
-                // Create wrapper
-                var wrapper = machine.WrapperFactory(apiType, null);
+                // Create wrapper using factory
+                var wrapper = StateMachineWrapperFactory.Create(machineName, apiType, config.InitialState);
                 wrapper.ShouldNotBeNull($"Failed to create {apiType} wrapper for {machineName}");
                 
                 // Start machine async
@@ -152,20 +154,24 @@ namespace FastFsm.Tests.Features.Parity
                 // Get permitted triggers
                 var permittedTriggers = wrapper.GetPermittedTriggers();
                 
-                // If there are permitted triggers, try to fire one async
-                if (permittedTriggers.Any())
+                // Try to execute the configured trigger sequence async
+                if (config.TriggerSequence.Length > 0)
                 {
-                    var firstTrigger = permittedTriggers.First();
+                    var firstTrigger = config.TriggerSequence[0];
                     var canFire = wrapper.CanFire(firstTrigger);
                     
                     if (canFire)
                     {
                         // Prepare payload if needed
                         object? payload = null;
-                        if (wrapper.Caps.Has(ApiCapabilities.HasDefaultPayload) || 
-                            wrapper.Caps.Has(ApiCapabilities.HasMultiPayloads))
+                        if (config.Payloads.Length > 0)
                         {
-                            payload = CreateDummyPayload();
+                            payload = config.Payloads[0];
+                        }
+                        else if (wrapper.Caps.Has(ApiCapabilities.HasDefaultPayload) || 
+                                 wrapper.Caps.Has(ApiCapabilities.HasMultiPayloads))
+                        {
+                            payload = MatrixConfig.CreateDummyPayload();
                         }
                         
                         // Try to fire the trigger async
@@ -211,17 +217,12 @@ namespace FastFsm.Tests.Features.Parity
         [MemberData(nameof(GetAllMachinesAndApis))]
         public void Machine_Capabilities_AreConsistent(string machineName, ApiType apiType)
         {
-            var machine = MachineRegistry.GetMachineInfo(machineName);
-            if (machine?.WrapperFactory == null)
-            {
-                // Skip.If(true, $"{machineName} has no wrapper factory");
-                _output.WriteLine($"⚠️ {machineName} has no wrapper factory - skipping");
-                return;
-            }
+            var config = MatrixConfig.GetConfig(machineName);
+            config.ShouldNotBeNull($"Machine {machineName} not found in MatrixConfig");
             
             try
             {
-                var wrapper = machine.WrapperFactory(apiType, null);
+                var wrapper = StateMachineWrapperFactory.Create(machineName, apiType, config.InitialState);
                 var caps = wrapper.Caps;
                 
                 _output.WriteLine($"{machineName} ({apiType}) Capabilities: {caps}");
@@ -247,19 +248,6 @@ namespace FastFsm.Tests.Features.Parity
             }
         }
 
-        private static Dictionary<string, object> CreateDummyPayload()
-        {
-            return new Dictionary<string, object>
-            {
-                ["Id"] = 1,
-                ["Data"] = "Test",
-                ["Setting"] = "TestSetting",
-                ["Value"] = 42,
-                ["Code"] = "TEST",
-                ["Message"] = "Test message",
-                ["Name"] = "TestName",
-                ["Description"] = "Test description"
-            };
-        }
+        // Moved to MatrixConfig.CreateDummyPayload()
     }
 }

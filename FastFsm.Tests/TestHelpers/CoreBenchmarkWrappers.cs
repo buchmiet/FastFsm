@@ -15,10 +15,12 @@ namespace FastFsm.Tests.TestHelpers
     {
         private readonly CoreBenchmarkMachineFluent _machine;
         
-        public CoreBenchmarkFluentWrapper(string initialStateName)
+        public CoreBenchmarkFluentWrapper(string? initialStateName)
         {
+            var resolvedName = InitialStateResolver.ResolveOrDefault<BenchmarkTests.BenchmarkState>(
+                "CoreBenchmark", initialStateName);
             var state = (BenchmarkTests.BenchmarkState)Enum.Parse(
-                typeof(BenchmarkTests.BenchmarkState), initialStateName);
+                typeof(BenchmarkTests.BenchmarkState), resolvedName);
             _machine = new CoreBenchmarkMachineFluent(state);
         }
         
@@ -87,10 +89,12 @@ namespace FastFsm.Tests.TestHelpers
     {
         private readonly CoreBenchmarkMachineLegacy _machine;
         
-        public CoreBenchmarkLegacyWrapper(string initialStateName)
+        public CoreBenchmarkLegacyWrapper(string? initialStateName)
         {
+            var resolvedName = InitialStateResolver.ResolveOrDefault<BenchmarkTestsLegacy.BenchmarkState>(
+                "CoreBenchmark", initialStateName);
             var state = (BenchmarkTestsLegacy.BenchmarkState)Enum.Parse(
-                typeof(BenchmarkTestsLegacy.BenchmarkState), initialStateName);
+                typeof(BenchmarkTestsLegacy.BenchmarkState), resolvedName);
             _machine = new CoreBenchmarkMachineLegacy(state);
         }
         

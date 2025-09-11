@@ -248,141 +248,9 @@ namespace Generator.Rules.Definitions
             defaultSeverity: RuleSeverity.Error,
             description: "Priority() is valid only in the context of an active transition builder (after On()/OnInternal()).");
 
-        // Generator infrastructure diagnostics (logging, discovery, config)
-        public static readonly RuleDefinition DebugEntry = new(
-            id: RuleIdentifiers.DebugEntry, // FSM9000
-            title: "Processing candidate",
-            messageFormat: "Processing candidate: {0}",
-            category: RuleCategories.FSM_Generator_Discovery,
-            defaultSeverity: RuleSeverity.Info,
-            description: "Processing candidate trace.",
-            isEnabledByDefault: false);
+        // Generator infrastructure diagnostics removed (FSM9000–9013)
 
-        public static readonly RuleDefinition ConfigurationSections = new(
-            id: RuleIdentifiers.ConfigurationSections, // FSM9010
-            title: "Configuration sections",
-            messageFormat: "{0} - StatesFrom: {1} | TransitionsFrom: {2} (ext={3}) | InternalFrom: {4} (int={5}) | PayloadTypes: {6}",
-            category: RuleCategories.FSM_Generator_Parser,
-            defaultSeverity: RuleSeverity.Info,
-            description: "Summary of configuration sources discovered during parsing (methods contributing [State], [Transition], internal transitions and payload types).",
-            isEnabledByDefault: false);
-
-        public static readonly RuleDefinition VariantDecision = new(
-            id: RuleIdentifiers.VariantDecision, // FSM9009
-            title: "Variant decision",
-            messageFormat: "{0} -> {1}; internalOnly={2}; payloadPresent={3}",
-            category: RuleCategories.FSM_Generator,
-            defaultSeverity: RuleSeverity.Info,
-            description: "Generator variant/features summary (payload, extensions, callbacks, internal-only). The second argument typically encodes feature flags.",
-            isEnabledByDefault: false);
-
-        public static readonly RuleDefinition DeclarationPlan = new(
-            id: RuleIdentifiers.DeclarationPlan, // FSM9001
-            title: "Declaration plan",
-            messageFormat: "DECLARATION_PLAN for {0}: ns='{1}', nesting='{2}', class='{3}', accessibility='{4}', partial={5}",
-            category: RuleCategories.FSM_Generator,
-            defaultSeverity: RuleSeverity.Info,
-            description: "Planned namespace, nesting and class accessibility for the generated state machine.",
-            isEnabledByDefault: false);
-
-        public static readonly RuleDefinition EmptyCodeGenerated = new(
-            id: RuleIdentifiers.EmptyCodeGenerated, // FSM9002
-            title: "Empty code generated",
-            messageFormat: "EMPTY_CODE for {0}; variant={1}; states={2}; transitions int={3}, ext={4}; payloads={5}; enumFallback={6}",
-            category: RuleCategories.FSM_Generator,
-            defaultSeverity: RuleSeverity.Info,
-            description: "Indicates that the generator produced empty or too small output for a candidate; includes basic metrics for diagnosis.",
-            isEnabledByDefault: false);
-
-        public static readonly RuleDefinition EnumOnlyStatesFallback = new(
-            id: RuleIdentifiers.EnumOnlyStatesFallback, // FSM9003
-            title: "Enum-only states fallback",
-            messageFormat: "Enum-only states fallback applied for '{0}' — 0 [State] attributes found; using all enum members as states",
-            category: RuleCategories.FSM_Generator,
-            defaultSeverity: RuleSeverity.Info,
-            description: "Fallback path when no [State] attributes are found: all enum members are used as states.",
-            isEnabledByDefault: false);
-
-        public static readonly RuleDefinition MsBuildAnalyzerProperties = new(
-            id: RuleIdentifiers.MsBuildAnalyzerProperties, // FSM9004
-            title: "MSBuild analyzer properties",
-            messageFormat: "EmitCompilerGeneratedFiles={0}; CompilerGeneratedFilesOutputPath={1}",
-            category: RuleCategories.FSM_Generator_Config,
-            defaultSeverity: RuleSeverity.Info,
-            description: "Displays analyzer-related MSBuild properties to aid debugging of generated files.",
-            isEnabledByDefault: false);
-
-        public static readonly RuleDefinition AddSourceOk = new(
-            id: RuleIdentifiers.AddSourceOk, // FSM9005
-            title: "AddSource succeeded",
-            messageFormat: "AddSource ok: {0} (len={1})",
-            category: RuleCategories.FSM_Generator_AddSource,
-            defaultSeverity: RuleSeverity.Info,
-            description: "Indicates a successful AddSource call with the hint name and content length.",
-            isEnabledByDefault: false);
-
-        public static readonly RuleDefinition SkippedCandidate = new(
-            id: RuleIdentifiers.SkippedCandidate, // FSM9006
-            title: "State machine candidate skipped",
-            messageFormat: "Skipped state machine candidate {0}: {1}",
-            category: RuleCategories.FSM_Generator_Discovery,
-            defaultSeverity: RuleSeverity.Info,
-            description: "Provides the reason why a discovered state machine candidate was skipped.",
-            isEnabledByDefault: false);
-
-        public static readonly RuleDefinition DiscoveryOrTrace = new(
-            id: RuleIdentifiers.DiscoveryOrTrace, // FSM9007
-            title: "Generator trace",
-            messageFormat: "{0}",
-            category: RuleCategories.FSM_Generator_Discovery,
-            defaultSeverity: RuleSeverity.Info,
-            description: "Generic trace or discovery diagnostic used for parser traces or additional info.",
-            isEnabledByDefault: false);
-
-        public static readonly RuleDefinition StartingParse = new(
-            id: RuleIdentifiers.StartingParse, // FSM9008
-            title: "Starting parse",
-            messageFormat: "Starting parse for: {0}",
-            category: RuleCategories.FSM_Generator_Parser,
-            defaultSeverity: RuleSeverity.Info,
-            description: "Marks the start of parsing a specific candidate class.",
-            isEnabledByDefault: false);
-
-        public static readonly RuleDefinition ProcessingCandidate = new(
-            id: RuleIdentifiers.ProcessingCandidate, // FSM9000
-            title: "Processing candidate",
-            messageFormat: "Processing candidate: {0}",
-            category: RuleCategories.FSM_Generator_Discovery,
-            defaultSeverity: RuleSeverity.Info,
-            description: "Indicates that a discovered candidate is being processed by the generator.",
-            isEnabledByDefault: false);
-
-        public static readonly RuleDefinition LogHelperPreAdd = new(
-            id: RuleIdentifiers.LogHelperPreAdd, // FSM9012
-            title: "Logging helper pre-AddSource",
-            messageFormat: "GenerateLogging={0}; ns='{1}'; class='{2}'; hint='{3}'; first='{4}'",
-            category: RuleCategories.FSM_Generator_AddSource,
-            defaultSeverity: RuleSeverity.Info,
-            description: "Summary emitted before adding the optional logging helper source file.",
-            isEnabledByDefault: false);
-
-        public static readonly RuleDefinition LogProps = new(
-            id: RuleIdentifiers.LogProps, // FSM9013
-            title: "MSBuild logging flags",
-            messageFormat: "FsmGenerateLogging={0}; FsmGenerateDI={1}",
-            category: RuleCategories.FSM_Generator_Config,
-            defaultSeverity: RuleSeverity.Info,
-            description: "Shows effective MSBuild flags controlling optional logging and DI generation.",
-            isEnabledByDefault: false);
-
-        public static readonly RuleDefinition HsmFlagTracking = new(
-            id: RuleIdentifiers.HsmFlagTracking, // FSM9011
-            title: "HSM Flag Tracking",
-            messageFormat: "{0}",
-            category: RuleCategories.FSM_Generator,
-            defaultSeverity: RuleSeverity.Info,
-            description: "Diagnostic used to surface HSM-related feature flags and checkpoints during generation and in generated code comments.",
-            isEnabledByDefault: false);
+        // Generator infrastructure diagnostics removed (FSM9000–9013)
 
         public static readonly IReadOnlyList<RuleDefinition> All = new List<RuleDefinition>
         {
@@ -413,22 +281,7 @@ namespace Generator.Rules.Definitions
             InvalidOnExceptionSignature,    // FSM3060
             PriorityWithoutActiveTransition,// FSM3040
 
-            // Generator infrastructure
-            // DebugEntry consolidated into ProcessingCandidate (same ID)
-            ConfigurationSections,         // FSM9010
-            VariantDecision,               // FSM9009
-            DeclarationPlan,               // FSM9001
-            EmptyCodeGenerated,            // FSM9002
-            EnumOnlyStatesFallback,        // FSM9003
-            MsBuildAnalyzerProperties,     // FSM9004
-            AddSourceOk,                   // FSM9005
-            SkippedCandidate,              // FSM9006
-            DiscoveryOrTrace,              // FSM9007
-            StartingParse,                 // FSM9008
-            ProcessingCandidate,           // FSM9000
-            LogHelperPreAdd,               // FSM9012
-            LogProps,                      // FSM9013
-            HsmFlagTracking,               // FSM9011
+            // Generator infrastructure (removed from catalog)
         }.AsReadOnly();
     }
 }

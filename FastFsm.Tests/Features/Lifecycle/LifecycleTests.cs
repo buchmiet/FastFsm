@@ -52,8 +52,18 @@ namespace FastFsm.Tests.Features.Lifecycle
             dynamic machine = CreateMachine(apiType, stateA);
 
             // TryFire without Start() should throw
-            Assert.Throws<InvalidOperationException>(
-                () => machine.TryFire(triggerNext));
+            if (apiType == ApiType.Fluent)
+            {
+                var fluentMachine = (CoreBenchmarkMachineFluent)machine;
+                var fluentTrigger = (BenchmarkTests.BenchmarkTrigger)triggerNext;
+                Assert.Throws<InvalidOperationException>(() => fluentMachine.TryFire(fluentTrigger));
+            }
+            else
+            {
+                var legacyMachine = (CoreBenchmarkMachineLegacy)machine;
+                var legacyTrigger = (BenchmarkTestsLegacy.BenchmarkTrigger)triggerNext;
+                Assert.Throws<InvalidOperationException>(() => legacyMachine.TryFire(legacyTrigger));
+            }
         }
 
         [Theory]
@@ -68,7 +78,20 @@ namespace FastFsm.Tests.Features.Lifecycle
             dynamic machine = CreateMachine(apiType, stateA);
             machine.Start();
 
-            Assert.True(machine.TryFire(triggerNext));
+            bool result;
+            if (apiType == ApiType.Fluent)
+            {
+                var fluentMachine = (CoreBenchmarkMachineFluent)machine;
+                var fluentTrigger = (BenchmarkTests.BenchmarkTrigger)triggerNext;
+                result = fluentMachine.TryFire(fluentTrigger);
+            }
+            else
+            {
+                var legacyMachine = (CoreBenchmarkMachineLegacy)machine;
+                var legacyTrigger = (BenchmarkTestsLegacy.BenchmarkTrigger)triggerNext;
+                result = legacyMachine.TryFire(legacyTrigger);
+            }
+            Assert.True(result);
             Assert.Equal(stateB, machine.CurrentState);
         }
     }

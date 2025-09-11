@@ -388,9 +388,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             isLenientMode = true;
             report?.Invoke("[Lenient Mode] Enabled: using syntax-only parsing for types due to limited compilation context");
             
-            // Emit info diagnostic for lenient mode
-            EmitRulePreformatted(context, RuleIdentifiers.DiscoveryOrTrace, classDeclaration.GetLocation(),
-                "Using syntax-only parsing for types in limited compilation context", RuleSeverity.Info);
+            // Suppressed trace for lenient mode
         }
 
         // ── Guard before running the rule:
@@ -735,10 +733,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             currentModel.UsedEnumOnlyFallback = true;
             report?.Invoke($"Enum-only fallback applied: {currentModel.States.Count} states from enum");
             
-            // Report FSM994 diagnostic
-            EmitRule(context, RuleIdentifiers.EnumOnlyStatesFallback,
-                classDeclaration.GetLocation(),
-                string.IsNullOrEmpty(currentModel.Namespace) ? currentModel.ClassName : $"{currentModel.Namespace}.{currentModel.ClassName}");
+            // Suppressed FSM9003 diagnostic
         }
 
         // === SEKCJA 8.5: Build HSM hierarchy if needed ===
@@ -862,18 +857,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         }
         
         // Report diagnostic for internal-only or no-transitions machines
-        if (externalCount == 0 && internalCount > 0)
-        {
-            report?.Invoke($"Internal-only machine detected: {internalCount} internal transitions");
-            EmitRulePreformatted(context, RuleIdentifiers.DiscoveryOrTrace, classDeclaration.GetLocation(),
-                $"Machine '{currentModel.ClassName}' has only internal transitions ({internalCount}) - generating with internal-only support", RuleSeverity.Info);
-        }
-        else if (totalCount == 0)
-        {
-            report?.Invoke("No-transitions machine detected");
-            EmitRulePreformatted(context, RuleIdentifiers.DiscoveryOrTrace, classDeclaration.GetLocation(),
-                $"Machine '{currentModel.ClassName}' has no transitions - generating minimal API skeleton", RuleSeverity.Info);
-        }
+        // Discovery/trace diagnostics suppressed
         
         // Skip reachability validation for internal-only or no-transitions machines
         if (isInternalOnly || totalCount == 0)
@@ -901,15 +885,13 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         if (criticalErrorOccurred && !isLenientMode)
         {
             report?.Invoke($"ERROR: Critical error occurred for {currentModel.ClassName} - returning false");
-            EmitRulePreformatted(context, RuleIdentifiers.DiscoveryOrTrace, classDeclaration.GetLocation(),
-                $"Critical error occurred while parsing {currentModel.ClassName}, code generation skipped", RuleSeverity.Warning);
+            // Trace suppressed
             return false;
         }
         else if (criticalErrorOccurred && isLenientMode)
         {
             report?.Invoke($"[Lenient Mode] Critical error occurred but continuing in lenient mode for {currentModel.ClassName}");
-            EmitRulePreformatted(context, RuleIdentifiers.DiscoveryOrTrace, classDeclaration.GetLocation(),
-                $"Parsing completed with errors in lenient mode for {currentModel.ClassName}", RuleSeverity.Info);
+            // Trace suppressed
         }
 
         currentModel.GenerationConfig.IsAsync = isMachineAsyncMode ?? false;
@@ -918,12 +900,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         if (isAsyncOce)
             report?.Invoke($"[DEBUG AOE] Final state - IsAsync: {currentModel.GenerationConfig.IsAsync}, ExceptionHandler: {currentModel.ExceptionHandler != null}");
 
-        // FSM990_HSM_FLAG: Log at parser output (feature flags summary)
-        {
-            var d = DiagnosticFactory.Get(RuleIdentifiers.HsmFlagTracking);
-            var msg = $"[1-Parser] {currentModel.ClassName}: HierarchyEnabled={currentModel.HierarchyEnabled}, UsedEnumOnlyFallback={currentModel.UsedEnumOnlyFallback}, HasPayload={currentModel.GenerationConfig.HasPayload}, HasExtensions={currentModel.GenerationConfig.HasExtensions}, HasCallbacks={currentModel.GenerationConfig.HasOnEntryExit}";
-            context.ReportDiagnostic(Diagnostic.Create(d, classDeclaration.GetLocation(), msg));
-        }
+        // HSM flag tracking suppressed
         
         model = currentModel;
         report?.Invoke("=== SUCCESS: TryParse completed successfully ===");
@@ -966,29 +943,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         ParseStateAttributes(classSymbol, model, stateTypeSymbol, ref criticalErrorOccurred, ref isMachineAsyncMode, isLenientMode);
         ParseOnExceptionAttribute(classSymbol, model, stateTypeSymbol, triggerTypeSymbol, ref criticalErrorOccurred, ref isMachineAsyncMode, report, isLenientMode);
         
-        // Report FSM989 diagnostic after parsing to get accurate counts
-        var externalCount = model.Transitions.Count(t => !t.IsInternal);
-        var internalCount = model.Transitions.Count(t => t.IsInternal);
-        
-        var fullName = string.IsNullOrEmpty(model.Namespace) 
-            ? model.ClassName 
-            : $"{model.Namespace}.{model.ClassName}";
-        
-        var stateMethods = string.Join(",", stateMethodNames);
-        var transitionMethods = string.Join(",", transitionMethodNames);
-        var internalMethods = string.Join(",", internalMethodNames);
-        
-        if (string.IsNullOrEmpty(stateMethods)) stateMethods = "(none)";
-        if (string.IsNullOrEmpty(transitionMethods)) transitionMethods = "(none)";
-        if (string.IsNullOrEmpty(internalMethods)) internalMethods = "(none)";
-        
-        // Report FSM989 diagnostic - use the descriptor directly from Generator.cs
-        var location = classSymbol.Locations.FirstOrDefault() ?? Location.None;
-        
-        // Report FSM989 diagnostic
-        EmitRule(context, RuleIdentifiers.ConfigurationSections, location,
-            fullName, stateMethods, transitionMethods, externalCount,
-            internalMethods, internalCount, payloadTypeCount);
+        // Configuration sections diagnostic suppressed (was FSM9010)
     }
 
 

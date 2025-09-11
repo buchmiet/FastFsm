@@ -14,9 +14,11 @@ namespace FastFsm.Tests.TestHelpers
     {
         private readonly PayloadStateMachineFluent _machine;
         
-        public PayloadStateMachineFluentWrapper(string initialStateName)
+        public PayloadStateMachineFluentWrapper(string? initialStateName)
         {
-            var state = (Machines.TestState)Enum.Parse(typeof(Machines.TestState), initialStateName);
+            var resolvedName = InitialStateResolver.ResolveOrDefault<Machines.TestState>(
+                "PayloadStateMachine", initialStateName);
+            var state = (Machines.TestState)Enum.Parse(typeof(Machines.TestState), resolvedName);
             _machine = new PayloadStateMachineFluent(state);
         }
         
@@ -132,9 +134,11 @@ namespace FastFsm.Tests.TestHelpers
     {
         private readonly PayloadStateMachine _machine;
         
-        public PayloadStateMachineLegacyWrapper(string initialStateName)
+        public PayloadStateMachineLegacyWrapper(string? initialStateName)
         {
-            var state = (Machines.TestState)Enum.Parse(typeof(Machines.TestState), initialStateName);
+            var resolvedName = InitialStateResolver.ResolveOrDefault<Machines.TestState>(
+                "PayloadStateMachine", initialStateName);
+            var state = (Machines.TestState)Enum.Parse(typeof(Machines.TestState), resolvedName);
             _machine = new PayloadStateMachine(state);
         }
         
