@@ -98,6 +98,49 @@ namespace FastFsm.Async.Tests.TestHelpers
                 // Concurrency/Core
                 ["RcMachine"] = new MachineTestConfig { MachineName = "RcMachine", InitialState = "Initial", TriggerSequence = new[] { "ToA" } },
                 ["SimpleAsync"] = new MachineTestConfig { MachineName = "SimpleAsync", InitialState = "Initial", TriggerSequence = new[] { "Start" } },
+
+                // Add 1:1 base-name entries for full parity (aliases to scenarios above)
+                ["InitialChildMachine"] = new MachineTestConfig { MachineName = "InitialChildMachine", InitialState = "Outside", TriggerSequence = new[] { "EnterParent", "Switch", "LeaveParent" } },
+                ["ShallowHistoryMachine"] = new MachineTestConfig { MachineName = "ShallowHistoryMachine", InitialState = "Outside", TriggerSequence = new[] { "Enter", "Next", "Exit", "Enter" } },
+                ["DeepHistoryMachine"] = new MachineTestConfig { MachineName = "DeepHistoryMachine", InitialState = "Out", TriggerSequence = new[] { "EnterWork", "Next", "Abort", "EnterWork" } },
+                ["InternalMachine"] = new MachineTestConfig { MachineName = "InternalMachine", InitialState = "Parent", TriggerSequence = new[] { "Refresh" } },
+                ["PriorityMachine"] = new MachineTestConfig { MachineName = "PriorityMachine", InitialState = "Parent", TriggerSequence = new[] { "Go" } },
+                ["ChildOverridesMachine"] = new MachineTestConfig { MachineName = "ChildOverridesMachine", InitialState = "Parent", TriggerSequence = new[] { "Go" } },
+                ["SourceOrderTieMachine"] = new MachineTestConfig { MachineName = "SourceOrderTieMachine", InitialState = "A", TriggerSequence = new[] { "Go" } },
+                ["InheritanceMachine"] = new MachineTestConfig { MachineName = "InheritanceMachine", InitialState = "Outside", TriggerSequence = new[] { "Enter", "Next", "Leave" } },
+
+                ["BasicAsyncPayloadMachine"] = new MachineTestConfig { MachineName = "BasicAsyncPayloadMachine", InitialState = "Initial", TriggerSequence = new[] { "Start" }, Payloads = new object?[] { new FastFsm.Async.Tests.Features.Payload.ProcessPayload { Id = 1, Data = "P" } } },
+                ["OverloadedAsyncMachine"] = new MachineTestConfig { MachineName = "OverloadedAsyncMachine", InitialState = "Initial", TriggerSequence = new[] { "Start" }, Payloads = new object?[] { new FastFsm.Async.Tests.Features.Payload.ProcessPayload { Id = 2, Data = "P" } } },
+                ["ExceptionAsyncPayloadMachine"] = new MachineTestConfig { MachineName = "ExceptionAsyncPayloadMachine", InitialState = "Initial", TriggerSequence = new[] { "Start" }, Payloads = new object?[] { new FastFsm.Async.Tests.Features.Payload.ProcessPayload { Id = 3, Data = "P" } } },
+                ["CanFireAsyncPayloadMachine"] = new MachineTestConfig { MachineName = "CanFireAsyncPayloadMachine", InitialState = "Initial", TriggerSequence = new[] { "Start" }, Payloads = new object?[] { new FastFsm.Async.Tests.Features.Payload.ProcessPayload { Id = 10, Data = "P" } } },
+                ["ConcurrentAsyncPayloadMachine"] = new MachineTestConfig { MachineName = "ConcurrentAsyncPayloadMachine", InitialState = "Processing", TriggerSequence = new[] { "Process" }, Payloads = new object?[] { new FastFsm.Async.Tests.Features.Payload.ProcessPayload { Id = 100, Data = "P" } } },
+                ["InitialOnEntryAsyncPayloadMachine"] = new MachineTestConfig { MachineName = "InitialOnEntryAsyncPayloadMachine", InitialState = "Initial", TriggerSequence = new[] { "Start" }, Payloads = new object?[] { new FastFsm.Async.Tests.Features.Payload.ProcessPayload { Id = 5, Data = "P" } } },
+                ["MultiPayloadAsyncMachine"] = new MachineTestConfig { MachineName = "MultiPayloadAsyncMachine", InitialState = "Ready", TriggerSequence = new[] { "Configure" }, Payloads = new object?[] { new FastFsm.Async.Tests.Features.Payload.ConfigPayload { Setting = "S", Timeout = 1 } } },
+
+                ["BasicTokenMachine"] = new MachineTestConfig { MachineName = "BasicTokenMachine", InitialState = "Initial", TriggerSequence = new[] { "Start" } },
+                ["OptionalTokenMachine"] = new MachineTestConfig { MachineName = "OptionalTokenMachine", InitialState = "Initial", TriggerSequence = new[] { "Start" } },
+                ["CancellationMachine"] = new MachineTestConfig { MachineName = "CancellationMachine", InitialState = "Initial", TriggerSequence = new[] { "Start" } },
+                ["MixedTokenMachine"] = new MachineTestConfig { MachineName = "MixedTokenMachine", InitialState = "Initial", TriggerSequence = new[] { "Start" } },
+
+                ["OnEntryContinueMachine"] = new MachineTestConfig { MachineName = "OnEntryContinueMachine", InitialState = "Idle", TriggerSequence = new[] { "Start" } },
+                ["ActionPropagateMachine"] = new MachineTestConfig { MachineName = "ActionPropagateMachine", InitialState = "Idle", TriggerSequence = new[] { "Start" } },
+                ["GuardExceptionMachine"] = new MachineTestConfig { MachineName = "GuardExceptionMachine", InitialState = "Idle", TriggerSequence = new[] { "Start" } },
+                ["CancellationPropagationMachine"] = new MachineTestConfig { MachineName = "CancellationPropagationMachine", InitialState = "Idle", TriggerSequence = new[] { "Start" } },
+                ["AsyncHandlerMachine"] = new MachineTestConfig { MachineName = "AsyncHandlerMachine", InitialState = "Idle", TriggerSequence = new[] { "Start" } },
+                ["ExceptionContextCaptureMachine"] = new MachineTestConfig { MachineName = "ExceptionContextCaptureMachine", InitialState = "Idle", TriggerSequence = new[] { "Start" } },
+
+                ["AsyncHookOrderMachineSuccess"] = new MachineTestConfig { MachineName = "AsyncHookOrderMachineSuccess", InitialState = "A", TriggerSequence = new[] { "Next" } },
+                ["AsyncHookOrderMachineFail"] = new MachineTestConfig { MachineName = "AsyncHookOrderMachineFail", InitialState = "A", TriggerSequence = new[] { "Fail" } },
+                ["AsyncExtensionsMachine"] = new MachineTestConfig { MachineName = "AsyncExtensionsMachine", InitialState = "Idle", TriggerSequence = new[] { "Start" } },
+
+                ["SimpleAsyncMachine"] = new MachineTestConfig { MachineName = "SimpleAsyncMachine", InitialState = "Initial", TriggerSequence = new[] { "Start" } },
+                ["RcMachine"] = new MachineTestConfig { MachineName = "RcMachine", InitialState = "Initial", TriggerSequence = new[] { "ToA" } },
+                ["TokenMachine"] = new MachineTestConfig { MachineName = "TokenMachine", InitialState = "Off", TriggerSequence = new[] { "SwitchOn" } },
+                ["PayloadMachine"] = new MachineTestConfig { MachineName = "PayloadMachine", InitialState = "Off", TriggerSequence = new[] { "ToggleOn" }, Payloads = new object?[] { new FastFsm.Async.Tests.Features.Cancellation.TogglePayload { Id = 7 } } },
+                ["SimpleCancellationMachine"] = new MachineTestConfig { MachineName = "SimpleCancellationMachine", InitialState = "Ready", TriggerSequence = new[] { "Start" } },
+                ["SpecificationComplianceMachine"] = new MachineTestConfig { MachineName = "SpecificationComplianceMachine", InitialState = "Ready", TriggerSequence = new[] { "Start" } },
+                ["TinyAsyncHsm"] = new MachineTestConfig { MachineName = "TinyAsyncHsm", InitialState = "Outside", TriggerSequence = new[] { "Enter" } },
+                ["ExceptionAsyncMachine"] = new MachineTestConfig { MachineName = "ExceptionAsyncMachine", InitialState = "Init", TriggerSequence = new[] { "GuardBoom" } },
             };
 
         public static MachineTestConfig? GetConfig(string machineName) => Machines.TryGetValue(machineName, out var cfg) ? cfg : null;

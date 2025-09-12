@@ -1,23 +1,21 @@
 ﻿using System.Collections.Generic;
-using Abstractions.Attributes;
 using static FastFsm.Tests.Features.Core.StateCallbackTests;
 
-namespace FastFsm.Tests.Machines
+namespace FastFsm.Tests.Machines;
+
+[StateMachine(typeof(MultiState), typeof(MultiTrigger))]
+public partial class MultipleCallbacksMachineLegacy
 {
-    [StateMachine(typeof(MultiState), typeof(MultiTrigger))]
-    public partial class MultipleCallbacksMachineLegacy
-    {
-        public List<string> Log { get; } = [];
+    public List<string> Log { get; } = [];
 
-        // Multiple state attributes for same state
-        [State(MultiState.A, OnEntry = nameof(OnEntry1))]
-        [State(MultiState.A, OnEntry = nameof(OnEntry2))] // This might override
-        private void ConfigureStates() { }
+    // Multiple state attributes for same state
+    [State(MultiState.A, OnEntry = nameof(OnEntry1))]
+    [State(MultiState.A, OnEntry = nameof(OnEntry2))] // This might override
+    private void ConfigureStates() { }
 
-        [Transition(MultiState.A, MultiTrigger.Go, MultiState.B)]
-        private void Configure() { }
+    [Transition(MultiState.A, MultiTrigger.Go, MultiState.B)]
+    private void Configure() { }
 
-        private void OnEntry1() => Log.Add("Entry1");
-        private void OnEntry2() => Log.Add("Entry2");
-    }
+    private void OnEntry1() => Log.Add("Entry1");
+    private void OnEntry2() => Log.Add("Entry2");
 }

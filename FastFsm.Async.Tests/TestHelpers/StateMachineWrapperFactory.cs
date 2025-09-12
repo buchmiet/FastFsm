@@ -62,6 +62,50 @@ namespace FastFsm.Async.Tests.TestHelpers
             // Concurrency/Core
             ["RcMachine"] = CreateRcMachine,
             ["SimpleAsync"] = CreateSimpleAsync,
+
+            // Alias keys mapping base machine names to existing creators
+            ["InitialChildMachine"] = CreateInitialChild,
+            ["ShallowHistoryMachine"] = CreateShallowHistory,
+            ["DeepHistoryMachine"] = CreateDeepHistory,
+            ["InternalMachine"] = CreateInternal,
+            ["PriorityMachine"] = CreatePriority,
+            ["ChildOverridesMachine"] = CreateChildOverrides,
+            ["SourceOrderTieMachine"] = CreateSourceOrderTie,
+            ["InheritanceMachine"] = CreateInheritance,
+
+            ["BasicAsyncPayloadMachine"] = CreateBasicPayload,
+            ["OverloadedAsyncMachine"] = CreateOverloadedPayload,
+            ["ExceptionAsyncPayloadMachine"] = CreateExceptionPayload,
+            ["CanFireAsyncPayloadMachine"] = CreateCanFirePayload,
+            ["ConcurrentAsyncPayloadMachine"] = CreateConcurrentPayload,
+            ["InitialOnEntryAsyncPayloadMachine"] = CreateInitialOnEntryPayload,
+            ["MultiPayloadAsyncMachine"] = CreateMultiPayload,
+
+            ["BasicTokenMachine"] = CreateBasicToken,
+            ["OptionalTokenMachine"] = CreateOptionalToken,
+            ["CancellationMachine"] = CreateCancellation,
+            ["MixedTokenMachine"] = CreateMixedToken,
+
+            ["OnEntryContinueMachine"] = CreateOnEntryContinue,
+            ["ActionPropagateMachine"] = CreateActionPropagate,
+            ["GuardExceptionMachine"] = CreateGuardException,
+            ["CancellationPropagationMachine"] = CreateCancellationPropagation,
+            ["AsyncHandlerMachine"] = CreateAsyncHandler,
+            ["ExceptionContextCaptureMachine"] = CreateExceptionContextCapture,
+
+            ["AsyncHookOrderMachineSuccess"] = CreateExtensionsSuccess,
+            ["AsyncHookOrderMachineFail"] = CreateExtensionsFail,
+            ["SimpleAsyncMachine"] = CreateSimpleAsync,
+            ["RcMachine"] = CreateRcMachine,
+
+            // New base machines
+            ["TinyAsyncHsm"] = CreateTinyAsyncHsm,
+            ["SpecificationComplianceMachine"] = CreateSpecificationCompliance,
+            ["SimpleCancellationMachine"] = CreateSimpleCancellation,
+            ["TokenMachine"] = CreateTokenMachine,
+            ["PayloadMachine"] = CreatePayloadMachine,
+            ["AsyncExtensionsMachine"] = CreateAsyncExtensions,
+            ["ExceptionAsyncMachine"] = CreateExceptionAsync,
         };
 
         public static IStateMachineTestWrapper Create(string machineType, ApiType apiType, string? initialStateName)
@@ -191,6 +235,38 @@ namespace FastFsm.Async.Tests.TestHelpers
             public ValueTask StartAsync(CancellationToken ct = default) => _m.StartAsync(ct);
             public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.TryFireAsync((AsyncInitialChildTests.T)trigger);
             public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.FireAsync((AsyncInitialChildTests.T)trigger);
+        }
+
+        // TinyAsyncHsm (CompileTime)
+        internal sealed class TinyLegacy : IStateMachineTestWrapper
+        {
+            private readonly FastFsm.Async.Tests.Features.Hsm.CompileTime.AsyncNoActionHsmTests.TinyAsyncHsm _m;
+            public TinyLegacy(FastFsm.Async.Tests.Features.Hsm.CompileTime.AsyncNoActionHsmTests.TinyAsyncHsm m) => _m = m;
+            public object CurrentState => _m.CurrentState!;
+            public ApiCapabilities Caps => HsmCaps();
+            public void Start() => _m.StartAsync().AsTask().GetAwaiter().GetResult();
+            public bool TryFire(object trigger, object? payload = null) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Hsm.CompileTime.AsyncNoActionHsmTests.T)trigger).AsTask().GetAwaiter().GetResult();
+            public void Fire(object trigger, object? payload = null) => _m.FireAsync((FastFsm.Async.Tests.Features.Hsm.CompileTime.AsyncNoActionHsmTests.T)trigger).AsTask().GetAwaiter().GetResult();
+            public bool CanFire(object trigger) => _m.CanFireAsync((FastFsm.Async.Tests.Features.Hsm.CompileTime.AsyncNoActionHsmTests.T)trigger).AsTask().GetAwaiter().GetResult();
+            public IReadOnlyList<object> GetPermittedTriggers() => ToObjectList(_m.GetPermittedTriggersAsync().AsTask().GetAwaiter().GetResult());
+            public ValueTask StartAsync(CancellationToken ct = default) => _m.StartAsync(ct);
+            public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Hsm.CompileTime.AsyncNoActionHsmTests.T)trigger);
+            public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.FireAsync((FastFsm.Async.Tests.Features.Hsm.CompileTime.AsyncNoActionHsmTests.T)trigger);
+        }
+        internal sealed class TinyFluent : IStateMachineTestWrapper
+        {
+            private readonly FastFsm.Async.Tests.Features.Hsm.CompileTime.AsyncNoActionHsmTests.TinyAsyncHsmFluentFsm _m;
+            public TinyFluent(FastFsm.Async.Tests.Features.Hsm.CompileTime.AsyncNoActionHsmTests.TinyAsyncHsmFluentFsm m) => _m = m;
+            public object CurrentState => _m.CurrentState!;
+            public ApiCapabilities Caps => HsmCaps();
+            public void Start() => _m.StartAsync().AsTask().GetAwaiter().GetResult();
+            public bool TryFire(object trigger, object? payload = null) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Hsm.CompileTime.AsyncNoActionHsmTests.T)trigger).AsTask().GetAwaiter().GetResult();
+            public void Fire(object trigger, object? payload = null) => _m.FireAsync((FastFsm.Async.Tests.Features.Hsm.CompileTime.AsyncNoActionHsmTests.T)trigger).AsTask().GetAwaiter().GetResult();
+            public bool CanFire(object trigger) => _m.CanFireAsync((FastFsm.Async.Tests.Features.Hsm.CompileTime.AsyncNoActionHsmTests.T)trigger).AsTask().GetAwaiter().GetResult();
+            public IReadOnlyList<object> GetPermittedTriggers() => ToObjectList(_m.GetPermittedTriggersAsync().AsTask().GetAwaiter().GetResult());
+            public ValueTask StartAsync(CancellationToken ct = default) => _m.StartAsync(ct);
+            public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Hsm.CompileTime.AsyncNoActionHsmTests.T)trigger);
+            public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.FireAsync((FastFsm.Async.Tests.Features.Hsm.CompileTime.AsyncNoActionHsmTests.T)trigger);
         }
         internal sealed class InitialChildFluentWrapper : IStateMachineTestWrapper
         {
@@ -662,6 +738,38 @@ namespace FastFsm.Async.Tests.TestHelpers
             public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => ((dynamic)_m).TryFireAsync((FastFsm.Async.Tests.Features.Payload.MultiPayloadTriggers)trigger, (dynamic?)payload);
             public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => ((dynamic)_m).FireAsync((FastFsm.Async.Tests.Features.Payload.MultiPayloadTriggers)trigger, (dynamic?)payload);
         }
+
+        // PayloadMachine (from SimpleTokenTests)
+        internal sealed class PMachineLegacy : IStateMachineTestWrapper
+        {
+            private readonly FastFsm.Async.Tests.Features.Cancellation.PayloadMachine _m;
+            public PMachineLegacy(FastFsm.Async.Tests.Features.Cancellation.PayloadMachine m) => _m = m;
+            public object CurrentState => _m.CurrentState!;
+            public ApiCapabilities Caps => CapsDefault;
+            public void Start() => _m.StartAsync().AsTask().GetAwaiter().GetResult();
+            public bool TryFire(object trigger, object? payload = null) => ((dynamic)_m).TryFireAsync((FastFsm.Async.Tests.Features.Cancellation.PayloadTriggers)trigger, (dynamic?)payload).AsTask().GetAwaiter().GetResult();
+            public void Fire(object trigger, object? payload = null) => ((dynamic)_m).FireAsync((FastFsm.Async.Tests.Features.Cancellation.PayloadTriggers)trigger, (dynamic?)payload).AsTask().GetAwaiter().GetResult();
+            public bool CanFire(object trigger) => _m.CanFireAsync((FastFsm.Async.Tests.Features.Cancellation.PayloadTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public IReadOnlyList<object> GetPermittedTriggers() => ToObjectList(_m.GetPermittedTriggersAsync().AsTask().GetAwaiter().GetResult());
+            public ValueTask StartAsync(CancellationToken ct = default) => _m.StartAsync(ct);
+            public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => ((dynamic)_m).TryFireAsync((FastFsm.Async.Tests.Features.Cancellation.PayloadTriggers)trigger, (dynamic?)payload);
+            public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => ((dynamic)_m).FireAsync((FastFsm.Async.Tests.Features.Cancellation.PayloadTriggers)trigger, (dynamic?)payload);
+        }
+        internal sealed class PMachineFluent : IStateMachineTestWrapper
+        {
+            private readonly FastFsm.Async.Tests.Features.Cancellation.PayloadMachineFluentFsm _m;
+            public PMachineFluent(FastFsm.Async.Tests.Features.Cancellation.PayloadMachineFluentFsm m) => _m = m;
+            public object CurrentState => _m.CurrentState!;
+            public ApiCapabilities Caps => CapsDefault;
+            public void Start() => _m.StartAsync().AsTask().GetAwaiter().GetResult();
+            public bool TryFire(object trigger, object? payload = null) => ((dynamic)_m).TryFireAsync((FastFsm.Async.Tests.Features.Cancellation.PayloadTriggers)trigger, (dynamic?)payload).AsTask().GetAwaiter().GetResult();
+            public void Fire(object trigger, object? payload = null) => ((dynamic)_m).FireAsync((FastFsm.Async.Tests.Features.Cancellation.PayloadTriggers)trigger, (dynamic?)payload).AsTask().GetAwaiter().GetResult();
+            public bool CanFire(object trigger) => _m.CanFireAsync((FastFsm.Async.Tests.Features.Cancellation.PayloadTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public IReadOnlyList<object> GetPermittedTriggers() => ToObjectList(_m.GetPermittedTriggersAsync().AsTask().GetAwaiter().GetResult());
+            public ValueTask StartAsync(CancellationToken ct = default) => _m.StartAsync(ct);
+            public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => ((dynamic)_m).TryFireAsync((FastFsm.Async.Tests.Features.Cancellation.PayloadTriggers)trigger, (dynamic?)payload);
+            public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => ((dynamic)_m).FireAsync((FastFsm.Async.Tests.Features.Cancellation.PayloadTriggers)trigger, (dynamic?)payload);
+        }
     }
 
     internal static class CancellationWrappers
@@ -698,6 +806,102 @@ namespace FastFsm.Async.Tests.TestHelpers
             public ValueTask StartAsync(CancellationToken ct = default) => _m.StartAsync(ct);
             public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Cancellation.TokenTestTrigger)trigger);
             public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.FireAsync((FastFsm.Async.Tests.Features.Cancellation.TokenTestTrigger)trigger);
+        }
+
+        // SpecificationComplianceMachine
+        internal sealed class SpecLegacy : IStateMachineTestWrapper
+        {
+            private readonly FastFsm.Async.Tests.Features.Cancellation.SpecificationComplianceMachine _m;
+            public SpecLegacy(FastFsm.Async.Tests.Features.Cancellation.SpecificationComplianceMachine m) => _m = m;
+            public object CurrentState => _m.CurrentState!;
+            public ApiCapabilities Caps => CancellationWrappers.Caps;
+            public void Start() => _m.StartAsync().AsTask().GetAwaiter().GetResult();
+            public bool TryFire(object trigger, object? payload = null) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Cancellation.SpecTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public void Fire(object trigger, object? payload = null) => _m.FireAsync((FastFsm.Async.Tests.Features.Cancellation.SpecTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public bool CanFire(object trigger) => _m.CanFireAsync((FastFsm.Async.Tests.Features.Cancellation.SpecTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public IReadOnlyList<object> GetPermittedTriggers() => ToObjectList(_m.GetPermittedTriggersAsync().AsTask().GetAwaiter().GetResult());
+            public ValueTask StartAsync(CancellationToken ct = default) => _m.StartAsync(ct);
+            public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Cancellation.SpecTriggers)trigger);
+            public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.FireAsync((FastFsm.Async.Tests.Features.Cancellation.SpecTriggers)trigger);
+        }
+        internal sealed class SpecFluent : IStateMachineTestWrapper
+        {
+            private readonly FastFsm.Async.Tests.Features.Cancellation.SpecificationComplianceMachineFluentFsm _m;
+            public SpecFluent(FastFsm.Async.Tests.Features.Cancellation.SpecificationComplianceMachineFluentFsm m) => _m = m;
+            public object CurrentState => _m.CurrentState!;
+            public ApiCapabilities Caps => CancellationWrappers.Caps;
+            public void Start() => _m.StartAsync().AsTask().GetAwaiter().GetResult();
+            public bool TryFire(object trigger, object? payload = null) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Cancellation.SpecTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public void Fire(object trigger, object? payload = null) => _m.FireAsync((FastFsm.Async.Tests.Features.Cancellation.SpecTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public bool CanFire(object trigger) => _m.CanFireAsync((FastFsm.Async.Tests.Features.Cancellation.SpecTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public IReadOnlyList<object> GetPermittedTriggers() => ToObjectList(_m.GetPermittedTriggersAsync().AsTask().GetAwaiter().GetResult());
+            public ValueTask StartAsync(CancellationToken ct = default) => _m.StartAsync(ct);
+            public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Cancellation.SpecTriggers)trigger);
+            public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.FireAsync((FastFsm.Async.Tests.Features.Cancellation.SpecTriggers)trigger);
+        }
+
+        // SimpleCancellationMachine
+        internal sealed class SimpleCancelLegacy : IStateMachineTestWrapper
+        {
+            private readonly FastFsm.Async.Tests.Features.Cancellation.SimpleCancellationMachine _m;
+            public SimpleCancelLegacy(FastFsm.Async.Tests.Features.Cancellation.SimpleCancellationMachine m) => _m = m;
+            public object CurrentState => _m.CurrentState!;
+            public ApiCapabilities Caps => CancellationWrappers.Caps;
+            public void Start() => _m.StartAsync().AsTask().GetAwaiter().GetResult();
+            public bool TryFire(object trigger, object? payload = null) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Cancellation.SimpleTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public void Fire(object trigger, object? payload = null) => _m.FireAsync((FastFsm.Async.Tests.Features.Cancellation.SimpleTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public bool CanFire(object trigger) => _m.CanFireAsync((FastFsm.Async.Tests.Features.Cancellation.SimpleTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public IReadOnlyList<object> GetPermittedTriggers() => ToObjectList(_m.GetPermittedTriggersAsync().AsTask().GetAwaiter().GetResult());
+            public ValueTask StartAsync(CancellationToken ct = default) => _m.StartAsync(ct);
+            public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Cancellation.SimpleTriggers)trigger);
+            public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.FireAsync((FastFsm.Async.Tests.Features.Cancellation.SimpleTriggers)trigger);
+        }
+        internal sealed class SimpleCancelFluent : IStateMachineTestWrapper
+        {
+            private readonly FastFsm.Async.Tests.Features.Cancellation.SimpleCancellationMachineFluentFsm _m;
+            public SimpleCancelFluent(FastFsm.Async.Tests.Features.Cancellation.SimpleCancellationMachineFluentFsm m) => _m = m;
+            public object CurrentState => _m.CurrentState!;
+            public ApiCapabilities Caps => CancellationWrappers.Caps;
+            public void Start() => _m.StartAsync().AsTask().GetAwaiter().GetResult();
+            public bool TryFire(object trigger, object? payload = null) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Cancellation.SimpleTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public void Fire(object trigger, object? payload = null) => _m.FireAsync((FastFsm.Async.Tests.Features.Cancellation.SimpleTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public bool CanFire(object trigger) => _m.CanFireAsync((FastFsm.Async.Tests.Features.Cancellation.SimpleTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public IReadOnlyList<object> GetPermittedTriggers() => ToObjectList(_m.GetPermittedTriggersAsync().AsTask().GetAwaiter().GetResult());
+            public ValueTask StartAsync(CancellationToken ct = default) => _m.StartAsync(ct);
+            public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Cancellation.SimpleTriggers)trigger);
+            public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.FireAsync((FastFsm.Async.Tests.Features.Cancellation.SimpleTriggers)trigger);
+        }
+
+        // TokenMachine
+        internal sealed class TokenLegacy : IStateMachineTestWrapper
+        {
+            private readonly FastFsm.Async.Tests.Features.Cancellation.TokenMachine _m;
+            public TokenLegacy(FastFsm.Async.Tests.Features.Cancellation.TokenMachine m) => _m = m;
+            public object CurrentState => _m.CurrentState!;
+            public ApiCapabilities Caps => CancellationWrappers.Caps;
+            public void Start() => _m.StartAsync().AsTask().GetAwaiter().GetResult();
+            public bool TryFire(object trigger, object? payload = null) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Cancellation.TokenTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public void Fire(object trigger, object? payload = null) => _m.FireAsync((FastFsm.Async.Tests.Features.Cancellation.TokenTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public bool CanFire(object trigger) => _m.CanFireAsync((FastFsm.Async.Tests.Features.Cancellation.TokenTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public IReadOnlyList<object> GetPermittedTriggers() => ToObjectList(_m.GetPermittedTriggersAsync().AsTask().GetAwaiter().GetResult());
+            public ValueTask StartAsync(CancellationToken ct = default) => _m.StartAsync(ct);
+            public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Cancellation.TokenTriggers)trigger);
+            public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.FireAsync((FastFsm.Async.Tests.Features.Cancellation.TokenTriggers)trigger);
+        }
+        internal sealed class TokenFluent : IStateMachineTestWrapper
+        {
+            private readonly FastFsm.Async.Tests.Features.Cancellation.TokenMachineFluentFsm _m;
+            public TokenFluent(FastFsm.Async.Tests.Features.Cancellation.TokenMachineFluentFsm m) => _m = m;
+            public object CurrentState => _m.CurrentState!;
+            public ApiCapabilities Caps => CancellationWrappers.Caps;
+            public void Start() => _m.StartAsync().AsTask().GetAwaiter().GetResult();
+            public bool TryFire(object trigger, object? payload = null) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Cancellation.TokenTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public void Fire(object trigger, object? payload = null) => _m.FireAsync((FastFsm.Async.Tests.Features.Cancellation.TokenTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public bool CanFire(object trigger) => _m.CanFireAsync((FastFsm.Async.Tests.Features.Cancellation.TokenTriggers)trigger).AsTask().GetAwaiter().GetResult();
+            public IReadOnlyList<object> GetPermittedTriggers() => ToObjectList(_m.GetPermittedTriggersAsync().AsTask().GetAwaiter().GetResult());
+            public ValueTask StartAsync(CancellationToken ct = default) => _m.StartAsync(ct);
+            public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Cancellation.TokenTriggers)trigger);
+            public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.FireAsync((FastFsm.Async.Tests.Features.Cancellation.TokenTriggers)trigger);
         }
 
         internal sealed class OptionalLegacy : IStateMachineTestWrapper
@@ -1056,6 +1260,37 @@ namespace FastFsm.Async.Tests.TestHelpers
             public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Extensions.ATrigger)trigger);
             public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.FireAsync((FastFsm.Async.Tests.Features.Extensions.ATrigger)trigger);
         }
+
+        internal sealed class ExtLegacy : IStateMachineTestWrapper
+        {
+            private readonly FastFsm.Async.Tests.Features.Extensions.AsyncExtensionsMachine _m;
+            public ExtLegacy(FastFsm.Async.Tests.Features.Extensions.AsyncExtensionsMachine m) => _m = m;
+            public object CurrentState => _m.CurrentState!;
+            public ApiCapabilities Caps => ExtensionWrappers.Caps;
+            public void Start() => _m.StartAsync().AsTask().GetAwaiter().GetResult();
+            public bool TryFire(object trigger, object? payload = null) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Extensions.ExtTrigger)trigger).AsTask().GetAwaiter().GetResult();
+            public void Fire(object trigger, object? payload = null) => _m.FireAsync((FastFsm.Async.Tests.Features.Extensions.ExtTrigger)trigger).AsTask().GetAwaiter().GetResult();
+            public bool CanFire(object trigger) => _m.CanFireAsync((FastFsm.Async.Tests.Features.Extensions.ExtTrigger)trigger).AsTask().GetAwaiter().GetResult();
+            public IReadOnlyList<object> GetPermittedTriggers() => ToObjectList(_m.GetPermittedTriggersAsync().AsTask().GetAwaiter().GetResult());
+            public ValueTask StartAsync(CancellationToken ct = default) => _m.StartAsync(ct);
+            public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Extensions.ExtTrigger)trigger);
+            public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.FireAsync((FastFsm.Async.Tests.Features.Extensions.ExtTrigger)trigger);
+        }
+        internal sealed class ExtFluent : IStateMachineTestWrapper
+        {
+            private readonly FastFsm.Async.Tests.Features.Extensions.AsyncExtensionsMachineFluentFsm _m;
+            public ExtFluent(FastFsm.Async.Tests.Features.Extensions.AsyncExtensionsMachineFluentFsm m) => _m = m;
+            public object CurrentState => _m.CurrentState!;
+            public ApiCapabilities Caps => ExtensionWrappers.Caps;
+            public void Start() => _m.StartAsync().AsTask().GetAwaiter().GetResult();
+            public bool TryFire(object trigger, object? payload = null) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Extensions.ExtTrigger)trigger).AsTask().GetAwaiter().GetResult();
+            public void Fire(object trigger, object? payload = null) => _m.FireAsync((FastFsm.Async.Tests.Features.Extensions.ExtTrigger)trigger).AsTask().GetAwaiter().GetResult();
+            public bool CanFire(object trigger) => _m.CanFireAsync((FastFsm.Async.Tests.Features.Extensions.ExtTrigger)trigger).AsTask().GetAwaiter().GetResult();
+            public IReadOnlyList<object> GetPermittedTriggers() => ToObjectList(_m.GetPermittedTriggersAsync().AsTask().GetAwaiter().GetResult());
+            public ValueTask StartAsync(CancellationToken ct = default) => _m.StartAsync(ct);
+            public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Extensions.ExtTrigger)trigger);
+            public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.FireAsync((FastFsm.Async.Tests.Features.Extensions.ExtTrigger)trigger);
+        }
     }
 
     internal static class ConcurrencyCoreWrappers
@@ -1291,6 +1526,122 @@ namespace FastFsm.Async.Tests.TestHelpers
                 _ => throw new ArgumentOutOfRangeException()
             };
         }
+
+        private static IStateMachineTestWrapper CreateTinyAsyncHsm(ApiType api, string? initial)
+        {
+            var sName = InitialStateResolver.Resolve("TinyAsyncHsm", typeof(FastFsm.Async.Tests.Features.Hsm.CompileTime.AsyncNoActionHsmTests.S), initial);
+            var s = (FastFsm.Async.Tests.Features.Hsm.CompileTime.AsyncNoActionHsmTests.S)Enum.Parse(typeof(FastFsm.Async.Tests.Features.Hsm.CompileTime.AsyncNoActionHsmTests.S), sName);
+            return api switch
+            {
+                ApiType.Legacy => new HsmWrappers.TinyLegacy(new FastFsm.Async.Tests.Features.Hsm.CompileTime.AsyncNoActionHsmTests.TinyAsyncHsm(s)),
+                ApiType.Fluent => new HsmWrappers.TinyFluent(new FastFsm.Async.Tests.Features.Hsm.CompileTime.AsyncNoActionHsmTests.TinyAsyncHsmFluentFsm(s)),
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+
+        private static IStateMachineTestWrapper CreateSpecificationCompliance(ApiType api, string? initial)
+        {
+            var sName = InitialStateResolver.Resolve("SpecificationComplianceMachine", typeof(FastFsm.Async.Tests.Features.Cancellation.SpecStates), initial);
+            var s = (FastFsm.Async.Tests.Features.Cancellation.SpecStates)Enum.Parse(typeof(FastFsm.Async.Tests.Features.Cancellation.SpecStates), sName);
+            return api switch
+            {
+                ApiType.Legacy => new CancellationWrappers.SpecLegacy(new FastFsm.Async.Tests.Features.Cancellation.SpecificationComplianceMachine(s)),
+                ApiType.Fluent => new CancellationWrappers.SpecFluent(new FastFsm.Async.Tests.Features.Cancellation.SpecificationComplianceMachineFluentFsm(s)),
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+
+        private static IStateMachineTestWrapper CreateSimpleCancellation(ApiType api, string? initial)
+        {
+            var sName = InitialStateResolver.Resolve("SimpleCancellationMachine", typeof(FastFsm.Async.Tests.Features.Cancellation.SimpleStates), initial);
+            var s = (FastFsm.Async.Tests.Features.Cancellation.SimpleStates)Enum.Parse(typeof(FastFsm.Async.Tests.Features.Cancellation.SimpleStates), sName);
+            return api switch
+            {
+                ApiType.Legacy => new CancellationWrappers.SimpleCancelLegacy(new FastFsm.Async.Tests.Features.Cancellation.SimpleCancellationMachine(s)),
+                ApiType.Fluent => new CancellationWrappers.SimpleCancelFluent(new FastFsm.Async.Tests.Features.Cancellation.SimpleCancellationMachineFluentFsm(s)),
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+
+        private static IStateMachineTestWrapper CreateTokenMachine(ApiType api, string? initial)
+        {
+            var sName = InitialStateResolver.Resolve("TokenMachine", typeof(FastFsm.Async.Tests.Features.Cancellation.TokenStates), initial);
+            var s = (FastFsm.Async.Tests.Features.Cancellation.TokenStates)Enum.Parse(typeof(FastFsm.Async.Tests.Features.Cancellation.TokenStates), sName);
+            return api switch
+            {
+                ApiType.Legacy => new CancellationWrappers.TokenLegacy(new FastFsm.Async.Tests.Features.Cancellation.TokenMachine(s)),
+                ApiType.Fluent => new CancellationWrappers.TokenFluent(new FastFsm.Async.Tests.Features.Cancellation.TokenMachineFluentFsm(s)),
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+
+        private static IStateMachineTestWrapper CreatePayloadMachine(ApiType api, string? initial)
+        {
+            var sName = InitialStateResolver.Resolve("PayloadMachine", typeof(FastFsm.Async.Tests.Features.Cancellation.PayloadStates), initial);
+            var s = (FastFsm.Async.Tests.Features.Cancellation.PayloadStates)Enum.Parse(typeof(FastFsm.Async.Tests.Features.Cancellation.PayloadStates), sName);
+            return api switch
+            {
+                ApiType.Legacy => new PayloadWrappers.PMachineLegacy(new FastFsm.Async.Tests.Features.Cancellation.PayloadMachine(s)),
+                ApiType.Fluent => new PayloadWrappers.PMachineFluent(new FastFsm.Async.Tests.Features.Cancellation.PayloadMachineFluentFsm(s)),
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+
+        private static IStateMachineTestWrapper CreateAsyncExtensions(ApiType api, string? initial)
+        {
+            var sName = InitialStateResolver.Resolve("AsyncExtensionsMachine", typeof(FastFsm.Async.Tests.Features.Extensions.ExtState), initial);
+            var s = (FastFsm.Async.Tests.Features.Extensions.ExtState)Enum.Parse(typeof(FastFsm.Async.Tests.Features.Extensions.ExtState), sName);
+            return api switch
+            {
+                ApiType.Legacy => new ExtensionWrappers.ExtLegacy(new FastFsm.Async.Tests.Features.Extensions.AsyncExtensionsMachine(s, new FastFsm.Contracts.IStateMachineExtension[]{})),
+                ApiType.Fluent => new ExtensionWrappers.ExtFluent(new FastFsm.Async.Tests.Features.Extensions.AsyncExtensionsMachineFluentFsm(s, new FastFsm.Contracts.IStateMachineExtension[]{})),
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+
+        private static IStateMachineTestWrapper CreateExceptionAsync(ApiType api, string? initial)
+        {
+            var sName = InitialStateResolver.Resolve("ExceptionAsyncMachine", typeof(FastFsm.Async.Tests.Features.Exceptions.ExStates), initial);
+            var s = (FastFsm.Async.Tests.Features.Exceptions.ExStates)Enum.Parse(typeof(FastFsm.Async.Tests.Features.Exceptions.ExStates), sName);
+            return api switch
+            {
+                ApiType.Legacy => new ExceptionAsyncLegacy(new FastFsm.Async.Tests.Features.Exceptions.ExceptionAsyncMachine(s)),
+                ApiType.Fluent => new ExceptionAsyncFluent(new FastFsm.Async.Tests.Features.Exceptions.ExceptionAsyncMachineFluentFsm(s)),
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+    }
+
+    // Dedicated wrappers for ExceptionAsyncMachine
+    internal sealed class ExceptionAsyncLegacy : IStateMachineTestWrapper
+    {
+        private readonly FastFsm.Async.Tests.Features.Exceptions.ExceptionAsyncMachine _m;
+        public ExceptionAsyncLegacy(FastFsm.Async.Tests.Features.Exceptions.ExceptionAsyncMachine m) => _m = m;
+        public object CurrentState => _m.CurrentState!;
+        public ApiCapabilities Caps => ApiCapabilities.HasAsync;
+        public void Start() => _m.StartAsync().AsTask().GetAwaiter().GetResult();
+        public bool TryFire(object trigger, object? payload = null) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Exceptions.ExTriggers)trigger).AsTask().GetAwaiter().GetResult();
+        public void Fire(object trigger, object? payload = null) => _m.FireAsync((FastFsm.Async.Tests.Features.Exceptions.ExTriggers)trigger).AsTask().GetAwaiter().GetResult();
+        public bool CanFire(object trigger) => _m.CanFireAsync((FastFsm.Async.Tests.Features.Exceptions.ExTriggers)trigger).AsTask().GetAwaiter().GetResult();
+        public IReadOnlyList<object> GetPermittedTriggers() => _m.GetPermittedTriggersAsync().AsTask().GetAwaiter().GetResult().Cast<object>().ToList();
+        public ValueTask StartAsync(CancellationToken ct = default) => _m.StartAsync(ct);
+        public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Exceptions.ExTriggers)trigger);
+        public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.FireAsync((FastFsm.Async.Tests.Features.Exceptions.ExTriggers)trigger);
+    }
+    internal sealed class ExceptionAsyncFluent : IStateMachineTestWrapper
+    {
+        private readonly FastFsm.Async.Tests.Features.Exceptions.ExceptionAsyncMachineFluentFsm _m;
+        public ExceptionAsyncFluent(FastFsm.Async.Tests.Features.Exceptions.ExceptionAsyncMachineFluentFsm m) => _m = m;
+        public object CurrentState => _m.CurrentState!;
+        public ApiCapabilities Caps => ApiCapabilities.HasAsync;
+        public void Start() => _m.StartAsync().AsTask().GetAwaiter().GetResult();
+        public bool TryFire(object trigger, object? payload = null) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Exceptions.ExTriggers)trigger).AsTask().GetAwaiter().GetResult();
+        public void Fire(object trigger, object? payload = null) => _m.FireAsync((FastFsm.Async.Tests.Features.Exceptions.ExTriggers)trigger).AsTask().GetAwaiter().GetResult();
+        public bool CanFire(object trigger) => _m.CanFireAsync((FastFsm.Async.Tests.Features.Exceptions.ExTriggers)trigger).AsTask().GetAwaiter().GetResult();
+        public IReadOnlyList<object> GetPermittedTriggers() => _m.GetPermittedTriggersAsync().AsTask().GetAwaiter().GetResult().Cast<object>().ToList();
+        public ValueTask StartAsync(CancellationToken ct = default) => _m.StartAsync(ct);
+        public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.TryFireAsync((FastFsm.Async.Tests.Features.Exceptions.ExTriggers)trigger);
+        public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => _m.FireAsync((FastFsm.Async.Tests.Features.Exceptions.ExTriggers)trigger);
     }
 
     // Payload factory methods
