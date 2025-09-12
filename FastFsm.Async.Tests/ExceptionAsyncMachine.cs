@@ -5,8 +5,7 @@ using System.Threading.Tasks;
 using Abstractions.Attributes;
 using Abstractions.Fluent;
 
-namespace FastFsmTests.Tests
-{
+namespace FastFsm.Async.Tests.Features.Exceptions;
     public enum ExStates { Init, Middle, Next }
     public enum ExTriggers { GuardBoom, ActionBoom, EntryBoom, ExitBoom }
 
@@ -135,4 +134,3 @@ namespace FastFsmTests.Tests
             throw new InvalidOperationException("on exit failed");
         }
     }
-}

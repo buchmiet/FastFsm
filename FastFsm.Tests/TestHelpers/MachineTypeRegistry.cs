@@ -232,33 +232,40 @@ namespace FastFsm.Tests.TestHelpers
                 
                 // Note: HSM machines would be added here when ready
                 
-                // ====== HSM MACHINES ======
+                // ====== HSM MACHINES (LOCAL ENUMS) ======
                 ["SimpleParentChild"] = new EnumTypePair(
-                    typeof(FastFsm.Tests.Features.Hsm.Runtime.HsmStateFluent),
-                    typeof(FastFsm.Tests.Features.Hsm.CompileTime.HsmState),
-                    typeof(FastFsm.Tests.Features.Hsm.Runtime.HsmTriggerFluent),
-                    typeof(FastFsm.Tests.Features.Hsm.CompileTime.HsmTrigger)
+                    typeof(FastFsm.Tests.Features.Hsm.Runtime.SimpleParentChildMachineFluent.S),
+                    typeof(FastFsm.Tests.Features.Hsm.Runtime.SimpleParentChildMachineFluent.S),  // SAME!
+                    typeof(FastFsm.Tests.Features.Hsm.Runtime.SimpleParentChildMachineFluent.T),
+                    typeof(FastFsm.Tests.Features.Hsm.Runtime.SimpleParentChildMachineFluent.T) // SAME!
                 ),
 
                 ["DeepHistory"] = new EnumTypePair(
                     typeof(FastFsm.Tests.Features.Hsm.Runtime.DeepHistoryTestsFluent.S),
-                    typeof(FastFsm.Tests.Features.Hsm.Runtime.DeepHistoryTestsLegacy.S),
+                    typeof(FastFsm.Tests.Features.Hsm.Runtime.DeepHistoryTestsFluent.S),  // SAME!
                     typeof(FastFsm.Tests.Features.Hsm.Runtime.DeepHistoryTestsFluent.T),
-                    typeof(FastFsm.Tests.Features.Hsm.Runtime.DeepHistoryTestsLegacy.T)
+                    typeof(FastFsm.Tests.Features.Hsm.Runtime.DeepHistoryTestsFluent.T) // SAME!
                 ),
 
                 ["ShallowHistory"] = new EnumTypePair(
                     typeof(FastFsm.Tests.Features.Hsm.Runtime.ShallowHistoryTestsFluent.S),
-                    typeof(FastFsm.Tests.Features.Hsm.Runtime.ShallowHistoryTestsLegacy.S),
+                    typeof(FastFsm.Tests.Features.Hsm.Runtime.ShallowHistoryTestsFluent.S),  // SAME!
                     typeof(FastFsm.Tests.Features.Hsm.Runtime.ShallowHistoryTestsFluent.T),
-                    typeof(FastFsm.Tests.Features.Hsm.Runtime.ShallowHistoryTestsLegacy.T)
+                    typeof(FastFsm.Tests.Features.Hsm.Runtime.ShallowHistoryTestsFluent.T) // SAME!
                 ),
 
                 ["InitialChild"] = new EnumTypePair(
                     typeof(FastFsm.Tests.Features.Hsm.Runtime.InitialChildTestsFluent.S),
-                    typeof(FastFsm.Tests.Features.Hsm.Runtime.InitialChildTestsLegacy.S),
+                    typeof(FastFsm.Tests.Features.Hsm.Runtime.InitialChildTestsFluent.S),  // SAME!
                     typeof(FastFsm.Tests.Features.Hsm.Runtime.InitialChildTestsFluent.T),
-                    typeof(FastFsm.Tests.Features.Hsm.Runtime.InitialChildTestsLegacy.T)
+                    typeof(FastFsm.Tests.Features.Hsm.Runtime.InitialChildTestsFluent.T) // SAME!
+                ),
+                
+                ["InternalTransitionHsm"] = new EnumTypePair(
+                    typeof(FastFsm.Tests.Features.Hsm.Runtime.InternalTransitionTestsFluent.S),
+                    typeof(FastFsm.Tests.Features.Hsm.Runtime.InternalTransitionTestsFluent.S),  // SAME!
+                    typeof(FastFsm.Tests.Features.Hsm.Runtime.InternalTransitionTestsFluent.T),
+                    typeof(FastFsm.Tests.Features.Hsm.Runtime.InternalTransitionTestsFluent.T) // SAME!
                 ),
             };
             

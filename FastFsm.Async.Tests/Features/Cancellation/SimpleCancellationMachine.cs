@@ -4,8 +4,7 @@ using System.Threading.Tasks;
 using Abstractions.Attributes;
 using Abstractions.Fluent;
 
-namespace  FastFsm.Async.Tests.Features.Cancellation
-{
+namespace FastFsm.Async.Tests.Features.Cancellation;
     // Simple machine to test cancellation token propagation
     [StateMachine(typeof(SimpleStates), typeof(SimpleTriggers))]
     public partial class SimpleCancellationMachine
@@ -83,4 +82,3 @@ namespace  FastFsm.Async.Tests.Features.Cancellation
         Start,
         Finish
     }
-}

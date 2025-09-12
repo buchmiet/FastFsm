@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 using FastFsm.Exceptions;
 using Xunit;
 
-namespace  FastFsm.Async.Tests.Features.Core;
+namespace FastFsm.Async.Tests.Features.Core;
 
 // Test definitions
 public enum AsyncStates

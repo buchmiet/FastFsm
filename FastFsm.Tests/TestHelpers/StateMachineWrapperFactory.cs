@@ -85,6 +85,7 @@ namespace FastFsm.Tests.TestHelpers
             ["DeepHistory"] = CreateDeepHistoryWrapper,
             ["ShallowHistory"] = CreateShallowHistoryWrapper,
             ["InitialChild"] = CreateInitialChildWrapper,
+            ["InternalTransitionHsm"] = CreateInternalTransitionHsmWrapper,
             // Add more machine types as needed
         };
         
@@ -201,8 +202,8 @@ namespace FastFsm.Tests.TestHelpers
         {
             return apiType switch
             {
-                ApiType.Fluent => new DeepHistoryTestMachineFluentWrapper(initialStateName),
-                ApiType.Legacy => new DeepHistoryTestMachineLegacyWrapper(initialStateName),
+                ApiType.Fluent => new DeepHistoryMachineFluentWrapper(initialStateName),
+                ApiType.Legacy => new DeepHistoryMachineLegacyWrapper(initialStateName),
                 _ => throw new ArgumentException($"Unknown API type: {apiType}")
             };
         }
@@ -214,8 +215,8 @@ namespace FastFsm.Tests.TestHelpers
         {
             return apiType switch
             {
-                ApiType.Fluent => new ShallowHistoryTestMachineFluentWrapper(initialStateName),
-                ApiType.Legacy => new ShallowHistoryTestMachineLegacyWrapper(initialStateName),
+                ApiType.Fluent => new ShallowHistoryMachineFluentWrapper(initialStateName),
+                ApiType.Legacy => new ShallowHistoryMachineLegacyWrapper(initialStateName),
                 _ => throw new ArgumentException($"Unknown API type: {apiType}")
             };
         }
@@ -227,8 +228,21 @@ namespace FastFsm.Tests.TestHelpers
         {
             return apiType switch
             {
-                ApiType.Fluent => new InitialChildTestMachineFluentWrapper(initialStateName),
-                ApiType.Legacy => new InitialChildTestMachineLegacyWrapper(initialStateName),
+                ApiType.Fluent => new InitialChildMachineFluentWrapper(initialStateName),
+                ApiType.Legacy => new InitialChildMachineLegacyWrapper(initialStateName),
+                _ => throw new ArgumentException($"Unknown API type: {apiType}")
+            };
+        }
+        
+        /// <summary>
+        /// Creates an InternalTransitionHsm machine wrapper
+        /// </summary>
+        private static IStateMachineTestWrapper CreateInternalTransitionHsmWrapper(ApiType apiType, string initialStateName)
+        {
+            return apiType switch
+            {
+                ApiType.Fluent => new InternalTransitionHsmMachineFluentWrapper(initialStateName),
+                ApiType.Legacy => new InternalTransitionHsmMachineLegacyWrapper(initialStateName),
                 _ => throw new ArgumentException($"Unknown API type: {apiType}")
             };
         }

@@ -4,8 +4,7 @@ using System.Threading.Tasks;
 using Abstractions.Attributes;
 using Abstractions.Fluent;
 
-namespace  FastFsm.Async.Tests.Features.Concurrency
-{
+namespace FastFsm.Async.Tests.Features.Concurrency;
     public enum RcStates { Initial, A, B }
     public enum RcTriggers { ToA, ToB }
 
@@ -81,10 +80,7 @@ namespace  FastFsm.Async.Tests.Features.Concurrency
             await Task.Yield();
         }
     }
-}
-
-namespace FastFsm.Async.Tests.Features.Concurrency
-{
+ 
     // Fluent API equivalent
     [StateMachine(typeof(RcStates), typeof(RcTriggers))]
     public partial class RcMachineFluentFsm
@@ -158,4 +154,3 @@ namespace FastFsm.Async.Tests.Features.Concurrency
             await Task.Yield();
         }
     }
-}

@@ -4,8 +4,7 @@ using System.Threading.Tasks;
 using Shouldly;
 using Xunit;
 
-namespace  FastFsm.Async.Tests.Features.Concurrency
-{
+namespace FastFsm.Async.Tests.Features.Concurrency;
     public class RcRaceConditionControlledTests
     {
         [Fact]
@@ -42,4 +41,3 @@ namespace  FastFsm.Async.Tests.Features.Concurrency
             m.CurrentState.ShouldBeOneOf(RcStates.A, RcStates.B);
         }
     }
-}

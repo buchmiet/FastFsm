@@ -6,8 +6,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+using Dsl;
 
-namespace  FastFsm.Async.Tests.Features.Cancellation;
+namespace FastFsm.Async.Tests.Features.Cancellation;
 
 public enum TokenTestState { Initial, Processing, Completed, Cancelled }
 public enum TokenTestTrigger { Start, Process, Complete, Cancel }
@@ -331,6 +332,158 @@ public partial class MixedTokenMachine
     [Transition(TokenTestState.Processing, TokenTestTrigger.Complete, TokenTestState.Completed)]
     private void CompleteTransition() { }
 }
+#endregion
+
+#region Fluent API Versions
+
+[StateMachine(typeof(TokenTestState), typeof(TokenTestTrigger))]
+public partial class BasicTokenMachineFluentFsm
+{
+    public List<string> ExecutionLog { get; } = new();
+    public List<string> TokenStates { get; } = new();
+
+    private static void Configure() => FSM
+        .State(TokenTestState.Initial)
+            .On(TokenTestTrigger.Start)
+                .Guard(nameof(CanStart))
+                .Action(nameof(StartProcessing))
+                .GoTo(TokenTestState.Processing)
+        .State(TokenTestState.Processing)
+            .OnEntryAsync(nameof(OnProcessingEntry))
+            .OnExitAsync(nameof(OnProcessingExit))
+        .State(TokenTestState.Completed)
+        .State(TokenTestState.Cancelled);
+
+    private async ValueTask<bool> CanStart()
+    {
+        ExecutionLog.Add("CanStart()");
+        await Task.Delay(10);
+        return true;
+    }
+    private async ValueTask<bool> CanStart(System.Threading.CancellationToken cancellationToken)
+    {
+        ExecutionLog.Add("CanStart(CancellationToken)");
+        TokenStates.Add($"Guard:CanRequest={cancellationToken.CanBeCanceled}");
+        await Task.Delay(10, cancellationToken);
+        return true;
+    }
+    private async Task StartProcessing()
+    {
+        ExecutionLog.Add("StartProcessing()");
+        await Task.Delay(10);
+    }
+    private async Task StartProcessing(System.Threading.CancellationToken cancellationToken)
+    {
+        ExecutionLog.Add("StartProcessing(CancellationToken)");
+        TokenStates.Add($"Action:CanRequest={cancellationToken.CanBeCanceled}");
+        await Task.Delay(10, cancellationToken);
+    }
+    private async Task OnProcessingEntry()
+    {
+        ExecutionLog.Add("OnProcessingEntry()");
+        await Task.Delay(10);
+    }
+    private async Task OnProcessingEntry(System.Threading.CancellationToken cancellationToken)
+    {
+        ExecutionLog.Add("OnProcessingEntry(CancellationToken)");
+        TokenStates.Add($"OnEntry:CanRequest={cancellationToken.CanBeCanceled}");
+        await Task.Delay(10, cancellationToken);
+    }
+    private async ValueTask OnProcessingExit()
+    {
+        ExecutionLog.Add("OnProcessingExit()");
+        await Task.Delay(10);
+    }
+    private async ValueTask OnProcessingExit(System.Threading.CancellationToken cancellationToken)
+    {
+        ExecutionLog.Add("OnProcessingExit(CancellationToken)");
+        TokenStates.Add($"OnExit:CanRequest={cancellationToken.CanBeCanceled}");
+        await Task.Delay(10, cancellationToken);
+    }
+}
+
+[StateMachine(typeof(TokenTestState), typeof(TokenTestTrigger))]
+public partial class OptionalTokenMachineFluentFsm
+{
+    public List<string> ExecutionLog { get; } = new();
+
+    private static void Configure() => FSM
+        .State(TokenTestState.Initial)
+            .On(TokenTestTrigger.Start)
+                .Guard(nameof(CanStart))
+                .Action(nameof(StartProcessing))
+                .GoTo(TokenTestState.Processing)
+        .State(TokenTestState.Processing)
+            .OnEntryAsync(nameof(OnProcessingEntry));
+
+    private async ValueTask<bool> CanStart() { ExecutionLog.Add("CanStart()"); await Task.Delay(5); return true; }
+    private async ValueTask<bool> CanStart(System.Threading.CancellationToken cancellationToken) { ExecutionLog.Add("CanStart(CancellationToken)"); await Task.Delay(5, cancellationToken); return true; }
+    private async Task StartProcessing() { ExecutionLog.Add("StartProcessing()"); await Task.Delay(5); }
+    private async Task StartProcessing(System.Threading.CancellationToken cancellationToken) { ExecutionLog.Add("StartProcessing(CancellationToken)"); await Task.Delay(5, cancellationToken); }
+    private async Task OnProcessingEntry() { ExecutionLog.Add("OnEntry()"); await Task.Delay(5); }
+    private async Task OnProcessingEntry(System.Threading.CancellationToken cancellationToken) { ExecutionLog.Add("OnEntry(CancellationToken)"); await Task.Delay(5, cancellationToken); }
+}
+
+[StateMachine(typeof(TokenTestState), typeof(TokenTestTrigger))]
+public partial class CancellationMachineFluentFsm
+{
+    public List<string> ExecutionLog { get; } = new();
+    public int DelayMs { get; set; } = 100;
+
+    private static void Configure() => FSM
+        .State(TokenTestState.Initial)
+            .On(TokenTestTrigger.Start)
+                .Guard(nameof(CanStartAsync))
+                .Action(nameof(StartAsync))
+                .GoTo(TokenTestState.Processing)
+        .State(TokenTestState.Processing)
+            .OnEntryAsync(nameof(OnProcessingEntryAsync))
+            .OnExitAsync(nameof(OnProcessingExitAsync))
+            .On(TokenTestTrigger.Process)
+                .Action(nameof(ProcessAsync))
+                .GoTo(TokenTestState.Processing)
+            .On(TokenTestTrigger.Cancel)
+                .GoTo(TokenTestState.Cancelled)
+        .State(TokenTestState.Cancelled);
+
+    private async ValueTask<bool> CanStartAsync() { ExecutionLog.Add("Guard:Begin-NoToken"); await Task.Delay(DelayMs); ExecutionLog.Add("Guard:End-NoToken"); return true; }
+    private async ValueTask<bool> CanStartAsync(System.Threading.CancellationToken cancellationToken) { ExecutionLog.Add("Guard:Begin"); await Task.Delay(DelayMs, cancellationToken); ExecutionLog.Add("Guard:End"); return true; }
+    private async Task StartAsync() { ExecutionLog.Add("Action:Begin-NoToken"); await Task.Delay(DelayMs); ExecutionLog.Add("Action:End-NoToken"); }
+    private async Task StartAsync(System.Threading.CancellationToken cancellationToken) { ExecutionLog.Add("Action:Begin"); await Task.Delay(DelayMs, cancellationToken); ExecutionLog.Add("Action:End"); }
+    private async Task ProcessAsync() { ExecutionLog.Add("Process:Begin-NoToken"); await Task.Delay(DelayMs); ExecutionLog.Add("Process:End-NoToken"); }
+    private async Task ProcessAsync(System.Threading.CancellationToken cancellationToken) { ExecutionLog.Add("Process:Begin"); await Task.Delay(DelayMs, cancellationToken); ExecutionLog.Add("Process:End"); }
+    private async Task OnProcessingEntryAsync() { ExecutionLog.Add("OnEntry:Begin-NoToken"); await Task.Delay(DelayMs); ExecutionLog.Add("OnEntry:End-NoToken"); }
+    private async Task OnProcessingEntryAsync(System.Threading.CancellationToken cancellationToken) { ExecutionLog.Add("OnEntry:Begin"); await Task.Delay(DelayMs, cancellationToken); ExecutionLog.Add("OnEntry:End"); }
+    private async ValueTask OnProcessingExitAsync() { ExecutionLog.Add("OnExit:Begin-NoToken"); await Task.Delay(DelayMs); ExecutionLog.Add("OnExit:End-NoToken"); }
+    private async ValueTask OnProcessingExitAsync(System.Threading.CancellationToken cancellationToken) { ExecutionLog.Add("OnExit:Begin"); await Task.Delay(DelayMs, cancellationToken); ExecutionLog.Add("OnExit:End"); }
+}
+
+[StateMachine(typeof(TokenTestState), typeof(TokenTestTrigger))]
+public partial class MixedTokenMachineFluentFsm
+{
+    public List<string> ExecutionLog { get; } = new();
+
+    private static void Configure() => FSM
+        .State(TokenTestState.Initial)
+            .On(TokenTestTrigger.Start)
+                .Guard(nameof(SyncGuard))
+                .Action(nameof(AsyncAction))
+                .GoTo(TokenTestState.Processing)
+        .State(TokenTestState.Processing)
+            .OnEntryAsync(nameof(SyncOnEntry))
+            .OnExitAsync(nameof(AsyncOnExit))
+            .On(TokenTestTrigger.Complete)
+                .GoTo(TokenTestState.Completed)
+        .State(TokenTestState.Completed);
+
+    private ValueTask<bool> SyncGuard() { ExecutionLog.Add("SyncGuard()"); return ValueTask.FromResult(true); }
+    private async Task AsyncAction() { ExecutionLog.Add("AsyncAction()"); await Task.Delay(10); }
+    private async Task AsyncAction(System.Threading.CancellationToken cancellationToken) { ExecutionLog.Add($"AsyncAction(Token:{cancellationToken.CanBeCanceled})"); await Task.Delay(10, cancellationToken); }
+    private Task SyncOnEntry() { ExecutionLog.Add("SyncOnEntry()"); return Task.CompletedTask; }
+    private async ValueTask AsyncOnExit() { ExecutionLog.Add("AsyncOnExit()"); await Task.Delay(10); }
+    private async ValueTask AsyncOnExit(System.Threading.CancellationToken cancellationToken) { ExecutionLog.Add($"AsyncOnExit(Token:{cancellationToken.CanBeCanceled})"); await Task.Delay(10, cancellationToken); }
+}
+
 #endregion
 public class CancellationTokenCoreTests
 {

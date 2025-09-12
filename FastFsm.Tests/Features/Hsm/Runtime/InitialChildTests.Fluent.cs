@@ -23,6 +23,7 @@ namespace FastFsm.Tests.Features.Hsm.Runtime
             Assert.Equal(S.Outside, m.CurrentState);
         }
 
+        // Local enums for this test - same for both Fluent and Legacy
         public enum S { Outside, Parent, Parent_A, Parent_B }
         public enum T { EnterParent, Switch, LeaveParent }
 

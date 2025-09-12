@@ -8,9 +8,8 @@ using FastFsm.Contracts;
 
 namespace FastFsm.Tests.TestHelpers
 {
-    /// <summary>
-    /// Wrapper for SimpleParentChildMachineFluent
-    /// </summary>
+    // ====== SimpleParentChild Wrappers ======
+    
     public class SimpleParentChildMachineFluentWrapper : IStateMachineTestWrapper
     {
         private readonly SimpleParentChildMachineFluent _machine;
@@ -18,28 +17,26 @@ namespace FastFsm.Tests.TestHelpers
         public SimpleParentChildMachineFluentWrapper(string initialStateName)
         {
             var state = string.IsNullOrEmpty(initialStateName) ? 
-                HsmStateFluent.Idle : 
-                (HsmStateFluent)Enum.Parse(typeof(HsmStateFluent), initialStateName);
+                SimpleParentChildMachineFluent.S.Idle : 
+                (SimpleParentChildMachineFluent.S)Enum.Parse(typeof(SimpleParentChildMachineFluent.S), initialStateName);
             _machine = new SimpleParentChildMachineFluent(state);
         }
         
         public object CurrentState => _machine.CurrentState;
-        
         public ApiCapabilities Caps => ApiCapabilities.IsHierarchical;
-        
         public List<string> EntryExitLog => _machine.EntryExitLog;
         
         public void Start() => _machine.Start();
         
         public bool TryFire(object trigger, object? payload = null)
         {
-            var typedTrigger = (HsmTriggerFluent)Enum.Parse(typeof(HsmTriggerFluent), trigger.ToString()!);
+            var typedTrigger = (SimpleParentChildMachineFluent.T)Enum.Parse(typeof(SimpleParentChildMachineFluent.T), trigger.ToString()!);
             return payload == null ? _machine.TryFire(typedTrigger) : _machine.TryFire(typedTrigger, payload);
         }
         
         public void Fire(object trigger, object? payload = null)
         {
-            var typedTrigger = (HsmTriggerFluent)Enum.Parse(typeof(HsmTriggerFluent), trigger.ToString()!);
+            var typedTrigger = (SimpleParentChildMachineFluent.T)Enum.Parse(typeof(SimpleParentChildMachineFluent.T), trigger.ToString()!);
             if (payload == null)
                 _machine.Fire(typedTrigger);
             else
@@ -48,14 +45,12 @@ namespace FastFsm.Tests.TestHelpers
         
         public bool CanFire(object trigger)
         {
-            var typedTrigger = (HsmTriggerFluent)Enum.Parse(typeof(HsmTriggerFluent), trigger.ToString()!);
+            var typedTrigger = (SimpleParentChildMachineFluent.T)Enum.Parse(typeof(SimpleParentChildMachineFluent.T), trigger.ToString()!);
             return _machine.CanFire(typedTrigger);
         }
         
-        public IReadOnlyList<object> GetPermittedTriggers()
-        {
-            return _machine.GetPermittedTriggers().Cast<object>().ToList();
-        }
+        public IReadOnlyList<object> GetPermittedTriggers() => 
+            _machine.GetPermittedTriggers().Cast<object>().ToList();
         
         public ValueTask StartAsync(CancellationToken ct = default)
         {
@@ -75,51 +70,41 @@ namespace FastFsm.Tests.TestHelpers
             return ValueTask.CompletedTask;
         }
         
-        // HSM-specific methods
+        // HSM-specific
         public bool IsInHierarchy(object state)
         {
-            var typedState = (HsmStateFluent)Enum.Parse(typeof(HsmStateFluent), state.ToString()!);
-            return _machine.IsIn(typedState);
-        }
-        
-        public IReadOnlyList<object> GetActivePath()
-        {
-            return _machine.GetActivePath().Cast<object>().ToList();
+            var typedState = (SimpleParentChildMachineFluent.S)Enum.Parse(typeof(SimpleParentChildMachineFluent.S), state.ToString()!);
+            return _machine.IsInHierarchy(typedState);
         }
     }
     
-    /// <summary>
-    /// Wrapper for SimpleParentChildMachineLegacy
-    /// </summary>
     public class SimpleParentChildMachineLegacyWrapper : IStateMachineTestWrapper
     {
-        private readonly Features.Hsm.CompileTime.HsmParsingCompilationTestsLegacy.SimpleParentChildMachineLegacy _machine;
+        private readonly SimpleParentChildMachineLegacy _machine;
         
-        public SimpleParentChildMachineLegacyWrapper(string? initialStateName)
+        public SimpleParentChildMachineLegacyWrapper(string initialStateName)
         {
-            var resolvedName = InitialStateResolver.ResolveOrDefault<Features.Hsm.CompileTime.HsmState>(
-                "SimpleParentChild", initialStateName);
-            var state = (Features.Hsm.CompileTime.HsmState)Enum.Parse(typeof(Features.Hsm.CompileTime.HsmState), resolvedName);
-            _machine = new Features.Hsm.CompileTime.HsmParsingCompilationTestsLegacy.SimpleParentChildMachineLegacy(state);
+            var state = string.IsNullOrEmpty(initialStateName) ? 
+                SimpleParentChildMachineFluent.S.Idle : 
+                (SimpleParentChildMachineFluent.S)Enum.Parse(typeof(SimpleParentChildMachineFluent.S), initialStateName);
+            _machine = new SimpleParentChildMachineLegacy(state);
         }
         
         public object CurrentState => _machine.CurrentState;
-        
         public ApiCapabilities Caps => ApiCapabilities.IsHierarchical;
-        
-        public List<string> EntryExitLog => new List<string>(); // Placeholder for compatibility
+        public List<string> EntryExitLog => _machine.EntryExitLog;
         
         public void Start() => _machine.Start();
         
         public bool TryFire(object trigger, object? payload = null)
         {
-            var typedTrigger = (Features.Hsm.CompileTime.HsmTrigger)Enum.Parse(typeof(Features.Hsm.CompileTime.HsmTrigger), trigger.ToString()!);
+            var typedTrigger = (SimpleParentChildMachineFluent.T)Enum.Parse(typeof(SimpleParentChildMachineFluent.T), trigger.ToString()!);
             return payload == null ? _machine.TryFire(typedTrigger) : _machine.TryFire(typedTrigger, payload);
         }
         
         public void Fire(object trigger, object? payload = null)
         {
-            var typedTrigger = (Features.Hsm.CompileTime.HsmTrigger)Enum.Parse(typeof(Features.Hsm.CompileTime.HsmTrigger), trigger.ToString()!);
+            var typedTrigger = (SimpleParentChildMachineFluent.T)Enum.Parse(typeof(SimpleParentChildMachineFluent.T), trigger.ToString()!);
             if (payload == null)
                 _machine.Fire(typedTrigger);
             else
@@ -128,14 +113,12 @@ namespace FastFsm.Tests.TestHelpers
         
         public bool CanFire(object trigger)
         {
-            var typedTrigger = (Features.Hsm.CompileTime.HsmTrigger)Enum.Parse(typeof(Features.Hsm.CompileTime.HsmTrigger), trigger.ToString()!);
+            var typedTrigger = (SimpleParentChildMachineFluent.T)Enum.Parse(typeof(SimpleParentChildMachineFluent.T), trigger.ToString()!);
             return _machine.CanFire(typedTrigger);
         }
         
-        public IReadOnlyList<object> GetPermittedTriggers()
-        {
-            return _machine.GetPermittedTriggers().Cast<object>().ToList();
-        }
+        public IReadOnlyList<object> GetPermittedTriggers() => 
+            _machine.GetPermittedTriggers().Cast<object>().ToList();
         
         public ValueTask StartAsync(CancellationToken ct = default)
         {
@@ -155,67 +138,69 @@ namespace FastFsm.Tests.TestHelpers
             return ValueTask.CompletedTask;
         }
         
-        // HSM-specific methods
+        // HSM-specific
         public bool IsInHierarchy(object state)
         {
-            var typedState = (Features.Hsm.CompileTime.HsmState)Enum.Parse(typeof(Features.Hsm.CompileTime.HsmState), state.ToString()!);
-            return _machine.IsIn(typedState);
-        }
-        
-        public IReadOnlyList<object> GetActivePath()
-        {
-            return _machine.GetActivePath().Cast<object>().ToList();
+            var typedState = (SimpleParentChildMachineFluent.S)Enum.Parse(typeof(SimpleParentChildMachineFluent.S), state.ToString()!);
+            return _machine.IsInHierarchy(typedState);
         }
     }
     
-    /// <summary>
-    /// Wrapper for DeepHistoryTestMachineFluent
-    /// </summary>
-    public class DeepHistoryTestMachineFluentWrapper : IStateMachineTestWrapper
+    // ====== DeepHistory Wrappers ======
+    
+    public class DeepHistoryMachineFluentWrapper : IStateMachineTestWrapper
     {
-        private readonly Features.Hsm.Runtime.DeepHistoryTestsFluent.DeepHistoryMachineFluent _machine;
+        private readonly DeepHistoryTestsFluent.DeepHistoryMachineFluent _machine;
         
-        public DeepHistoryTestMachineFluentWrapper(string? initialStateName)
+        public DeepHistoryMachineFluentWrapper(string initialStateName)
         {
-            var resolvedName = InitialStateResolver.ResolveOrDefault<Features.Hsm.Runtime.DeepHistoryTestsFluent.S>(
-                "DeepHistory", initialStateName);
-            var state = (Features.Hsm.Runtime.DeepHistoryTestsFluent.S)Enum.Parse(typeof(Features.Hsm.Runtime.DeepHistoryTestsFluent.S), resolvedName);
-            _machine = new Features.Hsm.Runtime.DeepHistoryTestsFluent.DeepHistoryMachineFluent(state);
+            var state = string.IsNullOrEmpty(initialStateName) ? 
+                DeepHistoryTestsFluent.S.Out : 
+                (DeepHistoryTestsFluent.S)Enum.Parse(typeof(DeepHistoryTestsFluent.S), initialStateName);
+            _machine = new DeepHistoryTestsFluent.DeepHistoryMachineFluent(state);
         }
         
         public object CurrentState => _machine.CurrentState;
         public ApiCapabilities Caps => ApiCapabilities.IsHierarchical;
         
         public void Start() => _machine.Start();
+        
         public bool TryFire(object trigger, object? payload = null)
         {
-            var typedTrigger = (Features.Hsm.Runtime.DeepHistoryTestsFluent.T)Enum.Parse(typeof(Features.Hsm.Runtime.DeepHistoryTestsFluent.T), trigger.ToString()!);
+            var typedTrigger = (DeepHistoryTestsFluent.T)Enum.Parse(typeof(DeepHistoryTestsFluent.T), trigger.ToString()!);
             return payload == null ? _machine.TryFire(typedTrigger) : _machine.TryFire(typedTrigger, payload);
         }
+        
         public void Fire(object trigger, object? payload = null)
         {
-            var typedTrigger = (Features.Hsm.Runtime.DeepHistoryTestsFluent.T)Enum.Parse(typeof(Features.Hsm.Runtime.DeepHistoryTestsFluent.T), trigger.ToString()!);
+            var typedTrigger = (DeepHistoryTestsFluent.T)Enum.Parse(typeof(DeepHistoryTestsFluent.T), trigger.ToString()!);
             if (payload == null)
                 _machine.Fire(typedTrigger);
             else
                 _machine.Fire(typedTrigger, payload);
         }
+        
         public bool CanFire(object trigger)
         {
-            var typedTrigger = (Features.Hsm.Runtime.DeepHistoryTestsFluent.T)Enum.Parse(typeof(Features.Hsm.Runtime.DeepHistoryTestsFluent.T), trigger.ToString()!);
+            var typedTrigger = (DeepHistoryTestsFluent.T)Enum.Parse(typeof(DeepHistoryTestsFluent.T), trigger.ToString()!);
             return _machine.CanFire(typedTrigger);
         }
-        public IReadOnlyList<object> GetPermittedTriggers() => _machine.GetPermittedTriggers().Cast<object>().ToList();
+        
+        public IReadOnlyList<object> GetPermittedTriggers() => 
+            _machine.GetPermittedTriggers().Cast<object>().ToList();
+        
         public ValueTask StartAsync(CancellationToken ct = default)
         {
             _machine.Start();
             return ValueTask.CompletedTask;
         }
+        
         public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default)
         {
             var result = TryFire(trigger, payload);
             return ValueTask.FromResult(result);
         }
+        
         public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default)
         {
             Fire(trigger, payload);
@@ -223,18 +208,77 @@ namespace FastFsm.Tests.TestHelpers
         }
     }
     
-    /// <summary>
-    /// Wrapper for ShallowHistoryTestMachineFluent
-    /// </summary>
-    public class ShallowHistoryTestMachineFluentWrapper : IStateMachineTestWrapper
+    public class DeepHistoryMachineLegacyWrapper : IStateMachineTestWrapper
+    {
+        private readonly DeepHistoryTestsLegacy.DeepHistoryMachineLegacy _machine;
+        
+        public DeepHistoryMachineLegacyWrapper(string initialStateName)
+        {
+            var state = string.IsNullOrEmpty(initialStateName) ? 
+                DeepHistoryTestsFluent.S.Out : 
+                (DeepHistoryTestsFluent.S)Enum.Parse(typeof(DeepHistoryTestsFluent.S), initialStateName);
+            _machine = new DeepHistoryTestsLegacy.DeepHistoryMachineLegacy(state);
+        }
+        
+        public object CurrentState => _machine.CurrentState;
+        public ApiCapabilities Caps => ApiCapabilities.IsHierarchical;
+        
+        public void Start() => _machine.Start();
+        
+        public bool TryFire(object trigger, object? payload = null)
+        {
+            var typedTrigger = (DeepHistoryTestsFluent.T)Enum.Parse(typeof(DeepHistoryTestsFluent.T), trigger.ToString()!);
+            return payload == null ? _machine.TryFire(typedTrigger) : _machine.TryFire(typedTrigger, payload);
+        }
+        
+        public void Fire(object trigger, object? payload = null)
+        {
+            var typedTrigger = (DeepHistoryTestsFluent.T)Enum.Parse(typeof(DeepHistoryTestsFluent.T), trigger.ToString()!);
+            if (payload == null)
+                _machine.Fire(typedTrigger);
+            else
+                _machine.Fire(typedTrigger, payload);
+        }
+        
+        public bool CanFire(object trigger)
+        {
+            var typedTrigger = (DeepHistoryTestsFluent.T)Enum.Parse(typeof(DeepHistoryTestsFluent.T), trigger.ToString()!);
+            return _machine.CanFire(typedTrigger);
+        }
+        
+        public IReadOnlyList<object> GetPermittedTriggers() => 
+            _machine.GetPermittedTriggers().Cast<object>().ToList();
+        
+        public ValueTask StartAsync(CancellationToken ct = default)
+        {
+            _machine.Start();
+            return ValueTask.CompletedTask;
+        }
+        
+        public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default)
+        {
+            var result = TryFire(trigger, payload);
+            return ValueTask.FromResult(result);
+        }
+        
+        public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default)
+        {
+            Fire(trigger, payload);
+            return ValueTask.CompletedTask;
+        }
+    }
+    
+    // ====== ShallowHistory Wrappers ======
+    
+    public class ShallowHistoryMachineFluentWrapper : IStateMachineTestWrapper
     {
         private readonly ShallowHistoryTestsFluent.ShallowHistoryMachineFluent _machine;
         
-        public ShallowHistoryTestMachineFluentWrapper(string? initialStateName)
+        public ShallowHistoryMachineFluentWrapper(string initialStateName)
         {
-            var resolvedName = InitialStateResolver.ResolveOrDefault<ShallowHistoryTestsFluent.S>(
-                "ShallowHistory", initialStateName);
-            var state = (ShallowHistoryTestsFluent.S)Enum.Parse(typeof(ShallowHistoryTestsFluent.S), resolvedName);
+            var state = string.IsNullOrEmpty(initialStateName) ? 
+                ShallowHistoryTestsFluent.S.Outside : 
+                (ShallowHistoryTestsFluent.S)Enum.Parse(typeof(ShallowHistoryTestsFluent.S), initialStateName);
             _machine = new ShallowHistoryTestsFluent.ShallowHistoryMachineFluent(state);
         }
         
@@ -242,11 +286,13 @@ namespace FastFsm.Tests.TestHelpers
         public ApiCapabilities Caps => ApiCapabilities.IsHierarchical;
         
         public void Start() => _machine.Start();
+        
         public bool TryFire(object trigger, object? payload = null)
         {
             var typedTrigger = (ShallowHistoryTestsFluent.T)Enum.Parse(typeof(ShallowHistoryTestsFluent.T), trigger.ToString()!);
             return payload == null ? _machine.TryFire(typedTrigger) : _machine.TryFire(typedTrigger, payload);
         }
+        
         public void Fire(object trigger, object? payload = null)
         {
             var typedTrigger = (ShallowHistoryTestsFluent.T)Enum.Parse(typeof(ShallowHistoryTestsFluent.T), trigger.ToString()!);
@@ -255,22 +301,28 @@ namespace FastFsm.Tests.TestHelpers
             else
                 _machine.Fire(typedTrigger, payload);
         }
+        
         public bool CanFire(object trigger)
         {
             var typedTrigger = (ShallowHistoryTestsFluent.T)Enum.Parse(typeof(ShallowHistoryTestsFluent.T), trigger.ToString()!);
             return _machine.CanFire(typedTrigger);
         }
-        public IReadOnlyList<object> GetPermittedTriggers() => _machine.GetPermittedTriggers().Cast<object>().ToList();
+        
+        public IReadOnlyList<object> GetPermittedTriggers() => 
+            _machine.GetPermittedTriggers().Cast<object>().ToList();
+        
         public ValueTask StartAsync(CancellationToken ct = default)
         {
             _machine.Start();
             return ValueTask.CompletedTask;
         }
+        
         public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default)
         {
             var result = TryFire(trigger, payload);
             return ValueTask.FromResult(result);
         }
+        
         public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default)
         {
             Fire(trigger, payload);
@@ -278,18 +330,77 @@ namespace FastFsm.Tests.TestHelpers
         }
     }
     
-    /// <summary>
-    /// Wrapper for InitialChildTestMachineFluent
-    /// </summary>
-    public class InitialChildTestMachineFluentWrapper : IStateMachineTestWrapper
+    public class ShallowHistoryMachineLegacyWrapper : IStateMachineTestWrapper
+    {
+        private readonly ShallowHistoryTestsLegacy.ShallowHistoryMachineLegacy _machine;
+        
+        public ShallowHistoryMachineLegacyWrapper(string initialStateName)
+        {
+            var state = string.IsNullOrEmpty(initialStateName) ? 
+                ShallowHistoryTestsFluent.S.Outside : 
+                (ShallowHistoryTestsFluent.S)Enum.Parse(typeof(ShallowHistoryTestsFluent.S), initialStateName);
+            _machine = new ShallowHistoryTestsLegacy.ShallowHistoryMachineLegacy(state);
+        }
+        
+        public object CurrentState => _machine.CurrentState;
+        public ApiCapabilities Caps => ApiCapabilities.IsHierarchical;
+        
+        public void Start() => _machine.Start();
+        
+        public bool TryFire(object trigger, object? payload = null)
+        {
+            var typedTrigger = (ShallowHistoryTestsFluent.T)Enum.Parse(typeof(ShallowHistoryTestsFluent.T), trigger.ToString()!);
+            return payload == null ? _machine.TryFire(typedTrigger) : _machine.TryFire(typedTrigger, payload);
+        }
+        
+        public void Fire(object trigger, object? payload = null)
+        {
+            var typedTrigger = (ShallowHistoryTestsFluent.T)Enum.Parse(typeof(ShallowHistoryTestsFluent.T), trigger.ToString()!);
+            if (payload == null)
+                _machine.Fire(typedTrigger);
+            else
+                _machine.Fire(typedTrigger, payload);
+        }
+        
+        public bool CanFire(object trigger)
+        {
+            var typedTrigger = (ShallowHistoryTestsFluent.T)Enum.Parse(typeof(ShallowHistoryTestsFluent.T), trigger.ToString()!);
+            return _machine.CanFire(typedTrigger);
+        }
+        
+        public IReadOnlyList<object> GetPermittedTriggers() => 
+            _machine.GetPermittedTriggers().Cast<object>().ToList();
+        
+        public ValueTask StartAsync(CancellationToken ct = default)
+        {
+            _machine.Start();
+            return ValueTask.CompletedTask;
+        }
+        
+        public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default)
+        {
+            var result = TryFire(trigger, payload);
+            return ValueTask.FromResult(result);
+        }
+        
+        public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default)
+        {
+            Fire(trigger, payload);
+            return ValueTask.CompletedTask;
+        }
+    }
+    
+    // ====== InitialChild Wrappers ======
+    
+    public class InitialChildMachineFluentWrapper : IStateMachineTestWrapper
     {
         private readonly InitialChildTestsFluent.InitialChildMachineFluent _machine;
         
-        public InitialChildTestMachineFluentWrapper(string? initialStateName)
+        public InitialChildMachineFluentWrapper(string initialStateName)
         {
-            var resolvedName = InitialStateResolver.ResolveOrDefault<InitialChildTestsFluent.S>(
-                "InitialChild", initialStateName);
-            var state = (InitialChildTestsFluent.S)Enum.Parse(typeof(InitialChildTestsFluent.S), resolvedName);
+            var state = string.IsNullOrEmpty(initialStateName) ? 
+                InitialChildTestsFluent.S.Outside : 
+                (InitialChildTestsFluent.S)Enum.Parse(typeof(InitialChildTestsFluent.S), initialStateName);
             _machine = new InitialChildTestsFluent.InitialChildMachineFluent(state);
         }
         
@@ -297,11 +408,13 @@ namespace FastFsm.Tests.TestHelpers
         public ApiCapabilities Caps => ApiCapabilities.IsHierarchical;
         
         public void Start() => _machine.Start();
+        
         public bool TryFire(object trigger, object? payload = null)
         {
             var typedTrigger = (InitialChildTestsFluent.T)Enum.Parse(typeof(InitialChildTestsFluent.T), trigger.ToString()!);
             return payload == null ? _machine.TryFire(typedTrigger) : _machine.TryFire(typedTrigger, payload);
         }
+        
         public void Fire(object trigger, object? payload = null)
         {
             var typedTrigger = (InitialChildTestsFluent.T)Enum.Parse(typeof(InitialChildTestsFluent.T), trigger.ToString()!);
@@ -310,22 +423,212 @@ namespace FastFsm.Tests.TestHelpers
             else
                 _machine.Fire(typedTrigger, payload);
         }
+        
         public bool CanFire(object trigger)
         {
             var typedTrigger = (InitialChildTestsFluent.T)Enum.Parse(typeof(InitialChildTestsFluent.T), trigger.ToString()!);
             return _machine.CanFire(typedTrigger);
         }
-        public IReadOnlyList<object> GetPermittedTriggers() => _machine.GetPermittedTriggers().Cast<object>().ToList();
+        
+        public IReadOnlyList<object> GetPermittedTriggers() => 
+            _machine.GetPermittedTriggers().Cast<object>().ToList();
+        
         public ValueTask StartAsync(CancellationToken ct = default)
         {
             _machine.Start();
             return ValueTask.CompletedTask;
         }
+        
         public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default)
         {
             var result = TryFire(trigger, payload);
             return ValueTask.FromResult(result);
         }
+        
+        public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default)
+        {
+            Fire(trigger, payload);
+            return ValueTask.CompletedTask;
+        }
+    }
+    
+    public class InitialChildMachineLegacyWrapper : IStateMachineTestWrapper
+    {
+        private readonly InitialChildTestsLegacy.InitialChildMachineLegacy _machine;
+        
+        public InitialChildMachineLegacyWrapper(string initialStateName)
+        {
+            var state = string.IsNullOrEmpty(initialStateName) ? 
+                InitialChildTestsFluent.S.Outside : 
+                (InitialChildTestsFluent.S)Enum.Parse(typeof(InitialChildTestsFluent.S), initialStateName);
+            _machine = new InitialChildTestsLegacy.InitialChildMachineLegacy(state);
+        }
+        
+        public object CurrentState => _machine.CurrentState;
+        public ApiCapabilities Caps => ApiCapabilities.IsHierarchical;
+        
+        public void Start() => _machine.Start();
+        
+        public bool TryFire(object trigger, object? payload = null)
+        {
+            var typedTrigger = (InitialChildTestsFluent.T)Enum.Parse(typeof(InitialChildTestsFluent.T), trigger.ToString()!);
+            return payload == null ? _machine.TryFire(typedTrigger) : _machine.TryFire(typedTrigger, payload);
+        }
+        
+        public void Fire(object trigger, object? payload = null)
+        {
+            var typedTrigger = (InitialChildTestsFluent.T)Enum.Parse(typeof(InitialChildTestsFluent.T), trigger.ToString()!);
+            if (payload == null)
+                _machine.Fire(typedTrigger);
+            else
+                _machine.Fire(typedTrigger, payload);
+        }
+        
+        public bool CanFire(object trigger)
+        {
+            var typedTrigger = (InitialChildTestsFluent.T)Enum.Parse(typeof(InitialChildTestsFluent.T), trigger.ToString()!);
+            return _machine.CanFire(typedTrigger);
+        }
+        
+        public IReadOnlyList<object> GetPermittedTriggers() => 
+            _machine.GetPermittedTriggers().Cast<object>().ToList();
+        
+        public ValueTask StartAsync(CancellationToken ct = default)
+        {
+            _machine.Start();
+            return ValueTask.CompletedTask;
+        }
+        
+        public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default)
+        {
+            var result = TryFire(trigger, payload);
+            return ValueTask.FromResult(result);
+        }
+        
+        public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default)
+        {
+            Fire(trigger, payload);
+            return ValueTask.CompletedTask;
+        }
+    }
+    
+    // ====== InternalTransition Wrappers ======
+    
+    public class InternalTransitionHsmMachineFluentWrapper : IStateMachineTestWrapper
+    {
+        private readonly InternalTransitionTestsFluent.InternalMachineFluent _machine;
+        
+        public InternalTransitionHsmMachineFluentWrapper(string initialStateName)
+        {
+            var state = string.IsNullOrEmpty(initialStateName) ? 
+                InternalTransitionTestsFluent.S.Parent : 
+                (InternalTransitionTestsFluent.S)Enum.Parse(typeof(InternalTransitionTestsFluent.S), initialStateName);
+            _machine = new InternalTransitionTestsFluent.InternalMachineFluent(state);
+        }
+        
+        public object CurrentState => _machine.CurrentState;
+        public ApiCapabilities Caps => ApiCapabilities.IsHierarchical | ApiCapabilities.HasInternalTransitions;
+        public List<string> Log => _machine.Log;
+        
+        public void Start() => _machine.Start();
+        
+        public bool TryFire(object trigger, object? payload = null)
+        {
+            var typedTrigger = (InternalTransitionTestsFluent.T)Enum.Parse(typeof(InternalTransitionTestsFluent.T), trigger.ToString()!);
+            return payload == null ? _machine.TryFire(typedTrigger) : _machine.TryFire(typedTrigger, payload);
+        }
+        
+        public void Fire(object trigger, object? payload = null)
+        {
+            var typedTrigger = (InternalTransitionTestsFluent.T)Enum.Parse(typeof(InternalTransitionTestsFluent.T), trigger.ToString()!);
+            if (payload == null)
+                _machine.Fire(typedTrigger);
+            else
+                _machine.Fire(typedTrigger, payload);
+        }
+        
+        public bool CanFire(object trigger)
+        {
+            var typedTrigger = (InternalTransitionTestsFluent.T)Enum.Parse(typeof(InternalTransitionTestsFluent.T), trigger.ToString()!);
+            return _machine.CanFire(typedTrigger);
+        }
+        
+        public IReadOnlyList<object> GetPermittedTriggers() => 
+            _machine.GetPermittedTriggers().Cast<object>().ToList();
+        
+        public ValueTask StartAsync(CancellationToken ct = default)
+        {
+            _machine.Start();
+            return ValueTask.CompletedTask;
+        }
+        
+        public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default)
+        {
+            var result = TryFire(trigger, payload);
+            return ValueTask.FromResult(result);
+        }
+        
+        public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default)
+        {
+            Fire(trigger, payload);
+            return ValueTask.CompletedTask;
+        }
+    }
+    
+    public class InternalTransitionHsmMachineLegacyWrapper : IStateMachineTestWrapper
+    {
+        private readonly InternalTransitionTestsLegacy.InternalMachineLegacy _machine;
+        
+        public InternalTransitionHsmMachineLegacyWrapper(string initialStateName)
+        {
+            var state = string.IsNullOrEmpty(initialStateName) ? 
+                InternalTransitionTestsFluent.S.Parent : 
+                (InternalTransitionTestsFluent.S)Enum.Parse(typeof(InternalTransitionTestsFluent.S), initialStateName);
+            _machine = new InternalTransitionTestsLegacy.InternalMachineLegacy(state);
+        }
+        
+        public object CurrentState => _machine.CurrentState;
+        public ApiCapabilities Caps => ApiCapabilities.IsHierarchical | ApiCapabilities.HasInternalTransitions;
+        public List<string> Log => _machine.Log;
+        
+        public void Start() => _machine.Start();
+        
+        public bool TryFire(object trigger, object? payload = null)
+        {
+            var typedTrigger = (InternalTransitionTestsFluent.T)Enum.Parse(typeof(InternalTransitionTestsFluent.T), trigger.ToString()!);
+            return payload == null ? _machine.TryFire(typedTrigger) : _machine.TryFire(typedTrigger, payload);
+        }
+        
+        public void Fire(object trigger, object? payload = null)
+        {
+            var typedTrigger = (InternalTransitionTestsFluent.T)Enum.Parse(typeof(InternalTransitionTestsFluent.T), trigger.ToString()!);
+            if (payload == null)
+                _machine.Fire(typedTrigger);
+            else
+                _machine.Fire(typedTrigger, payload);
+        }
+        
+        public bool CanFire(object trigger)
+        {
+            var typedTrigger = (InternalTransitionTestsFluent.T)Enum.Parse(typeof(InternalTransitionTestsFluent.T), trigger.ToString()!);
+            return _machine.CanFire(typedTrigger);
+        }
+        
+        public IReadOnlyList<object> GetPermittedTriggers() => 
+            _machine.GetPermittedTriggers().Cast<object>().ToList();
+        
+        public ValueTask StartAsync(CancellationToken ct = default)
+        {
+            _machine.Start();
+            return ValueTask.CompletedTask;
+        }
+        
+        public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default)
+        {
+            var result = TryFire(trigger, payload);
+            return ValueTask.FromResult(result);
+        }
+        
         public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default)
         {
             Fire(trigger, payload);

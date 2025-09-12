@@ -6,8 +6,7 @@ using System.Threading.Tasks;
 using Xunit;
 using  FastFsm.Async.Tests.Features.Cancellation;
 
-namespace  FastFsm.Async.Tests.Features.Lifecycle
-{
+namespace FastFsm.Async.Tests.Features.Lifecycle;
     public class AsyncLifecycleTests
     {
         [Fact]
@@ -30,4 +29,3 @@ namespace  FastFsm.Async.Tests.Features.Lifecycle
             Assert.Equal(TokenTestState.Processing, machine.CurrentState);
         }
     }
-}
