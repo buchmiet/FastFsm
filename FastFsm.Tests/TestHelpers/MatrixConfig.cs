@@ -86,15 +86,12 @@ namespace FastFsm.Tests.TestHelpers
                 TriggerSequence = new[] { "Go" }
             },
 
-            // HSM machines - only include if both Fluent and Legacy exist
-            // For now, excluding HSM from matrix until Legacy wrappers are implemented
-            // Uncomment these when HSM Legacy wrappers are ready:
-            /*
+            // HSM machines - now with both Fluent and Legacy implementations
             ["SimpleParentChild"] = new MachineTestConfig
             {
                 MachineName = "SimpleParentChild",
                 InitialState = "Idle",
-                TriggerSequence = new[] { "Start", "Next", "Stop" }
+                TriggerSequence = new[] { "Start", "Process", "Complete" }
             },
 
             ["DeepHistory"] = new MachineTestConfig
@@ -117,7 +114,13 @@ namespace FastFsm.Tests.TestHelpers
                 InitialState = "Outside",
                 TriggerSequence = new[] { "EnterParent", "Switch", "LeaveParent" }
             },
-            */
+            
+            ["InternalTransitionHsm"] = new MachineTestConfig
+            {
+                MachineName = "InternalTransitionHsm",
+                InitialState = "Parent",
+                TriggerSequence = new[] { "Refresh" }
+            },
         };
 
         /// <summary>
@@ -158,9 +161,10 @@ namespace FastFsm.Tests.TestHelpers
             
             // HSM machines
             new MatrixEntry("SimpleParentChild", null, ApiCapabilities.IsHierarchical), // Use fallback
-            new MatrixEntry("DeepHistory", null, ApiCapabilities.IsHierarchical), // Use fallback - no history capability flag exists
-            new MatrixEntry("ShallowHistory", null, ApiCapabilities.IsHierarchical), // Use fallback - no history capability flag exists
+            new MatrixEntry("DeepHistory", null, ApiCapabilities.IsHierarchical), // Has deep history
+            new MatrixEntry("ShallowHistory", null, ApiCapabilities.IsHierarchical), // Has shallow history
             new MatrixEntry("InitialChild", null, ApiCapabilities.IsHierarchical), // Use fallback
+            new MatrixEntry("InternalTransitionHsm", null, ApiCapabilities.IsHierarchical | ApiCapabilities.HasInternalTransitions), // Has internal transitions
         };
     }
 }

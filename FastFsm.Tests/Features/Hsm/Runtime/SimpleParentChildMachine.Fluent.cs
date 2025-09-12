@@ -5,50 +5,53 @@ using Dsl;
 namespace FastFsm.Tests.Features.Hsm.Runtime
 {
     // Fluent API version of SimpleParentChildMachine
-    [StateMachine(typeof(HsmStateFluent), typeof(HsmTriggerFluent), EnableHierarchy = true)]
+    [StateMachine(typeof(SimpleParentChildMachineFluent.S), typeof(SimpleParentChildMachineFluent.T), EnableHierarchy = true)]
     public partial class SimpleParentChildMachineFluent
     {
+        public enum S { Idle, Working, Working_Initializing, Working_Processing, Working_Validating, Completed, Error }
+        public enum T { Start, Process, Validate, Complete, Abort }
+        
         public static void Configure()
         {
             // Simple states  
-            FSM.State(HsmStateFluent.Idle);
+            FSM.State(S.Idle);
             
             // Parent state with children
-            FSM.State(HsmStateFluent.Working)
-               .Initial(HsmStateFluent.Working_Initializing)
+            FSM.State(S.Working)
+               .Initial(S.Working_Initializing)
                .OnEntry(nameof(OnWorkingEntry))
                .OnExit(nameof(OnWorkingExit));
             
             // Child states with proper hierarchy
-            FSM.State(HsmStateFluent.Working_Initializing)
-               .ChildOf(HsmStateFluent.Working)
+            FSM.State(S.Working_Initializing)
+               .ChildOf(S.Working)
                .OnEntry(nameof(OnInitializingEntry))
                .OnExit(nameof(OnInitializingExit));
                
-            FSM.State(HsmStateFluent.Working_Processing)
-               .ChildOf(HsmStateFluent.Working)
+            FSM.State(S.Working_Processing)
+               .ChildOf(S.Working)
                .OnEntry(nameof(OnProcessingEntry));
                
-            FSM.State(HsmStateFluent.Working_Validating)
-               .ChildOf(HsmStateFluent.Working);
+            FSM.State(S.Working_Validating)
+               .ChildOf(S.Working);
 
             // Other states
-            FSM.State(HsmStateFluent.Completed);
-            FSM.State(HsmStateFluent.Error);
+            FSM.State(S.Completed);
+            FSM.State(S.Error);
 
             // Transitions
-            FSM.State(HsmStateFluent.Idle)
-               .On(HsmTriggerFluent.Start).GoTo(HsmStateFluent.Working);
+            FSM.State(S.Idle)
+               .On(T.Start).GoTo(S.Working);
                
-            FSM.State(HsmStateFluent.Working_Initializing)
-               .On(HsmTriggerFluent.Process).GoTo(HsmStateFluent.Working_Processing);
+            FSM.State(S.Working_Initializing)
+               .On(T.Process).GoTo(S.Working_Processing);
                
-            FSM.State(HsmStateFluent.Working_Processing)
-               .On(HsmTriggerFluent.Validate).GoTo(HsmStateFluent.Working_Validating);
+            FSM.State(S.Working_Processing)
+               .On(T.Validate).GoTo(S.Working_Validating);
                
-            FSM.State(HsmStateFluent.Working)
-               .On(HsmTriggerFluent.Complete).GoTo(HsmStateFluent.Completed)
-               .On(HsmTriggerFluent.Abort).GoTo(HsmStateFluent.Error);
+            FSM.State(S.Working)
+               .On(T.Complete).GoTo(S.Completed)
+               .On(T.Abort).GoTo(S.Error);
         }
         
         // Entry/Exit callbacks
@@ -62,27 +65,4 @@ namespace FastFsm.Tests.Features.Hsm.Runtime
         public List<string> EntryExitLog { get; } = new List<string>();
     }
 
-    // Enums for Fluent version
-    public enum HsmStateFluent
-    {
-        // Root states
-        Idle,
-        Working,
-        Completed,
-        Error,
-
-        // Working substates
-        Working_Initializing,
-        Working_Processing,
-        Working_Validating,
-    }
-
-    public enum HsmTriggerFluent
-    {
-        Start,
-        Process,
-        Validate,
-        Complete,
-        Abort
-    }
 }

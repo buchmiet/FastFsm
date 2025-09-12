@@ -2,11 +2,10 @@
 using Shouldly;
 using System;
 using System.Threading.Tasks;
-using FastFsmTests.Tests;
+// using FastFsmTests.Tests; // unified to local namespace, no longer needed
 using Xunit;
 
-namespace  FastFsm.Async.Tests.Features.Exceptions
-{
+namespace FastFsm.Async.Tests.Features.Exceptions;
     public class AsyncExceptionHandlingTests
     {
         [Fact]
@@ -94,4 +93,3 @@ namespace  FastFsm.Async.Tests.Features.Exceptions
             list.ShouldNotContain(ExTriggers.GuardBoom); // guard rzuca, więc trigger nie powinien być dozwolony
         }
     }
-}

@@ -6,8 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using FastFsm.Exceptions;
 using Xunit;
+using Dsl;
 
-namespace  FastFsm.Async.Tests.Features.Exceptions;
+namespace FastFsm.Async.Tests.Features.Exceptions;
 
 #region Test Enums and Custom Exception
 
@@ -328,6 +329,131 @@ public partial class ExceptionContextCaptureMachine
     {
         return _handler(ctx);
     }
+}
+
+#endregion
+
+#region Fluent API Versions
+
+[StateMachine(typeof(ExceptionTestStates), typeof(ExceptionTestTriggers))]
+[OnException(nameof(HandleException))]
+public partial class OnEntryContinueMachineFluentFsm
+{
+    public bool OnEntryExecuted { get; private set; }
+    public bool ActionExecuted { get; private set; }
+
+    private static void Configure() => FSM
+        .State(ExceptionTestStates.Running)
+            .OnEntryAsync(nameof(OnEnterRunning))
+        .State(ExceptionTestStates.Idle)
+            .On(ExceptionTestTriggers.Start)
+                .Action(nameof(DoStart))
+                .GoTo(ExceptionTestStates.Running);
+
+    private async Task OnEnterRunning()
+    {
+        OnEntryExecuted = true;
+        await Task.Yield();
+        throw new TransientDeviceException();
+    }
+    private async Task DoStart() { ActionExecuted = true; await Task.Yield(); }
+    private ExceptionDirective HandleException(ExceptionContext<ExceptionTestStates, ExceptionTestTriggers> ctx) =>
+        ctx.Exception is TransientDeviceException ? ExceptionDirective.Continue : ExceptionDirective.Propagate;
+}
+
+[StateMachine(typeof(ExceptionTestStates), typeof(ExceptionTestTriggers))]
+[OnException(nameof(HandleException))]
+public partial class ActionPropagateMachineFluentFsm
+{
+    public bool ActionStarted { get; private set; }
+
+    private static void Configure() => FSM
+        .State(ExceptionTestStates.Idle)
+            .On(ExceptionTestTriggers.Start)
+                .Action(nameof(DoStart))
+                .GoTo(ExceptionTestStates.Running)
+        .State(ExceptionTestStates.Running);
+
+    private async Task DoStart() { ActionStarted = true; await Task.Yield(); throw new InvalidOperationException("Action failed"); }
+    private ExceptionDirective HandleException(ExceptionContext<ExceptionTestStates, ExceptionTestTriggers> ctx) => ExceptionDirective.Propagate;
+}
+
+[StateMachine(typeof(ExceptionTestStates), typeof(ExceptionTestTriggers))]
+[OnException(nameof(HandleException))]
+public partial class GuardExceptionMachineFluentFsm
+{
+    public bool GuardCalled { get; private set; }
+    public bool HandlerCalled { get; private set; }
+
+    private static void Configure() => FSM
+        .State(ExceptionTestStates.Idle)
+            .On(ExceptionTestTriggers.Start)
+                .Guard(nameof(CanStart))
+                .GoTo(ExceptionTestStates.Running)
+        .State(ExceptionTestStates.Running);
+
+    private async ValueTask<bool> CanStart() { GuardCalled = true; await Task.Yield(); throw new Exception("Guard failed"); }
+    private ExceptionDirective HandleException(ExceptionContext<ExceptionTestStates, ExceptionTestTriggers> ctx) { HandlerCalled = true; return ExceptionDirective.Continue; }
+}
+
+[StateMachine(typeof(ExceptionTestStates), typeof(ExceptionTestTriggers))]
+[OnException(nameof(HandleException))]
+public partial class CancellationPropagationMachineFluentFsm
+{
+    public bool OnEntryStarted { get; private set; }
+
+    private static void Configure() => FSM
+        .State(ExceptionTestStates.Running)
+            .OnEntryAsync(nameof(OnEnterRunning))
+        .State(ExceptionTestStates.Idle)
+            .On(ExceptionTestTriggers.Start)
+                .GoTo(ExceptionTestStates.Running);
+
+    private async Task OnEnterRunning(System.Threading.CancellationToken cancellationToken)
+    {
+        OnEntryStarted = true;
+        cancellationToken.ThrowIfCancellationRequested();
+        await Task.Yield();
+        throw new OperationCanceledException();
+    }
+    private ValueTask<ExceptionDirective> HandleException(ExceptionContext<ExceptionTestStates, ExceptionTestTriggers> ctx, System.Threading.CancellationToken cancellationToken)
+        => new(ExceptionDirective.Continue);
+}
+
+[StateMachine(typeof(ExceptionTestStates), typeof(ExceptionTestTriggers))]
+[OnException(nameof(HandleExceptionAsync))]
+public partial class AsyncHandlerMachineFluentFsm
+{
+    public bool HandlerExecuted { get; private set; }
+
+    private static void Configure() => FSM
+        .State(ExceptionTestStates.Idle)
+            .On(ExceptionTestTriggers.Start)
+                .Action(nameof(DoStart))
+                .GoTo(ExceptionTestStates.Running)
+        .State(ExceptionTestStates.Running);
+
+    private async Task DoStart(System.Threading.CancellationToken cancellationToken) { await Task.Yield(); throw new TransientDeviceException(); }
+    private async ValueTask<ExceptionDirective> HandleExceptionAsync(ExceptionContext<ExceptionTestStates, ExceptionTestTriggers> ctx, System.Threading.CancellationToken cancellationToken)
+    { HandlerExecuted = true; await Task.Delay(10, cancellationToken); return ctx.Exception is TransientDeviceException ? ExceptionDirective.Continue : ExceptionDirective.Propagate; }
+}
+
+[StateMachine(typeof(ExceptionTestStates), typeof(ExceptionTestTriggers))]
+[OnException(nameof(HandleException))]
+public partial class ExceptionContextCaptureMachineFluentFsm
+{
+    private readonly Func<ExceptionContext<ExceptionTestStates, ExceptionTestTriggers>, ExceptionDirective> _handler;
+    public ExceptionContextCaptureMachineFluentFsm(ExceptionTestStates initialState, Func<ExceptionContext<ExceptionTestStates, ExceptionTestTriggers>, ExceptionDirective> handler) : this(initialState) { _handler = handler; }
+
+    private static void Configure() => FSM
+        .State(ExceptionTestStates.Idle)
+            .On(ExceptionTestTriggers.Start)
+                .Action(nameof(DoStart))
+                .GoTo(ExceptionTestStates.Running)
+        .State(ExceptionTestStates.Running);
+
+    private async Task DoStart() { await Task.Yield(); throw new TransientDeviceException(); }
+    private ExceptionDirective HandleException(ExceptionContext<ExceptionTestStates, ExceptionTestTriggers> ctx) => _handler(ctx);
 }
 
 #endregion

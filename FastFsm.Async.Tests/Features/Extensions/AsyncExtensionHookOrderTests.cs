@@ -5,8 +5,9 @@ using FastFsm.Contracts;
 using Shouldly;
 
 using Xunit;
+using Dsl;
 
-namespace  FastFsm.Async.Tests.Features.Extensions;
+namespace FastFsm.Async.Tests.Features.Extensions;
 
 // Minimal async machines with extensions enabled
 [StateMachine(typeof(AState), typeof(ATrigger), GenerateExtensibleVersion = true)]
@@ -96,4 +97,31 @@ public class AsyncExtensionHookOrderTests
         // No GuardEval hooks are emitted during GetPermittedTriggersAsync
         ext.Log.ShouldBeEmpty();
     }
+}
+
+// Fluent API versions for parity
+[StateMachine(typeof(AState), typeof(ATrigger), GenerateExtensibleVersion = true)]
+public partial class AsyncHookOrderMachineSuccessFluentFsm
+{
+    private static void Configure() => FSM
+        .State(AState.A)
+            .On(ATrigger.Next)
+                .Guard(nameof(GuardTrueAsync))
+                .GoTo(AState.B)
+        .State(AState.B);
+
+    private async ValueTask<bool> GuardTrueAsync() { await Task.Yield(); return true; }
+}
+
+[StateMachine(typeof(AState), typeof(ATrigger), GenerateExtensibleVersion = true)]
+public partial class AsyncHookOrderMachineFailFluentFsm
+{
+    private static void Configure() => FSM
+        .State(AState.A)
+            .On(ATrigger.Fail)
+                .Guard(nameof(GuardFalseAsync))
+                .GoTo(AState.B)
+        .State(AState.B);
+
+    private async ValueTask<bool> GuardFalseAsync() { await Task.Yield(); return false; }
 }

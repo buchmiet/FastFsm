@@ -3,7 +3,7 @@ using Abstractions.Attributes;
 using Xunit;
 using Dsl;
 
-namespace  FastFsm.Async.Tests.Features.Hsm.CompileTime;
+namespace FastFsm.Async.Tests.Features.Hsm.CompileTime;
 
 public partial class AsyncNoActionHsmTests
 {
@@ -71,4 +71,3 @@ public partial class AsyncNoActionHsmTests
         Assert.Equal(S.Menu_Item, sm.CurrentState);
     }
 }
-

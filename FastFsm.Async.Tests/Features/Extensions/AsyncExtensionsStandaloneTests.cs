@@ -7,7 +7,7 @@ using Abstractions.Fluent;
 using FastFsm.Contracts;
 using Xunit;
 
-namespace  FastFsm.Async.Tests.Features.Extensions;
+namespace FastFsm.Async.Tests.Features.Extensions;
 
 public class AsyncExtensionsStandaloneTests
 {

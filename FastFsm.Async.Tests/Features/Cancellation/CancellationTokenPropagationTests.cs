@@ -9,8 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace  FastFsm.Async.Tests.Features.Cancellation
-{
+namespace FastFsm.Async.Tests.Features.Cancellation;
     // Machine for testing specific documentation requirements
     [StateMachine(typeof(SpecStates), typeof(SpecTriggers))]
     public partial class SpecificationComplianceMachine
@@ -485,4 +484,4 @@ namespace  FastFsm.Async.Tests.Features.Cancellation
             d(state);
         }
     }
-}
+ 

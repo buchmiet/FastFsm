@@ -4,14 +4,14 @@ using T = FastFsm.Tests.Features.Hsm.Runtime.SimpleParentChildMachineFluent.T;
 
 namespace FastFsm.Tests.Features.Hsm.Runtime
 {
-    // Fluent API version of IsInHierarchy tests
-    public class HsmIsInHierarchyTestsFluent
+    // Legacy API version of IsInHierarchy tests
+    public class HsmIsInHierarchyTestsLegacy
     {
         [Fact]
-        public void IsInHierarchy_TrueForParentAndSelf_FalseForOtherBranchesFluent()
+        public void IsInHierarchy_TrueForParentAndSelf_FalseForOtherBranchesLegacy()
         {
-            // Use the Fluent API HSM
-            var m = new SimpleParentChildMachineFluent(S.Idle);
+            // Use the Legacy API HSM
+            var m = new SimpleParentChildMachineLegacy(S.Idle);
             m.Start();
 
             // Enter composite 'Working' -> auto-jump to initial child 'Working_Initializing'
@@ -28,10 +28,10 @@ namespace FastFsm.Tests.Features.Hsm.Runtime
         }
 
         [Fact]
-        public void IsInHierarchy_WorksAfterTransitionsWithinHierarchyFluent()
+        public void IsInHierarchy_WorksAfterTransitionsWithinHierarchyLegacy()
         {
             // Start in Idle, then transition to Working hierarchy
-            var m = new SimpleParentChildMachineFluent(S.Idle);
+            var m = new SimpleParentChildMachineLegacy(S.Idle);
             m.Start();
             
             // Initially in Idle
@@ -52,9 +52,9 @@ namespace FastFsm.Tests.Features.Hsm.Runtime
         }
 
         [Fact]
-        public void IsInHierarchy_ReturnsFalseForInvalidStatesFluent()
+        public void IsInHierarchy_ReturnsFalseForInvalidStatesLegacy()
         {
-            var m = new SimpleParentChildMachineFluent(S.Idle);
+            var m = new SimpleParentChildMachineLegacy(S.Idle);
             m.Start();
             
             // Test with an invalid state value (beyond enum range)

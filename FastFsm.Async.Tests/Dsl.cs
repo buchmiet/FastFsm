@@ -1,5 +1,4 @@
-namespace Dsl
-{
+namespace Dsl;
     // Stubbed DSL for Fluent API testing (Async version)
     public static class FSM
     {
@@ -41,4 +40,3 @@ namespace Dsl
         public FsmDsl Action() => this;
         public FsmDsl Payload() => this;
     }
-}

@@ -8,8 +8,7 @@ using Abstractions.Attributes;
 using Xunit;
 using Dsl;
 
-namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
-{
+namespace FastFsm.Async.Tests.Features.Hsm.Runtime;
     // 1) Auto‑descend to initial child + basic parent/child wiring (async)
     public partial class AsyncInitialChildTests
     {
@@ -660,4 +659,4 @@ namespace  FastFsm.Async.Tests.Features.Hsm.Runtime
     }
 
     #endregion
-}
+ 
