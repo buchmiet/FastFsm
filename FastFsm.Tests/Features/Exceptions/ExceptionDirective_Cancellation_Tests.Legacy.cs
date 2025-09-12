@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Abstractions.Attributes;
 using FastFsm.Exceptions;
 using Xunit;
 

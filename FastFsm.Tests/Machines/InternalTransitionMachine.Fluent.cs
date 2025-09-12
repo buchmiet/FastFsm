@@ -1,28 +1,26 @@
 ﻿using System.Collections.Generic;
-using Abstractions.Attributes;
 using Abstractions.Fluent;
 using FastFsm.Tests.Features.Core;
 
 
-namespace FastFsm.Tests.Machines
+namespace FastFsm.Tests.Machines;
+
+[StateMachine(typeof(StateCallbackTests.InternalState), typeof(StateCallbackTests.InternalTrigger))]
+public partial class InternalTransitionMachineFluent
 {
-    [StateMachine(typeof(StateCallbackTests.InternalState), typeof(StateCallbackTests.InternalTrigger))]
-    public partial class InternalTransitionMachineFluent
-    {
-        public List<string> EventLog { get; } = [];
+    public List<string> EventLog { get; } = [];
 
-        private static void Configure() => FSM
-            .State(StateCallbackTests.InternalState.Active)
-                .OnEntry(nameof(OnEntryActive)).OnExit(nameof(OnExitActive))
-                .On(StateCallbackTests.InternalTrigger.Deactivate).GoTo(StateCallbackTests.InternalState.Inactive)
-            .State(StateCallbackTests.InternalState.Inactive)
-                .OnEntry(nameof(OnEntryInactive))
-            .State(StateCallbackTests.InternalState.Active)
-                .OnInternal(StateCallbackTests.InternalTrigger.Update).Action(nameof(HandleUpdate));
+    private static void Configure() => FSM
+        .State(StateCallbackTests.InternalState.Active)
+        .OnEntry(nameof(OnEntryActive)).OnExit(nameof(OnExitActive))
+        .On(StateCallbackTests.InternalTrigger.Deactivate).GoTo(StateCallbackTests.InternalState.Inactive)
+        .State(StateCallbackTests.InternalState.Inactive)
+        .OnEntry(nameof(OnEntryInactive))
+        .State(StateCallbackTests.InternalState.Active)
+        .OnInternal(StateCallbackTests.InternalTrigger.Update).Action(nameof(HandleUpdate));
 
-        private void OnEntryActive() => EventLog.Add("OnEntry-Active");
-        private void OnExitActive() => EventLog.Add("OnExit-Active");
-        private void OnEntryInactive() => EventLog.Add("OnEntry-Inactive");
-        private void HandleUpdate() => EventLog.Add("InternalAction");
-    }
+    private void OnEntryActive() => EventLog.Add("OnEntry-Active");
+    private void OnExitActive() => EventLog.Add("OnExit-Active");
+    private void OnEntryInactive() => EventLog.Add("OnEntry-Inactive");
+    private void HandleUpdate() => EventLog.Add("InternalAction");
 }

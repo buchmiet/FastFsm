@@ -1,14 +1,12 @@
-using Abstractions.Attributes;
 using static FastFsm.Tests.Features.EdgeCases.NameCollisionTests;
 
-namespace FastFsm.Tests.Machines
+namespace FastFsm.Tests.Machines;
+
+[StateMachine(typeof(LongNameState), typeof(LongNameTrigger))]
+public partial class LongNameMachineLegacy
 {
-    [StateMachine(typeof(LongNameState), typeof(LongNameTrigger))]
-    public partial class LongNameMachineLegacy
-    {
-        [Transition(LongNameState.ThisIsAnExtremelyLongStateNameThatShouldStillWorkCorrectlyInTheGeneratedCode_Part1_Part2_Part3_Part4_Part5,
-                   LongNameTrigger.ThisIsAnEquallyLongTriggerNameThatTestsTheLimitsOfNaming_Section1_Section2_Section3,
-                   LongNameState.AnotherVeryLongStateNameForTesting_PartA_PartB_PartC_PartD_PartE_PartF)]
-        private void ConfigureTransitions() { }
-    }
+    [Transition(LongNameState.ThisIsAnExtremelyLongStateNameThatShouldStillWorkCorrectlyInTheGeneratedCode_Part1_Part2_Part3_Part4_Part5,
+        LongNameTrigger.ThisIsAnEquallyLongTriggerNameThatTestsTheLimitsOfNaming_Section1_Section2_Section3,
+        LongNameState.AnotherVeryLongStateNameForTesting_PartA_PartB_PartC_PartD_PartE_PartF)]
+    private void ConfigureTransitions() { }
 }

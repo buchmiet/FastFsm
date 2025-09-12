@@ -1,16 +1,14 @@
-using Abstractions.Attributes;
 using static FastFsm.Tests.Features.EdgeCases.NameCollisionTests;
 
-namespace FastFsm.Tests.Machines
+namespace FastFsm.Tests.Machines;
+
+[StateMachine(typeof(KeywordState), typeof(KeywordTrigger))]
+public partial class KeywordStateMachineLegacy
 {
-    [StateMachine(typeof(KeywordState), typeof(KeywordTrigger))]
-    public partial class KeywordStateMachineLegacy
-    {
-        [Transition(KeywordState.@class, KeywordTrigger.@goto, KeywordState.@return)]
-        [Transition(KeywordState.@return, KeywordTrigger.@continue, KeywordState.@void)]
-        [Transition(KeywordState.@void, KeywordTrigger.@break, KeywordState.@int)]
-        [Transition(KeywordState.@int, KeywordTrigger.@new, KeywordState.@interface)]
-        [Transition(KeywordState.@interface, KeywordTrigger.@throw, KeywordState.@namespace)]
-        private void ConfigureTransitions() { }
-    }
+    [Transition(KeywordState.@class, KeywordTrigger.@goto, KeywordState.@return)]
+    [Transition(KeywordState.@return, KeywordTrigger.@continue, KeywordState.@void)]
+    [Transition(KeywordState.@void, KeywordTrigger.@break, KeywordState.@int)]
+    [Transition(KeywordState.@int, KeywordTrigger.@new, KeywordState.@interface)]
+    [Transition(KeywordState.@interface, KeywordTrigger.@throw, KeywordState.@namespace)]
+    private void ConfigureTransitions() { }
 }

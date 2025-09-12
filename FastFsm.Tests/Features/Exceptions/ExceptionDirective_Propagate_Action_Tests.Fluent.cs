@@ -1,5 +1,4 @@
 using System;
-using Abstractions.Attributes;
 using Abstractions.Fluent;
 using FastFsm.Exceptions;
 using Xunit;

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using Abstractions.Attributes;
 using FastFsm.Contracts;
 
 using Xunit;

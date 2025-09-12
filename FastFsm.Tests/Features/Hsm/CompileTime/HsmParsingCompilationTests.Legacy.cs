@@ -1,6 +1,4 @@
 using Xunit;
-using Abstractions.Attributes;
-using Dsl;
 
 namespace FastFsm.Tests.Features.Hsm.CompileTime;
 
