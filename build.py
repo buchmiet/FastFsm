@@ -310,6 +310,7 @@ def restore_tests_with_local():
         if is_test_project(csproj):
             name = csproj.parent.name
             run(["dotnet", "restore", str(csproj),
+                 "--force-evaluate",
                  "--source", str(NUGET_DIR),
                  "--source", "https://api.nuget.org/v3/index.json"],
                 label=f"restore {name}")
