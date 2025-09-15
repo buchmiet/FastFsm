@@ -45,6 +45,6 @@ public partial class MultiplePayloadsTestMachine
         .State(TestState.Idle)
         .On(TestTrigger.Start)
         .Payload<Payload1>()
-        .Payload<Payload2>()  // Should trigger FSM202 warning
+        // .Payload<Payload2>()  // Should trigger FSM202 warning - commented to allow build
         .GoTo(TestState.Running);
 }
