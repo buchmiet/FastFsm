@@ -210,7 +210,7 @@ namespace Generator.Rules.Definitions
             title: "Multiple payload definitions on transition",
             messageFormat: "Transition from state '{0}' on trigger '{1}' has multiple Payload() calls. The last one ('{2}') will be used.",
             category: RuleCategories.FSM_Generator_Fluent,
-            defaultSeverity: RuleSeverity.Error,
+            defaultSeverity: RuleSeverity.Warning,
             description: "Each transition should have at most one payload type. Multiple Payload() calls will use the last specified type.");
 
         // Removed: FSM203/204/205/206 (unused)
