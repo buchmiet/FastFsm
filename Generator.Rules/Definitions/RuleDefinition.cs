@@ -213,7 +213,7 @@ namespace Generator.Rules.Definitions
             defaultSeverity: RuleSeverity.Warning,
             description: "Each transition should have at most one payload type. Multiple Payload() calls will use the last specified type.");
 
-        // Removed: FSM203/204/205/206 (unused)
+
 
         public static readonly RuleDefinition InvalidPriorityArgument = new(
             id: RuleIdentifiers.InvalidPriorityArgument,  // FSM3030
