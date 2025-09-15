@@ -336,13 +336,13 @@ public partial class ExceptionContextCaptureMachine
 #region Fluent API Versions
 
 [StateMachine(typeof(ExceptionTestStates), typeof(ExceptionTestTriggers))]
-[OnException(nameof(HandleException))]
 public partial class OnEntryContinueMachineFluentFsm
 {
     public bool OnEntryExecuted { get; private set; }
     public bool ActionExecuted { get; private set; }
 
     private static void Configure() => FSM
+        .OnException(nameof(HandleException))
         .State(ExceptionTestStates.Running)
             .OnEntryAsync(nameof(OnEnterRunning))
         .State(ExceptionTestStates.Idle)
@@ -362,12 +362,12 @@ public partial class OnEntryContinueMachineFluentFsm
 }
 
 [StateMachine(typeof(ExceptionTestStates), typeof(ExceptionTestTriggers))]
-[OnException(nameof(HandleException))]
 public partial class ActionPropagateMachineFluentFsm
 {
     public bool ActionStarted { get; private set; }
 
     private static void Configure() => FSM
+        .OnException(nameof(HandleException))
         .State(ExceptionTestStates.Idle)
             .On(ExceptionTestTriggers.Start)
                 .Action(nameof(DoStart))
@@ -379,13 +379,13 @@ public partial class ActionPropagateMachineFluentFsm
 }
 
 [StateMachine(typeof(ExceptionTestStates), typeof(ExceptionTestTriggers))]
-[OnException(nameof(HandleException))]
 public partial class GuardExceptionMachineFluentFsm
 {
     public bool GuardCalled { get; private set; }
     public bool HandlerCalled { get; private set; }
 
     private static void Configure() => FSM
+        .OnException(nameof(HandleException))
         .State(ExceptionTestStates.Idle)
             .On(ExceptionTestTriggers.Start)
                 .Guard(nameof(CanStart))
@@ -397,12 +397,12 @@ public partial class GuardExceptionMachineFluentFsm
 }
 
 [StateMachine(typeof(ExceptionTestStates), typeof(ExceptionTestTriggers))]
-[OnException(nameof(HandleException))]
 public partial class CancellationPropagationMachineFluentFsm
 {
     public bool OnEntryStarted { get; private set; }
 
     private static void Configure() => FSM
+        .OnException(nameof(HandleException))
         .State(ExceptionTestStates.Running)
             .OnEntryAsync(nameof(OnEnterRunning))
         .State(ExceptionTestStates.Idle)
@@ -421,12 +421,12 @@ public partial class CancellationPropagationMachineFluentFsm
 }
 
 [StateMachine(typeof(ExceptionTestStates), typeof(ExceptionTestTriggers))]
-[OnException(nameof(HandleExceptionAsync))]
 public partial class AsyncHandlerMachineFluentFsm
 {
     public bool HandlerExecuted { get; private set; }
 
     private static void Configure() => FSM
+        .OnException(nameof(HandleExceptionAsync))
         .State(ExceptionTestStates.Idle)
             .On(ExceptionTestTriggers.Start)
                 .Action(nameof(DoStart))
@@ -439,13 +439,13 @@ public partial class AsyncHandlerMachineFluentFsm
 }
 
 [StateMachine(typeof(ExceptionTestStates), typeof(ExceptionTestTriggers))]
-[OnException(nameof(HandleException))]
 public partial class ExceptionContextCaptureMachineFluentFsm
 {
     private readonly Func<ExceptionContext<ExceptionTestStates, ExceptionTestTriggers>, ExceptionDirective> _handler;
     public ExceptionContextCaptureMachineFluentFsm(ExceptionTestStates initialState, Func<ExceptionContext<ExceptionTestStates, ExceptionTestTriggers>, ExceptionDirective> handler) : this(initialState) { _handler = handler; }
 
     private static void Configure() => FSM
+        .OnException(nameof(HandleException))
         .State(ExceptionTestStates.Idle)
             .On(ExceptionTestTriggers.Start)
                 .Action(nameof(DoStart))

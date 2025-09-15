@@ -4,6 +4,7 @@ namespace Dsl;
     {
         public static FsmDsl State(object _) => new FsmDsl();
         public static FsmDsl At(object _) => new FsmDsl();
+        public static FsmDsl OnException(string _) => new FsmDsl();
     }
 
     public sealed class FsmDsl
@@ -26,6 +27,7 @@ namespace Dsl;
         public FsmDsl OnEntryAsync(string _) => this;
         public FsmDsl OnExit(string _) => this;
         public FsmDsl OnExitAsync(string _) => this;
+        public FsmDsl OnException(string _) => this;
         
         // Guards and Actions - supporting async variants
         public FsmDsl Guard(string _) => this;
