@@ -2039,8 +2039,13 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             }
             else
             {
-                // No handler configured: behave like FASTFSM_SAFE_ACTIONS=false (rethrow)
-                Sb.AppendLine("throw;");
+                // No global handler: log callback exception and fail transition
+                if (ShouldGenerateLogging)
+                {
+                    WriteLogStatement("Warning",
+                        $"CallbackException(_logger, _instanceId, \\\"OnEntry\\\", \\\"{toStateDef.OnEntryMethod}\\\", \\\"transition {fromState} -> {toState}\\\", ex);");
+                }
+                Sb.AppendLine("return false;");
             }
         }
     }
