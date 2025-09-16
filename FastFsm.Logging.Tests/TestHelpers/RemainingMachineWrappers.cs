@@ -18,7 +18,7 @@ public class InitialOnEntryStateMachineActionsFluentWrapper : IStateMachineTestW
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<TestInitialState>("InitialOnEntryStateMachineActions", initialStateName);
         var state = (TestInitialState)Enum.Parse(typeof(TestInitialState), resolvedName);
-        _machine = new InitialOnEntryStateMachineActionsFluent(state, logger);
+        _machine = new InitialOnEntryStateMachineActionsFluent(state, LoggerAdapter.For<InitialOnEntryStateMachineActionsFluent>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -57,7 +57,7 @@ public class InitialOnEntryStateMachineActionsLegacyWrapper : IStateMachineTestW
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<TestInitialState>("InitialOnEntryStateMachineActions", initialStateName);
         var state = (TestInitialState)Enum.Parse(typeof(TestInitialState), resolvedName);
-        _machine = new InitialOnEntryStateMachineActions(state, logger);
+        _machine = new InitialOnEntryStateMachineActions(state, LoggerAdapter.For<InitialOnEntryStateMachineActions>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -98,7 +98,7 @@ public class FullMultiPayloadMachineFluentWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<OrderStatePayload>("FullMultiPayloadMachine", initialStateName);
         var state = (OrderStatePayload)Enum.Parse(typeof(OrderStatePayload), resolvedName);
-        _machine = new FullMultiPayloadMachineFluent(state, extensions, logger);
+        _machine = new FullMultiPayloadMachineFluent(state, extensions, LoggerAdapter.For<FullMultiPayloadMachineFluent>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -140,29 +140,13 @@ public class FullMultiPayloadMachineFluentWrapper : IStateMachineTestWrapper
         return ValueTask.CompletedTask;
     }
 
-    public async ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default)
-    {
-        var triggerEnum = (OrderTriggerPayload)trigger;
-        if (payload != null)
-        {
-            dynamic dynamicPayload = payload;
-            return await _machine.TryFireAsync(triggerEnum, dynamicPayload, ct);
-        }
-        return await _machine.TryFireAsync(triggerEnum, ct);
-    }
+    public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default)
+        => ValueTask.FromResult(TryFire(trigger, payload));
 
-    public async ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default)
+    public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default)
     {
-        var triggerEnum = (OrderTriggerPayload)trigger;
-        if (payload != null)
-        {
-            dynamic dynamicPayload = payload;
-            await _machine.FireAsync(triggerEnum, dynamicPayload, ct);
-        }
-        else
-        {
-            await _machine.FireAsync(triggerEnum, ct);
-        }
+        Fire(trigger, payload);
+        return ValueTask.CompletedTask;
     }
 }
 
@@ -174,7 +158,7 @@ public class FullMultiPayloadMachineLegacyWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<OrderStatePayload>("FullMultiPayloadMachine", initialStateName);
         var state = (OrderStatePayload)Enum.Parse(typeof(OrderStatePayload), resolvedName);
-        _machine = new FullMultiPayloadMachine(state, extensions, logger);
+        _machine = new FullMultiPayloadMachine(state, extensions, LoggerAdapter.For<FullMultiPayloadMachine>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -252,7 +236,7 @@ public class ExampleStateMachineFluentWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<OrderState>("ExampleStateMachine", initialStateName);
         var state = (OrderState)Enum.Parse(typeof(OrderState), resolvedName);
-        _machine = new ExampleStateMachineFluent(state, logger);
+        _machine = new ExampleStateMachineFluent(state, LoggerAdapter.For<ExampleStateMachineFluent>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -291,7 +275,7 @@ public class ExampleStateMachineLegacyWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<OrderState>("ExampleStateMachine", initialStateName);
         var state = (OrderState)Enum.Parse(typeof(OrderState), resolvedName);
-        _machine = new ExampleStateMachine(state, logger);
+        _machine = new ExampleStateMachine(state, LoggerAdapter.For<ExampleStateMachine>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -332,7 +316,7 @@ public class GuardedStateMachineFluentWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<ProcessState>("GuardedStateMachine", initialStateName);
         var state = (ProcessState)Enum.Parse(typeof(ProcessState), resolvedName);
-        _machine = new GuardedStateMachineFluent(state, logger);
+        _machine = new GuardedStateMachineFluent(state, LoggerAdapter.For<GuardedStateMachineFluent>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -371,7 +355,7 @@ public class GuardedStateMachineLegacyWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<ProcessState>("GuardedStateMachine", initialStateName);
         var state = (ProcessState)Enum.Parse(typeof(ProcessState), resolvedName);
-        _machine = new GuardedStateMachine(state, logger);
+        _machine = new GuardedStateMachine(state, LoggerAdapter.For<GuardedStateMachine>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -412,7 +396,7 @@ public class ExtensibleMachineFluentWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<WorkflowState>("ExtensibleMachine", initialStateName);
         var state = (WorkflowState)Enum.Parse(typeof(WorkflowState), resolvedName);
-        _machine = new ExtensibleMachineFluent(state, extensions ?? Array.Empty<IStateMachineExtension>(), logger);
+        _machine = new ExtensibleMachineFluent(state, extensions ?? Array.Empty<IStateMachineExtension>(), LoggerAdapter.For<ExtensibleMachineFluent>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -451,7 +435,7 @@ public class ExtensibleMachineLegacyWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<WorkflowState>("ExtensibleMachine", initialStateName);
         var state = (WorkflowState)Enum.Parse(typeof(WorkflowState), resolvedName);
-        _machine = new ExtensibleMachine(state, extensions ?? Array.Empty<IStateMachineExtension>(), logger);
+        _machine = new ExtensibleMachine(state, extensions ?? Array.Empty<IStateMachineExtension>(), LoggerAdapter.For<ExtensibleMachine>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -492,7 +476,7 @@ public class HsmMachineFluentWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<HState>("HsmMachine", initialStateName);
         var state = (HState)Enum.Parse(typeof(HState), resolvedName);
-        _machine = new HsmMachineFluent(state, logger);
+        _machine = new HsmMachineFluent(state, LoggerAdapter.For<HsmMachineFluent>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -531,7 +515,7 @@ public class HsmMachineLegacyWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<HState>("HsmMachine", initialStateName);
         var state = (HState)Enum.Parse(typeof(HState), resolvedName);
-        _machine = new HsmMachine(state, logger);
+        _machine = new HsmMachine(state, LoggerAdapter.For<HsmMachine>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;

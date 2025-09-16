@@ -18,7 +18,7 @@ public class ExtensionsStateMachineFluentWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<TestState>("ExtensionsStateMachine", initialStateName);
         var state = (TestState)Enum.Parse(typeof(TestState), resolvedName);
-        _machine = new ExtensionsStateMachineFluent(state, extensions ?? Array.Empty<IStateMachineExtension>(), logger);
+        _machine = new ExtensionsStateMachineFluent(state, extensions ?? Array.Empty<IStateMachineExtension>(), LoggerAdapter.For<ExtensionsStateMachineFluent>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -57,7 +57,7 @@ public class ExtensionsStateMachineLegacyWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<TestState>("ExtensionsStateMachine", initialStateName);
         var state = (TestState)Enum.Parse(typeof(TestState), resolvedName);
-        _machine = new ExtensionsStateMachine(state, extensions ?? Array.Empty<IStateMachineExtension>(), logger);
+        _machine = new ExtensionsStateMachine(state, extensions ?? Array.Empty<IStateMachineExtension>(), LoggerAdapter.For<ExtensionsStateMachine>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -98,7 +98,7 @@ public class FullStateMachineFluentWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<TestState>("FullStateMachine", initialStateName);
         var state = (TestState)Enum.Parse(typeof(TestState), resolvedName);
-        _machine = new FullStateMachineFluent(state, extensions ?? Array.Empty<IStateMachineExtension>(), logger);
+        _machine = new FullStateMachineFluent(state, extensions ?? Array.Empty<IStateMachineExtension>(), LoggerAdapter.For<FullStateMachineFluent>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -151,7 +151,7 @@ public class FullStateMachineLegacyWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<TestState>("FullStateMachine", initialStateName);
         var state = (TestState)Enum.Parse(typeof(TestState), resolvedName);
-        _machine = new FullStateMachine(state, extensions ?? Array.Empty<IStateMachineExtension>(), logger);
+        _machine = new FullStateMachine(state, extensions ?? Array.Empty<IStateMachineExtension>(), LoggerAdapter.For<FullStateMachine>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -206,7 +206,7 @@ public class MultiPayloadStateMachineFluentWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<TestState>("MultiPayloadStateMachine", initialStateName);
         var state = (TestState)Enum.Parse(typeof(TestState), resolvedName);
-        _machine = new MultiPayloadStateMachineFluent(state, logger);
+        _machine = new MultiPayloadStateMachineFluent(state, LoggerAdapter.For<MultiPayloadStateMachineFluent>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;

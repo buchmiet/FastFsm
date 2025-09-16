@@ -17,7 +17,7 @@ public class LifecycleMachineFluentWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<LifecycleState>("LifecycleMachine", initialStateName);
         var state = (LifecycleState)Enum.Parse(typeof(LifecycleState), resolvedName);
-        _machine = new LifecycleMachineFluent(state, logger);
+        _machine = new LifecycleMachineFluent(state, LoggerAdapter.For<LifecycleMachineFluent>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -56,7 +56,7 @@ public class LifecycleMachineLegacyWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<LifecycleState>("LifecycleMachine", initialStateName);
         var state = (LifecycleState)Enum.Parse(typeof(LifecycleState), resolvedName);
-        _machine = new LifecycleMachine(state, logger);
+        _machine = new LifecycleMachine(state, LoggerAdapter.For<LifecycleMachine>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -97,13 +97,13 @@ public class AsyncLifecycleMachineFluentWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<AsyncLifecycleState>("AsyncLifecycleMachine", initialStateName);
         var state = (AsyncLifecycleState)Enum.Parse(typeof(AsyncLifecycleState), resolvedName);
-        _machine = new AsyncLifecycleMachineFluent(state, logger);
+        _machine = new AsyncLifecycleMachineFluent(state, LoggerAdapter.For<AsyncLifecycleMachineFluent>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
     public ApiCapabilities Caps => ApiCapabilities.HasAsync;
 
-    public void Start() => _machine.Start();
+    public void Start() => _machine.StartAsync().AsTask().GetAwaiter().GetResult();
     public bool TryFire(object trigger, object? payload = null) => _machine.TryFire((AsyncLifecycleTrigger)trigger);
     public void Fire(object trigger, object? payload = null) => _machine.Fire((AsyncLifecycleTrigger)trigger);
     public bool CanFire(object trigger) => _machine.CanFire((AsyncLifecycleTrigger)trigger);
@@ -133,13 +133,13 @@ public class AsyncLifecycleMachineLegacyWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<AsyncLifecycleState>("AsyncLifecycleMachine", initialStateName);
         var state = (AsyncLifecycleState)Enum.Parse(typeof(AsyncLifecycleState), resolvedName);
-        _machine = new AsyncLifecycleMachine(state, logger);
+        _machine = new AsyncLifecycleMachine(state, LoggerAdapter.For<AsyncLifecycleMachine>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
     public ApiCapabilities Caps => ApiCapabilities.HasAsync;
 
-    public void Start() => _machine.Start();
+    public void Start() => _machine.StartAsync().AsTask().GetAwaiter().GetResult();
     public bool TryFire(object trigger, object? payload = null) => _machine.TryFire((AsyncLifecycleTrigger)trigger);
     public void Fire(object trigger, object? payload = null) => _machine.Fire((AsyncLifecycleTrigger)trigger);
     public bool CanFire(object trigger) => _machine.CanFire((AsyncLifecycleTrigger)trigger);
@@ -171,7 +171,7 @@ public class InternalTransitionMachineFluentWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<InternalState>("InternalTransitionMachine", initialStateName);
         var state = (InternalState)Enum.Parse(typeof(InternalState), resolvedName);
-        _machine = new InternalTransitionMachineFluent(state, logger);
+        _machine = new InternalTransitionMachineFluent(state, LoggerAdapter.For<InternalTransitionMachineFluent>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -210,7 +210,7 @@ public class InternalTransitionMachineLegacyWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<InternalState>("InternalTransitionMachine", initialStateName);
         var state = (InternalState)Enum.Parse(typeof(InternalState), resolvedName);
-        _machine = new InternalTransitionMachine(state, logger);
+        _machine = new InternalTransitionMachine(state, LoggerAdapter.For<InternalTransitionMachine>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;

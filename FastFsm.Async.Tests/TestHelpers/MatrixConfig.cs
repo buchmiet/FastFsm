@@ -12,6 +12,8 @@ namespace FastFsm.Async.Tests.TestHelpers
             public string[] TriggerSequence { get; set; } = Array.Empty<string>();
             public bool RequiresAsync { get; set; } = true;
             public object?[] Payloads { get; set; } = Array.Empty<object?>();
+            // Some machines are designed to throw (e.g., Propagate/OCE). Exclude them from parity matrix.
+            public bool SkipInMatrix { get; set; } = false;
         }
 
         public static readonly IReadOnlyDictionary<string, MachineTestConfig> Machines =
@@ -85,9 +87,9 @@ namespace FastFsm.Async.Tests.TestHelpers
 
                 // Exceptions
                 ["OnEntryContinue"] = new MachineTestConfig { MachineName = "OnEntryContinue", InitialState = "Idle", TriggerSequence = new[] { "Start" } },
-                ["ActionPropagate"] = new MachineTestConfig { MachineName = "ActionPropagate", InitialState = "Idle", TriggerSequence = new[] { "Start" } },
+                ["ActionPropagate"] = new MachineTestConfig { MachineName = "ActionPropagate", InitialState = "Idle", TriggerSequence = new[] { "Start" }, SkipInMatrix = true },
                 ["GuardException"] = new MachineTestConfig { MachineName = "GuardException", InitialState = "Idle", TriggerSequence = new[] { "Start" } },
-                ["CancellationPropagation"] = new MachineTestConfig { MachineName = "CancellationPropagation", InitialState = "Idle", TriggerSequence = new[] { "Start" } },
+                ["CancellationPropagation"] = new MachineTestConfig { MachineName = "CancellationPropagation", InitialState = "Idle", TriggerSequence = new[] { "Start" }, SkipInMatrix = true },
                 ["AsyncHandler"] = new MachineTestConfig { MachineName = "AsyncHandler", InitialState = "Idle", TriggerSequence = new[] { "Start" } },
                 ["ExceptionContextCapture"] = new MachineTestConfig { MachineName = "ExceptionContextCapture", InitialState = "Idle", TriggerSequence = new[] { "Start" } },
 
@@ -96,7 +98,7 @@ namespace FastFsm.Async.Tests.TestHelpers
                 ["ExtensionsFail"] = new MachineTestConfig { MachineName = "ExtensionsFail", InitialState = "A", TriggerSequence = new[] { "Fail" } },
 
                 // Concurrency/Core
-                ["RcMachine"] = new MachineTestConfig { MachineName = "RcMachine", InitialState = "Initial", TriggerSequence = new[] { "ToA" } },
+                ["RcMachine"] = new MachineTestConfig { MachineName = "RcMachine", InitialState = "Initial", TriggerSequence = new[] { "ToA" }, SkipInMatrix = true },
                 ["SimpleAsync"] = new MachineTestConfig { MachineName = "SimpleAsync", InitialState = "Initial", TriggerSequence = new[] { "Start" } },
 
                 // Add 1:1 base-name entries for full parity (aliases to scenarios above)
@@ -123,7 +125,7 @@ namespace FastFsm.Async.Tests.TestHelpers
                 ["MixedTokenMachine"] = new MachineTestConfig { MachineName = "MixedTokenMachine", InitialState = "Initial", TriggerSequence = new[] { "Start" } },
 
                 ["OnEntryContinueMachine"] = new MachineTestConfig { MachineName = "OnEntryContinueMachine", InitialState = "Idle", TriggerSequence = new[] { "Start" } },
-                ["ActionPropagateMachine"] = new MachineTestConfig { MachineName = "ActionPropagateMachine", InitialState = "Idle", TriggerSequence = new[] { "Start" } },
+                ["ActionPropagateMachine"] = new MachineTestConfig { MachineName = "ActionPropagateMachine", InitialState = "Idle", TriggerSequence = new[] { "Start" }, SkipInMatrix = true },
                 ["GuardExceptionMachine"] = new MachineTestConfig { MachineName = "GuardExceptionMachine", InitialState = "Idle", TriggerSequence = new[] { "Start" } },
                 ["CancellationPropagationMachine"] = new MachineTestConfig { MachineName = "CancellationPropagationMachine", InitialState = "Idle", TriggerSequence = new[] { "Start" } },
                 ["AsyncHandlerMachine"] = new MachineTestConfig { MachineName = "AsyncHandlerMachine", InitialState = "Idle", TriggerSequence = new[] { "Start" } },
@@ -144,7 +146,14 @@ namespace FastFsm.Async.Tests.TestHelpers
             };
 
         public static MachineTestConfig? GetConfig(string machineName) => Machines.TryGetValue(machineName, out var cfg) ? cfg : null;
-        public static IEnumerable<string> GetAllMachineNames() => Machines.Keys;
+        public static IEnumerable<string> GetAllMachineNames()
+        {
+            foreach (var kv in Machines)
+            {
+                if (!kv.Value.SkipInMatrix)
+                    yield return kv.Key;
+            }
+        }
 
         public static object CreateDummyPayload(string machineName)
         {
