@@ -1418,9 +1418,30 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             Model.States.TryGetValue(transition.ToState, out var toStateDef) &&
             !string.IsNullOrEmpty(toStateDef.OnEntryMethod))
         {
+            Sb.AppendLine("    #if FASTFSM_SAFE_ACTIONS");
+            Sb.AppendLine("    try {");
+            Sb.AppendLine($"        {toStateDef.OnEntryMethod}();");
+            WriteLogStatement("Debug",
+                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
+            Sb.AppendLine("    }");
+            Sb.AppendLine("    catch (System.OperationCanceledException)");
+            Sb.AppendLine("    {");
+            Sb.AppendLine("        _extensionRunner.RunAfterTransition(_extensions, smCtx, false);");
+            Sb.AppendLine("        return false;");
+            Sb.AppendLine("    }");
+            Sb.AppendLine("    catch (System.Exception ex)");
+            Sb.AppendLine("    {");
+            /**/ if (true) { /* placeholder to keep WriteLogStatement inline below */ }
+            WriteLogStatement("Warning",
+                $"CallbackException(_logger, _instanceId, \"OnEntry\", \"{toStateDef.OnEntryMethod}\", \"transition {transition.FromState} -> {transition.ToState}\", ex);");
+            Sb.AppendLine("        _extensionRunner.RunAfterTransition(_extensions, smCtx, false);");
+            Sb.AppendLine("        return false;");
+            Sb.AppendLine("    }");
+            Sb.AppendLine("    #else");
             Sb.AppendLine($"    {toStateDef.OnEntryMethod}();");
             WriteLogStatement("Debug",
                 $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
+            Sb.AppendLine("    #endif");
         }
 
         Sb.AppendLine("}");
