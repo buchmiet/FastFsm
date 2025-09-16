@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FastFsm.Net.Logging" Version="0.0.1.43-feature-fluent-hsm-parser-v0.7.5" />
+    <PackageReference Include="FastFsm.Net.Logging" Version="0.0.1.44-feature-fluent-hsm-parser-v0.7.5" />
   </ItemGroup>
 
   <ItemGroup>
