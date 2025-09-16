@@ -18,7 +18,7 @@ public class PureStateMachineFluentWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<TestState>("PureStateMachine", initialStateName);
         var state = (TestState)Enum.Parse(typeof(TestState), resolvedName);
-        _machine = new PureStateMachineFluent(state, logger);
+        _machine = new PureStateMachineFluent(state, LoggerAdapter.For<PureStateMachineFluent>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -57,7 +57,7 @@ public class PureStateMachineLegacyWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<TestState>("PureStateMachine", initialStateName);
         var state = (TestState)Enum.Parse(typeof(TestState), resolvedName);
-        _machine = new PureStateMachine(state, logger);
+        _machine = new PureStateMachine(state, LoggerAdapter.For<PureStateMachine>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -98,7 +98,7 @@ public class BasicStateMachineFluentWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<TestState>("BasicStateMachine", initialStateName);
         var state = (TestState)Enum.Parse(typeof(TestState), resolvedName);
-        _machine = new BasicStateMachineFluent(state, logger);
+        _machine = new BasicStateMachineFluent(state, LoggerAdapter.For<BasicStateMachineFluent>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -137,7 +137,7 @@ public class BasicStateMachineLegacyWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<TestState>("BasicStateMachine", initialStateName);
         var state = (TestState)Enum.Parse(typeof(TestState), resolvedName);
-        _machine = new BasicStateMachine(state, logger);
+        _machine = new BasicStateMachine(state, LoggerAdapter.For<BasicStateMachine>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;

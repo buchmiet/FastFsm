@@ -38,6 +38,11 @@ namespace FastFsm.Logging.Tests.TestHelpers
             var names = Enum.GetNames(stateEnumType);
             return names.Length > 0 ? names[0] : throw new ArgumentException($"No states for {stateEnumType.Name}");
         }
+
+        // Convenience generic overload used by wrappers
+        public static string ResolveOrDefault<TState>(string machine, string? initial) where TState : struct, Enum
+        {
+            return Resolve(machine, typeof(TState), initial);
+        }
     }
 }
-
