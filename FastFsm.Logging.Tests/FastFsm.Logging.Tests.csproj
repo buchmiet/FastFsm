@@ -10,7 +10,7 @@
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\GeneratedFiles</CompilerGeneratedFilesOutputPath>
     <FsmGenerateLogging>true</FsmGenerateLogging>
-    <DefineConstants>$(DefineConstants);FASTFSM_SAFE_ACTIONS</DefineConstants>
+    <DefineConstants>$(DefineConstants);FASTFSM_SAFE_ACTIONS;FSM_LOGGING_ENABLED</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,11 +21,10 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
     <PackageReference Include="Shouldly" Version="4.2.1" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.8" />
+    <PackageReference Include="FastFsm.Net" Version="0.0.1.46-feature-fluent-hsm-parser-v0.7.5" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="FastFsm.Net.Logging" Version="0.0.1.45-feature-fluent-hsm-parser-v0.7.5" />
-  </ItemGroup>
+  
 
   <ItemGroup>
     <Using Include="Xunit" />

@@ -544,6 +544,12 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                     }
                     else
                     {
+                        // Log callback exception for OnExit
+                        if (ShouldGenerateLogging)
+                        {
+                            WriteLogStatement("Warning",
+                                $"CallbackException(_logger, _instanceId, \"OnExit\", \"{fromStateDef.OnExitMethod}\", \"transition {transition.FromState} -> {transition.ToState}\", ex);");
+                        }
                         WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
                         Sb.AppendLine("return false;");
                     }
@@ -584,6 +590,11 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                     }
                     else
                     {
+                        if (ShouldGenerateLogging)
+                        {
+                            WriteLogStatement("Warning",
+                                $"CallbackException(_logger, _instanceId, \"OnExit\", \"{fromStateDef.OnExitMethod}\", \"transition {transition.FromState} -> {transition.ToState}\", ex);");
+                        }
                         WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
                         Sb.AppendLine("return false;");
                     }
@@ -2194,8 +2205,13 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             {
                 Sb.AppendLine("return false;");
             }
-            using (Sb.Block("catch (System.Exception)"))
+            using (Sb.Block("catch (System.Exception ex)"))
             {
+                if (ShouldGenerateLogging)
+                {
+                    WriteLogStatement("Warning",
+                        $"CallbackException(_logger, _instanceId, \"OnEntry\", \"{toStateDef.OnEntryMethod}\", \"transition {fromState} -> {toState}\", ex);");
+                }
                 Sb.AppendLine("return false;");
             }
             Sb.AppendLine("#else");
@@ -2241,6 +2257,12 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         }
         using (Sb.Block("catch (Exception ex) when (ex is not System.OperationCanceledException)"))
         {
+            // Log callback exception for OnEntry before invoking global handler
+            if (ShouldGenerateLogging)
+            {
+                WriteLogStatement("Warning",
+                    $"CallbackException(_logger, _instanceId, \"OnEntry\", \"{toStateDef.OnEntryMethod}\", \"transition {fromState} -> {toState}\", ex);");
+            }
             EmitExceptionHandlerCall(fromState, toState, trigger, "TransitionStage.OnEntry", true);
         }
     }
