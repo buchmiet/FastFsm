@@ -10,7 +10,6 @@
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\GeneratedFiles</CompilerGeneratedFilesOutputPath>
     <FsmGenerateLogging>true</FsmGenerateLogging>
-    <DefineConstants>$(DefineConstants);FASTFSM_SAFE_ACTIONS</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,12 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Generator\Generator.csproj"
-                      OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\FastFsm\FastFsm.csproj" />
-    <ProjectReference Include="..\FastFsm.Logging\FastFsm.Logging.csproj" />
-    <ProjectReference Include="..\Abstractions\Abstractions.csproj" />
+    <PackageReference Include="FastFsm.Net.Logging" Version="0.0.1.43-feature-fluent-hsm-parser-v0.7.5" />
   </ItemGroup>
 
   <ItemGroup>

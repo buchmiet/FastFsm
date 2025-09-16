@@ -36,7 +36,7 @@ namespace FastFsm.Logging.Tests.TestHelpers
                 
                 // Integration machines
                 ["InitialOnEntryStateMachineActions"] = new MachineTestConfig { MachineName = "InitialOnEntryStateMachineActions", InitialState = "Ready", TriggerSequence = new[] { "Go" } },
-                ["FullMultiPayloadMachine"] = new MachineTestConfig { MachineName = "FullMultiPayloadMachine", InitialState = "New", TriggerSequence = new[] { "Process" }, Payloads = new object?[] { new FastFsm.Logging.Tests.OrderPayload { OrderId = "ORD-001", Amount = 100.50m } } },
+                ["FullMultiPayloadMachine"] = new MachineTestConfig { MachineName = "FullMultiPayloadMachine", InitialState = "New", TriggerSequence = new[] { "Process" }, Payloads = new object?[] { new FastFsm.Logging.Tests.OrderPayload { OrderId = 1001, Amount = 100.50m } } },
                 
                 // Example machines
                 ["ExampleStateMachine"] = new MachineTestConfig { MachineName = "ExampleStateMachine", InitialState = "New", TriggerSequence = new[] { "Submit" } },
@@ -48,4 +48,3 @@ namespace FastFsm.Logging.Tests.TestHelpers
         public static IEnumerable<string> GetAllMachineNames() => Machines.Keys;
     }
 }
-

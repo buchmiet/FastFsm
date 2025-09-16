@@ -178,7 +178,7 @@ public class PayloadStateMachineFluentWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<TestState>("PayloadStateMachine", initialStateName);
         var state = (TestState)Enum.Parse(typeof(TestState), resolvedName);
-        _machine = new PayloadStateMachineFluent(state, logger);
+        _machine = new PayloadStateMachineFluent(state, LoggerAdapter.For<PayloadStateMachineFluent>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -231,7 +231,7 @@ public class PayloadStateMachineLegacyWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<TestState>("PayloadStateMachine", initialStateName);
         var state = (TestState)Enum.Parse(typeof(TestState), resolvedName);
-        _machine = new PayloadStateMachine(state, logger);
+        _machine = new PayloadStateMachine(state, LoggerAdapter.For<PayloadStateMachine>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;

@@ -1,4 +1,5 @@
 using System;
+using Shouldly;
 
 namespace FastFsm.Logging.Tests.TestHelpers
 {
@@ -19,6 +20,9 @@ namespace FastFsm.Logging.Tests.TestHelpers
         public static bool Has(this ApiCapabilities caps, ApiCapabilities flag) => (caps & flag) == flag;
         public static bool SupportsPayloads(this ApiCapabilities caps) => caps.Has(ApiCapabilities.HasDefaultPayload) || caps.Has(ApiCapabilities.HasMultiPayloads);
         public static void ShouldHaveFlag(this ApiCapabilities caps, ApiCapabilities flag)
-            => Shouldly.ShouldBeExtensions.ShouldBeTrue(caps.Has(flag));
+        {
+            // Use Shouldly extension semantics on bool
+            caps.Has(flag).ShouldBeTrue();
+        }
     }
 }
