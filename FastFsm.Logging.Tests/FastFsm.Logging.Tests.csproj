@@ -10,6 +10,7 @@
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\GeneratedFiles</CompilerGeneratedFilesOutputPath>
     <FsmGenerateLogging>true</FsmGenerateLogging>
+    <DefineConstants>$(DefineConstants);FASTFSM_SAFE_ACTIONS</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FastFsm.Net.Logging" Version="0.0.1.44-feature-fluent-hsm-parser-v0.7.5" />
+    <PackageReference Include="FastFsm.Net.Logging" Version="0.0.1.45-feature-fluent-hsm-parser-v0.7.5" />
   </ItemGroup>
 
   <ItemGroup>
