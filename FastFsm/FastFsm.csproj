@@ -99,7 +99,7 @@
 
   <Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
     <PropertyGroup>
-      <Version>0.0.1.48-feature-fluent-hsm-parser-v0.7.5</Version>
+      <Version>0.0.1.49-feature-fluent-hsm-parser-v0.7.5</Version>
       <PackageVersion>$(Version)</PackageVersion>
     </PropertyGroup>
   </Target>
