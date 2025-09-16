@@ -5,6 +5,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
+using Abstractions.Fluent;
 
 namespace FastFsm.Logging.Tests
 {
@@ -203,6 +204,50 @@ namespace FastFsm.Logging.Tests
             LoggedMessages.Any(l => l.EventId.Id == 1103).ShouldBeTrue(); // TransitionStarted  
             LoggedMessages.Any(l => l.EventId.Id == 1100).ShouldBeTrue(); // UnhandledTrigger
         }
+
+        // --- Regression: CallbackException for OnExit (EventId 1107) ---
+        [Fact]
+        public void CallbackException_OnExit_EventId1107_IsLogged()
+        {
+            // Arrange: machine with OnExit throwing and a simple transition A -> B
+            var machine = new ExitThrowMachine(ExitState.A, GetLogger<ExitThrowMachine>());
+            machine.Start();
+            LoggedMessages.Clear();
+
+            // Act
+            var result = machine.TryFire(ExitTrigger.Go);
+
+            // Assert
+            result.ShouldBeFalse();
+            var log = LoggedMessages.FirstOrDefault(l => l.EventId.Id == 1107);
+            log.ShouldNotBe(default);
+            log.EventId.Name.ShouldBe("CallbackException");
+            log.Level.ShouldBe(LogLevel.Warning);
+            log.Message.ShouldContain("OnExit");
+            log.Message.ShouldContain("ThrowExit");
+        }
+
+        // --- Regression: Fluent API parity for OnEntry exception (EventId 1107) ---
+        [Fact]
+        public void CallbackException_Fluent_OnEntry_EventId1107_IsLogged()
+        {
+            // Arrange: Fluent machine where S2 has OnEntry that throws; transition S1 --(T)--> S2
+            var fm = new FluentEntryThrowMachine(FluentState.S1, GetLogger<FluentEntryThrowMachine>());
+            fm.Start();
+            LoggedMessages.Clear();
+
+            // Act
+            var result = fm.TryFire(FluentTrigger.T);
+
+            // Assert
+            result.ShouldBeFalse();
+            var log = LoggedMessages.FirstOrDefault(l => l.EventId.Id == 1107);
+            log.ShouldNotBe(default);
+            log.EventId.Name.ShouldBe("CallbackException");
+            log.Level.ShouldBe(LogLevel.Warning);
+            log.Message.ShouldContain("OnEntry");
+            log.Message.ShouldContain("ThrowEntry");
+        }
     }
 
     // Test state machines for lifecycle logging tests
@@ -251,5 +296,41 @@ namespace FastFsm.Logging.Tests
             await Task.Delay(5);
             throw new InvalidOperationException("Async action failed");
         }
+    }
+}
+
+// Machines for regression tests (local to this file)
+namespace FastFsm.Logging.Tests
+{
+    // OnExit-throwing machine
+    public enum ExitState { A, B }
+    public enum ExitTrigger { Go }
+
+    [StateMachine(typeof(ExitState), typeof(ExitTrigger))]
+    public partial class ExitThrowMachine
+    {
+        [State(ExitState.A, OnExit = nameof(ThrowExit))]
+        private void ConfigureState() { }
+
+        [Transition(ExitState.A, ExitTrigger.Go, ExitState.B)]
+        private void ConfigureTransitions() { }
+
+        private void ThrowExit() => throw new InvalidOperationException("Exit failed");
+    }
+
+    // Fluent OnEntry-throwing machine (parity with 1107 case)
+    public enum FluentState { S1, S2 }
+    public enum FluentTrigger { T }
+
+    [StateMachine(typeof(FluentState), typeof(FluentTrigger))]
+    public partial class FluentEntryThrowMachine
+    {
+        private static void Configure() => FSM
+            .State(FluentState.S2)
+                .OnEntry(nameof(ThrowEntry)).And()
+            .State(FluentState.S1)
+                .On(FluentTrigger.T).GoTo(FluentState.S2);
+
+        private void ThrowEntry() => throw new InvalidOperationException("Entry failed");
     }
 }
