@@ -12,8 +12,8 @@ public partial class InternalTransitionMachineFluent
     private static void Configure() => FSM
         .State(InternalState.Active)
             .On(InternalTrigger.Refresh)
-                .Internal()
-                .Action(nameof(DoRefresh));
+                .Action(nameof(DoRefresh))
+                .Internal();
 
     private void DoRefresh() => RefreshCount++;
 }

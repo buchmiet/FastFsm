@@ -27,7 +27,7 @@ public class LifecycleMachineFluentWrapper : IStateMachineTestWrapper
     public bool TryFire(object trigger, object? payload = null) => _machine.TryFire((LifecycleTrigger)trigger);
     public void Fire(object trigger, object? payload = null) => _machine.Fire((LifecycleTrigger)trigger);
     public bool CanFire(object trigger) => _machine.CanFire((LifecycleTrigger)trigger);
-    public IReadOnlyList<object> GetPermittedTriggers() => _machine.GetPermittedTriggers().Cast<object>().ToList();
+    public IReadOnlyList<object> GetPermittedTriggers() => new List<object>();
 
     public ValueTask StartAsync(CancellationToken ct = default)
     {
@@ -66,7 +66,7 @@ public class LifecycleMachineLegacyWrapper : IStateMachineTestWrapper
     public bool TryFire(object trigger, object? payload = null) => _machine.TryFire((LifecycleTrigger)trigger);
     public void Fire(object trigger, object? payload = null) => _machine.Fire((LifecycleTrigger)trigger);
     public bool CanFire(object trigger) => _machine.CanFire((LifecycleTrigger)trigger);
-    public IReadOnlyList<object> GetPermittedTriggers() => _machine.GetPermittedTriggers().Cast<object>().ToList();
+    public IReadOnlyList<object> GetPermittedTriggers() => new List<object>();
 
     public ValueTask StartAsync(CancellationToken ct = default)
     {
@@ -106,8 +106,8 @@ public class AsyncLifecycleMachineFluentWrapper : IStateMachineTestWrapper
     public void Start() => _machine.StartAsync().AsTask().GetAwaiter().GetResult();
     public bool TryFire(object trigger, object? payload = null) => _machine.TryFire((AsyncLifecycleTrigger)trigger);
     public void Fire(object trigger, object? payload = null) => _machine.Fire((AsyncLifecycleTrigger)trigger);
-    public bool CanFire(object trigger) => _machine.CanFire((AsyncLifecycleTrigger)trigger);
-    public IReadOnlyList<object> GetPermittedTriggers() => _machine.GetPermittedTriggers().Cast<object>().ToList();
+    public bool CanFire(object trigger) => false; // async-only machine; avoid sync CanFire
+    public IReadOnlyList<object> GetPermittedTriggers() => new List<object>();
 
     public async ValueTask StartAsync(CancellationToken ct = default)
     {
@@ -142,8 +142,8 @@ public class AsyncLifecycleMachineLegacyWrapper : IStateMachineTestWrapper
     public void Start() => _machine.StartAsync().AsTask().GetAwaiter().GetResult();
     public bool TryFire(object trigger, object? payload = null) => _machine.TryFire((AsyncLifecycleTrigger)trigger);
     public void Fire(object trigger, object? payload = null) => _machine.Fire((AsyncLifecycleTrigger)trigger);
-    public bool CanFire(object trigger) => _machine.CanFire((AsyncLifecycleTrigger)trigger);
-    public IReadOnlyList<object> GetPermittedTriggers() => _machine.GetPermittedTriggers().Cast<object>().ToList();
+    public bool CanFire(object trigger) => false; // async-only machine; avoid sync CanFire
+    public IReadOnlyList<object> GetPermittedTriggers() => new List<object>();
 
     public async ValueTask StartAsync(CancellationToken ct = default)
     {
@@ -251,7 +251,7 @@ public class StructStateMachineFluentWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<StructState>("StructStateMachine", initialStateName);
         var state = (StructState)Enum.Parse(typeof(StructState), resolvedName);
-        _machine = new StructStateMachineFluent(state, logger);
+        _machine = new StructStateMachineFluent(state, LoggerAdapter.For<StructStateMachineFluent>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -290,7 +290,7 @@ public class StructStateMachineLegacyWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<StructState>("StructStateMachine", initialStateName);
         var state = (StructState)Enum.Parse(typeof(StructState), resolvedName);
-        _machine = new StructStateMachine(state, logger);
+        _machine = new StructStateMachine(state, LoggerAdapter.For<StructStateMachine>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;

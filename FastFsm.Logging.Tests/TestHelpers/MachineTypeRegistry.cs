@@ -36,28 +36,27 @@ namespace FastFsm.Logging.Tests.TestHelpers
             ["MultiPayloadStateMachine"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.TestState), typeof(FastFsm.Logging.Tests.TestState), typeof(FastFsm.Logging.Tests.TestTrigger), typeof(FastFsm.Logging.Tests.TestTrigger)),
 
             // SpecialCasesLoggingTests
-            ["InternalTransitionMachine"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.SpecialCasesLoggingTests.InternalState), typeof(FastFsm.Logging.Tests.SpecialCasesLoggingTests.InternalState), typeof(FastFsm.Logging.Tests.SpecialCasesLoggingTests.InternalTrigger), typeof(FastFsm.Logging.Tests.SpecialCasesLoggingTests.InternalTrigger)),
-            ["StructStateMachine"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.SpecialCasesLoggingTests.StructState), typeof(FastFsm.Logging.Tests.SpecialCasesLoggingTests.StructState), typeof(FastFsm.Logging.Tests.SpecialCasesLoggingTests.StructTrigger), typeof(FastFsm.Logging.Tests.SpecialCasesLoggingTests.StructTrigger)),
+            ["InternalTransitionMachine"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.InternalState), typeof(FastFsm.Logging.Tests.InternalState), typeof(FastFsm.Logging.Tests.InternalTrigger), typeof(FastFsm.Logging.Tests.InternalTrigger)),
+            ["StructStateMachine"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.StructState), typeof(FastFsm.Logging.Tests.StructState), typeof(FastFsm.Logging.Tests.StructTrigger), typeof(FastFsm.Logging.Tests.StructTrigger)),
 
             // LifecycleLoggingTests
-            ["LifecycleMachine"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.LifecycleLoggingTests.LifecycleState), typeof(FastFsm.Logging.Tests.LifecycleLoggingTests.LifecycleState), typeof(FastFsm.Logging.Tests.LifecycleLoggingTests.LifecycleTrigger), typeof(FastFsm.Logging.Tests.LifecycleLoggingTests.LifecycleTrigger)),
-            ["AsyncLifecycleMachine"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.LifecycleLoggingTests.AsyncLifecycleState), typeof(FastFsm.Logging.Tests.LifecycleLoggingTests.AsyncLifecycleState), typeof(FastFsm.Logging.Tests.LifecycleLoggingTests.AsyncLifecycleTrigger), typeof(FastFsm.Logging.Tests.LifecycleLoggingTests.AsyncLifecycleTrigger)),
+            ["LifecycleMachine"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.LifecycleState), typeof(FastFsm.Logging.Tests.LifecycleState), typeof(FastFsm.Logging.Tests.LifecycleTrigger), typeof(FastFsm.Logging.Tests.LifecycleTrigger)),
+            ["AsyncLifecycleMachine"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.AsyncLifecycleState), typeof(FastFsm.Logging.Tests.AsyncLifecycleState), typeof(FastFsm.Logging.Tests.AsyncLifecycleTrigger), typeof(FastFsm.Logging.Tests.AsyncLifecycleTrigger)),
 
             // LoggingExamples
-            ["ExampleStateMachine"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.LoggingExamples.OrderState), typeof(FastFsm.Logging.Tests.LoggingExamples.OrderState), typeof(FastFsm.Logging.Tests.LoggingExamples.OrderTrigger), typeof(FastFsm.Logging.Tests.LoggingExamples.OrderTrigger)),
-            ["GuardedStateMachine"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.LoggingExamples.ProcessState), typeof(FastFsm.Logging.Tests.LoggingExamples.ProcessState), typeof(FastFsm.Logging.Tests.LoggingExamples.ProcessTrigger), typeof(FastFsm.Logging.Tests.LoggingExamples.ProcessTrigger)),
-            ["ExtensibleMachine"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.LoggingExamples.WorkflowState), typeof(FastFsm.Logging.Tests.LoggingExamples.WorkflowState), typeof(FastFsm.Logging.Tests.LoggingExamples.WorkflowTrigger), typeof(FastFsm.Logging.Tests.LoggingExamples.WorkflowTrigger)),
+            ["ExampleStateMachine"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.OrderState), typeof(FastFsm.Logging.Tests.OrderState), typeof(FastFsm.Logging.Tests.OrderTrigger), typeof(FastFsm.Logging.Tests.OrderTrigger)),
+            ["GuardedStateMachine"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.ProcessState), typeof(FastFsm.Logging.Tests.ProcessState), typeof(FastFsm.Logging.Tests.ProcessTrigger), typeof(FastFsm.Logging.Tests.ProcessTrigger)),
+            ["ExtensibleMachine"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.WorkflowState), typeof(FastFsm.Logging.Tests.WorkflowState), typeof(FastFsm.Logging.Tests.WorkflowTrigger), typeof(FastFsm.Logging.Tests.WorkflowTrigger)),
 
             // HsmRuntimeLoggingTests
-            ["HsmMachine"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.HsmRuntimeLoggingTests.HState), typeof(FastFsm.Logging.Tests.HsmRuntimeLoggingTests.HState), typeof(FastFsm.Logging.Tests.HsmRuntimeLoggingTests.HTrigger), typeof(FastFsm.Logging.Tests.HsmRuntimeLoggingTests.HTrigger)),
+            ["HsmMachine"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.HState), typeof(FastFsm.Logging.Tests.HState), typeof(FastFsm.Logging.Tests.HTrigger), typeof(FastFsm.Logging.Tests.HTrigger)),
 
             // LoggingIntegrationTests
-            ["InitialOnEntryStateMachineActions"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.LoggingIntegrationTests.TestInitialState), typeof(FastFsm.Logging.Tests.LoggingIntegrationTests.TestInitialState), typeof(FastFsm.Logging.Tests.LoggingIntegrationTests.TestInitialTrigger), typeof(FastFsm.Logging.Tests.LoggingIntegrationTests.TestInitialTrigger)),
-            ["FullMultiPayloadMachine"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.LoggingIntegrationTests.OrderStatePayload), typeof(FastFsm.Logging.Tests.LoggingIntegrationTests.OrderStatePayload), typeof(FastFsm.Logging.Tests.LoggingIntegrationTests.OrderTriggerPayload), typeof(FastFsm.Logging.Tests.LoggingIntegrationTests.OrderTriggerPayload)),
+            ["InitialOnEntryStateMachineActions"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.TestInitialState), typeof(FastFsm.Logging.Tests.TestInitialState), typeof(FastFsm.Logging.Tests.TestInitialTrigger), typeof(FastFsm.Logging.Tests.TestInitialTrigger)),
+            ["FullMultiPayloadMachine"] = new EnumTypePair(typeof(FastFsm.Logging.Tests.OrderStatePayload), typeof(FastFsm.Logging.Tests.OrderStatePayload), typeof(FastFsm.Logging.Tests.OrderTriggerPayload), typeof(FastFsm.Logging.Tests.OrderTriggerPayload)),
         };
 
         public static Type GetStateType(string machine, Api api) => Types[machine].For(api, isState: true);
         public static Type GetTriggerType(string machine, Api api) => Types[machine].For(api, isState: false);
     }
 }
-

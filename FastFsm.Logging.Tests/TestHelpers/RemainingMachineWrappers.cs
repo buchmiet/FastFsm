@@ -200,29 +200,32 @@ public class FullMultiPayloadMachineLegacyWrapper : IStateMachineTestWrapper
         return ValueTask.CompletedTask;
     }
 
-    public async ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default)
+    public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default)
     {
+        // Legacy machine exposes only sync API; wrap accordingly
         var triggerEnum = (OrderTriggerPayload)trigger;
         if (payload != null)
         {
             dynamic dynamicPayload = payload;
-            return await _machine.TryFireAsync(triggerEnum, dynamicPayload, ct);
+            var res = _machine.TryFire(triggerEnum, dynamicPayload);
+            return ValueTask.FromResult(res);
         }
-        return await _machine.TryFireAsync(triggerEnum, ct);
+        return ValueTask.FromResult(_machine.TryFire(triggerEnum));
     }
 
-    public async ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default)
+    public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default)
     {
         var triggerEnum = (OrderTriggerPayload)trigger;
         if (payload != null)
         {
             dynamic dynamicPayload = payload;
-            await _machine.FireAsync(triggerEnum, dynamicPayload, ct);
+            _machine.Fire(triggerEnum, dynamicPayload);
         }
         else
         {
-            await _machine.FireAsync(triggerEnum, ct);
+            _machine.Fire(triggerEnum);
         }
+        return ValueTask.CompletedTask;
     }
 }
 

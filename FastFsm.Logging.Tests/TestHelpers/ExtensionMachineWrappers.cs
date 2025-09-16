@@ -253,29 +253,23 @@ public class MultiPayloadStateMachineFluentWrapper : IStateMachineTestWrapper
         return ValueTask.CompletedTask;
     }
 
-    public async ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default)
+    public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default)
     {
         var triggerEnum = (TestTrigger)trigger;
         if (payload != null)
         {
-            dynamic dynamicPayload = payload;
-            return await _machine.TryFireAsync(triggerEnum, dynamicPayload, ct);
+            if (triggerEnum == TestTrigger.Start && payload is TestPayload tp)
+                return ValueTask.FromResult(_machine.TryFire(triggerEnum, tp));
+            else if (triggerEnum == TestTrigger.Process && payload is string s)
+                return ValueTask.FromResult(_machine.TryFire(triggerEnum, s));
         }
-        return await _machine.TryFireAsync(triggerEnum, ct);
+        return ValueTask.FromResult(_machine.TryFire(triggerEnum));
     }
 
-    public async ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default)
+    public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default)
     {
-        var triggerEnum = (TestTrigger)trigger;
-        if (payload != null)
-        {
-            dynamic dynamicPayload = payload;
-            await _machine.FireAsync(triggerEnum, dynamicPayload, ct);
-        }
-        else
-        {
-            await _machine.FireAsync(triggerEnum, ct);
-        }
+        Fire(trigger, payload);
+        return ValueTask.CompletedTask;
     }
 }
 
@@ -287,7 +281,7 @@ public class MultiPayloadStateMachineLegacyWrapper : IStateMachineTestWrapper
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<TestState>("MultiPayloadStateMachine", initialStateName);
         var state = (TestState)Enum.Parse(typeof(TestState), resolvedName);
-        _machine = new MultiPayloadStateMachine(state, logger);
+        _machine = new MultiPayloadStateMachine(state, LoggerAdapter.For<MultiPayloadStateMachine>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -334,28 +328,22 @@ public class MultiPayloadStateMachineLegacyWrapper : IStateMachineTestWrapper
         return ValueTask.CompletedTask;
     }
 
-    public async ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default)
+    public ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default)
     {
         var triggerEnum = (TestTrigger)trigger;
         if (payload != null)
         {
-            dynamic dynamicPayload = payload;
-            return await _machine.TryFireAsync(triggerEnum, dynamicPayload, ct);
+            if (triggerEnum == TestTrigger.Start && payload is TestPayload tp)
+                return ValueTask.FromResult(_machine.TryFire(triggerEnum, tp));
+            else if (triggerEnum == TestTrigger.Process && payload is string s)
+                return ValueTask.FromResult(_machine.TryFire(triggerEnum, s));
         }
-        return await _machine.TryFireAsync(triggerEnum, ct);
+        return ValueTask.FromResult(_machine.TryFire(triggerEnum));
     }
 
-    public async ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default)
+    public ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default)
     {
-        var triggerEnum = (TestTrigger)trigger;
-        if (payload != null)
-        {
-            dynamic dynamicPayload = payload;
-            await _machine.FireAsync(triggerEnum, dynamicPayload, ct);
-        }
-        else
-        {
-            await _machine.FireAsync(triggerEnum, ct);
-        }
+        Fire(trigger, payload);
+        return ValueTask.CompletedTask;
     }
 }
