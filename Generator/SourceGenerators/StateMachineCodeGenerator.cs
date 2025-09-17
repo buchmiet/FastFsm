@@ -2039,13 +2039,17 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             }
             else
             {
-                // No global handler: log callback exception and fail transition
+                // Respect consumer policy: in SAFE mode swallow and return false; otherwise rethrow
+                Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
                 if (ShouldGenerateLogging)
                 {
                     WriteLogStatement("Warning",
                         $"CallbackException(_logger, _instanceId, \\\"OnEntry\\\", \\\"{toStateDef.OnEntryMethod}\\\", \\\"transition {fromState} -> {toState}\\\", ex);");
                 }
                 Sb.AppendLine("return false;");
+                Sb.AppendLine("#else");
+                Sb.AppendLine("throw;");
+                Sb.AppendLine("#endif");
             }
         }
     }
