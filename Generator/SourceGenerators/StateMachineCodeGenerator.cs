@@ -2044,7 +2044,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                 if (ShouldGenerateLogging)
                 {
                     WriteLogStatement("Warning",
-                        $"CallbackException(_logger, _instanceId, \\\"OnEntry\\\", \\\"{toStateDef.OnEntryMethod}\\\", \\\"transition {fromState} -> {toState}\\\", ex);");
+                        $"CallbackException(_logger, _instanceId, \"OnEntry\", \"{toStateDef.OnEntryMethod}\", \"transition {fromState} -> {toState}\", ex);");
                 }
                 Sb.AppendLine("return false;");
                 Sb.AppendLine("#else");
