@@ -20,7 +20,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="FastFsm.Net" Version="0.0.1.50-feature-fluent-hsm-parser-v0.7.5" />
+		<PackageReference Include="FastFsm.Net" Version="0.0.1.51-feature-fluent-hsm-parser-v0.7.5" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.7" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
 	</ItemGroup>
@@ -52,7 +52,7 @@
 	
 	<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
 		<PropertyGroup>
-			<Version>0.0.1.50-feature-fluent-hsm-parser-v0.7.5</Version>
+			<Version>0.0.1.51-feature-fluent-hsm-parser-v0.7.5</Version>
 			<PackageVersion>$(Version)</PackageVersion>
 		</PropertyGroup>
 	</Target>
