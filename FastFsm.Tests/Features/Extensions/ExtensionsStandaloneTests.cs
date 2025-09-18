@@ -36,6 +36,11 @@ public class ExtensionsStandaloneTests(ITestOutputHelper output)
         {
             Log.Add($"GuardResult: {guardName} = {result}");
         }
+
+        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
+        {
+            Log.Add("Unhandled");
+        }
     }
 
     [Fact]
@@ -151,6 +156,11 @@ public class ExtensionsStandaloneTests(ITestOutputHelper output)
         }
 
         public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext
+        {
+            throw new Exception("Extension error");
+        }
+
+        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
         {
             throw new Exception("Extension error");
         }

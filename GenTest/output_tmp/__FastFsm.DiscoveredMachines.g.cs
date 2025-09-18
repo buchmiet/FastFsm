@@ -5,12 +5,11 @@
 internal static class __FastFsm_DiscoveryDump
 {
     // Total candidates discovered: 1
-    // Valid: 0, Skipped: 1
+    // Valid: 1, Skipped: 0
     // Format: Index | FullyQualifiedName | Status | SkipReason
 
-    // 0: AsyncOnExitContinueMachine
-    //     status=SKIPPED
-    //     reason=No [StateMachine] attribute
+    // 0: M
+    //     status=VALID
 
     /*
      * End of discovery dump

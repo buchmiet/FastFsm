@@ -186,5 +186,93 @@ namespace FastFsm.Runtime.Extensions
                     nameof(IStateMachineExtension.OnGuardEvaluated));
             }
         }
+
+        // ------------------------------------------------------------
+        // Experimental/Planned hooks – stub implementations
+        // These are no-ops for now to allow generator call sites to compile.
+        // Once the IStateMachineExtension interface is expanded, wire them
+        // similarly to the existing Run* methods above.
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RunUnhandledTrigger(
+            IReadOnlyList<IStateMachineExtension> extensions,
+            IStateMachineContext context)
+        {
+            for (int i = 0; i < extensions.Count; i++)
+            {
+                SafeExecute(
+                    extensions[i],
+                    context,
+                    static (ext, ctx) => ext.OnUnhandledTrigger(ctx),
+                    nameof(IStateMachineExtension.OnUnhandledTrigger));
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RunInternalTransition(
+            IReadOnlyList<IStateMachineExtension> extensions,
+            IStateMachineContext context)
+        {
+            // TODO: invoke extension.OnInternalTransition(context) when available
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RunTransitioned(
+            IReadOnlyList<IStateMachineExtension> extensions,
+            IStateMachineContext context)
+        {
+            // TODO: invoke extension.OnTransitioned(context) when available
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RunTransitionCompleted(
+            IReadOnlyList<IStateMachineExtension> extensions,
+            IStateMachineContext context)
+        {
+            // TODO: invoke extension.OnTransitionCompleted(context) when available
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RunBubbleToParent<TState>(
+            IReadOnlyList<IStateMachineExtension> extensions,
+            IStateMachineContext context,
+            TState handledAt)
+            where TState : unmanaged, Enum
+        {
+            // TODO: invoke extension.OnBubbleToParent(context, handledAt) when available
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RunInitialSubstateEntered<TState>(
+            IReadOnlyList<IStateMachineExtension> extensions,
+            IStateMachineContext parentContext,
+            TState child)
+            where TState : unmanaged, Enum
+        {
+            // TODO: invoke extension.OnInitialSubstateEntered(parentContext, child) when available
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RunHistoryRestore<TState>(
+            IReadOnlyList<IStateMachineExtension> extensions,
+            IStateMachineContext parentContext,
+            Abstractions.Attributes.HistoryMode mode,
+            TState restoredState)
+            where TState : unmanaged, Enum
+        {
+            // TODO: invoke extension.OnHistoryRestore(parentContext, mode, restoredState) when available
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RunAncestorPathChanged<TState>(
+            IReadOnlyList<IStateMachineExtension> extensions,
+            IStateMachineContext context,
+            ReadOnlySpan<TState> exitedPath,
+            ReadOnlySpan<TState> enteredPath,
+            TState lca)
+            where TState : unmanaged, Enum
+        {
+            // TODO: invoke extension.OnAncestorPathChanged(context, exitedPath, enteredPath, lca) when available
+        }
     }
 }

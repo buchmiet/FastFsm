@@ -47,6 +47,7 @@ public class ActionExceptionTests
         public void OnBeforeTransition<T>(T ctx) where T : IStateMachineContext { }
         public void OnGuardEvaluation<T>(T ctx, string g) where T : IStateMachineContext { }
         public void OnGuardEvaluated<T>(T ctx, string g, bool r) where T : IStateMachineContext { }
+        public void OnUnhandledTrigger<T>(T ctx) where T : IStateMachineContext { }
     }
 }
 

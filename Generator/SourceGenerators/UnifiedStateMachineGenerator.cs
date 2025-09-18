@@ -915,6 +915,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             }
             }
 
+        // TODO(EXT): emit OnTransitionCompleted at end of async attempt with the last known context
         Sb.AppendLine($"return {SuccessVar};");
         }
         Sb.AppendLine();
@@ -1362,6 +1363,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 {
                     Sb.AppendLine("// Resolve entry into composite (Initial vs History)");
                     Sb.AppendLine("int __resolvedIndex = GetCompositeEntryTarget(__targetComposite);");
+                    // TODO(EXT): emit OnInitialSubstateEntered(parentCtx: smCtx, child: (" + stateTypeForUsage + ")__resolvedIndex)
                     Sb.AppendLine("var __histMode = HistoryArray[__targetComposite];");
                     Sb.AppendLine("string __resolution = (__histMode == Abstractions.Attributes.HistoryMode.None ? \"Initial\" : \"History\");");
                     Sb.AppendLine();
@@ -1375,6 +1377,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                         using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)"))
                         {
                             Sb.AppendLine($"{Model.ClassName}Log.HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
+                            Sb.AppendLine($"// TODO(EXT): emit OnHistoryRestore(parentCtx: smCtx, mode: __histMode, restoredState: (" + stateTypeForUsage + ")__resolvedIndex)");
                         }
                     }
                     
@@ -1391,7 +1394,8 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 if (ShouldGenerateLogging)
                 {
                     Sb.AppendLine($"    // HSM transition diagnostics");
-                    Sb.AppendLine($"    int lca = FindLowestCommonAncestor((int)Enum.Parse<{stateTypeForUsage}>(__fromName), (int){CurrentStateField});");
+                Sb.AppendLine($"    int lca = FindLowestCommonAncestor((int)Enum.Parse<{stateTypeForUsage}>(__fromName), (int){CurrentStateField});");
+                // TODO(EXT): compute exitedPath/enteredPath spans and emit OnAncestorPathChanged(smCtx, exitedPath, enteredPath, (" + stateTypeForUsage + ")lca)
                     Sb.AppendLine($"    int __exitCount = 0;");
                     Sb.AppendLine($"    for (int s = (int)Enum.Parse<{stateTypeForUsage}>(__fromName); s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __exitCount++; }}");
                     Sb.AppendLine($"    int __entryCount = 0;");
@@ -1452,6 +1456,8 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
         // Success
         Sb.AppendLine("_extensionRunner.RunAfterTransition(_extensions, smCtx, true);");
+        // TODO(EXT): Emit OnTransitioned here once available
+        // _extensionRunner.RunTransitioned(_extensions, smCtx);
         WriteLogStatement("Information",
             $"TransitionSucceeded(_logger, _instanceId, \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
         Sb.AppendLine("return true;");
@@ -1485,6 +1491,8 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             Sb.AppendLine("    trigger,");
             Sb.AppendLine($"    {CurrentStateField},");
             Sb.AppendLine("    payload);");
+            // Planned hook: unhandled trigger
+            Sb.AppendLine("_extensionRunner.RunUnhandledTrigger(_extensions, failCtx);");
             Sb.AppendLine("_extensionRunner.RunAfterTransition(_extensions, failCtx, false);");
             Sb.AppendLine("return false;");
             return;
@@ -1535,9 +1543,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                         {
                             Sb.AppendLine($"                        InternalTransitionOnAncestor(_logger, _instanceId, (({stateType})check).ToString(), __fromName, trigger.ToString());");
                         }
+                        // TODO(EXT): emit OnInternalTransition hook here for HSM ancestor internal
                     }
                     
                     Sb.AppendLine($"                    // Transition: {bestTransition.FromState} -> {bestTransition.ToState} (Priority: {bestTransition.Priority})");
+                    // TODO(EXT): if this transition is handled at a parent, consider emitting OnBubbleToParent(ctx, handledAt: state)
                     writeTransitionLogic(bestTransition, stateType, triggerType);
                     
                     Sb.AppendLine("                }");
@@ -1606,6 +1616,8 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         Sb.AppendLine("    trigger,");
         Sb.AppendLine($"    {CurrentStateField},");
         Sb.AppendLine("    payload);");
+        // Planned hook: unhandled trigger
+        Sb.AppendLine("_extensionRunner.RunUnhandledTrigger(_extensions, noTransitionCtx);");
         Sb.AppendLine("_extensionRunner.RunAfterTransition(_extensions, noTransitionCtx, false);");
         Sb.AppendLine("return false;");
 }
