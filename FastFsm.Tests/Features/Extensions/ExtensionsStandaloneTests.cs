@@ -41,6 +41,11 @@ public class ExtensionsStandaloneTests(ITestOutputHelper output)
         {
             Log.Add("Unhandled");
         }
+
+        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
+        {
+            Log.Add("Internal");
+        }
     }
 
     [Fact]
@@ -161,6 +166,11 @@ public class ExtensionsStandaloneTests(ITestOutputHelper output)
         }
 
         public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
+        {
+            throw new Exception("Extension error");
+        }
+
+        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
         {
             throw new Exception("Extension error");
         }

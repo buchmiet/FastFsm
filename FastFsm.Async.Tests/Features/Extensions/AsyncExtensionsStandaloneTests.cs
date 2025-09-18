@@ -34,6 +34,16 @@ public class AsyncExtensionsStandaloneTests
         {
             Log.Add($"GuardResult: {guardName} = {result}");
         }
+
+        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
+        {
+            Log.Add("Unhandled");
+        }
+
+        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
+        {
+            Log.Add("Internal");
+        }
     }
 
     [Fact]
@@ -138,6 +148,16 @@ public class AsyncExtensionsStandaloneTests
         }
 
         public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext
+        {
+            throw new Exception("Extension error");
+        }
+
+        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
+        {
+            throw new Exception("Extension error");
+        }
+
+        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
         {
             throw new Exception("Extension error");
         }

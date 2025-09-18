@@ -136,6 +136,18 @@ namespace FastFsm.Runtime.Extensions
             bool success)
             where TContext : IStateMachineContext
         {
+            // Heuristic: if transition succeeded and From == To, treat as internal
+            if (success && context is IStateSnapshot snap && Equals(snap.FromState, snap.ToState))
+            {
+                for (int i = 0; i < extensions.Count; i++)
+                {
+                    SafeExecute(
+                        extensions[i],
+                        context,
+                        (ext, ctx) => ext.OnInternalTransition(ctx),
+                        nameof(OnInternalTransition));
+                }
+            }
             for (int i = 0; i < extensions.Count; i++)
             {
                 SafeExecute(
@@ -213,7 +225,14 @@ namespace FastFsm.Runtime.Extensions
             IReadOnlyList<IStateMachineExtension> extensions,
             IStateMachineContext context)
         {
-            // TODO: invoke extension.OnInternalTransition(context) when available
+            for (int i = 0; i < extensions.Count; i++)
+            {
+                SafeExecute(
+                    extensions[i],
+                    context,
+                    (ext, ctx) => ext.OnInternalTransition(ctx),
+                    "OnInternalTransition");
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

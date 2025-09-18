@@ -46,6 +46,8 @@ public sealed class AsyncRecordingExtension : IStateMachineExtension
     public void OnAfterTransition<T>(T ctx, bool s) where T : IStateMachineContext => Log.Add($"After:{(s ? "Success" : "Fail")}");
     public void OnGuardEvaluation<T>(T ctx, string _) where T : IStateMachineContext => Log.Add("GuardEval");
     public void OnGuardEvaluated<T>(T ctx, string _, bool res) where T : IStateMachineContext => Log.Add("GuardEvaluated");
+    public void OnUnhandledTrigger<T>(T ctx) where T : IStateMachineContext => Log.Add("Unhandled");
+    public void OnInternalTransition<T>(T ctx) where T : IStateMachineContext => Log.Add("Internal");
 }
 
 public class AsyncExtensionHookOrderTests
