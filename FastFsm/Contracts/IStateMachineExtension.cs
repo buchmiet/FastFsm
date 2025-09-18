@@ -30,6 +30,12 @@ public interface IStateMachineExtension
         where TContext : IStateMachineContext;
 
     /// <summary>
+    /// Called when an internal transition (no state change) is executed.
+    /// </summary>
+    void OnInternalTransition<TContext>(TContext context)
+        where TContext : IStateMachineContext;
+
+    /// <summary>
     /// Called when a trigger was not handled by any state (after bubbling in HSM).
     /// </summary>
     void OnUnhandledTrigger<TContext>(TContext context)

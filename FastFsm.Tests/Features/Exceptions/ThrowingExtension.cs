@@ -19,4 +19,5 @@ public class ThrowingExtension : IStateMachineExtension
     public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext { }
     public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext { }
     public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext { }
+    public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
 }

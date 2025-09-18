@@ -29,6 +29,7 @@ public class OnUnhandledTriggerTestsLegacy
         public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
         public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext { }
         public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext { }
+        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
     }
 
     [Fact]
@@ -54,4 +55,3 @@ public class OnUnhandledTriggerTestsLegacy
         Assert.Equal(ExtState.Idle, to); // no-transition case
     }
 }
-
