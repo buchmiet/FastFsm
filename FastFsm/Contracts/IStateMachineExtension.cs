@@ -28,4 +28,10 @@ public interface IStateMachineExtension
     /// </summary>
     void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) 
         where TContext : IStateMachineContext;
+
+    /// <summary>
+    /// Called when a trigger was not handled by any state (after bubbling in HSM).
+    /// </summary>
+    void OnUnhandledTrigger<TContext>(TContext context)
+        where TContext : IStateMachineContext;
 }

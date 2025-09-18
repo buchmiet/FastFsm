@@ -35,6 +35,8 @@ public class RecordingExtension : IStateMachineExtension
 
     public void OnGuardEvaluated<T>(T ctx, string _, bool res) where T : IStateMachineContext
         => _log.Add("GuardEvaluated");
+    public void OnUnhandledTrigger<T>(T ctx) where T : IStateMachineContext
+        => _log.Add("Unhandled");
 }
 
 public class ExtensionHookOrderTests
