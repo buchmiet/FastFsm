@@ -15,7 +15,7 @@ public partial class GuardedCallbackMachineFluent
         .OnEntry(nameof(OnEntryA))
         .OnExit(nameof(OnExitA))
         .On(GuardedTrigger.Go)
-        .Guard(nameof(CanTransition))
+        .Guard(CanTransition)
         .GoTo(GuardedState.B)
         .State(GuardedState.B)
         .OnEntry(nameof(OnEntryB));

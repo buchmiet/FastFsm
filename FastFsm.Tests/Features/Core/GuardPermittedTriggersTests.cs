@@ -50,7 +50,7 @@ public partial class GuardPermittedMachineFluent
     private static void Configure() => FSM
         .State(State.Idle)
         .On(Trigger.Run)
-        .Guard(nameof(CanRun))
+        .Guard(CanRun)
         .GoTo(State.Done);
 }
 
