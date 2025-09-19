@@ -174,6 +174,8 @@ public class FullVariantDiTests : DITestBase
         public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext { }
         public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext { }
         public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext { }
+        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext { }
+        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
     }
 
     private class DetailedExtension : IStateMachineExtension
@@ -199,5 +201,7 @@ public class FullVariantDiTests : DITestBase
         {
             Events.Add($"GuardEvaluated:{guardName}:{result}");
         }
+        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext { }
+        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
     }
 }

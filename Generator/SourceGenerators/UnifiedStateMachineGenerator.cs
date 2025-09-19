@@ -1455,10 +1455,6 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         Sb.AppendLine("}");
 
         // Success
-        if (transition.IsInternal)
-        {
-            Sb.AppendLine("_extensionRunner.RunInternalTransition(_extensions, smCtx);");
-        }
         Sb.AppendLine("_extensionRunner.RunAfterTransition(_extensions, smCtx, true);");
         // TODO(EXT): Emit OnTransitioned here once available
         // _extensionRunner.RunTransitioned(_extensions, smCtx);
@@ -2305,10 +2301,6 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         Sb.AppendLine($"{SuccessVar} = true;");
 
         // Hook: After successful transition
-        if (transition.IsInternal)
-        {
-            Sb.AppendLine($"_extensionRunner.RunInternalTransition(_extensions, {HookVarContext});");
-        }
         WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
 
         Sb.AppendLine($"goto {EndOfTryFireLabel};");
@@ -2516,10 +2508,6 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         Sb.AppendLine($"{SuccessVar} = true;");
 
         // Hook: After successful transition
-        if (transition.IsInternal)
-        {
-            Sb.AppendLine($"_extensionRunner.RunInternalTransition(_extensions, {HookVarContext});");
-        }
         WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
 
         Sb.AppendLine($"goto {EndOfTryFireLabel};");
