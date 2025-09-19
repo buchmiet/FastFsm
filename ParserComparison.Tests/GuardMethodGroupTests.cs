@@ -17,8 +17,9 @@ public partial class SimpleGuardMethodGroupMachine
 
     private static void Configure() => FSM
         .State(SimpleGuardStates.A)
-            .On(SimpleGuardTriggers.Go).GoTo(SimpleGuardStates.B)
-                .Guard(CanGo);  // Method group instead of nameof(CanGo)
+            .On(SimpleGuardTriggers.Go)
+                .Guard(CanGo)  // Method group instead of nameof(CanGo)
+                .GoTo(SimpleGuardStates.B);
 }
 
 #endregion
