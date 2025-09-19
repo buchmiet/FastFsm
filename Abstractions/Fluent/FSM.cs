@@ -184,25 +184,21 @@ namespace Abstractions.Fluent
         /// <summary>
         /// Set the synchronous guard for this transition (no payload).
         /// </summary>
-        [System.Diagnostics.Conditional("FASTFSM_FLUENT")]
         public TransitionBuilder<TState, TTrigger> Guard(Guard guard) => this;
 
         /// <summary>
         /// Set the asynchronous guard for this transition (no payload).
         /// </summary>
-        [System.Diagnostics.Conditional("FASTFSM_FLUENT")]
         public TransitionBuilder<TState, TTrigger> Guard(GuardAsync guard) => this;
 
         /// <summary>
         /// Set the synchronous guard for this transition (with payload).
         /// </summary>
-        [System.Diagnostics.Conditional("FASTFSM_FLUENT")]
         public TransitionBuilder<TState, TTrigger> Guard<TPayload>(Guard<TPayload> guard) => this;
 
         /// <summary>
         /// Set the asynchronous guard for this transition (with payload).
         /// </summary>
-        [System.Diagnostics.Conditional("FASTFSM_FLUENT")]
         public TransitionBuilder<TState, TTrigger> Guard<TPayload>(GuardAsync<TPayload> guard) => this;
 
         #endregion
