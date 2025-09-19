@@ -48,6 +48,7 @@
   
   <ItemGroup>
     <None Include="build\*.props" Pack="true" PackagePath="build" />
+    <None Include="buildTransitive\*.props" Pack="true" PackagePath="buildTransitive" />
   </ItemGroup>
 
   
@@ -99,7 +100,7 @@
 
   <Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
     <PropertyGroup>
-      <Version>0.0.1.61-feature-fluent-hsm-parser-v0.7.5</Version>
+      <Version>0.0.1.63-feature-fluent-hsm-parser-v0.7.5</Version>
       <PackageVersion>$(Version)</PackageVersion>
     </PropertyGroup>
   </Target>
