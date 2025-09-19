@@ -189,7 +189,7 @@ public partial class PriorityTransitionMachineFluent
         FSM.At(HsmState.Priority_Low)
             .On(HsmTrigger.Execute)
             .GoTo(HsmState.Priority_High)
-            .Guard(nameof(HighPriorityGuard))
+            .Guard(HighPriorityGuard)
             .Priority(100);
                 
         // Priority in parent-child transitions
@@ -210,7 +210,7 @@ public partial class PriorityTransitionMachineFluent
         FSM.At(HsmState.ComplexParent)
             .On(HsmTrigger.Process)
             .GoTo(HsmState.ComplexParent_Child2)
-            .Guard(nameof(SpecialConditionGuard))
+            .Guard(SpecialConditionGuard)
             .Priority(200);
     }
         
@@ -320,7 +320,7 @@ public partial class ComplexMixedScenarioMachineFluent
         FSM.At(HsmState.ComplexParent_Child1)
             .On(HsmTrigger.MoveNext)
             .GoTo(HsmState.ComplexParent_Child3)
-            .Guard(nameof(CanSkipToChild3))
+            .Guard(CanSkipToChild3)
             .Priority(100);
                 
         FSM.At(HsmState.ComplexParent_Child2)
