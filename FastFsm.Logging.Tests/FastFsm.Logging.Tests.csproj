@@ -21,7 +21,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
     <PackageReference Include="Shouldly" Version="4.2.1" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.8" />
-    <PackageReference Include="FastFsm.Net.Logging" Version="0.0.0.9-feature-fluent-hsm-parser-v0.7.5" />
+    <PackageReference Include="FastFsm.Net.Logging" Version="0.0.0.1-fluentrefinement" />
   </ItemGroup>
 
   
