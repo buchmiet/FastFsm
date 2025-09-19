@@ -91,8 +91,8 @@ Note on OnException:
 | Method | Description | Example |
 |--------|-------------|---------|
 | `.Payload<T>()` | Specify payload type | `.Payload<OrderData>()` |
-| `.Guard(string methodName)` | Add guard condition | `.Guard(nameof(CanStart))` |
-| `.GuardAsync(string methodName)` | Add async guard | `.GuardAsync(nameof(CanStartAsync))` |
+| `.Guard(methodName)` or `.Guard(method)` | Add guard condition | `.Guard(CanStart)` (method group) or `.Guard(nameof(CanStart))` |
+| `.GuardAsync(methodName)` or `.Guard(asyncMethod)` | Add async guard | `.Guard(CanStartAsync)` (method group) or `.GuardAsync(nameof(CanStartAsync))` |
 | `.Action(string methodName)` | Add transition action | `.Action(nameof(ProcessStart))` |
 | `.ActionAsync(string methodName)` | Add async action | `.ActionAsync(nameof(ProcessStartAsync))` |
 | `.Priority(int priority)` | Set transition priority (HSM) | `.Priority(100)` |
@@ -121,7 +121,7 @@ public partial class GuardedMachine
         .State(State.Idle)
             .OnEntry(nameof(PrepareSystem))
             .On(Trigger.Start)
-                .Guard(nameof(CanStart))
+                .Guard(CanStart)  // Method group - cleaner syntax!
                 .Action(nameof(StartProcess))
                 .GoTo(State.Running)
         .State(State.Running)
@@ -159,12 +159,12 @@ public partial class OrderMachine
     private static void Configure() => FSM
         .State(State.New)
             .On(Trigger.Process)
-                .Guard(nameof(ValidateOrder))
-                .Action(nameof(ProcessOrder))
+                .Guard(ValidateOrder)  // Method group - NEW in 0.8.0!
+                .Action(ProcessOrder)  // Method group support coming soon
                 .GoTo(State.Processing)
         .State(State.Processing)
             .On(Trigger.Ship)
-                .Action(nameof(ShipOrder))
+                .Action(nameof(ShipOrder))  // Still supports nameof
                 .GoTo(State.Shipped)
             .On(Trigger.Cancel)
                 .Action(nameof(CancelOrder))
@@ -194,7 +194,7 @@ public partial class MultiPayloadMachine
         .State(State.Idle)
             .On(Trigger.Submit)
                 .Payload<SubmitRequest>()
-                .Action(nameof(HandleSubmit))
+                .Action(HandleSubmit)  // Method group support coming soon
                 .GoTo(State.Processing)
         .State(State.Processing)
             .On(Trigger.Update)
@@ -371,7 +371,7 @@ public partial class InternalTransitionMachine
         .State(State.Active)
             .OnInternal(Trigger.Update)  // Use OnInternal for internal transitions
                 .Payload<UpdateData>()
-                .Guard(nameof(ValidateUpdate))
+                .Guard(ValidateUpdate)  // Method group
                 .Action(nameof(ApplyUpdate))
                 .Internal()  // Stays in Active state
             .On(Trigger.Toggle)
@@ -444,11 +444,11 @@ public partial class PriorityMachine
     private static void Configure() => FSM
         .State(State.Parent)
             .On(Trigger.Action)
-                .Guard(nameof(HighPriorityCondition))
+                .Guard(HighPriorityCondition)  // Method group
                 .Priority(100)  // Higher priority, evaluated first
                 .GoTo(State.HighPriorityTarget)
             .On(Trigger.Action)
-                .Guard(nameof(MediumPriorityCondition))
+                .Guard(MediumPriorityCondition)  // Method group
                 .Priority(50)
                 .GoTo(State.MediumPriorityTarget)
             .On(Trigger.Action)
@@ -504,6 +504,55 @@ private void OnStateExit() { /* cleanup */ }
 private async Task OnStateEntryAsync(CancellationToken ct) => await InitAsync(ct);
 private async ValueTask OnStateExitAsync() => await CleanupAsync();
 ```
+
+## Method Groups Support (NEW in v0.8.0)
+
+FastFSM now supports **method groups** for callbacks, providing cleaner and more idiomatic C# syntax:
+
+### Guards with Method Groups
+```csharp
+// Before (v0.7.x) - using nameof
+.Guard(nameof(CanProceed))
+.GuardAsync(nameof(CanProceedAsync))
+
+// After (v0.8.0) - using method groups
+.Guard(CanProceed)          // Sync guard
+.Guard(CanProceedAsync)      // Async guard (auto-detected)
+```
+
+### Supported Signatures for Guards
+```csharp
+// Synchronous guards
+bool CanGo()                              => .Guard(CanGo)
+bool CanGo(in TPayload payload)           => .Guard(CanGo)
+
+// Asynchronous guards
+ValueTask<bool> CanGoAsync(CancellationToken ct)                    => .Guard(CanGoAsync)
+ValueTask<bool> CanGoAsync(in TPayload p, CancellationToken ct)     => .Guard(CanGoAsync)
+```
+
+### Ambiguous Method Groups
+If you have overloaded methods with the same name, the compiler will emit **FSM3070**:
+```csharp
+private bool Validate() => true;
+private bool Validate(in OrderData data) => data.Amount > 0;
+
+// This will cause FSM3070 - ambiguous method group
+.Guard(Validate)  // ERROR: Which Validate?
+
+// Solution: Use nameof for disambiguation
+.Guard(nameof(Validate))  // Uses the correct overload based on context
+```
+
+### Backward Compatibility
+The `nameof(...)` syntax is still fully supported for backward compatibility:
+```csharp
+.Guard(nameof(MyGuard))      // Still works
+.Guard(MyGuard)              // New, cleaner syntax
+```
+
+### Coming Soon
+Method group support for Actions, OnEntry, and OnExit callbacks is planned for the next iteration.
 
 ## Important Notes
 
@@ -564,7 +613,7 @@ public partial class FluentMachine
     private static void Configure() => FSM
         .State(State.A)
             .On(Trigger.Next)
-                .Guard(nameof(CanGo))
+                .Guard(CanGo)  // Method group
                 .Action(nameof(OnGo))
                 .GoTo(State.B)
         .State(State.B)
