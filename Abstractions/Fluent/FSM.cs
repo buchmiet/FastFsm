@@ -1,7 +1,33 @@
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Abstractions.Fluent
 {
+    #region Guard Delegates
+
+    /// <summary>
+    /// Synchronous guard without payload.
+    /// </summary>
+    public delegate bool Guard();
+
+    /// <summary>
+    /// Asynchronous guard without payload.
+    /// </summary>
+    public delegate ValueTask<bool> GuardAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Synchronous guard with payload.
+    /// </summary>
+    public delegate bool Guard<TPayload>(in TPayload payload);
+
+    /// <summary>
+    /// Asynchronous guard with payload.
+    /// </summary>
+    public delegate ValueTask<bool> GuardAsync<TPayload>(in TPayload payload, CancellationToken ct);
+
+    #endregion
+
     /// <summary>
     /// Entry point for Fluent API state machine configuration.
     /// This is a compile-time only API - all methods are no-op at runtime.
@@ -122,7 +148,7 @@ namespace Abstractions.Fluent
     /// <summary>
     /// Builder for configuring a transition.
     /// </summary>
-    public sealed class TransitionBuilder<TState, TTrigger> 
+    public sealed class TransitionBuilder<TState, TTrigger>
         where TState : Enum
         where TTrigger : Enum
     {
@@ -152,6 +178,34 @@ namespace Abstractions.Fluent
         /// Set the asynchronous guard for this transition.
         /// </summary>
         public TransitionBuilder<TState, TTrigger> GuardAsync(string methodName) => this;
+
+        #region Guard Method Group Overloads
+
+        /// <summary>
+        /// Set the synchronous guard for this transition (no payload).
+        /// </summary>
+        [System.Diagnostics.Conditional("FASTFSM_FLUENT")]
+        public TransitionBuilder<TState, TTrigger> Guard(Guard guard) => this;
+
+        /// <summary>
+        /// Set the asynchronous guard for this transition (no payload).
+        /// </summary>
+        [System.Diagnostics.Conditional("FASTFSM_FLUENT")]
+        public TransitionBuilder<TState, TTrigger> Guard(GuardAsync guard) => this;
+
+        /// <summary>
+        /// Set the synchronous guard for this transition (with payload).
+        /// </summary>
+        [System.Diagnostics.Conditional("FASTFSM_FLUENT")]
+        public TransitionBuilder<TState, TTrigger> Guard<TPayload>(Guard<TPayload> guard) => this;
+
+        /// <summary>
+        /// Set the asynchronous guard for this transition (with payload).
+        /// </summary>
+        [System.Diagnostics.Conditional("FASTFSM_FLUENT")]
+        public TransitionBuilder<TState, TTrigger> Guard<TPayload>(GuardAsync<TPayload> guard) => this;
+
+        #endregion
 
         /// <summary>
         /// Set the synchronous action for this transition.
