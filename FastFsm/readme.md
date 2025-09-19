@@ -394,6 +394,7 @@ When extension support is enabled (`GenerateExtensibleVersion = true`), the foll
 - `OnGuardEvaluated(ctx, guardName, result)` - After guard evaluation
 - `OnAfterTransition(ctx, success)` - After transition completes
 - `OnUnhandledTrigger(ctx)` - When no transition matches (after bubbling in HSM)
+ - `OnInternalTransition(ctx)` - When an internal (no state change) transition executes
 
 **Note:** Guard hooks are only fired during `TryFire`/`Fire`, not during `CanFire` or `GetPermittedTriggers`.
 
