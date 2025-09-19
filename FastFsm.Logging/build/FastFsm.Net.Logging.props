@@ -11,7 +11,6 @@
     <ItemGroup>
         <!-- Include shim directly from build folder -->
         <Compile Include="$(MSBuildThisFileDirectory)Compatibility.FastFsm.Extensions.cs" Condition="Exists('$(MSBuildThisFileDirectory)Compatibility.FastFsm.Extensions.cs')" />
-        <!-- Also include ExtensionRunner.cs defensively for transitive scenarios -->
-        <Compile Include="$(MSBuildThisFileDirectory)..\contentFiles\cs\any\ExtensionRunner.cs" Condition="Exists('$(MSBuildThisFileDirectory)..\contentFiles\cs\any\ExtensionRunner.cs')" />
+        <!-- Core package provides ExtensionRunner.cs as content; no duplicate include here -->
     </ItemGroup>
 </Project>

@@ -145,7 +145,7 @@ namespace FastFsm.Runtime.Extensions
                         extensions[i],
                         context,
                         (ext, ctx) => ext.OnInternalTransition(ctx),
-                        nameof(OnInternalTransition));
+                        nameof(IStateMachineExtension.OnInternalTransition));
                 }
             }
             for (int i = 0; i < extensions.Count; i++)

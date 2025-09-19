@@ -35,7 +35,7 @@
 
 	
 		<ItemGroup>
-			<PackageReference Include="FastFsm.Net" Version="0.0.1.56-feature-fluent-hsm-parser-v0.7.5" />
+			<PackageReference Include="FastFsm.Net" Version="0.0.1.61-feature-fluent-hsm-parser-v0.7.5" />
 			<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
 		</ItemGroup>
 
@@ -47,7 +47,6 @@
 
 	
 		<ItemGroup>
-		  <None Include="..\FastFsm\Runtime\Extensions\ExtensionRunner.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
 		  <None Include="shared/Compatibility.FastFsm.Extensions.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
 		  <None Include="shared/Compatibility.FastFsm.Extensions.cs" Pack="true" PackagePath="build" BuildAction="Compile" Visible="false" />
 		  <Folder Include="shared\" />
@@ -55,7 +54,7 @@
 
 		<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
 			<PropertyGroup>
-				<Version>0.0.1.56-feature-fluent-hsm-parser-v0.7.5</Version>
+				<Version>0.0.1.61-feature-fluent-hsm-parser-v0.7.5</Version>
 				<PackageVersion>$(Version)</PackageVersion>
 			</PropertyGroup>
 		</Target>
