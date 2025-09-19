@@ -719,3 +719,19 @@ Compatibility guidance:
       - `_extensionRunner.RunAfterTransition(_extensions, noTransitionCtx, false);`
 
 Note: Emission occurs in the Extensions-enabled variant; non-extensions variant continues to use only `OnAfterTransition(ctx,false)` for backward compatibility.
+
+## Implemented (New) – OnInternalTransition
+
+- Contract: `IStateMachineExtension.OnInternalTransition<TContext>(TContext context)` where `TContext : IStateMachineContext`.
+- Runtime:
+  - `ExtensionRunner.RunInternalTransition(extensions, context)` dispatches the call to all extensions.
+  - `ExtensionRunner.RunAfterTransition(...)` contains a single, centralized heuristic to detect internal transitions: if `success == true` and `FromState == ToState` (via `IStateSnapshot`), it calls `OnInternalTransition(context)` exactly once before `OnAfterTransition(context, true)`.
+- Generator emission:
+  - To avoid double-calling, the generator no longer emits a direct call to `RunInternalTransition` for internal transitions. The single source of truth for this hook is the runtime heuristic in `RunAfterTransition`.
+  - This keeps behavior consistent across sync/async and flat/HSM paths, with one well-defined emission point.
+- Tests:
+  - Added parity tests (Legacy/Fluent) that exercise a single internal transition and assert:
+    - `TryFire` returns true,
+    - state is unchanged,
+    - `OnInternalTransition` fired exactly once,
+    - `OnAfterTransition(..., true)` fired exactly once.
