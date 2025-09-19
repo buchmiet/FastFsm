@@ -11,9 +11,9 @@ public partial class WithGuardBenchmarkMachineFluent
 
     private static void Configure() => FSM
         .State<BenchmarkState>(BenchmarkState.A)
-        .On(BenchmarkTrigger.Next).Guard(CanTransition).GoTo(BenchmarkState.B)
+        .On(BenchmarkTrigger.Next).Guard(nameof(CanTransition)).GoTo(BenchmarkState.B)
         .State(BenchmarkState.B)
-        .On(BenchmarkTrigger.Next).Guard(CanTransition).GoTo(BenchmarkState.A);
+        .On(BenchmarkTrigger.Next).Guard(nameof(CanTransition)).GoTo(BenchmarkState.A);
 
     private bool CanTransition()
     {
