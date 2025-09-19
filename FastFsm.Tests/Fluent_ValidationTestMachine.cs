@@ -12,7 +12,7 @@ public partial class OpenTransitionTestMachine
     private static void Configure() => FSM
         .State(TestState.Idle)
         .On(TestTrigger.Start)
-        .Guard(CanStart)
+        .Guard(nameof(CanStart))
         // Missing .GoTo() or .Internal() - should trigger FSM200 error
         .State(TestState.Running);
                     
@@ -26,7 +26,7 @@ public partial class AutoFinalizedTestMachine
     private static void Configure() => FSM
         .State(TestState.Idle)
         .On(TestTrigger.Start)
-        .Guard(CanStart)
+        .Guard(nameof(CanStart))
         // No GoTo() before next On() - should trigger FSM201 warning
         .On(TestTrigger.Stop)
         .GoTo(TestState.Complete);

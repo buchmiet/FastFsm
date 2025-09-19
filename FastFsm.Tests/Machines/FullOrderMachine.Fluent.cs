@@ -15,14 +15,14 @@ public partial class FullOrderMachineFluent
     private static void Configure() => FSM
         .State<OrderState>(OrderState.New)
         .OnEntry(nameof(OnEnterNew))
-        .On(OrderTrigger.Process).Guard(CanProcess).Action(nameof(ProcessOrder)).GoTo(OrderState.Processing)
+        .On(OrderTrigger.Process).Guard(nameof(CanProcess)).Action(nameof(ProcessOrder)).GoTo(OrderState.Processing)
         .State(OrderState.Processing)
         .OnEntry(nameof(OnEnterProcessing))
         .On(OrderTrigger.Pay).Action(nameof(RecordPayment)).GoTo(OrderState.Paid)
         .On(OrderTrigger.Cancel).GoTo(OrderState.Cancelled)
         .State(OrderState.Paid)
         .OnEntry(nameof(OnEnterPaid))
-        .On(OrderTrigger.Ship).Guard(CanShip).GoTo(OrderState.Shipped)
+        .On(OrderTrigger.Ship).Guard(nameof(CanShip)).GoTo(OrderState.Shipped)
         .State(OrderState.Shipped)
         .On(OrderTrigger.Deliver).GoTo(OrderState.Delivered);
 

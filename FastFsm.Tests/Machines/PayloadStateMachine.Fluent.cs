@@ -11,7 +11,7 @@ public partial class PayloadStateMachineFluent
 
     private static void Configure() => FSM
         .State<TestState>(TestState.Initial)
-        .On(TestTrigger.Start).Guard(CanStart).Action(nameof(ProcessAction)).GoTo(TestState.Processing)
+        .On(TestTrigger.Start).Guard(nameof(CanStart)).Action(nameof(ProcessAction)).GoTo(TestState.Processing)
         .State(TestState.Processing)
         .OnEntry(nameof(OnProcessingEntry))
         .On(TestTrigger.Complete).GoTo(TestState.Completed)

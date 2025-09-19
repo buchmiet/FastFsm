@@ -8,7 +8,7 @@ public partial class ExtensionsMachineFluent
     private static void Configure() => FSM
         .State<ExtState>(ExtState.Idle)
         .OnEntry(nameof(OnEnterIdle))
-        .On(ExtTrigger.Start).Guard(CanStart).Action(nameof(StartWork)).GoTo(ExtState.Working)
+        .On(ExtTrigger.Start).Guard(nameof(CanStart)).Action(nameof(StartWork)).GoTo(ExtState.Working)
         .State(ExtState.Working)
         .OnExit(nameof(OnExitWorking))
         .On(ExtTrigger.Finish).GoTo(ExtState.Complete)

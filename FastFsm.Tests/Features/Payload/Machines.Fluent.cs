@@ -39,7 +39,7 @@ public partial class PaymentMachineFluent
 {
     private static void Configure() => FSM
         .State(PaymentState.Pending)
-        .On(PaymentTrigger.Process).Guard(IsSmallAmount).GoTo(PaymentState.Processed)
+        .On(PaymentTrigger.Process).Guard(nameof(IsSmallAmount)).GoTo(PaymentState.Processed)
         .On(PaymentTrigger.Cancel).GoTo(PaymentState.Failed)
         .State(PaymentState.Processed)
         .State(PaymentState.Failed)
@@ -142,7 +142,7 @@ public partial class OverloadedMachineFluent
 
     private static void Configure() => FSM
         .State(OverloadState.A)
-        .On(OverloadTrigger.Go).Guard(Guard).Action(nameof(Action)).GoTo(OverloadState.B)
+        .On(OverloadTrigger.Go).Guard(nameof(Guard)).Action(nameof(Action)).GoTo(OverloadState.B)
         .State(OverloadState.B)
         .OnEntry(nameof(OnEntry));
 
@@ -313,7 +313,7 @@ public partial class ConditionalPayloadMachineFluent
 {
     private static void Configure() => FSM
         .State(ConditionalState.Ready)
-        .On(ConditionalTrigger.Execute).Guard(IsValid).GoTo(ConditionalState.Done)
+        .On(ConditionalTrigger.Execute).Guard(nameof(IsValid)).GoTo(ConditionalState.Done)
         .State(ConditionalState.Done);
 
     private bool IsValid(ConditionalPayload payload) => payload?.IsValid ?? false;
