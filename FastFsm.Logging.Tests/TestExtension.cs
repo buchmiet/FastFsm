@@ -42,5 +42,15 @@ namespace FastFsm.Logging.Tests
             if (ThrowOnGuardEvaluated)
                 throw new InvalidOperationException("Test exception in OnGuardEvaluated");
         }
+
+        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
+        {
+            // no-op by default
+        }
+
+        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
+        {
+            // no-op by default
+        }
     }
 }
