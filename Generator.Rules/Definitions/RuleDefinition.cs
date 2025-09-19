@@ -248,6 +248,14 @@ namespace Generator.Rules.Definitions
             defaultSeverity: RuleSeverity.Error,
             description: "Priority() is valid only in the context of an active transition builder (after On()/OnInternal()).");
 
+        public static readonly RuleDefinition AmbiguousMethodGroup = new(
+            id: RuleIdentifiers.AmbiguousMethodGroup,  // FSM3070
+            title: "Ambiguous method group reference",
+            messageFormat: "Method group '{0}' is ambiguous with {1} overload candidates. Ensure the method has a unique signature compatible with FSM callbacks.",
+            category: RuleCategories.FSM_Generator_Fluent,
+            defaultSeverity: RuleSeverity.Error,
+            description: "When using method groups in Fluent API, the method must have a unique signature that matches one of the supported FSM callback patterns.");
+
         // Generator infrastructure diagnostics removed (FSM9000–9013)
 
         // Generator infrastructure diagnostics removed (FSM9000–9013)
@@ -280,6 +288,7 @@ namespace Generator.Rules.Definitions
             DuplicateOnExceptionHandler,    // FSM3050
             InvalidOnExceptionSignature,    // FSM3060
             PriorityWithoutActiveTransition,// FSM3040
+            AmbiguousMethodGroup,           // FSM3070
 
             // Generator infrastructure (removed from catalog)
         }.AsReadOnly();

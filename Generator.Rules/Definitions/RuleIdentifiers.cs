@@ -38,5 +38,8 @@ public static class RuleIdentifiers
     public const string InvalidOnExceptionSignature = "FSM3060";                 // was FSM209
     public const string PriorityWithoutActiveTransition = "FSM3040";             // was FSM210
 
+    // Method group diagnostics
+    public const string AmbiguousMethodGroup = "FSM3070";                        // new for method groups
+
     // E. Generator infrastructure diagnostics removed (9000–9013)
 }

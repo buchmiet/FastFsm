@@ -972,7 +972,7 @@ namespace Generator.Parsers
             if (invocation.ArgumentList.Arguments.Count > 0)
             {
                 var arg = invocation.ArgumentList.Arguments[0];
-                
+
                 // Check if it's a nameof expression
                 if (arg.Expression is InvocationExpressionSyntax nameofInvocation &&
                     nameofInvocation.Expression is IdentifierNameSyntax identifier &&
@@ -989,13 +989,71 @@ namespace Generator.Parsers
                     }
                 }
                 // Check if it's a string literal
-                else if (arg.Expression is LiteralExpressionSyntax literal && 
+                else if (arg.Expression is LiteralExpressionSyntax literal &&
                          literal.Token.Value is string guardName)
                 {
                     transition.GuardMethod = guardName;
                     report?.Invoke($"[FluentParser] Set guard{(isAsync ? " async" : "")} method: {guardName}");
                     AnalyzeGuardSignature(transition);
                     if (isAsync) transition.GuardIsAsync = true;
+                }
+                // Check if it's a method group (identifier)
+                else if (arg.Expression is IdentifierNameSyntax methodGroup && _semanticModel != null)
+                {
+                    var symbolInfo = _semanticModel.GetSymbolInfo(methodGroup);
+                    if (symbolInfo.Symbol is IMethodSymbol methodSymbol)
+                    {
+                        transition.GuardMethod = methodSymbol.Name;
+                        report?.Invoke($"[FluentParser] Set guard{(isAsync ? " async" : "")} via method group: {transition.GuardMethod}");
+                        if (isAsync) transition.GuardIsAsync = true;
+                    }
+                    else if (symbolInfo.CandidateSymbols.Length > 1)
+                    {
+                        // Emit FSM3070 - Ambiguous method group reference
+                        var location = methodGroup.GetLocation();
+                        var candidateCount = symbolInfo.CandidateSymbols.Length;
+                        var methodGroupName = methodGroup.Identifier.Text;
+
+                        report?.Invoke($"[FluentParser] Ambiguous method group '{methodGroupName}' with {candidateCount} candidates");
+
+                        // Create diagnostic for FSM3070
+                        var descriptor = DiagnosticFactory.Get("FSM3070");
+                        var diagnostic = Diagnostic.Create(
+                            descriptor,
+                            location,
+                            methodGroupName,
+                            candidateCount);
+                        _context.ReportDiagnostic(diagnostic);
+                    }
+                }
+                // Check if it's a method group (member access, e.g., this.Method)
+                else if (arg.Expression is MemberAccessExpressionSyntax memberAccess && _semanticModel != null)
+                {
+                    var symbolInfo = _semanticModel.GetSymbolInfo(memberAccess);
+                    if (symbolInfo.Symbol is IMethodSymbol methodSymbol)
+                    {
+                        transition.GuardMethod = methodSymbol.Name;
+                        report?.Invoke($"[FluentParser] Set guard{(isAsync ? " async" : "")} via method group (member access): {transition.GuardMethod}");
+                        if (isAsync) transition.GuardIsAsync = true;
+                    }
+                    else if (symbolInfo.CandidateSymbols.Length > 1)
+                    {
+                        // Emit FSM3070 - Ambiguous method group reference
+                        var location = memberAccess.GetLocation();
+                        var candidateCount = symbolInfo.CandidateSymbols.Length;
+                        var methodGroupName = memberAccess.Name.Identifier.Text;
+
+                        report?.Invoke($"[FluentParser] Ambiguous method group '{methodGroupName}' with {candidateCount} candidates");
+
+                        // Create diagnostic for FSM3070
+                        var descriptor = DiagnosticFactory.Get("FSM3070");
+                        var diagnostic = Diagnostic.Create(
+                            descriptor,
+                            location,
+                            methodGroupName,
+                            candidateCount);
+                        _context.ReportDiagnostic(diagnostic);
+                    }
                 }
             }
         }
