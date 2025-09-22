@@ -6,7 +6,7 @@ namespace FastFsm.Tests.Machines;
 [StateMachine(typeof(KeywordState), typeof(KeywordTrigger))]
 public partial class KeywordStateMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(KeywordState.@class)
         .On(KeywordTrigger.@goto).GoTo(KeywordState.@return)
         .State(KeywordState.@return)

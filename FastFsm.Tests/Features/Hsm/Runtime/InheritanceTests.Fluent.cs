@@ -43,7 +43,7 @@ public partial class InheritanceTestsFluent
     [Abstractions.Attributes.StateMachine(typeof(S), typeof(T), EnableHierarchy = true)]
     public partial class InheritanceMachineFluent
     {
-        public static void Configure()
+        private void Configure()
         {
             // Parent with initial child and inherited transition
             FSM.State(S.Parent)

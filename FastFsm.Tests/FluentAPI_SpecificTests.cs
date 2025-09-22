@@ -22,7 +22,7 @@ public partial class FluentAPISpecificTests
 
         public int TransitionCount { get; private set; }
 
-        private static void Configure() => FSM
+        private void Configure() => FSM
             .State<FluentTestState>(FluentTestState.Idle)
             .On(FluentTestTrigger.Start)
             .Action(nameof(IncrementCounter))
@@ -60,7 +60,7 @@ public partial class FluentAPISpecificTests
         public string? LastSubmitId { get; private set; }
         public int ProcessedItems { get; private set; }
 
-        private static void Configure() => FSM
+        private void Configure() => FSM
             .State<PayloadState>(PayloadState.Ready)
             .On(PayloadTrigger.Submit)
             .Payload<SubmitData>()
@@ -91,7 +91,7 @@ public partial class FluentAPISpecificTests
         public bool IsConnected { get; private set; }
         public int ConnectionAttempts { get; private set; }
 
-        private static void Configure() => FSM
+        private void Configure() => FSM
             .State<AsyncState>(AsyncState.Disconnected)
             .OnEntryAsync(nameof(OnDisconnectedEntryAsync))
             .On(AsyncTrigger.Connect)
@@ -157,7 +157,7 @@ public partial class FluentAPISpecificTests
         public int Counter { get; private set; }
         public int UpdateCount { get; private set; }
 
-        private static void Configure() => FSM
+        private void Configure() => FSM
             .State<InternalState>(InternalState.Active)
             .OnInternal(InternalTrigger.Update)
             .Payload<UpdateData>()

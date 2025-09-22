@@ -18,7 +18,7 @@ public partial class FullMultiPayloadMachineFluent
     public List<int> ProcessedPaymentIds { get; } = new();
     public List<int> ShippedTrackingNumbers { get; } = new();
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State<OrderState>(OrderState.New)
         .On(OrderTrigger.Process).Action(nameof(HandleOrder)).GoTo(OrderState.Processing)
         .State(OrderState.Processing)

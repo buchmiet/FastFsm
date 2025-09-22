@@ -12,7 +12,7 @@ public partial class FullOrderMachineFluent
     public decimal TotalProcessed { get; private set; }
     public List<int> ProcessedOrderIds { get; } = new();
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State<OrderState>(OrderState.New)
         .OnEntry(nameof(OnEnterNew))
         .On(OrderTrigger.Process).Guard(nameof(CanProcess)).Action(nameof(ProcessOrder)).GoTo(OrderState.Processing)

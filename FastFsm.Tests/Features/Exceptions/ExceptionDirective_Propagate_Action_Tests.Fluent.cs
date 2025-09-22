@@ -22,7 +22,7 @@ public class ExceptionDirective_Propagate_Action_Tests
 [StateMachine(typeof(PSState), typeof(PSTrigger))]
 public partial class PropagateOnActionMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .OnException<PSState>(nameof(Handle))
         .State(PSState.A)
             .On(PSTrigger.Go).Action(nameof(DoWork)).GoTo(PSState.B)

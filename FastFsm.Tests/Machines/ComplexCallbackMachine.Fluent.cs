@@ -12,7 +12,7 @@ public partial class ComplexCallbackMachineFluent
     public bool ResourcesCleaned { get; private set; }
     public DateTime? CompletionTime { get; private set; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State<StateCallbackTests.ComplexCallbackState>(StateCallbackTests.ComplexCallbackState.Idle)
         .OnEntry(nameof(OnEnterIdle))
         .OnExit(nameof(OnExitIdle))

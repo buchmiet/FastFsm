@@ -24,7 +24,7 @@ public class ExceptionDirective_Continue_Action_Tests
 [StateMachine(typeof(ASState), typeof(ASTrigger))]
 public partial class ContinueOnActionMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .OnException<ASState>(nameof(Handle))
         .State(ASState.A)
             .On(ASTrigger.Go).Action(nameof(DoWork)).GoTo(ASState.B)

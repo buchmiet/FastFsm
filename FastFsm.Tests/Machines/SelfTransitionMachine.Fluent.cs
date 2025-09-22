@@ -9,7 +9,7 @@ public partial class SelfTransitionMachineFluent
 {
     public List<string> EventLog { get; } = [];
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(SelfState.Active)
         .OnEntry(nameof(OnEntryActive)).OnExit(nameof(OnExitActive))
         .On(SelfTrigger.Refresh).Action(nameof(RefreshAction)).GoTo(SelfState.Active);

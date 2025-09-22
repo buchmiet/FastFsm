@@ -10,7 +10,7 @@ public partial class InitialStateMachineFluent
 {
     public List<string> EventLog { get; } = [];
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State<StateCallbackTests.InitialState>(StateCallbackTests.InitialState.Start)
         .OnEntry(nameof(OnEntryStart))
         .OnExit(nameof(OnExitStart))

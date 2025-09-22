@@ -6,7 +6,7 @@ namespace FastFsm.Tests.Machines;
 [StateMachine(typeof(BenchmarkState), typeof(BenchmarkTrigger))]
 public partial class NoGuardBenchmarkMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State<BenchmarkState>(BenchmarkState.A)
             .On(BenchmarkTrigger.Next).GoTo(BenchmarkState.B)
         .State(BenchmarkState.B)

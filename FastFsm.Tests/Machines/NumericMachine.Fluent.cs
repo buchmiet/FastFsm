@@ -6,7 +6,7 @@ namespace FastFsm.Tests.Machines;
 [StateMachine(typeof(NumericState), typeof(NumericTrigger))]
 public partial class NumericMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(NumericState._1Start)
         .On(NumericTrigger._2Next).GoTo(NumericState._3Middle)
         .State(NumericState._3Middle)

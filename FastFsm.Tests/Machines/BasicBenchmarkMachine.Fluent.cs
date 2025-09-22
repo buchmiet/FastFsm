@@ -8,7 +8,7 @@ public partial class BasicBenchmarkMachineFluent
 {
     private int _counter;
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State<BenchmarkState>(BenchmarkState.A)
         .OnEntry(nameof(IncrementCounter))
         .On(BenchmarkTrigger.Next).GoTo(BenchmarkState.B)

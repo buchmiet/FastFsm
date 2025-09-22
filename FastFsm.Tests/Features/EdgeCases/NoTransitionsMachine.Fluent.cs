@@ -6,7 +6,7 @@ namespace FastFsm.Tests.Features.EdgeCases;
 public partial class NoTransitionsMachineFluent
 {
     // No transitions defined
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State<EmptyMachineTests.EmptyState>(EmptyMachineTests.EmptyState.Only);
     // No transitions - this is intentional for testing
 }

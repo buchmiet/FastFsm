@@ -58,7 +58,7 @@ public class ActionExceptionTests
 [StateMachine(typeof(TestState), typeof(TestTrigger), GenerateExtensibleVersion = true)]
 public partial class ThrowingActionMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .Extensible<TestState>()
         .State(TestState.A)
             .On(TestTrigger.Go).Action(nameof(ThrowingAction)).GoTo(TestState.B)

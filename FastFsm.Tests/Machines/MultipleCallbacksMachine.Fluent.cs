@@ -9,7 +9,7 @@ public partial class MultipleCallbacksMachineFluent
 {
     public List<string> Log { get; } = [];
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State<MultiState>(MultiState.A)
         .OnEntry(nameof(OnEntry1))
         .OnEntry(nameof(OnEntry2))

@@ -8,7 +8,7 @@ namespace FastFsm.Tests.Features.Exceptions;
 [StateMachine(typeof(State), typeof(Trigger), GenerateExtensibleVersion = true)]
 public partial class TestMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(State.Initial)
         .On(Trigger.Next).GoTo(State.Final)
         .State(State.Final);

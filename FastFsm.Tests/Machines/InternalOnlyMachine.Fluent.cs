@@ -9,7 +9,7 @@ public partial class InternalOnlyMachineFluent
     private int _actionCount;
     public int ActionCount => _actionCount;
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(EmptyMachineTests.InternalOnlyState.Static)
         .OnInternal(EmptyMachineTests.InternalOnlyTrigger.Action).Action(nameof(PerformAction));
 

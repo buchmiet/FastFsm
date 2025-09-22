@@ -46,7 +46,7 @@ public class OnInternalTransitionTestsFluent
 [StateMachine(typeof(IntState2), typeof(IntTrigger2), GenerateExtensibleVersion = true)]
 public partial class InternalMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(IntState2.A)
             .OnInternal(IntTrigger2.Ping)
                 .Action(nameof(Ping))

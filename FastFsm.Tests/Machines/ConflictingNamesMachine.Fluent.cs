@@ -6,7 +6,7 @@ namespace FastFsm.Tests.Machines;
 [StateMachine(typeof(ConflictState), typeof(ConflictTrigger))]
 public partial class ConflictingNamesMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(ConflictState.A)
         .On(ConflictTrigger.Go).GoTo(ConflictState.B);
 

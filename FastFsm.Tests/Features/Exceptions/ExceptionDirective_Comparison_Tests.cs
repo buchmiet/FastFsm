@@ -55,7 +55,7 @@ public partial class ExceptionDirective_Comparison_Tests
         public bool ThrowOnEntry { get; set; }
         public List<string> Log { get; } = new();
 
-        private static void Configure() => FSM
+        private void Configure() => FSM
             .OnException<CompState>(nameof(HandleException))
             .State(CompState.Idle)
                 .On(CompTrigger.Start).GoTo(CompState.Running)
@@ -116,7 +116,7 @@ public partial class ExceptionDirective_Comparison_Tests
         public bool ThrowInAction { get; set; }
         public List<string> Log { get; } = new();
 
-        private static void Configure() => FSM
+        private void Configure() => FSM
             .OnException<CompState>(nameof(HandleException))
             .State(CompState.Idle)
                 .On(CompTrigger.Process).Action(nameof(ProcessAction)).GoTo(CompState.Running);
@@ -180,7 +180,7 @@ public partial class ExceptionDirective_Comparison_Tests
         public bool ThrowInOnExit { get; set; }
         public List<string> Log { get; } = new();
 
-        private static void Configure() => FSM
+        private void Configure() => FSM
             .OnException<CompState>(nameof(HandleExceptionAsync))
             .State(CompState.Idle)
                 .OnExitAsync(nameof(OnExitIdleAsync))
@@ -304,7 +304,7 @@ public partial class ExceptionDirective_Comparison_Tests
     {
         public Action<ExceptionContext<CompState, CompTrigger>>? CaptureContext { get; set; }
 
-        private static void Configure() => FSM
+        private void Configure() => FSM
             .OnException<CompState>(nameof(HandleException))
             .State(CompState.Idle)
                 .On(CompTrigger.Process).Action(nameof(ProcessAction)).GoTo(CompState.Running);
