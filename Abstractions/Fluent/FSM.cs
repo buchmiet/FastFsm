@@ -28,6 +28,70 @@ namespace Abstractions.Fluent
 
     #endregion
 
+    #region Action / Entry / Exit Delegates
+
+    /// <summary>
+    /// Synchronous action without payload.
+    /// </summary>
+    public delegate void Act();
+
+    /// <summary>
+    /// Asynchronous action without payload.
+    /// </summary>
+    public delegate ValueTask ActAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Synchronous action with payload.
+    /// </summary>
+    public delegate void Act<TPayload>(in TPayload payload);
+
+    /// <summary>
+    /// Asynchronous action with payload.
+    /// </summary>
+    public delegate ValueTask ActAsync<TPayload>(in TPayload payload, CancellationToken ct);
+
+    /// <summary>
+    /// Entry callback without payload.
+    /// </summary>
+    public delegate void Entry();
+
+    /// <summary>
+    /// Asynchronous entry callback without payload.
+    /// </summary>
+    public delegate ValueTask EntryAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Entry callback with payload.
+    /// </summary>
+    public delegate void Entry<TPayload>(in TPayload payload);
+
+    /// <summary>
+    /// Asynchronous entry callback with payload.
+    /// </summary>
+    public delegate ValueTask EntryAsync<TPayload>(in TPayload payload, CancellationToken ct);
+
+    /// <summary>
+    /// Exit callback without payload.
+    /// </summary>
+    public delegate void Exit();
+
+    /// <summary>
+    /// Asynchronous exit callback without payload.
+    /// </summary>
+    public delegate ValueTask ExitAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Exit callback with payload.
+    /// </summary>
+    public delegate void Exit<TPayload>(in TPayload payload);
+
+    /// <summary>
+    /// Asynchronous exit callback with payload.
+    /// </summary>
+    public delegate ValueTask ExitAsync<TPayload>(in TPayload payload, CancellationToken ct);
+
+    #endregion
+
     /// <summary>
     /// Entry point for Fluent API state machine configuration.
     /// This is a compile-time only API - all methods are no-op at runtime.
@@ -52,6 +116,14 @@ namespace Abstractions.Fluent
         public static StateBuilder<TState> OnException<TState>(string methodName) where TState : Enum
         {
             // Runtime no-op - only used at compile time by source generator
+            return new StateBuilder<TState>();
+        }
+
+        /// <summary>
+        /// Set the exception handler using a method group.
+        /// </summary>
+        public static StateBuilder<TState> OnException<TState>(Delegate handler) where TState : Enum
+        {
             return new StateBuilder<TState>();
         }
 
@@ -86,6 +158,11 @@ namespace Abstractions.Fluent
         public StateBuilder<TState> OnException(string methodName) => this;
 
         /// <summary>
+        /// Set the exception handler for the state machine using a method group.
+        /// </summary>
+        public StateBuilder<TState> OnException(Delegate handler) => this;
+
+        /// <summary>
         /// Set the parent state (for hierarchical state machines).
         /// </summary>
         public StateBuilder<TState> Parent(TState parentState) => this;
@@ -104,21 +181,33 @@ namespace Abstractions.Fluent
         /// Set the synchronous entry action for this state.
         /// </summary>
         public StateBuilder<TState> OnEntry(string methodName) => this;
+        public StateBuilder<TState> OnEntry(Entry callback) => this;
+        public StateBuilder<TState> OnEntry(EntryAsync callback) => this;
+        public StateBuilder<TState> OnEntry<TPayload>(Entry<TPayload> callback) => this;
+        public StateBuilder<TState> OnEntry<TPayload>(EntryAsync<TPayload> callback) => this;
 
         /// <summary>
         /// Set the asynchronous entry action for this state.
         /// </summary>
         public StateBuilder<TState> OnEntryAsync(string methodName) => this;
+        public StateBuilder<TState> OnEntryAsync(EntryAsync callback) => this;
+        public StateBuilder<TState> OnEntryAsync<TPayload>(EntryAsync<TPayload> callback) => this;
 
         /// <summary>
         /// Set the synchronous exit action for this state.
         /// </summary>
         public StateBuilder<TState> OnExit(string methodName) => this;
+        public StateBuilder<TState> OnExit(Exit callback) => this;
+        public StateBuilder<TState> OnExit(ExitAsync callback) => this;
+        public StateBuilder<TState> OnExit<TPayload>(Exit<TPayload> callback) => this;
+        public StateBuilder<TState> OnExit<TPayload>(ExitAsync<TPayload> callback) => this;
 
         /// <summary>
         /// Set the asynchronous exit action for this state.
         /// </summary>
         public StateBuilder<TState> OnExitAsync(string methodName) => this;
+        public StateBuilder<TState> OnExitAsync(ExitAsync callback) => this;
+        public StateBuilder<TState> OnExitAsync<TPayload>(ExitAsync<TPayload> callback) => this;
 
         /// <summary>
         /// Define a transition from this state.
@@ -207,11 +296,17 @@ namespace Abstractions.Fluent
         /// Set the synchronous action for this transition.
         /// </summary>
         public TransitionBuilder<TState, TTrigger> Action(string methodName) => this;
+        public TransitionBuilder<TState, TTrigger> Action(Act callback) => this;
+        public TransitionBuilder<TState, TTrigger> Action(ActAsync callback) => this;
+        public TransitionBuilder<TState, TTrigger> Action<TPayload>(Act<TPayload> callback) => this;
+        public TransitionBuilder<TState, TTrigger> Action<TPayload>(ActAsync<TPayload> callback) => this;
 
         /// <summary>
         /// Set the asynchronous action for this transition.
         /// </summary>
         public TransitionBuilder<TState, TTrigger> ActionAsync(string methodName) => this;
+        public TransitionBuilder<TState, TTrigger> ActionAsync(ActAsync callback) => this;
+        public TransitionBuilder<TState, TTrigger> ActionAsync<TPayload>(ActAsync<TPayload> callback) => this;
 
         /// <summary>
         /// Set the priority for this transition (HSM).

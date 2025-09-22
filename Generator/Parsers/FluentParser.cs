@@ -38,7 +38,11 @@ namespace Generator.Parsers
         {
             model = null;
             _classDecl = classDeclaration;
-            
+            _onExceptionSpecified = false;
+            // Get semantic model and class symbol up front (needed for Configure validation)
+            _semanticModel = _compilation.GetSemanticModel(classDeclaration.SyntaxTree);
+            _classSymbol = _semanticModel.GetDeclaredSymbol(classDeclaration) as INamedTypeSymbol;
+
             // Check if this class uses Fluent API (has Configure method)
             var configureMethod = FindConfigureMethod(classDeclaration);
             if (configureMethod == null)
@@ -48,10 +52,6 @@ namespace Generator.Parsers
             }
 
             report?.Invoke($"[FluentParser] Found Configure() method in {classDeclaration.Identifier.Text}");
-
-            // Get semantic model and class symbol
-            _semanticModel = _compilation.GetSemanticModel(classDeclaration.SyntaxTree);
-            _classSymbol = _semanticModel.GetDeclaredSymbol(classDeclaration) as INamedTypeSymbol;
 
             // Initialize model
             model = new StateMachineModel
@@ -166,10 +166,75 @@ namespace Generator.Parsers
 
         private MethodDeclarationSyntax? FindConfigureMethod(ClassDeclarationSyntax classDeclaration)
         {
-            return classDeclaration.Members
+            var methods = classDeclaration.Members
                 .OfType<MethodDeclarationSyntax>()
-                .FirstOrDefault(m => (m.Identifier.Text == "Configure" || m.Identifier.Text == "SetupStates") && 
-                                    m.Modifiers.Any(mod => mod.IsKind(SyntaxKind.StaticKeyword)));
+                .Where(m => m.Identifier.Text is "Configure" or "SetupStates")
+                .ToList();
+
+            if (methods.Count > 1)
+            {
+                var descriptor = DiagnosticFactory.Get(RuleIdentifiers.MultipleConfigureMethods);
+                _context.ReportDiagnostic(Diagnostic.Create(descriptor, methods[1].GetLocation()));
+            }
+
+            var instanceMethod = methods.FirstOrDefault(m => !m.Modifiers.Any(mod => mod.IsKind(SyntaxKind.StaticKeyword)));
+            if (instanceMethod != null)
+            {
+                ValidateConfigureMethod(instanceMethod);
+                return instanceMethod;
+            }
+
+            return methods.FirstOrDefault(m => m.Modifiers.Any(mod => mod.IsKind(SyntaxKind.StaticKeyword)));
+        }
+
+        private void ValidateConfigureMethod(MethodDeclarationSyntax configureMethod)
+        {
+            if (_semanticModel == null)
+            {
+                return;
+            }
+
+            var methodSymbol = _semanticModel.GetDeclaredSymbol(configureMethod) as IMethodSymbol;
+            if (methodSymbol == null)
+            {
+                return;
+            }
+
+            if (methodSymbol.DeclaredAccessibility != Accessibility.Private)
+            {
+                var descriptor = DiagnosticFactory.Get(RuleIdentifiers.ConfigureMustBePrivate);
+                _context.ReportDiagnostic(Diagnostic.Create(descriptor, configureMethod.GetLocation(), methodSymbol.Name));
+            }
+
+            if (methodSymbol.Parameters.Length > 0)
+            {
+                var descriptor = DiagnosticFactory.Get(RuleIdentifiers.ConfigureMustBeParameterless);
+                _context.ReportDiagnostic(Diagnostic.Create(descriptor, configureMethod.GetLocation(), methodSymbol.Name));
+            }
+
+            if (methodSymbol.IsVirtual || methodSymbol.IsOverride || methodSymbol.IsAbstract)
+            {
+                var descriptor = DiagnosticFactory.Get(RuleIdentifiers.ConfigureCannotBeVirtual);
+                _context.ReportDiagnostic(Diagnostic.Create(descriptor, configureMethod.GetLocation(), methodSymbol.Name));
+            }
+
+            if (methodSymbol.IsStatic)
+            {
+                var descriptor = DiagnosticFactory.Get(RuleIdentifiers.ConfigureMustBeInstance);
+                _context.ReportDiagnostic(Diagnostic.Create(descriptor, configureMethod.GetLocation(), methodSymbol.Name));
+            }
+
+            if (!SymbolEqualityComparer.Default.Equals(methodSymbol.ContainingType, _classSymbol))
+            {
+                var descriptor = DiagnosticFactory.Get(RuleIdentifiers.ConfigureNotDeclaredOnType);
+                _context.ReportDiagnostic(Diagnostic.Create(descriptor, configureMethod.GetLocation(), methodSymbol.Name));
+            }
+
+            if (configureMethod.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
+            {
+                var descriptor = DiagnosticFactory.Get(RuleIdentifiers.ConfigureCannotBePartial);
+                _context.ReportDiagnostic(Diagnostic.Create(descriptor, configureMethod.GetLocation(), methodSymbol.Name));
+            }
         }
 
         private bool ExtractTypesFromAttribute(ClassDeclarationSyntax classDeclaration, StateMachineModel model, Action<string>? report)
@@ -929,40 +994,160 @@ namespace Generator.Parsers
                 }
             }
         }
-        
+
+        private string? ParseCallbackExpression(ExpressionSyntax? expression, string dslPosition, Action<string>? report)
+        {
+            if (expression == null)
+            {
+                return null;
+            }
+
+            switch (expression)
+            {
+                case IdentifierNameSyntax identifier:
+                    report?.Invoke($"[FluentParser] Parsing method group identifier '{identifier.Identifier.Text}' for {dslPosition}");
+                    return ResolveMethodGroup(identifier, identifier.Identifier.Text, dslPosition);
+
+                case MemberAccessExpressionSyntax memberAccess when memberAccess.Expression is not InvocationExpressionSyntax:
+                    var memberName = memberAccess.Name.Identifier.Text;
+                    report?.Invoke($"[FluentParser] Parsing member access '{memberName}' for {dslPosition}");
+                    return ResolveMethodGroup(memberAccess, memberName, dslPosition);
+
+                case InvocationExpressionSyntax invocation when IsNameofInvocation(invocation):
+                    var nameofTarget = ExtractNameFromNameof(invocation, report);
+                    if (!string.IsNullOrEmpty(nameofTarget))
+                    {
+                        report?.Invoke($"[FluentParser] Parsed nameof -> {nameofTarget} for {dslPosition}");
+                    }
+                    return nameofTarget;
+
+                case LiteralExpressionSyntax literal when literal.IsKind(SyntaxKind.StringLiteralExpression):
+                    report?.Invoke($"[FluentParser] Parsed string literal '{literal.Token.ValueText}' for {dslPosition}");
+                    return literal.Token.ValueText;
+
+                case ParenthesizedExpressionSyntax parenthesized:
+                    return ParseCallbackExpression(parenthesized.Expression, dslPosition, report);
+
+                case AnonymousFunctionExpressionSyntax:
+                    ReportDiagnostic(RuleIdentifiers.LambdaExpressionNotAllowed, expression.GetLocation(), dslPosition);
+                    return null;
+
+                case InvocationExpressionSyntax invocation:
+                    ReportDiagnostic(RuleIdentifiers.MethodInvocationInDsl, invocation.GetLocation(), invocation.ToString(), dslPosition);
+                    return null;
+
+                default:
+                    ReportDiagnostic(RuleIdentifiers.ImpureDslExpression, expression.GetLocation(), expression.ToString(), dslPosition);
+                    return null;
+            }
+        }
+
+        private string? ResolveMethodGroup(SyntaxNode syntax, string displayName, string dslPosition)
+        {
+            if (_semanticModel == null)
+            {
+                return displayName;
+            }
+
+            var symbolInfo = _semanticModel.GetSymbolInfo(syntax);
+
+            if (symbolInfo.Symbol is IPropertySymbol propertySymbol)
+            {
+                ReportDiagnostic(RuleIdentifiers.PropertyMethodGroupNotAllowed, syntax.GetLocation(), propertySymbol.Name, dslPosition);
+                return null;
+            }
+
+            if (symbolInfo.Symbol is IFieldSymbol)
+            {
+                ReportDiagnostic(RuleIdentifiers.ImpureDslExpression, syntax.GetLocation(), displayName, dslPosition);
+                return null;
+            }
+
+            if (symbolInfo.Symbol is IMethodSymbol methodSymbol)
+            {
+                if (_classSymbol != null && !SymbolEqualityComparer.Default.Equals(methodSymbol.ContainingType, _classSymbol))
+                {
+                    ReportDiagnostic(
+                        RuleIdentifiers.ExternalMethodGroup,
+                        syntax.GetLocation(),
+                        methodSymbol.Name,
+                        methodSymbol.ContainingType?.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat) ?? "<unknown>",
+                        dslPosition);
+                    return null;
+                }
+
+                return methodSymbol.Name;
+            }
+
+            if (symbolInfo.CandidateSymbols.Length > 1)
+            {
+                ReportDiagnostic(RuleIdentifiers.AmbiguousMethodGroup, syntax.GetLocation(), displayName, symbolInfo.CandidateSymbols.Length);
+                return null;
+            }
+
+            if (symbolInfo.CandidateSymbols.Length == 1 && symbolInfo.CandidateSymbols[0] is IMethodSymbol candidate)
+            {
+                if (_classSymbol != null && !SymbolEqualityComparer.Default.Equals(candidate.ContainingType, _classSymbol))
+                {
+                    ReportDiagnostic(
+                        RuleIdentifiers.ExternalMethodGroup,
+                        syntax.GetLocation(),
+                        candidate.Name,
+                        candidate.ContainingType?.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat) ?? "<unknown>",
+                        dslPosition);
+                    return null;
+                }
+
+                return candidate.Name;
+            }
+
+            // Unresolved symbols - likely other compilation errors; fall back to textual name
+            return displayName;
+        }
+
+        private static bool IsNameofInvocation(InvocationExpressionSyntax invocation)
+            => invocation.Expression is IdentifierNameSyntax identifier && identifier.Identifier.Text == "nameof";
+
+        private string? ExtractNameFromNameof(InvocationExpressionSyntax invocation, Action<string>? report)
+        {
+            if (invocation.ArgumentList.Arguments.Count == 0)
+            {
+                return null;
+            }
+
+            var argumentExpression = invocation.ArgumentList.Arguments[0].Expression;
+            switch (argumentExpression)
+            {
+                case IdentifierNameSyntax identifier:
+                    return identifier.Identifier.Text;
+                case MemberAccessExpressionSyntax memberAccess:
+                    return memberAccess.Name.Identifier.Text;
+                default:
+                    report?.Invoke($"[FluentParser] Unsupported nameof argument: {argumentExpression}");
+                    return null;
+            }
+        }
+
+        private void ReportDiagnostic(string ruleId, Location location, params object[] args)
+        {
+            var descriptor = DiagnosticFactory.Get(ruleId);
+            _context.ReportDiagnostic(Diagnostic.Create(descriptor, location, args));
+        }
+
         private void ParseAction(InvocationExpressionSyntax invocation, TransitionModel transition, StateMachineModel model, Action<string>? report, bool isAsync)
         {
 
             if (invocation.ArgumentList.Arguments.Count > 0)
             {
                 var arg = invocation.ArgumentList.Arguments[0];
-                
-                // Check if it's a nameof expression
-                if (arg.Expression is InvocationExpressionSyntax nameofInvocation &&
-                    nameofInvocation.Expression is IdentifierNameSyntax identifier &&
-                    identifier.Identifier.Text == "nameof")
-                {
-                    if (nameofInvocation.ArgumentList.Arguments.Count > 0 &&
-                        nameofInvocation.ArgumentList.Arguments[0].Expression is IdentifierNameSyntax methodName)
-                    {
-                        transition.ActionMethod = methodName.Identifier.Text;
-                        report?.Invoke($"[FluentParser] Set action{(isAsync ? " async" : "")} method: {transition.ActionMethod}");
-                        // NOTE: Delay signature analysis until after all parsing is done
-                        // AnalyzeActionSignature(transition);
-                        if (isAsync) transition.ActionIsAsync = true;
-                    }
-                }
-                // Check if it's a string literal
-                else if (arg.Expression is LiteralExpressionSyntax literal && 
-                         literal.Token.Value is string actionName)
-                {
-                    transition.ActionMethod = actionName;
-                    report?.Invoke($"[FluentParser] Set action{(isAsync ? " async" : "")} method: {actionName}");
-                    // NOTE: Delay signature analysis until after all parsing is done
-                    // AnalyzeActionSignature(transition);
-                    if (isAsync) transition.ActionIsAsync = true;
-                }
+                var methodName = ParseCallbackExpression(arg.Expression, isAsync ? "ActionAsync" : "Action", report);
 
+                if (!string.IsNullOrEmpty(methodName))
+                {
+                    transition.ActionMethod = methodName;
+                    if (isAsync) transition.ActionIsAsync = true;
+                    report?.Invoke($"[FluentParser] Set action{(isAsync ? " async" : "")} method: {methodName}");
+                }
             }
         }
 
@@ -972,88 +1157,13 @@ namespace Generator.Parsers
             if (invocation.ArgumentList.Arguments.Count > 0)
             {
                 var arg = invocation.ArgumentList.Arguments[0];
+                var methodName = ParseCallbackExpression(arg.Expression, isAsync ? "GuardAsync" : "Guard", report);
 
-                // Check if it's a nameof expression
-                if (arg.Expression is InvocationExpressionSyntax nameofInvocation &&
-                    nameofInvocation.Expression is IdentifierNameSyntax identifier &&
-                    identifier.Identifier.Text == "nameof")
+                if (!string.IsNullOrEmpty(methodName))
                 {
-                    if (nameofInvocation.ArgumentList.Arguments.Count > 0 &&
-                        nameofInvocation.ArgumentList.Arguments[0].Expression is IdentifierNameSyntax methodName)
-                    {
-                        transition.GuardMethod = methodName.Identifier.Text;
-                        report?.Invoke($"[FluentParser] Set guard{(isAsync ? " async" : "")} method: {transition.GuardMethod}");
-                        // NOTE: Delay signature analysis until after all parsing is done
-                        // AnalyzeGuardSignature(transition);
-                        if (isAsync) transition.GuardIsAsync = true;
-                    }
-                }
-                // Check if it's a string literal
-                else if (arg.Expression is LiteralExpressionSyntax literal &&
-                         literal.Token.Value is string guardName)
-                {
-                    transition.GuardMethod = guardName;
-                    report?.Invoke($"[FluentParser] Set guard{(isAsync ? " async" : "")} method: {guardName}");
-                    AnalyzeGuardSignature(transition);
+                    transition.GuardMethod = methodName;
                     if (isAsync) transition.GuardIsAsync = true;
-                }
-                // Check if it's a method group (identifier)
-                else if (arg.Expression is IdentifierNameSyntax methodGroup && _semanticModel != null)
-                {
-                    var symbolInfo = _semanticModel.GetSymbolInfo(methodGroup);
-                    if (symbolInfo.Symbol is IMethodSymbol methodSymbol)
-                    {
-                        transition.GuardMethod = methodSymbol.Name;
-                        report?.Invoke($"[FluentParser] Set guard{(isAsync ? " async" : "")} via method group: {transition.GuardMethod}");
-                        if (isAsync) transition.GuardIsAsync = true;
-                    }
-                    else if (symbolInfo.CandidateSymbols.Length > 1)
-                    {
-                        // Emit FSM3070 - Ambiguous method group reference
-                        var location = methodGroup.GetLocation();
-                        var candidateCount = symbolInfo.CandidateSymbols.Length;
-                        var methodGroupName = methodGroup.Identifier.Text;
-
-                        report?.Invoke($"[FluentParser] Ambiguous method group '{methodGroupName}' with {candidateCount} candidates");
-
-                        // Create diagnostic for FSM3070
-                        var descriptor = DiagnosticFactory.Get("FSM3070");
-                        var diagnostic = Diagnostic.Create(
-                            descriptor,
-                            location,
-                            methodGroupName,
-                            candidateCount);
-                        _context.ReportDiagnostic(diagnostic);
-                    }
-                }
-                // Check if it's a method group (member access, e.g., this.Method)
-                else if (arg.Expression is MemberAccessExpressionSyntax memberAccess && _semanticModel != null)
-                {
-                    var symbolInfo = _semanticModel.GetSymbolInfo(memberAccess);
-                    if (symbolInfo.Symbol is IMethodSymbol methodSymbol)
-                    {
-                        transition.GuardMethod = methodSymbol.Name;
-                        report?.Invoke($"[FluentParser] Set guard{(isAsync ? " async" : "")} via method group (member access): {transition.GuardMethod}");
-                        if (isAsync) transition.GuardIsAsync = true;
-                    }
-                    else if (symbolInfo.CandidateSymbols.Length > 1)
-                    {
-                        // Emit FSM3070 - Ambiguous method group reference
-                        var location = memberAccess.GetLocation();
-                        var candidateCount = symbolInfo.CandidateSymbols.Length;
-                        var methodGroupName = memberAccess.Name.Identifier.Text;
-
-                        report?.Invoke($"[FluentParser] Ambiguous method group '{methodGroupName}' with {candidateCount} candidates");
-
-                        // Create diagnostic for FSM3070
-                        var descriptor = DiagnosticFactory.Get("FSM3070");
-                        var diagnostic = Diagnostic.Create(
-                            descriptor,
-                            location,
-                            methodGroupName,
-                            candidateCount);
-                        _context.ReportDiagnostic(diagnostic);
-                    }
+                    report?.Invoke($"[FluentParser] Set guard{(isAsync ? " async" : "")} method: {methodName}");
                 }
             }
         }
@@ -1170,33 +1280,14 @@ namespace Generator.Parsers
             if (invocation.ArgumentList.Arguments.Count > 0)
             {
                 var arg = invocation.ArgumentList.Arguments[0];
-                
-                // Check if it's a nameof expression
-                if (arg.Expression is InvocationExpressionSyntax nameofInvocation &&
-                    nameofInvocation.Expression is IdentifierNameSyntax identifier &&
-                    identifier.Identifier.Text == "nameof")
+                var methodName = ParseCallbackExpression(arg.Expression, isAsync ? "OnEntryAsync" : "OnEntry", report);
+
+                if (!string.IsNullOrEmpty(methodName))
                 {
-                    if (nameofInvocation.ArgumentList.Arguments.Count > 0 &&
-                        nameofInvocation.ArgumentList.Arguments[0].Expression is IdentifierNameSyntax methodName)
-                    {
-                        state.OnEntryMethod = methodName.Identifier.Text;
-                        // NOTE: Delay signature analysis until after all parsing is done
-                        // AnalyzeOnEntrySignature(state);
-                        if (isAsync) state.OnEntryIsAsync = true;
-                        model.GenerationConfig.HasOnEntryExit = true;
-                        report?.Invoke($"[FluentParser] Set OnEntry{(isAsync ? "Async" : "")} for {currentState}: {state.OnEntryMethod}");
-                    }
-                }
-                // Check if it's a string literal
-                else if (arg.Expression is LiteralExpressionSyntax literal && 
-                         literal.Token.Value is string entryName)
-                {
-                    state.OnEntryMethod = entryName;
-                    // NOTE: Delay signature analysis until after all parsing is done
-                    // AnalyzeOnEntrySignature(state);
+                    state.OnEntryMethod = methodName;
                     if (isAsync) state.OnEntryIsAsync = true;
                     model.GenerationConfig.HasOnEntryExit = true;
-                    report?.Invoke($"[FluentParser] Set OnEntry{(isAsync ? "Async" : "")} for {currentState}: {entryName}");
+                    report?.Invoke($"[FluentParser] Set OnEntry{(isAsync ? "Async" : "")} for {currentState}: {methodName}");
                 }
             }
         }
@@ -1219,33 +1310,14 @@ namespace Generator.Parsers
             if (invocation.ArgumentList.Arguments.Count > 0)
             {
                 var arg = invocation.ArgumentList.Arguments[0];
-                
-                // Check if it's a nameof expression
-                if (arg.Expression is InvocationExpressionSyntax nameofInvocation &&
-                    nameofInvocation.Expression is IdentifierNameSyntax identifier &&
-                    identifier.Identifier.Text == "nameof")
+                var methodName = ParseCallbackExpression(arg.Expression, isAsync ? "OnExitAsync" : "OnExit", report);
+
+                if (!string.IsNullOrEmpty(methodName))
                 {
-                    if (nameofInvocation.ArgumentList.Arguments.Count > 0 &&
-                        nameofInvocation.ArgumentList.Arguments[0].Expression is IdentifierNameSyntax methodName)
-                    {
-                        state.OnExitMethod = methodName.Identifier.Text;
-                        // NOTE: Delay signature analysis until after all parsing is done
-                        // AnalyzeOnExitSignature(state);
-                        if (isAsync) state.OnExitIsAsync = true;
-                        model.GenerationConfig.HasOnEntryExit = true;
-                        report?.Invoke($"[FluentParser] Set OnExit{(isAsync ? "Async" : "")} for {currentState}: {state.OnExitMethod}");
-                    }
-                }
-                // Check if it's a string literal
-                else if (arg.Expression is LiteralExpressionSyntax literal && 
-                         literal.Token.Value is string exitName)
-                {
-                    state.OnExitMethod = exitName;
-                    // NOTE: Delay signature analysis until after all parsing is done
-                    // AnalyzeOnExitSignature(state);
+                    state.OnExitMethod = methodName;
                     if (isAsync) state.OnExitIsAsync = true;
                     model.GenerationConfig.HasOnEntryExit = true;
-                    report?.Invoke($"[FluentParser] Set OnExit{(isAsync ? "Async" : "")} for {currentState}: {exitName}");
+                    report?.Invoke($"[FluentParser] Set OnExit{(isAsync ? "Async" : "")} for {currentState}: {methodName}");
                 }
             }
         }
@@ -1268,29 +1340,10 @@ namespace Generator.Parsers
             if (invocation.ArgumentList.Arguments.Count > 0)
             {
                 var arg = invocation.ArgumentList.Arguments[0];
-
-                string? methodName = null;
-                // Prefer nameof(Method)
-                if (arg.Expression is InvocationExpressionSyntax nameofInvocation &&
-                    nameofInvocation.Expression is IdentifierNameSyntax identifier &&
-                    identifier.Identifier.Text == "nameof")
-                {
-                    if (nameofInvocation.ArgumentList.Arguments.Count > 0 &&
-                        nameofInvocation.ArgumentList.Arguments[0].Expression is IdentifierNameSyntax methodIdent)
-                    {
-                        methodName = methodIdent.Identifier.Text;
-                    }
-                }
-                else if (arg.Expression is LiteralExpressionSyntax literal && literal.IsKind(SyntaxKind.StringLiteralExpression))
-                {
-                    // Back-compat: allow string literal
-                    methodName = literal.Token.ValueText;
-                }
+                var methodName = ParseCallbackExpression(arg.Expression, "OnException", report);
 
                 if (string.IsNullOrEmpty(methodName))
                 {
-                    var descriptor = DiagnosticFactory.Get(RuleIdentifiers.InvalidOnExceptionSignature);
-                    _context.ReportDiagnostic(Diagnostic.Create(descriptor, invocation.GetLocation(), "<unknown>", "OnException", "ExceptionDirective or ValueTask<ExceptionDirective> with (ExceptionContext<TState,TTrigger>[, CancellationToken])"));
                     return;
                 }
 
