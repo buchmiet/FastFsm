@@ -7,7 +7,7 @@ namespace FastFsm.Tests.Machines;
 public partial class UnreachableMachineFluent
 {
     // Note: No transition TO Isolated state - it's unreachable
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(UnreachableState.Start)
         .On(UnreachableTrigger.Connect).GoTo(UnreachableState.Connected)
         .State(UnreachableState.Connected)

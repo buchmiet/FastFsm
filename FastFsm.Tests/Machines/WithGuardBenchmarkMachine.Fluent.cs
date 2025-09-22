@@ -9,7 +9,7 @@ public partial class WithGuardBenchmarkMachineFluent
     private int _counter;
     public bool ShouldAllow { get; set; } = true;
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State<BenchmarkState>(BenchmarkState.A)
         .On(BenchmarkTrigger.Next).Guard(CanTransition).GoTo(BenchmarkState.B)
         .State(BenchmarkState.B)

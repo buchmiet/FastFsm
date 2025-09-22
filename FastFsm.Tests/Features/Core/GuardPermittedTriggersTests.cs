@@ -47,7 +47,7 @@ public partial class GuardPermittedMachineFluent
 
     private bool CanRun() => Allow;
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(State.Idle)
         .On(Trigger.Run)
         .Guard(nameof(CanRun))

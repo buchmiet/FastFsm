@@ -34,7 +34,7 @@ public partial class ShallowHistoryTestsFluent
     [Abstractions.Attributes.StateMachine(typeof(S), typeof(T), EnableHierarchy = true)]
     public partial class ShallowHistoryMachineFluent
     {
-        public static void Configure()
+        private void Configure()
         {
             // Define parent state with shallow history and initial child
             FSM.State(S.Menu)

@@ -29,7 +29,7 @@ public partial class AsyncOceOnEntryMachineFluent
 {
     public bool ThrowOceOnEntryB { get; set; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .OnException<CSState>(nameof(HandleAsync))
         .State(CSState.A)
             .On(CSTrigger.Go).GoTo(CSState.B)

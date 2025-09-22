@@ -10,7 +10,7 @@ public partial class InternalTransitionMachineFluent
 {
     public List<string> EventLog { get; } = [];
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(StateCallbackTests.InternalState.Active)
         .OnEntry(nameof(OnEntryActive)).OnExit(nameof(OnExitActive))
         .On(StateCallbackTests.InternalTrigger.Deactivate).GoTo(StateCallbackTests.InternalState.Inactive)

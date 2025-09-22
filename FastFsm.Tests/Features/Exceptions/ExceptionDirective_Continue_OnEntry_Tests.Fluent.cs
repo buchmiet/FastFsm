@@ -32,7 +32,7 @@ public partial class ContinueOnEntryMachineFluent
     public List<string> Log { get; } = new();
     public bool ThrowOnEntryB { get; set; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .OnException<EDState>(nameof(Handle))
         .State(EDState.A)
             .On(EDTrigger.Go).Action(nameof(ActionAB)).GoTo(EDState.B)

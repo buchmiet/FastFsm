@@ -34,7 +34,7 @@ public partial class DeepHistoryTestsFluent
     [Abstractions.Attributes.StateMachine(typeof(S), typeof(T), EnableHierarchy = true)]
     public partial class DeepHistoryMachineFluent
     {
-        public static void Configure()
+        private void Configure()
         {
             // Define root state with deep history
             FSM.State(S.Work)

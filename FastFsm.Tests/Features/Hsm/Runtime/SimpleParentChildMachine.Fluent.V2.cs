@@ -8,7 +8,7 @@ namespace FastFsm.Tests.Features.Hsm.Runtime;
 public partial class SimpleParentChildMachineFluent_v2
 {
     // Match the exact pattern from InternalTransitionMachine
-    private static void Configure() => FSM
+    private void Configure() => FSM
         // Define all states first
         .State(HsmStateFluent_v2.Idle)
         .State(HsmStateFluent_v2.Working)

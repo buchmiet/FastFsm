@@ -29,7 +29,7 @@ public class ExceptionDirective_Positions_Tests
 [StateMachine(typeof(MPState), typeof(MPTrigger))]
 public partial class MiddlePositionMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(MPState.A)
             .On(MPTrigger.Go).Action(nameof(Throw)).GoTo(MPState.B)
         .OnException(nameof(Handle))
@@ -45,7 +45,7 @@ public enum MPTrigger { Go }
 [StateMachine(typeof(EPState), typeof(EPTrigger))]
 public partial class EndPositionMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(EPState.A)
             .On(EPTrigger.Go).Action(nameof(Throw)).GoTo(EPState.B)
         .State(EPState.B)

@@ -30,7 +30,7 @@ public partial class InitialChildTestsFluent
     [Abstractions.Attributes.StateMachine(typeof(S), typeof(T), EnableHierarchy = true)]
     public partial class InitialChildMachineFluent
     {
-        public static void Configure()
+        private void Configure()
         {
             // Define parent state with its initial child
             FSM.State(S.Parent)

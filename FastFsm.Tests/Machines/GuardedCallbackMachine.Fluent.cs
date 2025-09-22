@@ -10,7 +10,7 @@ public partial class GuardedCallbackMachineFluent
     public bool AllowTransition { get; set; }
     public List<string> EventLog { get; } = [];
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State<GuardedState>(GuardedState.A)
         .OnEntry(nameof(OnEntryA))
         .OnExit(nameof(OnExitA))

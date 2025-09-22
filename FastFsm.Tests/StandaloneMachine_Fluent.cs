@@ -11,7 +11,7 @@ public partial class StandaloneFluentMachine
 
     public int Counter { get; private set; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(StandaloneState.Idle)
         .On(StandaloneTrigger.Start)
         .Action(nameof(IncrementCounter))

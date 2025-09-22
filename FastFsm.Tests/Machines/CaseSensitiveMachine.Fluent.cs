@@ -6,7 +6,7 @@ namespace FastFsm.Tests.Machines;
 [StateMachine(typeof(CaseSensitiveState), typeof(CaseSensitiveTrigger))]
 public partial class CaseSensitiveMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(CaseSensitiveState.state)
         .On(CaseSensitiveTrigger.GO).GoTo(CaseSensitiveState.STATE)
         .State(CaseSensitiveState.STATE)

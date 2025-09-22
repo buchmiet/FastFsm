@@ -171,6 +171,20 @@ namespace Generator.Parsers
                 .Where(m => m.Identifier.Text is "Configure" or "SetupStates")
                 .ToList();
 
+            if (methods.Count == 0 && _classSymbol != null)
+            {
+                if (HasInheritedConfigure(_classSymbol))
+                {
+                    var descriptor = DiagnosticFactory.Get(RuleIdentifiers.ConfigureNotDeclaredOnType);
+                    _context.ReportDiagnostic(Diagnostic.Create(
+                        descriptor,
+                        classDeclaration.Identifier.GetLocation(),
+                        "Configure"));
+                }
+
+                return null;
+            }
+
             if (methods.Count > 1)
             {
                 var descriptor = DiagnosticFactory.Get(RuleIdentifiers.MultipleConfigureMethods);
@@ -184,7 +198,13 @@ namespace Generator.Parsers
                 return instanceMethod;
             }
 
-            return methods.FirstOrDefault(m => m.Modifiers.Any(mod => mod.IsKind(SyntaxKind.StaticKeyword)));
+            var staticMethod = methods.FirstOrDefault(m => m.Modifiers.Any(mod => mod.IsKind(SyntaxKind.StaticKeyword)));
+            if (staticMethod != null)
+            {
+                ValidateConfigureMethod(staticMethod);
+            }
+
+            return staticMethod;
         }
 
         private void ValidateConfigureMethod(MethodDeclarationSyntax configureMethod)
@@ -1051,58 +1071,283 @@ namespace Generator.Parsers
 
             var symbolInfo = _semanticModel.GetSymbolInfo(syntax);
 
-            if (symbolInfo.Symbol is IPropertySymbol propertySymbol)
+            if (TryHandleNonMethodSymbol(symbolInfo.Symbol, syntax, displayName, dslPosition))
             {
-                ReportDiagnostic(RuleIdentifiers.PropertyMethodGroupNotAllowed, syntax.GetLocation(), propertySymbol.Name, dslPosition);
-                return null;
-            }
-
-            if (symbolInfo.Symbol is IFieldSymbol)
-            {
-                ReportDiagnostic(RuleIdentifiers.ImpureDslExpression, syntax.GetLocation(), displayName, dslPosition);
                 return null;
             }
 
             if (symbolInfo.Symbol is IMethodSymbol methodSymbol)
             {
-                if (_classSymbol != null && !SymbolEqualityComparer.Default.Equals(methodSymbol.ContainingType, _classSymbol))
+                return TryAcceptMethodSymbol(methodSymbol, syntax, dslPosition);
+            }
+
+            if (symbolInfo.CandidateSymbols.Length > 0)
+            {
+                var methodCandidates = symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().ToList();
+
+                if (methodCandidates.Count == 1)
                 {
-                    ReportDiagnostic(
-                        RuleIdentifiers.ExternalMethodGroup,
-                        syntax.GetLocation(),
-                        methodSymbol.Name,
-                        methodSymbol.ContainingType?.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat) ?? "<unknown>",
-                        dslPosition);
+                    return TryAcceptMethodSymbol(methodCandidates[0], syntax, dslPosition);
+                }
+
+                if (methodCandidates.Count > 1)
+                {
+                    // Filter candidates by signature validity to reduce false positives
+                    var validCandidates = methodCandidates
+                        .Where(m => TryValidateMethodForDsl(m, dslPosition, syntax, reportOnFailure: false))
+                        .ToList();
+
+                	if (validCandidates.Count == 1)
+                    {
+                        return TryAcceptMethodSymbol(validCandidates[0], syntax, dslPosition);
+                    }
+
+                    ReportDiagnostic(RuleIdentifiers.AmbiguousMethodGroup, syntax.GetLocation(), displayName, methodCandidates.Count);
                     return null;
                 }
 
-                return methodSymbol.Name;
-            }
-
-            if (symbolInfo.CandidateSymbols.Length > 1)
-            {
-                ReportDiagnostic(RuleIdentifiers.AmbiguousMethodGroup, syntax.GetLocation(), displayName, symbolInfo.CandidateSymbols.Length);
-                return null;
-            }
-
-            if (symbolInfo.CandidateSymbols.Length == 1 && symbolInfo.CandidateSymbols[0] is IMethodSymbol candidate)
-            {
-                if (_classSymbol != null && !SymbolEqualityComparer.Default.Equals(candidate.ContainingType, _classSymbol))
+                if (TryHandleNonMethodSymbol(symbolInfo.CandidateSymbols.SingleOrDefault(), syntax, displayName, dslPosition))
                 {
-                    ReportDiagnostic(
-                        RuleIdentifiers.ExternalMethodGroup,
-                        syntax.GetLocation(),
-                        candidate.Name,
-                        candidate.ContainingType?.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat) ?? "<unknown>",
-                        dslPosition);
                     return null;
                 }
-
-                return candidate.Name;
             }
 
             // Unresolved symbols - likely other compilation errors; fall back to textual name
             return displayName;
+        }
+
+        private string? TryAcceptMethodSymbol(IMethodSymbol methodSymbol, SyntaxNode syntax, string dslPosition)
+        {
+            if (_classSymbol != null && !SymbolEqualityComparer.Default.Equals(methodSymbol.ContainingType, _classSymbol))
+            {
+                ReportDiagnostic(
+                    RuleIdentifiers.ExternalMethodGroup,
+                    syntax.GetLocation(),
+                    methodSymbol.Name,
+                    methodSymbol.ContainingType?.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat) ?? "<unknown>",
+                    dslPosition);
+                return null;
+            }
+
+            if (!TryValidateMethodForDsl(methodSymbol, dslPosition, syntax))
+            {
+                return null;
+            }
+
+            return methodSymbol.Name;
+        }
+
+        private bool TryHandleNonMethodSymbol(ISymbol? symbol, SyntaxNode syntax, string displayName, string dslPosition)
+        {
+            if (symbol == null)
+            {
+                return false;
+            }
+
+            switch (symbol)
+            {
+                case IPropertySymbol propertySymbol:
+                    ReportDiagnostic(RuleIdentifiers.PropertyMethodGroupNotAllowed, syntax.GetLocation(), propertySymbol.Name, dslPosition);
+                    return true;
+                case IFieldSymbol fieldSymbol:
+                    ReportDiagnostic(RuleIdentifiers.FieldOrPropertyAccessInDsl, syntax.GetLocation(), fieldSymbol.Name, dslPosition);
+                    return true;
+                case ILocalSymbol localSymbol:
+                    ReportDiagnostic(RuleIdentifiers.FieldOrPropertyAccessInDsl, syntax.GetLocation(), localSymbol.Name, dslPosition);
+                    return true;
+                case IParameterSymbol parameterSymbol:
+                    ReportDiagnostic(RuleIdentifiers.FieldOrPropertyAccessInDsl, syntax.GetLocation(), parameterSymbol.Name, dslPosition);
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private bool TryValidateMethodForDsl(IMethodSymbol methodSymbol, string dslPosition, SyntaxNode syntax, bool reportOnFailure = true)
+        {
+            var normalized = NormalizeDslPosition(dslPosition);
+
+            if (!IsMethodSignatureAllowed(methodSymbol, normalized))
+            {
+                if (reportOnFailure)
+                {
+                    ReportDiagnostic(RuleIdentifiers.DslSignatureMismatch, syntax.GetLocation(), methodSymbol.Name, normalized);
+                }
+                return false;
+            }
+
+            return true;
+        }
+
+        private static string NormalizeDslPosition(string dslPosition) => dslPosition switch
+        {
+            "GuardAsync" => "Guard",
+            "ActionAsync" => "Action",
+            "OnEntryAsync" => "OnEntry",
+            "OnExitAsync" => "OnExit",
+            _ => dslPosition,
+        };
+
+        private static bool HasInheritedConfigure(INamedTypeSymbol classSymbol)
+        {
+            for (var baseType = classSymbol.BaseType; baseType != null; baseType = baseType.BaseType)
+            {
+                var hasConfigure = baseType.GetMembers()
+                    .OfType<IMethodSymbol>()
+                    .Any(m => (m.Name is "Configure" or "SetupStates") && !m.IsStatic);
+
+                if (hasConfigure)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool IsMethodSignatureAllowed(IMethodSymbol methodSymbol, string normalizedPosition)
+        {
+            if (normalizedPosition == "OnException")
+            {
+                return true; // Dedicated validation in ParseOnException
+            }
+
+            return normalizedPosition switch
+            {
+                "Guard" => IsValidGuardSignature(methodSymbol),
+                "Action" => IsValidActionOrLifecycleSignature(methodSymbol),
+                "OnEntry" => IsValidActionOrLifecycleSignature(methodSymbol),
+                "OnExit" => IsValidActionOrLifecycleSignature(methodSymbol),
+                _ => true,
+            };
+        }
+
+        private bool IsValidGuardSignature(IMethodSymbol methodSymbol)
+        {
+            var returnType = methodSymbol.ReturnType;
+            bool returnsBool = returnType.SpecialType == SpecialType.System_Boolean;
+            bool returnsValueTaskBool = IsValueTaskOfBool(returnType);
+
+            if (!returnsBool && !returnsValueTaskBool)
+            {
+                return false;
+            }
+
+            bool hasPayload = false;
+            bool hasToken = false;
+
+            foreach (var parameter in methodSymbol.Parameters)
+            {
+                if (IsCancellationToken(parameter.Type))
+                {
+                    if (!returnsValueTaskBool || hasToken || parameter.RefKind != RefKind.None)
+                    {
+                        return false;
+                    }
+                    hasToken = true;
+                    continue;
+                }
+
+                if (!IsPayloadParameter(parameter, allowInRef: true) || hasPayload)
+                {
+                    return false;
+                }
+
+                hasPayload = true;
+            }
+
+            if (returnsBool && hasToken)
+            {
+                return false; // CancellationToken only allowed for async guards
+            }
+
+            return true;
+        }
+
+        private bool IsValidActionOrLifecycleSignature(IMethodSymbol methodSymbol)
+        {
+            var returnType = methodSymbol.ReturnType;
+            bool returnsVoid = returnType.SpecialType == SpecialType.System_Void;
+            bool returnsValueTask = IsValueTask(returnType);
+
+            if (!returnsVoid && !returnsValueTask)
+            {
+                return false;
+            }
+
+            bool hasPayload = false;
+            bool hasToken = false;
+
+            foreach (var parameter in methodSymbol.Parameters)
+            {
+                if (IsCancellationToken(parameter.Type))
+                {
+                    if (!returnsValueTask || hasToken || parameter.RefKind != RefKind.None)
+                    {
+                        return false;
+                    }
+                    hasToken = true;
+                    continue;
+                }
+
+                if (!IsPayloadParameter(parameter, allowInRef: true) || hasPayload)
+                {
+                    return false;
+                }
+
+                hasPayload = true;
+            }
+
+            return true;
+        }
+
+        private bool IsCancellationToken(ITypeSymbol type)
+        {
+            var fullName = _typeHelper.BuildFullTypeName(type);
+            return fullName == Strings.CancellationTokenFullName;
+        }
+
+        private static bool IsPayloadParameter(IParameterSymbol parameter, bool allowInRef)
+        {
+            if (parameter.RefKind is RefKind.Ref or RefKind.Out)
+            {
+                return false;
+            }
+
+            if (!allowInRef && parameter.RefKind == RefKind.In)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool IsValueTask(ITypeSymbol type)
+            => IsValueTask(type, out var named) && !named.IsGenericType;
+
+        private static bool IsValueTaskOfBool(ITypeSymbol type)
+        {
+            if (!IsValueTask(type, out var named) || !named.IsGenericType || named.TypeArguments.Length != 1)
+            {
+                return false;
+            }
+
+            var argument = named.TypeArguments[0];
+            return argument.SpecialType == SpecialType.System_Boolean;
+        }
+
+        private static bool IsValueTask(ITypeSymbol type, out INamedTypeSymbol? named)
+        {
+            if (type is INamedTypeSymbol namedSymbol &&
+                namedSymbol.Name == "ValueTask" &&
+                namedSymbol.ContainingNamespace.ToDisplayString() == "System.Threading.Tasks")
+            {
+                named = namedSymbol;
+                return true;
+            }
+
+            named = null;
+            return false;
         }
 
         private static bool IsNameofInvocation(InvocationExpressionSyntax invocation)

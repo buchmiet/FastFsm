@@ -27,7 +27,7 @@ public partial class InternalTransitionTestsFluent
     {
         public List<string> Log { get; } = new();
 
-        public static void Configure()
+        private void Configure()
         {
             // Parent with internal transition
             FSM.State(S.Parent)

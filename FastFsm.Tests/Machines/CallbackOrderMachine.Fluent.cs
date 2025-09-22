@@ -9,7 +9,7 @@ public partial class CallbackOrderMachineFluent
 {
     public List<string> ExecutionLog { get; } = [];
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(CallbackState.A)
         .OnExit(nameof(OnExitA))
         .On(CallbackTrigger.Next).Action(nameof(ActionAtoB)).GoTo(CallbackState.B)

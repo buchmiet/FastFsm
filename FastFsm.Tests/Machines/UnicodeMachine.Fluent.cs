@@ -6,7 +6,7 @@ namespace FastFsm.Tests.Machines;
 [StateMachine(typeof(UnicodeState), typeof(UnicodeTrigger))]
 public partial class UnicodeMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(UnicodeState.αlpha)
         .On(UnicodeTrigger.βeta).GoTo(UnicodeState.Ωmega)
         .State(UnicodeState.Ωmega)

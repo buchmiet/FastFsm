@@ -9,7 +9,7 @@ public partial class SingleStateMachineFluent
     private int _actionCount;
     public int ActionCount => _actionCount;
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(SingleState.Only)
         .On(SingleTrigger.Loop).Action(nameof(IncrementCounter)).GoTo(SingleState.Only);
 

@@ -11,7 +11,7 @@ public partial class OrderStateMachineFluent
     public int LastProcessedOrderId { get; private set; }
     public decimal LastProcessedAmount { get; private set; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(OrderState.New)
         .On(OrderTrigger.Submit).Action(nameof(ProcessOrder)).GoTo(OrderState.Submitted)
         .State(OrderState.Submitted)
@@ -37,7 +37,7 @@ public partial class OrderStateMachineFluent
 [PayloadType(typeof(PaymentData))]
 public partial class PaymentMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(PaymentState.Pending)
         .On(PaymentTrigger.Process).Guard(nameof(IsSmallAmount)).GoTo(PaymentState.Processed)
         .On(PaymentTrigger.Cancel).GoTo(PaymentState.Failed)
@@ -56,7 +56,7 @@ public partial class NotificationMachineFluent
     public string LastSentMessage { get; private set; }
     public int RecipientCount { get; private set; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(NotificationState.Ready)
         .On(NotificationTrigger.Send).Action(nameof(SendNotification)).GoTo(NotificationState.Sent)
         .State(NotificationState.Sent)
@@ -80,7 +80,7 @@ public partial class ProcessingMachineFluent
     public int Timeout { get; private set; }
     public bool IsInitialized { get; private set; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(ProcessingState.Idle)
         .On(ProcessingTrigger.Start).GoTo(ProcessingState.Running)
         .State(ProcessingState.Running)
@@ -107,7 +107,7 @@ public partial class MultiPayloadMachineFluent
     public int ProcessedValue { get; private set; }
     public string LastErrorCode { get; private set; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(MultiState.Initial)
         .On(MultiTrigger.Configure).Action(nameof(ApplyConfig)).GoTo(MultiState.Configured)
         .State(MultiState.Configured)
@@ -140,7 +140,7 @@ public partial class OverloadedMachineFluent
 {
     public List<string> CallLog { get; } = new();
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(OverloadState.A)
         .On(OverloadTrigger.Go).Guard(nameof(Guard)).Action(nameof(Action)).GoTo(OverloadState.B)
         .State(OverloadState.B)
@@ -186,7 +186,7 @@ public partial class InternalPayloadMachineFluent
 {
     public int Counter { get; private set; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(InternalPayloadState.Active)
         .OnInternal(InternalPayloadTrigger.Update).Action(nameof(UpdateCounter))
         .On(InternalPayloadTrigger.Deactivate).GoTo(InternalPayloadState.Inactive)
@@ -207,7 +207,7 @@ public partial class MixedPayloadMachineFluent
     public int LastDefaultId { get; private set; }
     public string LastSpecialValue { get; private set; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(MixedState.Start)
         .On(MixedTrigger.Regular).Action(nameof(ProcessDefault)).GoTo(MixedState.Middle)
         .State(MixedState.Middle)
@@ -233,7 +233,7 @@ public partial class InitialPayloadMachineFluent
     public bool InitialEntryCalledParameterless { get; private set; }
     public bool InitialEntryCalledWithPayload { get; private set; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(InitialPayloadState.Start)
         .OnEntry(nameof(OnStartEntry))
         .On(InitialPayloadTrigger.Go).GoTo(InitialPayloadState.Next)
@@ -258,7 +258,7 @@ public partial class ExitCallbackMachineFluent
     public bool OnExitCalled { get; private set; }
     public string OnExitPayloadData { get; private set; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(ExitState.A)
         .OnExit(nameof(OnExitA))
         .On(ExitTrigger.Go).GoTo(ExitState.B)
@@ -279,7 +279,7 @@ public partial class WorkflowMachineFluent
     public string ApprovedBy { get; private set; }
     public string Result { get; private set; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(WorkflowState.Created)
         .On(WorkflowTrigger.Initialize).Action(nameof(Initialize)).GoTo(WorkflowState.Initialized)
         .State(WorkflowState.Initialized)
@@ -311,7 +311,7 @@ public partial class WorkflowMachineFluent
 [PayloadType(typeof(ConditionalPayload))]
 public partial class ConditionalPayloadMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(ConditionalState.Ready)
         .On(ConditionalTrigger.Execute).Guard(nameof(IsValid)).GoTo(ConditionalState.Done)
         .State(ConditionalState.Done);
@@ -323,7 +323,7 @@ public partial class ConditionalPayloadMachineFluent
 [StateMachine(typeof(PermittedState), typeof(PermittedTrigger))]
 public partial class PermittedTriggersMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(PermittedState.A)
         .On(PermittedTrigger.Next).GoTo(PermittedState.B)
         .On(PermittedTrigger.Skip).GoTo(PermittedState.C)
@@ -337,7 +337,7 @@ public partial class PermittedTriggersMachineFluent
 [PayloadType(StrictTrigger.Process, typeof(ExpectedPayload))]
 public partial class StrictMultiPayloadMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(StrictState.Ready)
         .On(StrictTrigger.Process).GoTo(StrictState.Processing)
         .State(StrictState.Processing);

@@ -10,7 +10,7 @@ public partial class SimpleParentChildMachineFluent
     public enum S { Idle, Working, Working_Initializing, Working_Processing, Working_Validating, Completed, Error }
     public enum T { Start, Process, Validate, Complete, Abort }
         
-    public static void Configure()
+    private void Configure()
     {
         // Simple states  
         FSM.State(S.Idle);

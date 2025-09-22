@@ -9,7 +9,7 @@ public enum TestTrigger { Start, Stop, Reset }
 [StateMachine(typeof(TestState), typeof(TestTrigger))]
 public partial class OpenTransitionTestMachine
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(TestState.Idle)
         .On(TestTrigger.Start)
         .Guard(nameof(CanStart))
@@ -23,7 +23,7 @@ public partial class OpenTransitionTestMachine
 [StateMachine(typeof(TestState), typeof(TestTrigger))]
 public partial class AutoFinalizedTestMachine
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(TestState.Idle)
         .On(TestTrigger.Start)
         .Guard(nameof(CanStart))
@@ -41,7 +41,7 @@ public partial class MultiplePayloadsTestMachine
     public class Payload1 { }
     public class Payload2 { }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(TestState.Idle)
         .On(TestTrigger.Start)
         .Payload<Payload1>()

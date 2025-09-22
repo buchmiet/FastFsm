@@ -9,7 +9,7 @@ public partial class PayloadStateMachineFluent
     public TestPayload? LastPayload { get; private set; }
     public bool GuardResult { get; set; } = true;
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State<TestState>(TestState.Initial)
         .On(TestTrigger.Start).Guard(nameof(CanStart)).Action(nameof(ProcessAction)).GoTo(TestState.Processing)
         .State(TestState.Processing)
