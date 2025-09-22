@@ -100,7 +100,7 @@
 
   <Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
     <PropertyGroup>
-      <Version>0.0.0.1-fluentrefinement</Version>
+      <Version>0.0.0.2-fluentrefinement</Version>
       <PackageVersion>$(Version)</PackageVersion>
     </PropertyGroup>
   </Target>

@@ -256,6 +256,118 @@ namespace Generator.Rules.Definitions
             defaultSeverity: RuleSeverity.Error,
             description: "When using method groups in Fluent API, the method must have a unique signature that matches one of the supported FSM callback patterns.");
 
+        public static readonly RuleDefinition ImpureDslExpression = new(
+            id: RuleIdentifiers.ImpureDslExpression, // FSM3071
+            title: "Impure expression in Fluent DSL",
+            messageFormat: "Expression '{0}' is not allowed in Fluent DSL position '{1}'. Use method groups or literals only.",
+            category: RuleCategories.FSM_Generator_Fluent,
+            defaultSeverity: RuleSeverity.Error,
+            description: "The Fluent DSL is declarative. Only method groups and compile-time literals are permitted when configuring the state machine.");
+
+        public static readonly RuleDefinition PropertyMethodGroupNotAllowed = new(
+            id: RuleIdentifiers.PropertyMethodGroupNotAllowed, // FSM3072
+            title: "Property used where method expected",
+            messageFormat: "Property '{0}' cannot be used in '{1}'. Fluent callbacks must reference methods declared on the state machine class.",
+            category: RuleCategories.FSM_Generator_Fluent,
+            defaultSeverity: RuleSeverity.Error,
+            description: "Method groups in the Fluent DSL must target methods. Referencing properties or indexers is not supported.");
+
+        public static readonly RuleDefinition ExternalMethodGroup = new(
+            id: RuleIdentifiers.ExternalMethodGroup, // FSM3073
+            title: "External method group not allowed",
+            messageFormat: "Method '{0}' belongs to '{1}'. Only methods declared on the state machine class may be used in '{2}'.",
+            category: RuleCategories.FSM_Generator_Fluent,
+            defaultSeverity: RuleSeverity.Error,
+            description: "Callbacks referenced from Fluent DSL must be declared on the state machine class. Wrap external dependencies in local methods.");
+
+        public static readonly RuleDefinition DslSignatureMismatch = new(
+            id: RuleIdentifiers.DslSignatureMismatch, // FSM3074
+            title: "Method signature incompatible with DSL position",
+            messageFormat: "Method '{0}' cannot be used as '{1}'. Expected signature: {2}.",
+            category: RuleCategories.FSM_Generator_Fluent,
+            defaultSeverity: RuleSeverity.Error,
+            description: "Each Fluent DSL position (Guard, Action, OnEntry, OnExit, OnException) accepts only specific callback signatures.");
+
+        public static readonly RuleDefinition LambdaExpressionNotAllowed = new(
+            id: RuleIdentifiers.LambdaExpressionNotAllowed, // FSM3075
+            title: "Lambda expression not allowed in Fluent DSL",
+            messageFormat: "Lambda expressions are not allowed in Fluent DSL position '{0}'. Declare a named method instead.",
+            category: RuleCategories.FSM_Generator_Fluent,
+            defaultSeverity: RuleSeverity.Error,
+            description: "The Fluent DSL forbids inline lambdas to keep configuration declarative and analyzable.");
+
+        public static readonly RuleDefinition FieldOrPropertyAccessInDsl = new(
+            id: RuleIdentifiers.FieldOrPropertyAccessInDsl, // FSM3076
+            title: "Field or property access in Fluent DSL",
+            messageFormat: "Value '{0}' is not a compile-time literal. Only constants may be used for '{1}'.",
+            category: RuleCategories.FSM_Generator_Fluent,
+            defaultSeverity: RuleSeverity.Error,
+            description: "Literal values must be supplied directly when configuring Fluent DSL elements like Priority or State references.");
+
+        public static readonly RuleDefinition MethodInvocationInDsl = new(
+            id: RuleIdentifiers.MethodInvocationInDsl, // FSM3077
+            title: "Method invocation in Fluent DSL",
+            messageFormat: "Invocation '{0}' is not allowed in Fluent DSL position '{1}'. Provide enum literals, constants, or method groups instead.",
+            category: RuleCategories.FSM_Generator_Fluent,
+            defaultSeverity: RuleSeverity.Error,
+            description: "Fluent DSL inputs must be compile-time determinable. Invoking helper methods inside Configure() is not supported.");
+
+        public static readonly RuleDefinition MultipleConfigureMethods = new(
+            id: RuleIdentifiers.MultipleConfigureMethods, // FSM3080
+            title: "Multiple Configure methods declared",
+            messageFormat: "State machine declares multiple Configure/SetupStates methods. Keep a single configuration entry point.",
+            category: RuleCategories.FSM_Generator_Fluent,
+            defaultSeverity: RuleSeverity.Error,
+            description: "FastFSM expects exactly one Configure()/SetupStates() method per state machine class.");
+
+        public static readonly RuleDefinition ConfigureMustBePrivate = new(
+            id: RuleIdentifiers.ConfigureMustBePrivate, // FSM3081a
+            title: "Configure must be private",
+            messageFormat: "Method '{0}' must be declared private to be used as the Fluent configuration entry point.",
+            category: RuleCategories.FSM_Generator_Fluent,
+            defaultSeverity: RuleSeverity.Error,
+            description: "Fluent configuration methods should be private instance members to avoid unintended runtime use.");
+
+        public static readonly RuleDefinition ConfigureMustBeParameterless = new(
+            id: RuleIdentifiers.ConfigureMustBeParameterless, // FSM3081b
+            title: "Configure must be parameterless",
+            messageFormat: "Method '{0}' cannot declare parameters. Fluent configuration methods do not accept arguments.",
+            category: RuleCategories.FSM_Generator_Fluent,
+            defaultSeverity: RuleSeverity.Error,
+            description: "Configure()/SetupStates() must be parameterless instance methods.");
+
+        public static readonly RuleDefinition ConfigureCannotBeVirtual = new(
+            id: RuleIdentifiers.ConfigureCannotBeVirtual, // FSM3081c
+            title: "Configure cannot be virtual or override",
+            messageFormat: "Method '{0}' cannot be virtual or override for Fluent configuration.",
+            category: RuleCategories.FSM_Generator_Fluent,
+            defaultSeverity: RuleSeverity.Error,
+            description: "Fluent configuration methods are analyzed at compile time and must not be virtual or overrides.");
+
+        public static readonly RuleDefinition ConfigureMustBeInstance = new(
+            id: RuleIdentifiers.ConfigureMustBeInstance, // FSM3081d
+            title: "Configure must be an instance method",
+            messageFormat: "Method '{0}' must be an instance method. Static configuration is allowed only as a legacy fallback.",
+            category: RuleCategories.FSM_Generator_Fluent,
+            defaultSeverity: RuleSeverity.Warning,
+            description: "Instance Configure() methods are required for method-group friendly Fluent DSL. Static Configure() is discouraged.");
+
+        public static readonly RuleDefinition ConfigureNotDeclaredOnType = new(
+            id: RuleIdentifiers.ConfigureNotDeclaredOnType, // FSM3082
+            title: "Configure must be declared on the state machine class",
+            messageFormat: "Method '{0}' must be declared on the state machine partial class. Do not inherit Configure() from a base type.",
+            category: RuleCategories.FSM_Generator_Fluent,
+            defaultSeverity: RuleSeverity.Error,
+            description: "Configure()/SetupStates() must be defined directly on the partial class analyzed by the generator.");
+
+        public static readonly RuleDefinition ConfigureCannotBePartial = new(
+            id: RuleIdentifiers.ConfigureCannotBePartial, // FSM3083
+            title: "Configure cannot be partial",
+            messageFormat: "Method '{0}' cannot be a partial method. Use a regular method body for Fluent configuration.",
+            category: RuleCategories.FSM_Generator_Fluent,
+            defaultSeverity: RuleSeverity.Error,
+            description: "Partial methods cannot be analyzed reliably for Fluent configuration and are therefore disallowed.");
+
         // Generator infrastructure diagnostics removed (FSM9000–9013)
 
         // Generator infrastructure diagnostics removed (FSM9000–9013)
@@ -289,6 +401,20 @@ namespace Generator.Rules.Definitions
             InvalidOnExceptionSignature,    // FSM3060
             PriorityWithoutActiveTransition,// FSM3040
             AmbiguousMethodGroup,           // FSM3070
+            ImpureDslExpression,            // FSM3071
+            PropertyMethodGroupNotAllowed,  // FSM3072
+            ExternalMethodGroup,            // FSM3073
+            DslSignatureMismatch,           // FSM3074
+            LambdaExpressionNotAllowed,     // FSM3075
+            FieldOrPropertyAccessInDsl,     // FSM3076
+            MethodInvocationInDsl,          // FSM3077
+            MultipleConfigureMethods,       // FSM3080
+            ConfigureMustBePrivate,         // FSM3081a
+            ConfigureMustBeParameterless,   // FSM3081b
+            ConfigureCannotBeVirtual,       // FSM3081c
+            ConfigureMustBeInstance,        // FSM3081d
+            ConfigureNotDeclaredOnType,     // FSM3082
+            ConfigureCannotBePartial,       // FSM3083
 
             // Generator infrastructure (removed from catalog)
         }.AsReadOnly();

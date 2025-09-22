@@ -39,7 +39,22 @@ public static class RuleIdentifiers
     public const string PriorityWithoutActiveTransition = "FSM3040";             // was FSM210
 
     // Method group diagnostics
-    public const string AmbiguousMethodGroup = "FSM3070";                        // new for method groups
+    public const string AmbiguousMethodGroup = "FSM3070";                        // ambiguous method group
+    public const string ImpureDslExpression = "FSM3071";
+    public const string PropertyMethodGroupNotAllowed = "FSM3072";
+    public const string ExternalMethodGroup = "FSM3073";
+    public const string DslSignatureMismatch = "FSM3074";
+    public const string LambdaExpressionNotAllowed = "FSM3075";
+    public const string FieldOrPropertyAccessInDsl = "FSM3076";
+    public const string MethodInvocationInDsl = "FSM3077";
+
+    public const string MultipleConfigureMethods = "FSM3080";
+    public const string ConfigureMustBePrivate = "FSM3081a";
+    public const string ConfigureMustBeParameterless = "FSM3081b";
+    public const string ConfigureCannotBeVirtual = "FSM3081c";
+    public const string ConfigureMustBeInstance = "FSM3081d";
+    public const string ConfigureNotDeclaredOnType = "FSM3082";
+    public const string ConfigureCannotBePartial = "FSM3083";
 
     // E. Generator infrastructure diagnostics removed (9000–9013)
 }
