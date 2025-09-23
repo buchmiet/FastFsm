@@ -171,6 +171,19 @@ namespace Generator.Parsers
                 .Where(m => m.Identifier.Text is "Configure" or "SetupStates")
                 .ToList();
 
+            // Exclude attribute-based configuration methods ([State], [Transition], ...)
+            var fluentCandidates = methods
+                .Where(m => m.AttributeLists.Count == 0)
+                .ToList();
+
+            // If only attribute-based methods exist, this is not a Fluent machine
+            if (methods.Count > 0 && fluentCandidates.Count == 0)
+            {
+                return null;
+            }
+
+            methods = fluentCandidates;
+
             if (methods.Count == 0 && _classSymbol != null)
             {
                 if (HasInheritedConfigure(_classSymbol))
