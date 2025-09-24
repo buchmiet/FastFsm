@@ -104,7 +104,7 @@ namespace FastFsm.Async.Tests.Features.Cancellation;
         private readonly List<(string Method, string Parameters)> _callLog = new();
         public IReadOnlyList<(string Method, string Parameters)> CallLog => _callLog;
 
-        private static void Configure() => FSM
+        private void Configure() => FSM
             .State(SpecStates.Ready)
                 .OnEntryAsync(nameof(OnEnterReady))
                 .On(SpecTriggers.Start)

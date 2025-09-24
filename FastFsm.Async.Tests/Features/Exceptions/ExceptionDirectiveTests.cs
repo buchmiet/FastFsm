@@ -341,7 +341,7 @@ public partial class OnEntryContinueMachineFluentFsm
     public bool OnEntryExecuted { get; private set; }
     public bool ActionExecuted { get; private set; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .OnException(nameof(HandleException))
         .State(ExceptionTestStates.Running)
             .OnEntryAsync(nameof(OnEnterRunning))
@@ -366,7 +366,7 @@ public partial class ActionPropagateMachineFluentFsm
 {
     public bool ActionStarted { get; private set; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .OnException(nameof(HandleException))
         .State(ExceptionTestStates.Idle)
             .On(ExceptionTestTriggers.Start)
@@ -384,7 +384,7 @@ public partial class GuardExceptionMachineFluentFsm
     public bool GuardCalled { get; private set; }
     public bool HandlerCalled { get; private set; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .OnException(nameof(HandleException))
         .State(ExceptionTestStates.Idle)
             .On(ExceptionTestTriggers.Start)
@@ -401,7 +401,7 @@ public partial class CancellationPropagationMachineFluentFsm
 {
     public bool OnEntryStarted { get; private set; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .OnException(nameof(HandleException))
         .State(ExceptionTestStates.Running)
             .OnEntryAsync(nameof(OnEnterRunning))
@@ -425,7 +425,7 @@ public partial class AsyncHandlerMachineFluentFsm
 {
     public bool HandlerExecuted { get; private set; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .OnException(nameof(HandleExceptionAsync))
         .State(ExceptionTestStates.Idle)
             .On(ExceptionTestTriggers.Start)
@@ -444,7 +444,7 @@ public partial class ExceptionContextCaptureMachineFluentFsm
     private readonly Func<ExceptionContext<ExceptionTestStates, ExceptionTestTriggers>, ExceptionDirective> _handler;
     public ExceptionContextCaptureMachineFluentFsm(ExceptionTestStates initialState, Func<ExceptionContext<ExceptionTestStates, ExceptionTestTriggers>, ExceptionDirective> handler) : this(initialState) { _handler = handler; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .OnException(nameof(HandleException))
         .State(ExceptionTestStates.Idle)
             .On(ExceptionTestTriggers.Start)

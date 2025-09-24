@@ -22,7 +22,7 @@ public partial class FluentOnExceptionMachine
     public ExceptionDirective LastDirective { get; private set; }
     public Exception? LastException { get; private set; }
     
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .OnException<TestState>(nameof(HandleException))
         .State(TestState.Idle)
             .On<TestTrigger>(TestTrigger.Start)
@@ -86,7 +86,7 @@ public class FluentOnExceptionTests
 [StateMachine(typeof(TestState), typeof(TestTrigger))]
 public partial class FluentPropagateMachine
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .OnException<TestState>(nameof(PropagateHandler))
         .State(TestState.Idle)
             .On<TestTrigger>(TestTrigger.Start)

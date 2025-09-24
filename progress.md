@@ -21,3 +21,7 @@
 - Enhanced `FluentParser` validation to emit all planned DSL diagnostics (FSM3071–FSM3077, FSM3080–FSM3083), including signature checks and inherited `Configure()` detection.
 - Added unit tests under `Generator.Tests/Diagnostics/Fluent` to cover each new diagnostic code; targeted `dotnet test` runs for `FSM3071_FluentDslPurityTests` and `FSM3080_ConfigureDiagnosticsTests` now pass.
 - Relaxed `TypeSystemHelperPerformanceTests` memory assertion to tolerate up to 20 MB (environment variability) so Generator test suite executes deterministically.
+
+## Milestone 6
+- Unified FastFsm.Async.Tests fluent machines to use instance-based Configure() methods; updated all relevant files (e.g., Features/Payload, HSM runtime tests, cancellation fixtures).
+- Verified `dotnet build FastFsm.Async.Tests` and `dotnet test FastFsm.Async.Tests` succeed (92 tests passed, 1 intentionally skipped).

@@ -361,7 +361,7 @@ public partial class BasicAsyncPayloadMachineFluentFsm
     public IReadOnlyList<string> ExecutionLog => _executionLog;
     public ProcessPayload? LastProcessedPayload { get; private set; }
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(AsyncPayloadStates.Initial)
             .On(AsyncPayloadTriggers.Start)
                 .Guard(nameof(CanStartAsync))
@@ -402,7 +402,7 @@ public partial class OverloadedAsyncMachineFluentFsm
 {
     public List<string> CallLog { get; } = [];
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(AsyncPayloadStates.Processing)
             .OnEntryAsync(nameof(OnEntryProcessing))
         .State(AsyncPayloadStates.Initial)
@@ -464,7 +464,7 @@ public partial class MultiPayloadAsyncMachineFluentFsm
     public string LastResult { get; private set; } = string.Empty;
     public string LastErrorCode { get; private set; } = string.Empty;
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(MultiPayloadStates.Ready)
             .On(MultiPayloadTriggers.Configure)
                 .Action(nameof(ApplyConfigurationAsync))
@@ -522,7 +522,7 @@ public partial class ExceptionAsyncPayloadMachineFluentFsm
     private readonly List<string> _log = new();
     public IReadOnlyList<string> Log => _log;
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(AsyncPayloadStates.Initial)
             .On(AsyncPayloadTriggers.Start)
                 .Guard(nameof(ThrowingGuardAsync))
@@ -564,7 +564,7 @@ public partial class CanFireAsyncPayloadMachineFluentFsm
     private readonly int _threshold;
     public CanFireAsyncPayloadMachineFluentFsm(AsyncPayloadStates initialState, int threshold) : this(initialState) => _threshold = threshold;
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(AsyncPayloadStates.Initial)
             .On(AsyncPayloadTriggers.Start)
                 .Guard(nameof(CheckThresholdAsync))
@@ -586,7 +586,7 @@ public partial class ConcurrentAsyncPayloadMachineFluentFsm
     private readonly List<int> _processedIds = new();
     private readonly object _lock = new();
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(AsyncPayloadStates.Processing)
             .OnInternal(AsyncPayloadTriggers.Process)
                 .Action(nameof(ProcessDataAsync))
@@ -610,7 +610,7 @@ public partial class InitialOnEntryAsyncPayloadMachineFluentFsm
     public bool InitialEntryCalledWithPayload { get; private set; }
     public List<string> CallLog { get; } = [];
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(AsyncPayloadStates.Initial)
             .OnEntryAsync(nameof(OnEntryInitial))
             .On(AsyncPayloadTriggers.Start)

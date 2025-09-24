@@ -105,7 +105,7 @@ public class AsyncExtensionHookOrderTests
 [StateMachine(typeof(AState), typeof(ATrigger), GenerateExtensibleVersion = true)]
 public partial class AsyncHookOrderMachineSuccessFluentFsm
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(AState.A)
             .On(ATrigger.Next)
                 .Guard(nameof(GuardTrueAsync))
@@ -118,7 +118,7 @@ public partial class AsyncHookOrderMachineSuccessFluentFsm
 [StateMachine(typeof(AState), typeof(ATrigger), GenerateExtensibleVersion = true)]
 public partial class AsyncHookOrderMachineFailFluentFsm
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(AState.A)
             .On(ATrigger.Fail)
                 .Guard(nameof(GuardFalseAsync))
