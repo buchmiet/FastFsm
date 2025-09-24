@@ -41,7 +41,7 @@ namespace FastFsm.Async.Tests.Features.Cancellation;
     [StateMachine(typeof(SimpleStates), typeof(SimpleTriggers))]
     public partial class SimpleCancellationMachineFluentFsm
     {
-        private static void Configure() => FSM
+        private void Configure() => FSM
             .State(SimpleStates.Ready)
                 .OnEntryAsync(nameof(OnEnterReady))
                 .On(SimpleTriggers.Start)

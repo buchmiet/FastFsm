@@ -342,7 +342,7 @@ public partial class BasicTokenMachineFluentFsm
     public List<string> ExecutionLog { get; } = new();
     public List<string> TokenStates { get; } = new();
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(TokenTestState.Initial)
             .On(TokenTestTrigger.Start)
                 .Guard(nameof(CanStart))
@@ -407,7 +407,7 @@ public partial class OptionalTokenMachineFluentFsm
 {
     public List<string> ExecutionLog { get; } = new();
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(TokenTestState.Initial)
             .On(TokenTestTrigger.Start)
                 .Guard(nameof(CanStart))
@@ -430,7 +430,7 @@ public partial class CancellationMachineFluentFsm
     public List<string> ExecutionLog { get; } = new();
     public int DelayMs { get; set; } = 100;
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(TokenTestState.Initial)
             .On(TokenTestTrigger.Start)
                 .Guard(nameof(CanStartAsync))
@@ -463,7 +463,7 @@ public partial class MixedTokenMachineFluentFsm
 {
     public List<string> ExecutionLog { get; } = new();
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(TokenTestState.Initial)
             .On(TokenTestTrigger.Start)
                 .Guard(nameof(SyncGuard))

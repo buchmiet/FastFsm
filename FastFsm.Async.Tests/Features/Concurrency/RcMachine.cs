@@ -118,7 +118,7 @@ namespace FastFsm.Async.Tests.Features.Concurrency;
 
         public static void ReleaseFirst() => _releaseFirst.TrySetResult(true);
 
-        private static void Configure() => FSM
+        private void Configure() => FSM
             .State(RcStates.Initial)
                 .OnExitAsync(nameof(OnInitialExitAsync))
                 .On(RcTriggers.ToA).Action(nameof(SlowActionAsync)).GoTo(RcStates.A)

@@ -81,7 +81,7 @@ public partial class TokenMachineFluentFsm
     private readonly List<string> _log = new();
     public IReadOnlyList<string> Log => _log;
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(TokenStates.Off)
             .On(TokenTriggers.SwitchOn)
                 .Guard(nameof(CanSwitchOnAsync))
@@ -210,7 +210,7 @@ public partial class PayloadMachineFluentFsm
     private readonly List<string> _log = new();
     public IReadOnlyList<string> Log => _log;
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(PayloadStates.Off)
             .On(PayloadTriggers.ToggleOn)
                 .Payload<TogglePayload>()

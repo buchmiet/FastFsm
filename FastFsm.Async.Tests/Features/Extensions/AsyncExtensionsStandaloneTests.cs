@@ -168,7 +168,7 @@ public class AsyncExtensionsStandaloneTests
 [StateMachine(typeof(ExtState), typeof(ExtTrigger), GenerateExtensibleVersion = true)]
 public partial class AsyncExtensionsMachineFluentFsm
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(ExtState.Idle)
             .OnEntryAsync(nameof(OnEnterIdleAsync))
             .On(ExtTrigger.Start)

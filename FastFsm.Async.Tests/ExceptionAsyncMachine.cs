@@ -75,7 +75,7 @@ namespace FastFsm.Async.Tests.Features.Exceptions;
         private readonly List<string> _log = new();
         public IReadOnlyList<string> Log => _log;
 
-        private static void Configure() => FSM
+        private void Configure() => FSM
             .State(ExStates.Init)
                 .On(ExTriggers.GuardBoom)
                     .Guard(nameof(ThrowingGuardAsync))

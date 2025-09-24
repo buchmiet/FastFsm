@@ -115,7 +115,7 @@ public enum HsmTrigger
 [StateMachine(typeof(HsmState), typeof(HsmTrigger), EnableHierarchy = true)]
 public partial class DeepHierarchyMachineFluent
 {
-    private void SetupStates()
+    private void ConfigureTemp()
     {
         // Level 1
         FSM.State(HsmState.Working);
@@ -174,7 +174,7 @@ public partial class DeepHierarchyMachineFluent
 [StateMachine(typeof(HsmState), typeof(HsmTrigger), EnableHierarchy = true)]
 public partial class PriorityTransitionMachineFluent
 {
-    private void SetupStates()
+    private void ConfigureTemp()
     {
         FSM.State(HsmState.Priority_Low);
         FSM.State(HsmState.Priority_Medium);
@@ -227,7 +227,7 @@ public partial class PriorityTransitionMachineFluent
 [StateMachine(typeof(HsmState), typeof(HsmTrigger), EnableHierarchy = true)]
 public partial class CrossHierarchyMachineFluent
 {
-    private void SetupStates()
+    private void ConfigureTemp()
     {
         // Branch 1
         FSM.State(HsmState.Branch1);
@@ -281,7 +281,7 @@ public partial class CrossHierarchyMachineFluent
 [StateMachine(typeof(HsmState), typeof(HsmTrigger), EnableHierarchy = true)]
 public partial class ComplexMixedScenarioMachineFluent
 {
-    private void SetupStates()
+    private void ConfigureTemp()
     {
         // Parent with history
         FSM.State(HsmState.ComplexParent)
@@ -359,7 +359,7 @@ public partial class ComplexMixedScenarioMachineFluent
 [StateMachine(typeof(HsmState), typeof(HsmTrigger), EnableHierarchy = true)]
 public partial class EdgeCaseMachineFluent
 {
-    private void SetupStates()
+    private void ConfigureTemp()
     {
         // Parent without initial (but has no substates yet, so valid)
         FSM.State(HsmState.EdgeParent)

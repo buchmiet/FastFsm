@@ -89,7 +89,7 @@ public partial class SimpleAsyncMachineFluentFsm
     private readonly List<string> _executionLog = new();
     public IReadOnlyList<string> ExecutionLog => _executionLog;
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(AsyncStates.Initial)
             .On(AsyncTriggers.Start)
                 .Guard(nameof(CanStartAsync))

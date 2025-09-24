@@ -368,7 +368,7 @@ namespace FastFsm.Async.Tests.Features.Hsm.Runtime;
         [StateMachine(typeof(AsyncInitialChildTests.S), typeof(AsyncInitialChildTests.T), EnableHierarchy = true)]
         public partial class InitialChildMachineFluentFsm
         {
-            private static void Configure()
+            private void Configure()
             {
                 FSM.State(AsyncInitialChildTests.S.Parent)
                     .OnEntryAsync(nameof(OnParentEntryAsync))
@@ -405,7 +405,7 @@ namespace FastFsm.Async.Tests.Features.Hsm.Runtime;
         [StateMachine(typeof(AsyncShallowHistoryTests.S), typeof(AsyncShallowHistoryTests.T), EnableHierarchy = true)]
         public partial class ShallowHistoryMachineFluentFsm
         {
-            private static void Configure()
+            private void Configure()
             {
                 FSM.State(AsyncShallowHistoryTests.S.Menu)
                     .HistoryShallow()
@@ -443,7 +443,7 @@ namespace FastFsm.Async.Tests.Features.Hsm.Runtime;
         [StateMachine(typeof(AsyncDeepHistoryTests.S), typeof(AsyncDeepHistoryTests.T), EnableHierarchy = true)]
         public partial class DeepHistoryMachineFluentFsm
         {
-            private static void Configure()
+            private void Configure()
             {
                 FSM.State(AsyncDeepHistoryTests.S.Work)
                     .HistoryDeep()
@@ -485,7 +485,7 @@ namespace FastFsm.Async.Tests.Features.Hsm.Runtime;
         [StateMachine(typeof(AsyncInternalTransitionTests.S), typeof(AsyncInternalTransitionTests.T), EnableHierarchy = true)]
         public partial class InternalMachineFluentFsm
         {
-            private static void Configure()
+            private void Configure()
             {
                 FSM.State(AsyncInternalTransitionTests.S.Parent)
                     .Initial(AsyncInternalTransitionTests.S.Child);
@@ -522,7 +522,7 @@ namespace FastFsm.Async.Tests.Features.Hsm.Runtime;
         {
             public List<string> Log { get; } = new();
             
-            private static void Configure()
+            private void Configure()
             {
                 FSM.State(AsyncResolutionOrderTests.S.Parent)
                     .OnEntryAsync(nameof(OnParentEntryAsync))
@@ -559,7 +559,7 @@ namespace FastFsm.Async.Tests.Features.Hsm.Runtime;
         {
             public List<string> Log { get; } = new();
             
-            private static void Configure()
+            private void Configure()
             {
                 FSM.State(AsyncResolutionOrderTests.S.Parent)
                     .OnEntryAsync(nameof(OnParentEntryAsync))
@@ -594,7 +594,7 @@ namespace FastFsm.Async.Tests.Features.Hsm.Runtime;
         {
             public List<string> Log { get; } = new();
             
-            private static void Configure()
+            private void Configure()
             {
                 FSM.State(AsyncResolutionOrderTests.S.A)
                     .OnEntryAsync(nameof(OnAEntryAsync));
@@ -627,7 +627,7 @@ namespace FastFsm.Async.Tests.Features.Hsm.Runtime;
         [StateMachine(typeof(AsyncInheritanceAndIntrospectionTests.S), typeof(AsyncInheritanceAndIntrospectionTests.T), EnableHierarchy = true)]
         public partial class InheritanceMachineFluentFsm
         {
-            private static void Configure()
+            private void Configure()
             {
                 FSM.State(AsyncInheritanceAndIntrospectionTests.S.Parent)
                     .OnEntryAsync(nameof(OnParentEntryAsync))
