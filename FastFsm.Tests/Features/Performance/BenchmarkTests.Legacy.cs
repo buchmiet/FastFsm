@@ -231,7 +231,4 @@ public class BenchmarkTestsLegacy(ITestOutputHelper output)
         Assert.True(opsPerSecond > 50_000, $"Throughput {opsPerSecond:N0} ops/sec, expected > 50,000");
     }
 
-    // Benchmark state machines
-    public enum BenchmarkState { A, B, C, D }
-    public enum BenchmarkTrigger { Previous, Next }
 }

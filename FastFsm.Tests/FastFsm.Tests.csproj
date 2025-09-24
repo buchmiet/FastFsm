@@ -14,8 +14,12 @@
 	  <EmbeddedResource Remove="HierarchicalStateMachine\**" />
 	  <None Remove="HierarchicalStateMachine\**" />
 	</ItemGroup>
+
 	<ItemGroup>
-		<PackageReference Include="FastFsm.Net" Version="0.0.0.5-fluentrefinement" />
+		<ProjectReference Include="..\Machines.Tests\Machines.Tests.csproj" />
+		<ProjectReference Include="..\FastFsm\FastFsm.csproj" />
+	</ItemGroup>
+		<ItemGroup>
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.6" />
 		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />

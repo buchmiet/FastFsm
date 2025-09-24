@@ -1,189 +1,89 @@
 using System;
-using System.Linq;
 using Shouldly;
-using FastFsm.Tests.Machines;
 using FastFsm.Tests.Features.Performance;
+using FastFsm.Tests.Machines;
 using Xunit;
 
 namespace FastFsm.Tests.Features.Core;
 
 public class CoreMinimalTests
 {
-    public enum ApiType { Fluent, Legacy }
-
-    private object CreateMachine(ApiType apiType, object initialState)
+    private static CoreBenchmarkMachineLegacy CreateMachine(BenchmarkState initialState)
     {
-        if (apiType == ApiType.Fluent)
-            return new CoreBenchmarkMachineFluent((BenchmarkTests.BenchmarkState)initialState);
-        else
-        {
-            // Convert to Legacy enum
-            var legacyState = (BenchmarkTestsLegacy.BenchmarkState)Enum.Parse(
-                typeof(BenchmarkTestsLegacy.BenchmarkState), 
-                initialState.ToString());
-            return new CoreBenchmarkMachineLegacy(legacyState);
-        }
+        return new CoreBenchmarkMachineLegacy(initialState);
     }
 
-    private object GetBenchmarkState(ApiType apiType, string stateName)
+    [Fact]
+    public void Core_BasicTransitions_WorkCorrectly()
     {
-        return apiType == ApiType.Fluent
-            ? Enum.Parse(typeof(BenchmarkTests.BenchmarkState), stateName)
-            : Enum.Parse(typeof(BenchmarkTestsLegacy.BenchmarkState), stateName);
-    }
-
-    private object GetBenchmarkTrigger(ApiType apiType, string triggerName)
-    {
-        return apiType == ApiType.Fluent
-            ? Enum.Parse(typeof(BenchmarkTests.BenchmarkTrigger), triggerName)
-            : Enum.Parse(typeof(BenchmarkTestsLegacy.BenchmarkTrigger), triggerName);
-    }
-
-    private dynamic AsDynamic(object machine) => machine;
-    [Theory]
-    [InlineData(ApiType.Fluent)]
-    [InlineData(ApiType.Legacy)]
-    public void Core_BasicTransitions_WorkCorrectly(ApiType apiType)
-    {
-        // Arrange
-        var stateA = GetBenchmarkState(apiType, "A");
-        var stateB = GetBenchmarkState(apiType, "B");
-        var stateC = GetBenchmarkState(apiType, "C");
-        var triggerNext = GetBenchmarkTrigger(apiType, "Next");
-            
-        dynamic machine = CreateMachine(apiType, stateA);
-        machine.Start();
-        // Act & Assert
-        Assert.Equal(stateA, machine.CurrentState);
-
-        bool result = apiType == ApiType.Fluent
-            ? ((CoreBenchmarkMachineFluent)machine).TryFire((BenchmarkTests.BenchmarkTrigger)triggerNext)
-            : ((CoreBenchmarkMachineLegacy)machine).TryFire((BenchmarkTestsLegacy.BenchmarkTrigger)triggerNext);
-        result.ShouldBeTrue();
-        Assert.Equal(stateB, machine.CurrentState);
-
-        result = apiType == ApiType.Fluent
-            ? ((CoreBenchmarkMachineFluent)machine).TryFire((BenchmarkTests.BenchmarkTrigger)triggerNext)
-            : ((CoreBenchmarkMachineLegacy)machine).TryFire((BenchmarkTestsLegacy.BenchmarkTrigger)triggerNext);
-        result.ShouldBeTrue();
-        Assert.Equal(stateC, machine.CurrentState);
-    }
-
-    [Theory]
-    [InlineData(ApiType.Fluent)]
-    [InlineData(ApiType.Legacy)]
-    public void Core_InvalidTransition_ReturnsFalse(ApiType apiType)
-    {
-        // Arrange
-        var stateA = GetBenchmarkState(apiType, "A");
-        var triggerPrevious = GetBenchmarkTrigger(apiType, "Previous");
-            
-        dynamic machine = CreateMachine(apiType, stateA);
+        var machine = CreateMachine(BenchmarkState.A);
         machine.Start();
 
-        // Act - Try invalid trigger
-        bool result = apiType == ApiType.Fluent
-            ? ((CoreBenchmarkMachineFluent)machine).TryFire((BenchmarkTests.BenchmarkTrigger)triggerPrevious)
-            : ((CoreBenchmarkMachineLegacy)machine).TryFire((BenchmarkTestsLegacy.BenchmarkTrigger)triggerPrevious);
+        machine.CurrentState.ShouldBe(BenchmarkState.A);
 
-        // Assert
-        result.ShouldBeFalse();
-        Assert.Equal(stateA, machine.CurrentState);
+        machine.TryFire(BenchmarkTrigger.Next).ShouldBeTrue();
+        machine.CurrentState.ShouldBe(BenchmarkState.B);
+
+        machine.TryFire(BenchmarkTrigger.Next).ShouldBeTrue();
+        machine.CurrentState.ShouldBe(BenchmarkState.C);
     }
 
-    [Theory]
-    [InlineData(ApiType.Fluent)]
-    [InlineData(ApiType.Legacy)]
-    public void Core_Fire_ThrowsOnInvalidTransition(ApiType apiType)
+    [Fact]
+    public void Core_InvalidTransition_ReturnsFalse()
     {
-        // Arrange
-        var stateA = GetBenchmarkState(apiType, "A");
-        var triggerPrevious = GetBenchmarkTrigger(apiType, "Previous");
-            
-        dynamic machine = CreateMachine(apiType, stateA);
+        var machine = CreateMachine(BenchmarkState.A);
         machine.Start();
 
-        // Act & Assert
-        if (apiType == ApiType.Fluent)
-        {
-            Should.Throw<InvalidOperationException>(() =>
-                ((CoreBenchmarkMachineFluent)machine).Fire((BenchmarkTests.BenchmarkTrigger)triggerPrevious));
-        }
-        else
-        {
-            Should.Throw<InvalidOperationException>(() =>
-                ((CoreBenchmarkMachineLegacy)machine).Fire((BenchmarkTestsLegacy.BenchmarkTrigger)triggerPrevious));
-        }
+        machine.TryFire(BenchmarkTrigger.Previous).ShouldBeFalse();
+        machine.CurrentState.ShouldBe(BenchmarkState.A);
     }
 
-    [Theory]
-    [InlineData(ApiType.Fluent)]
-    [InlineData(ApiType.Legacy)]
-    public void Core_GetPermittedTriggers_ReturnsCorrectTriggers(ApiType apiType)
+    [Fact]
+    public void Core_Fire_ThrowsOnInvalidTransition()
     {
-        // Arrange
-        var stateB = GetBenchmarkState(apiType, "B");
-        var triggerNext = GetBenchmarkTrigger(apiType, "Next");
-            
-        dynamic machine = CreateMachine(apiType, stateB);
+        var machine = CreateMachine(BenchmarkState.A);
         machine.Start();
 
-        // Act
-        var permittedTriggers = machine.GetPermittedTriggers();
-
-        // Assert
-        var triggers = ((System.Collections.IEnumerable)permittedTriggers).Cast<object>().ToList();
-        Assert.Contains(triggerNext, triggers);
-        triggers.Count.ShouldBe(1);
+        Should.Throw<InvalidOperationException>(() => machine.Fire(BenchmarkTrigger.Previous));
     }
 
-    [Theory]
-    [InlineData(ApiType.Fluent)]
-    [InlineData(ApiType.Legacy)]
-    public void Core_CanFire_ChecksTransitions(ApiType apiType)
+    [Fact]
+    public void Core_GetPermittedTriggers_ReturnsCorrectTriggers()
     {
-        // Arrange
-        var stateC = GetBenchmarkState(apiType, "C");
-        var triggerNext = GetBenchmarkTrigger(apiType, "Next");
-        var triggerPrevious = GetBenchmarkTrigger(apiType, "Previous");
-            
-        dynamic machine = CreateMachine(apiType, stateC);
+        var machine = CreateMachine(BenchmarkState.B);
         machine.Start();
 
-        // Act & Assert
-        if (apiType == ApiType.Fluent)
-        {
-            ((CoreBenchmarkMachineFluent)machine).CanFire((BenchmarkTests.BenchmarkTrigger)triggerNext).ShouldBeTrue();
-            ((CoreBenchmarkMachineFluent)machine).CanFire((BenchmarkTests.BenchmarkTrigger)triggerPrevious).ShouldBeFalse();
-        }
-        else
-        {
-            ((CoreBenchmarkMachineLegacy)machine).CanFire((BenchmarkTestsLegacy.BenchmarkTrigger)triggerNext).ShouldBeTrue();
-            ((CoreBenchmarkMachineLegacy)machine).CanFire((BenchmarkTestsLegacy.BenchmarkTrigger)triggerPrevious).ShouldBeFalse();
-        }
+        var permitted = machine.GetPermittedTriggers();
+
+        permitted.ShouldContain(BenchmarkTrigger.Next);
+        permitted.Count.ShouldBe(1);
     }
 
-    [Theory]
-    [InlineData(ApiType.Fluent)]
-    [InlineData(ApiType.Legacy)]
-    public void Core_MinimalMemoryFootprint(ApiType apiType)
+    [Fact]
+    public void Core_CanFire_ChecksTransitions()
     {
-        // Arrange
-        var stateA = GetBenchmarkState(apiType, "A");
-        var initialMemory = GC.GetTotalMemory(true);
-        var machines = new object[1000];
+        var machine = CreateMachine(BenchmarkState.C);
+        machine.Start();
 
-        // Act
-        for (int i = 0; i < machines.Length; i++)
+        machine.CanFire(BenchmarkTrigger.Next).ShouldBeTrue();
+        machine.CanFire(BenchmarkTrigger.Previous).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Core_MinimalMemoryFootprint()
+    {
+        const int instances = 200;
+        var initialMemory = GC.GetTotalMemory(forceFullCollection: true);
+
+        for (int i = 0; i < instances; i++)
         {
-            machines[i] = CreateMachine(apiType, stateA);
-            ((dynamic)machines[i]).Start();
+            var machine = CreateMachine(BenchmarkState.A);
+            machine.Start();
         }
 
-        var finalMemory = GC.GetTotalMemory(true);
-        var memoryPerInstance = (finalMemory - initialMemory) / machines.Length;
+        var finalMemory = GC.GetTotalMemory(forceFullCollection: true);
+        var memoryPerInstance = (finalMemory - initialMemory) / instances;
 
-        // Assert - Pure variant should have minimal overhead
-        memoryPerInstance.ShouldBeLessThan(200); // bytes per instance (adjusted for real-world overhead)
+        memoryPerInstance.ShouldBeLessThan(200);
     }
 }

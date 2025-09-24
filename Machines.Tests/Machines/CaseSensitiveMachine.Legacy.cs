@@ -1,0 +1,12 @@
+using FastFsm.Tests.Features.EdgeCases;
+
+namespace FastFsm.Tests.Machines;
+
+[StateMachine(typeof(CaseSensitiveState), typeof(CaseSensitiveTrigger))]
+public partial class CaseSensitiveMachineLegacy
+{
+    [Transition(CaseSensitiveState.state, CaseSensitiveTrigger.GO, CaseSensitiveState.STATE)]
+    [Transition(CaseSensitiveState.STATE, CaseSensitiveTrigger.go, CaseSensitiveState.State)]
+    [Transition(CaseSensitiveState.State, CaseSensitiveTrigger.Go, CaseSensitiveState.state)]
+    private void ConfigureTransitions() { }
+}

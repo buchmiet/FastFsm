@@ -1,0 +1,11 @@
+using FastFsm.Tests.Features.EdgeCases;
+
+namespace FastFsm.Tests.Machines;
+
+[StateMachine(typeof(NumericState), typeof(NumericTrigger))]
+public partial class NumericMachineLegacy
+{
+    [Transition(NumericState._1Start, NumericTrigger._2Next, NumericState._3Middle)]
+    [Transition(NumericState._3Middle, NumericTrigger._4Continue, NumericState._5End)]
+    private void ConfigureTransitions() { }
+}
