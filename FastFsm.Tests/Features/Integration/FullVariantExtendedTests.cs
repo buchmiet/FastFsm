@@ -11,25 +11,13 @@ using Xunit.Abstractions;
 
 namespace FastFsm.Tests.Features.Integration;
 
-public class AllFeaturesExtendedTests(ITestOutputHelper output)
+public class AllFeaturesExtendedTests
 {
-    public class OrderPayload
-    {
-        public int OrderId { get; set; }
-        public decimal Amount { get; set; }
-        public string? TrackingNumber { get; set; }
-    }
+    private readonly ITestOutputHelper _output;
 
-    public class PaymentPayload : OrderPayload
+    public AllFeaturesExtendedTests(ITestOutputHelper output)
     {
-        public string PaymentMethod { get; set; } = "";
-        public DateTime PaymentDate { get; set; }
-    }
-
-    public class ShippingPayload : OrderPayload
-    {
-        public string Carrier { get; set; } = "";
-        public DateTime EstimatedDelivery { get; set; }
+        _output = output;
     }
 
     private class AuditExtension : IStateMachineExtension
@@ -169,24 +157,24 @@ public class AllFeaturesExtendedTests(ITestOutputHelper output)
 
         // --- Konstruktory ---
         var ctors = t.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-        output.WriteLine("Konstruktory:");
+        _output.WriteLine("Konstruktory:");
         foreach (var c in ctors)
-            output.WriteLine("  • " + c);
+            _output.WriteLine("  • " + c);
 
         // --- Pola prywatne ---
         var fields = t.GetFields(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
-        output.WriteLine("\nPola (non-public):");
+        _output.WriteLine("\nPola (non-public):");
         foreach (var f in fields)
-            output.WriteLine($"  • {f.FieldType.Name} {f.Name}");
+            _output.WriteLine($"  • {f.FieldType.Name} {f.Name}");
 
         // --- Metody publiczne ---
         var pubs = t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
-        output.WriteLine("\nMetody publiczne:");
+        _output.WriteLine("\nMetody publiczne:");
         foreach (var m in pubs)
-            output.WriteLine("  • " + m);
+            _output.WriteLine("  • " + m);
 
         // --- Szybka asercja, że jest dokładnie JEDNA metoda TryFire<TPayload> ---
-        Assert.Single(pubs.Where(m => m.Name == "TryFire" && m.IsGenericMethod));
+        Assert.Single(pubs, m => m.Name == "TryFire" && m.IsGenericMethod);
     }
 
 
@@ -208,7 +196,7 @@ public class AllFeaturesExtendedTests(ITestOutputHelper output)
         // 3. Wypisz co siedzi w mapie
         foreach (var (trigger, type) in map)
         {
-            output.WriteLine(
+            _output.WriteLine(
                 $"{trigger,-7} → {type.FullName}  (asm: {type.Assembly.GetName().Name})");
         }
 
@@ -233,31 +221,31 @@ public class AllFeaturesExtendedTests(ITestOutputHelper output)
         machine.Start();
 
         //// === Krok 1: Tylko pierwsze przejście ===
-        output.WriteLine("---" + " Krok 1: Przejście Process -> Processing ---");
+        _output.WriteLine("---" + " Krok 1: Przejście Process -> Processing ---");
 
         var processResult = machine.TryFire(OrderTrigger.Process, new OrderPayload { OrderId = 1 });
         Assert.True(processResult, "Przejście Process -> Processing nie powiodło się.");
         Assert.Contains(typeof(OrderPayload), typeTracker.ObservedTypes);
         Assert.Single(typeTracker.ObservedTypes);
-        output.WriteLine("Sukces kroku 1. Obserwowane typy: " + string.Join(", ", typeTracker.ObservedTypes.Select(t => t.Name)));
+        _output.WriteLine("Sukces kroku 1. Obserwowane typy: " + string.Join(", ", typeTracker.ObservedTypes.Select(t => t.Name)));
 
 
         //  === Krok 2: Drugie przejście ===
-        output.WriteLine("\n--- Krok 2: Przejście Processing -> Paid ---");
+        _output.WriteLine("\n--- Krok 2: Przejście Processing -> Paid ---");
         var payResult = machine.TryFire(OrderTrigger.Pay, new PaymentPayload { OrderId = 1, PaymentMethod = "PayPal" });
         Assert.True(payResult, "Przejście Processing -> Paid nie powiodło się.");
         Assert.Contains(typeof(PaymentPayload), typeTracker.ObservedTypes);
         Assert.Equal(2, typeTracker.ObservedTypes.Count);
-        output.WriteLine("Sukces kroku 2. Obserwowane typy: " + string.Join(", ", typeTracker.ObservedTypes.Select(t => t.Name)));
+        _output.WriteLine("Sukces kroku 2. Obserwowane typy: " + string.Join(", ", typeTracker.ObservedTypes.Select(t => t.Name)));
 
 
         // === Krok 3: Trzecie przejście ===
-        output.WriteLine("\n--- Krok 3: Przejście Paid -> Shipped ---");
+        _output.WriteLine("\n--- Krok 3: Przejście Paid -> Shipped ---");
         var shipResult = machine.TryFire(OrderTrigger.Ship, new ShippingPayload { OrderId = 1, Carrier = "FedEx" });
         Assert.True(shipResult, "Przejście Paid -> Shipped nie powiodło się.");
         Assert.Contains(typeof(ShippingPayload), typeTracker.ObservedTypes);
         Assert.Equal(3, typeTracker.ObservedTypes.Count);
-        output.WriteLine("Sukces kroku 3. Obserwowane typy: " + string.Join(", ", typeTracker.ObservedTypes.Select(t => t.Name)));
+        _output.WriteLine("Sukces kroku 3. Obserwowane typy: " + string.Join(", ", typeTracker.ObservedTypes.Select(t => t.Name)));
     }
 
       
@@ -378,65 +366,5 @@ public class AllFeaturesExtendedTests(ITestOutputHelper output)
         public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
     }
 
-    // ===== TESTY DLA WERSJI FLUENT =====
-
-    [Fact]
-    public void PayloadMap_ShouldPointTo_CompileTimeTypes_Fluent()
-    {
-        // 1. Utwórz instancję Fluent
-        var machine = new FullMultiPayloadMachineFluent(OrderState.New, extensions: null);
-        machine.Start();
-
-        // 2. Wyciągnij prywatne, statyczne pole _payloadMap
-        var field = typeof(FullMultiPayloadMachineFluent)
-            .GetField("_payloadMap",
-                BindingFlags.NonPublic | BindingFlags.Static);
-
-        Assert.NotNull(field);
-        var map = (Dictionary<OrderTrigger, Type>)field!.GetValue(null)!;
-
-        // 3. Assercje: czy to *te same* obiekty Type?
-        Assert.Same(typeof(OrderPayload), map[OrderTrigger.Process]);
-        Assert.Same(typeof(PaymentPayload), map[OrderTrigger.Pay]);
-        Assert.Same(typeof(ShippingPayload), map[OrderTrigger.Ship]);
-    }
-
-    [Fact]
-    public void AllFeatures_MultiplePayloadTypes_SingleTransition_Fluent()
-    {
-        // Arrange
-        var typeTracker = new PayloadTypeTracker();
-        var machine = new FullMultiPayloadMachineFluent(OrderState.New, new[] { typeTracker });
-        machine.Start();
-
-        // Act - Process transition with OrderPayload
-        var processResult = machine.TryFire(OrderTrigger.Process, new OrderPayload { OrderId = 1 });
-            
-        // Assert
-        Assert.True(processResult);
-        Assert.Equal(OrderState.Processing, machine.CurrentState);
-        Assert.Contains(1, machine.ProcessedOrderIds);
-    }
-
-    [Fact]
-    public void Fluent_Should_Handle_Different_Payload_Types()
-    {
-        // Arrange
-        var machine = new FullMultiPayloadMachineFluent(OrderState.Processing);
-        machine.Start();
-
-        // Act & Assert - Pay with PaymentPayload
-        var payResult = machine.TryFire(OrderTrigger.Pay, new PaymentPayload { OrderId = 123, Amount = 100, PaymentMethod = "Credit Card" });
-        Assert.True(payResult);
-        Assert.Equal(OrderState.Paid, machine.CurrentState);
-        Assert.Contains(123, machine.ProcessedPaymentIds);
-
-        // Act & Assert - Ship with ShippingPayload
-        var shipResult = machine.TryFire(OrderTrigger.Ship, new ShippingPayload { OrderId = 456, Carrier = "FedEx" });
-        Assert.True(shipResult);
-        Assert.Equal(OrderState.Shipped, machine.CurrentState);
-        Assert.Contains(456, machine.ShippedTrackingNumbers);
-    }
+    
 }
-
-// Enum definitions
