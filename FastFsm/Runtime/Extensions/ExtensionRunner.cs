@@ -1,13 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using FastFsm.Contracts;
-
 #if FSM_LOGGING_ENABLED
 using Microsoft.Extensions.Logging;
 #endif
 
-namespace FastFsm.Runtime.Extensions
+namespace Machines.Tests.Extensions
 {
 #if FSM_LOGGING_ENABLED
     internal static class ExtensionRunnerLog

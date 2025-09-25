@@ -1,6 +1,6 @@
 using System;
 using FastFsm.Tests.Features.Performance;
-using FastFsm.Tests.Machines;
+using Machines.Tests.Machines;
 using Xunit;
 
 namespace FastFsm.Tests.Features.Lifecycle;

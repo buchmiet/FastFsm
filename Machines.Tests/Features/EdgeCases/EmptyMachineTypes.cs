@@ -1,4 +1,4 @@
-namespace FastFsm.Tests.Features.EdgeCases;
+namespace Machines.Tests.Features.EdgeCases;
 
 public enum EmptyState { Only }
 public enum EmptyTrigger { Trigger }

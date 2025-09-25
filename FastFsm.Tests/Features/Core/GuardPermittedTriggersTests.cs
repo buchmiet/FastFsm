@@ -1,4 +1,4 @@
-using FastFsm.Tests.Machines;
+using Machines.Tests.Machines;
 using Xunit;
 
 namespace FastFsm.Tests.Features.Core;

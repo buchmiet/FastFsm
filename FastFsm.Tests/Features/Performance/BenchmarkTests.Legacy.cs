@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
-using FastFsm.Tests.Machines;
+using Machines.Tests.Machines;
 using Xunit;
 using Xunit.Abstractions;
 

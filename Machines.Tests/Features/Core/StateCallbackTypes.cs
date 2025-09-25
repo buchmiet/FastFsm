@@ -1,4 +1,4 @@
-namespace FastFsm.Tests.Features.Core;
+namespace Machines.Tests.Features.Core;
 
 public enum CallbackState { A, B, C }
 public enum CallbackTrigger { Next }

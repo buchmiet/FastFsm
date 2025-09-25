@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using FastFsm.Tests.Features.Core;
+﻿using Machines.Tests.Features.Core;
 
-
-namespace FastFsm.Tests.Machines;
+namespace Machines.Tests.Machines;
 
 [StateMachine(typeof(ComplexCallbackState), typeof(ComplexCallbackTrigger))]
 public partial class ComplexCallbackMachine

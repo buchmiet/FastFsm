@@ -1,10 +1,9 @@
 ﻿// FastFsm.Tests/Machines/FullMultiPayloadMachine.cs
 
 
-using FastFsm.Tests.Features.Integration;
-using System.Collections.Generic;
+using Machines.Tests.Features.Integration;
 
-namespace FastFsm.Tests.Machines;
+namespace Machines.Tests.Machines;
 
 [StateMachine(typeof(OrderState), typeof(OrderTrigger), GenerateExtensibleVersion = true)]
 [PayloadType(OrderTrigger.Process, typeof(OrderPayload))]

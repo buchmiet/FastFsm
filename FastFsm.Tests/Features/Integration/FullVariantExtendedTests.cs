@@ -1,6 +1,6 @@
 using Shouldly;
 
-using FastFsm.Tests.Machines;
+using Machines.Tests.Machines;
 using System;
 using System.Collections.Generic;
 using System.Linq;

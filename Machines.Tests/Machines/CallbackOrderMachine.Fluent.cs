@@ -1,8 +1,8 @@
-﻿using System.Collections.Generic;
-using Abstractions.Fluent;
-using FastFsm.Tests.Features.Core;
+﻿using Abstractions.Fluent;
+using Machines.Tests.Features.Core;
+using Machines.Tests.Features.Core;
 
-namespace FastFsm.Tests.Machines;
+namespace Machines.Tests.Machines;
 
 [StateMachine(typeof(CallbackState), typeof(CallbackTrigger))]
 public partial class CallbackOrderMachineFluent

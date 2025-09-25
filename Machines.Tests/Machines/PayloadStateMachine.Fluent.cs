@@ -1,7 +1,7 @@
 #nullable enable
 using Abstractions.Fluent;
 
-namespace FastFsm.Tests.Machines;
+namespace Machines.Tests.Machines;
 
 // WithPayload variant
 [StateMachine(typeof(TestState), typeof(TestTrigger), DefaultPayloadType = typeof(TestPayload))]
