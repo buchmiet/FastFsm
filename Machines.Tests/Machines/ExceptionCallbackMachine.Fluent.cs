@@ -1,9 +1,7 @@
-using System;
 using Abstractions.Fluent;
-using FastFsm.Tests.Features.Core;
+using Machines.Tests.Features.Core;
 
-
-namespace FastFsm.Tests.Machines;
+namespace Machines.Tests.Machines;
 
 [StateMachine(typeof(ExceptionState), typeof(ExceptionTrigger))]
 public partial class ExceptionCallbackMachineFluent

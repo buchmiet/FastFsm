@@ -1,7 +1,7 @@
 ﻿using Abstractions.Fluent;
-using FastFsm.Tests.Features.EdgeCases;
+using Machines.Tests.Features.EdgeCases;
 
-namespace FastFsm.Tests.Machines;
+namespace Machines.Tests.Machines;
 
 [StateMachine(typeof(SingleState), typeof(SingleTrigger))]
 public partial class SingleStateMachineFluent

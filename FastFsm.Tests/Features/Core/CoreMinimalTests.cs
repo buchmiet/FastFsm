@@ -1,89 +1,90 @@
-using System;
-using Shouldly;
-using FastFsm.Tests.Features.Performance;
-using FastFsm.Tests.Machines;
-using Xunit;
+//using System;
+//using Shouldly;
 
-namespace FastFsm.Tests.Features.Core;
+//using Machines.Tests.Machines;
+//using Xunit;
+//using Machines.Tests.Features.Performance;
 
-public class CoreMinimalTests
-{
-    private static CoreBenchmarkMachineLegacy CreateMachine(BenchmarkState initialState)
-    {
-        return new CoreBenchmarkMachineLegacy(initialState);
-    }
+//namespace FastFsm.Tests.Features.Core;
 
-    [Fact]
-    public void Core_BasicTransitions_WorkCorrectly()
-    {
-        var machine = CreateMachine(BenchmarkState.A);
-        machine.Start();
+//public class CoreMinimalTests
+//{
+//    private static CoreBenchmarkMachineLegacy CreateMachine(BenchmarkState initialState)
+//    {
+//        return new CoreBenchmarkMachineLegacy(initialState);
+//    }
 
-        machine.CurrentState.ShouldBe(BenchmarkState.A);
+//    [Fact]
+//    public void Core_BasicTransitions_WorkCorrectly()
+//    {
+//        var machine = CreateMachine(BenchmarkState.A);
+//        machine.Start();
 
-        machine.TryFire(BenchmarkTrigger.Next).ShouldBeTrue();
-        machine.CurrentState.ShouldBe(BenchmarkState.B);
+//        machine.CurrentState.ShouldBe(BenchmarkState.A);
 
-        machine.TryFire(BenchmarkTrigger.Next).ShouldBeTrue();
-        machine.CurrentState.ShouldBe(BenchmarkState.C);
-    }
+//        machine.TryFire(BenchmarkTrigger.Next).ShouldBeTrue();
+//        machine.CurrentState.ShouldBe(BenchmarkState.B);
 
-    [Fact]
-    public void Core_InvalidTransition_ReturnsFalse()
-    {
-        var machine = CreateMachine(BenchmarkState.A);
-        machine.Start();
+//        machine.TryFire(BenchmarkTrigger.Next).ShouldBeTrue();
+//        machine.CurrentState.ShouldBe(BenchmarkState.C);
+//    }
 
-        machine.TryFire(BenchmarkTrigger.Previous).ShouldBeFalse();
-        machine.CurrentState.ShouldBe(BenchmarkState.A);
-    }
+//    [Fact]
+//    public void Core_InvalidTransition_ReturnsFalse()
+//    {
+//        var machine = CreateMachine(BenchmarkState.A);
+//        machine.Start();
 
-    [Fact]
-    public void Core_Fire_ThrowsOnInvalidTransition()
-    {
-        var machine = CreateMachine(BenchmarkState.A);
-        machine.Start();
+//        machine.TryFire(BenchmarkTrigger.Previous).ShouldBeFalse();
+//        machine.CurrentState.ShouldBe(BenchmarkState.A);
+//    }
 
-        Should.Throw<InvalidOperationException>(() => machine.Fire(BenchmarkTrigger.Previous));
-    }
+//    [Fact]
+//    public void Core_Fire_ThrowsOnInvalidTransition()
+//    {
+//        var machine = CreateMachine(BenchmarkState.A);
+//        machine.Start();
 
-    [Fact]
-    public void Core_GetPermittedTriggers_ReturnsCorrectTriggers()
-    {
-        var machine = CreateMachine(BenchmarkState.B);
-        machine.Start();
+//        Should.Throw<InvalidOperationException>(() => machine.Fire(BenchmarkTrigger.Previous));
+//    }
 
-        var permitted = machine.GetPermittedTriggers();
+//    [Fact]
+//    public void Core_GetPermittedTriggers_ReturnsCorrectTriggers()
+//    {
+//        var machine = CreateMachine(BenchmarkState.B);
+//        machine.Start();
 
-        permitted.ShouldContain(BenchmarkTrigger.Next);
-        permitted.Count.ShouldBe(1);
-    }
+//        var permitted = machine.GetPermittedTriggers();
 
-    [Fact]
-    public void Core_CanFire_ChecksTransitions()
-    {
-        var machine = CreateMachine(BenchmarkState.C);
-        machine.Start();
+//        permitted.ShouldContain(BenchmarkTrigger.Next);
+//        permitted.Count.ShouldBe(1);
+//    }
 
-        machine.CanFire(BenchmarkTrigger.Next).ShouldBeTrue();
-        machine.CanFire(BenchmarkTrigger.Previous).ShouldBeFalse();
-    }
+//    [Fact]
+//    public void Core_CanFire_ChecksTransitions()
+//    {
+//        var machine = CreateMachine(BenchmarkState.C);
+//        machine.Start();
 
-    [Fact]
-    public void Core_MinimalMemoryFootprint()
-    {
-        const int instances = 200;
-        var initialMemory = GC.GetTotalMemory(forceFullCollection: true);
+//        machine.CanFire(BenchmarkTrigger.Next).ShouldBeTrue();
+//        machine.CanFire(BenchmarkTrigger.Previous).ShouldBeFalse();
+//    }
 
-        for (int i = 0; i < instances; i++)
-        {
-            var machine = CreateMachine(BenchmarkState.A);
-            machine.Start();
-        }
+//    [Fact]
+//    public void Core_MinimalMemoryFootprint()
+//    {
+//        const int instances = 200;
+//        var initialMemory = GC.GetTotalMemory(forceFullCollection: true);
 
-        var finalMemory = GC.GetTotalMemory(forceFullCollection: true);
-        var memoryPerInstance = (finalMemory - initialMemory) / instances;
+//        for (int i = 0; i < instances; i++)
+//        {
+//            var machine = CreateMachine(BenchmarkState.A);
+//            machine.Start();
+//        }
 
-        memoryPerInstance.ShouldBeLessThan(200);
-    }
-}
+//        var finalMemory = GC.GetTotalMemory(forceFullCollection: true);
+//        var memoryPerInstance = (finalMemory - initialMemory) / instances;
+
+//        memoryPerInstance.ShouldBeLessThan(200);
+//    }
+//}

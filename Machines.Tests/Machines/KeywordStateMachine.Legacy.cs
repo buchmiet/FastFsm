@@ -1,6 +1,6 @@
-using FastFsm.Tests.Features.EdgeCases;
+using Machines.Tests.Features.EdgeCases;
 
-namespace FastFsm.Tests.Machines;
+namespace Machines.Tests.Machines;
 
 [StateMachine(typeof(KeywordState), typeof(KeywordTrigger))]
 public partial class KeywordStateMachineLegacy

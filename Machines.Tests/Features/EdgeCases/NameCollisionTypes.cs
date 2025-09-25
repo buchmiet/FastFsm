@@ -1,4 +1,4 @@
-namespace FastFsm.Tests.Features.EdgeCases;
+namespace Machines.Tests.Features.EdgeCases;
 
 // C# Keyword names
 public enum KeywordState

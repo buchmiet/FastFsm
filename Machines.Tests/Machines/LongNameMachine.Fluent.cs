@@ -1,7 +1,7 @@
 ﻿using Abstractions.Fluent;
-using FastFsm.Tests.Features.EdgeCases;
+using Machines.Tests.Features.EdgeCases;
 
-namespace FastFsm.Tests.Machines;
+namespace Machines.Tests.Machines;
 
 [StateMachine(typeof(LongNameState), typeof(LongNameTrigger))]
 public partial class LongNameMachineFluent

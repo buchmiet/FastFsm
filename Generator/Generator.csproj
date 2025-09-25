@@ -26,7 +26,7 @@
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="System.Text.Json" Version="8.0.5" />
+		<PackageReference Include="System.Text.Json" Version="9.0.9" />
 	</ItemGroup>
 
 	<!-- zależności RUNTIME generatora (projekty) -->
@@ -41,11 +41,8 @@
 
 	<!-- podstawowy plik analyzera do nupkg -->
 	<ItemGroup>
-		<None Include="$(OutputPath)$(AssemblyName).dll"
-			  Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-		<None Include="$(OutputPath)$(AssemblyName).xml"
-			  Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false"
-			  Condition="Exists('$(OutputPath)$(AssemblyName).xml')" />
+		<None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+		<None Include="$(OutputPath)$(AssemblyName).xml" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" Condition="Exists('$(OutputPath)$(AssemblyName).xml')" />
 	</ItemGroup>
 
 	<!-- zapakuj zależności generatora obok analyzera -->

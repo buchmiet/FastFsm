@@ -1,7 +1,5 @@
 #nullable enable
-using System;
-
-namespace FastFsm.Tests.Features.Integration;
+namespace Machines.Tests.Features.Integration;
 
 public class OrderPayload
 {

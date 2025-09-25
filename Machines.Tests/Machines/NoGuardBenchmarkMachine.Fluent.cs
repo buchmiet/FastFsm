@@ -1,7 +1,7 @@
 using Abstractions.Fluent;
-using FastFsm.Tests.Features.Performance;
+using Machines.Tests.Features.Performance;
 
-namespace FastFsm.Tests.Machines;
+namespace Machines.Tests.Machines;
 
 [StateMachine(typeof(BenchmarkState), typeof(BenchmarkTrigger))]
 public partial class NoGuardBenchmarkMachineFluent
