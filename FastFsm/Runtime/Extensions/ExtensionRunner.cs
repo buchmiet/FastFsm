@@ -1,4 +1,6 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using FastFsm.Contracts;
 #if FSM_LOGGING_ENABLED
 using Microsoft.Extensions.Logging;
