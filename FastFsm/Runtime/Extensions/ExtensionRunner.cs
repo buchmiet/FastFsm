@@ -6,7 +6,7 @@ using FastFsm.Contracts;
 using Microsoft.Extensions.Logging;
 #endif
 
-namespace Machines.Tests.Extensions
+namespace FastFsm.Runtime.Extensions
 {
 #if FSM_LOGGING_ENABLED
     internal static class ExtensionRunnerLog
