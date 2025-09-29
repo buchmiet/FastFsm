@@ -15,7 +15,7 @@
 	  <None Remove="HierarchicalStateMachine\**" />
 	</ItemGroup>
 	<ItemGroup>
-	  <Compile Remove="Features\Core\GuardPermittedTriggersTests.cs" />
+
 	  <Compile Remove="Features\Core\StateCallbackTests.Legacy.cs" />
 	  <Compile Remove="Features\EdgeCases\EmptyMachineTests.Legacy.cs" />
 	  <Compile Remove="Features\EdgeCases\NameCollisionTests.Legacy.cs" />
