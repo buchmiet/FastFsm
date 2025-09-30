@@ -1,3 +1,4 @@
+using Abstractions.Attributes;
 using Machines.Tests.Features.EdgeCases;
 
 namespace Machines.Tests.Machines;

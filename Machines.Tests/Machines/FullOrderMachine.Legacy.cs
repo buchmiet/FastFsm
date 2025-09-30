@@ -1,4 +1,5 @@
-﻿using Machines.Tests.Features.Integration;
+﻿using Abstractions.Attributes;
+using Machines.Tests.Features.Integration;
 
 namespace Machines.Tests.Machines;
 

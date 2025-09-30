@@ -1,4 +1,5 @@
-﻿using Machines.Tests.Features.Performance;
+﻿using Abstractions.Attributes;
+using Machines.Tests.Features.Performance;
 
 namespace Machines.Tests.Machines;
 

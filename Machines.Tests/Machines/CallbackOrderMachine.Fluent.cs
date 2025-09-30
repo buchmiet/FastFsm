@@ -1,4 +1,5 @@
-﻿using Abstractions.Fluent;
+﻿using Abstractions.Attributes;
+using Abstractions.Fluent;
 using Machines.Tests.Features.Core;
 using Machines.Tests.Features.Core;
 

@@ -1,6 +1,7 @@
 // FastFsm.Tests/Machines/FullMultiPayloadMachineFluent.cs
 
 
+using Abstractions.Attributes;
 using Abstractions.Fluent;
 using Machines.Tests.Features.Integration;
 

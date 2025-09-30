@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<TargetFramework>net9.0</TargetFramework>
@@ -37,7 +37,7 @@
 
 
 		<ItemGroup>
-			<PackageReference Include="FastFsm.Net" Version="0.0.0.11-fluentrefinement" />
+		
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.6" />
 		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
@@ -52,6 +52,8 @@
 
 
 		<ItemGroup>
+		  <ProjectReference Include="..\Abstractions\Abstractions.csproj" />
+		  <ProjectReference Include="..\FastFsm\FastFsm.csproj" />
 		  <ProjectReference Include="..\Machines.Tests\Machines.Tests.csproj" />
 		</ItemGroup>
 	
