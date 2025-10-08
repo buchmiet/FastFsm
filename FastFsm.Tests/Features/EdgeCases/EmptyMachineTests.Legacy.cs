@@ -1,4 +1,5 @@
 using System;
+using Machines.Tests.Features.EdgeCases;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -12,7 +13,7 @@ public class EmptyMachineTestsLegacy(ITestOutputHelper output)
     public void Legacy_EmptyStateMachine_WithNoTransitions_ShouldCompileAndWork()
     {
         // Arrange & Act
-        var machine = new Machines.NoTransitionsMachineLegacy(EmptyState.Only);
+        var machine = new Machines.Tests.Machines.NoTransitionsMachineLegacy(EmptyState.Only);
         machine.Start();
 
         // Assert
@@ -29,7 +30,7 @@ public class EmptyMachineTestsLegacy(ITestOutputHelper output)
     public void Legacy_StateMachine_WithSingleState_CanHaveSelfTransition()
     {
         // Arrange
-        var machine = new Machines.SingleStateMachineLegacy(SingleState.Only);
+        var machine = new Machines.Tests.Machines.SingleStateMachineLegacy(SingleState.Only);
         machine.Start();
 
         // Act & Assert
@@ -37,7 +38,7 @@ public class EmptyMachineTestsLegacy(ITestOutputHelper output)
         Assert.True(machine.TryFire(SingleTrigger.Loop));
         Assert.Equal(SingleState.Only, machine.CurrentState);
 
-        var typedMachine = machine as Machines.SingleStateMachineLegacy;
+        var typedMachine = machine as Machines.Tests.Machines.SingleStateMachineLegacy;
         Assert.Equal(1, typedMachine?.ActionCount);
     }
 
@@ -45,7 +46,7 @@ public class EmptyMachineTestsLegacy(ITestOutputHelper output)
     public void Legacy_StateMachine_WithUnreachableStates_ShouldStillFunction()
     {
         // Arrange
-        var machine = new Machines.UnreachableMachineLegacy(UnreachableState.Start);
+        var machine = new Machines.Tests.Machines.UnreachableMachineLegacy(UnreachableState.Start);
         machine.Start();
 
         // Act & Assert
@@ -68,9 +69,9 @@ public class EmptyMachineTestsLegacy(ITestOutputHelper output)
     public void Legacy_StateMachine_WithOnlyInternalTransitions_NeverChangesState()
     {
         // Arrange
-        var machine = new Machines.InternalOnlyMachineLegacy(InternalOnlyState.Static);
+        var machine = new Machines.Tests.Machines.InternalOnlyMachineLegacy(InternalOnlyState.Static);
         machine.Start();
-        var typedMachine = machine as Machines.InternalOnlyMachineLegacy;
+        var typedMachine = machine as Machines.Tests.Machines.InternalOnlyMachineLegacy;
 
         // Act
         for (int i = 0; i < 10; i++)

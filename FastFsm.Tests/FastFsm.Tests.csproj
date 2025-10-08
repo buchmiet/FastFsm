@@ -14,26 +14,6 @@
 	  <EmbeddedResource Remove="HierarchicalStateMachine\**" />
 	  <None Remove="HierarchicalStateMachine\**" />
 	</ItemGroup>
-	<ItemGroup>
-
-	  <Compile Remove="Features\Core\StateCallbackTests.Legacy.cs" />
-	  <Compile Remove="Features\EdgeCases\EmptyMachineTests.Legacy.cs" />
-	  <Compile Remove="Features\EdgeCases\NameCollisionTests.Legacy.cs" />
-	  <Compile Remove="Features\Integration\FullVariantExtendedTests.cs" />
-	  <Compile Remove="Features\Lifecycle\LifecycleTests.cs" />
-	  <Compile Remove="Features\Performance\BenchmarkTests.cs" />
-	  <Compile Remove="Features\Performance\BenchmarkTests.Legacy.cs" />
-	</ItemGroup>
-	<ItemGroup>
-	  <None Include="Features\Core\GuardPermittedTriggersTests.cs" />
-	  <None Include="Features\Core\StateCallbackTests.Legacy.cs" />
-	  <None Include="Features\EdgeCases\EmptyMachineTests.Legacy.cs" />
-	  <None Include="Features\EdgeCases\NameCollisionTests.Legacy.cs" />
-	  <None Include="Features\Integration\FullVariantExtendedTests.cs" />
-	  <None Include="Features\Lifecycle\LifecycleTests.cs" />
-	  <None Include="Features\Performance\BenchmarkTests.cs" />
-	  <None Include="Features\Performance\BenchmarkTests.Legacy.cs" />
-	</ItemGroup>
 
 
 		<ItemGroup>
@@ -48,12 +28,12 @@
 		</PackageReference>
 		<PackageReference Include="Shouldly" Version="4.3.0" />
 		<PackageReference Include="Moq" Version="4.20.72" />
+<PackageReference Include="FastFsm.Net" Version="0.0.0.2-nuget-pack" />
+
 	</ItemGroup>
 
 
 		<ItemGroup>
-		  <ProjectReference Include="..\Abstractions\Abstractions.csproj" />
-		  <ProjectReference Include="..\FastFsm\FastFsm.csproj" />
 		  <ProjectReference Include="..\Machines.Tests\Machines.Tests.csproj" />
 		</ItemGroup>
 	

@@ -1,3 +1,4 @@
+using Machines.Tests.Features.Core;
 using Machines.Tests.Machines;
 using Xunit;
 

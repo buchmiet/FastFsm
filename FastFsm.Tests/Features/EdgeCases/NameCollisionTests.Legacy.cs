@@ -1,3 +1,4 @@
+using Machines.Tests.Features.EdgeCases;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -16,7 +17,7 @@ public class NameCollisionTestsLegacy
     public void Legacy_StateNames_WithCSharpKeywords_AreHandledCorrectly()
     {
         // Arrange & Act
-        var machine = new Machines.KeywordStateMachineLegacy(KeywordState.@class);
+        var machine = new Machines.Tests.Machines.KeywordStateMachineLegacy(KeywordState.@class);
         machine.Start();
 
         // Assert - Machine works correctly with keyword names
@@ -41,9 +42,9 @@ public class NameCollisionTestsLegacy
     public void Legacy_ReservedMethodNames_DontConflictWithGenerated()
     {
         // Test that user methods with names like TryFire don't conflict
-        var machine = new Machines.ConflictingNamesMachineLegacy(ConflictState.A);
+        var machine = new Machines.Tests.Machines.ConflictingNamesMachineLegacy(ConflictState.A);
         machine.Start();
-        var typedMachine = machine as Machines.ConflictingNamesMachineLegacy;
+        var typedMachine = machine as Machines.Tests.Machines.ConflictingNamesMachineLegacy;
 
         // User's TryFire method (different signature)
         var userResult = typedMachine!.TryFire("test");
@@ -59,7 +60,7 @@ public class NameCollisionTestsLegacy
     public void Legacy_SpecialCharactersInEnumNames_HandledCorrectly()
     {
         // C# allows Unicode in identifiers
-        var machine = new Machines.UnicodeMachineLegacy(UnicodeState.αlpha);
+        var machine = new Machines.Tests.Machines.UnicodeMachineLegacy(UnicodeState.αlpha);
         machine.Start();
 
         Assert.True(machine.TryFire(UnicodeTrigger.βeta));
@@ -70,7 +71,7 @@ public class NameCollisionTestsLegacy
     public void Legacy_VeryLongStateNames_HandledCorrectly()
     {
         // Test with extremely long enum names
-        var machine = new Machines.LongNameMachineLegacy(
+        var machine = new Machines.Tests.Machines.LongNameMachineLegacy(
             LongNameState.ThisIsAnExtremelyLongStateNameThatShouldStillWorkCorrectlyInTheGeneratedCode_Part1_Part2_Part3_Part4_Part5);
         machine.Start();
 
@@ -89,7 +90,7 @@ public class NameCollisionTestsLegacy
     public void Legacy_NumericPrefixedNames_HandledCorrectly()
     {
         // C# doesn't allow pure numeric names, but prefixed is OK
-        var machine = new Machines.NumericMachineLegacy(NumericState._1Start);
+        var machine = new Machines.Tests.Machines.NumericMachineLegacy(NumericState._1Start);
         machine.Start();
 
         machine.Fire(NumericTrigger._2Next);
@@ -103,7 +104,7 @@ public class NameCollisionTestsLegacy
     public void Legacy_CaseSensitiveNames_HandledCorrectly()
     {
         // Test case-sensitive enum members
-        var machine = new Machines.CaseSensitiveMachineLegacy(CaseSensitiveState.state);
+        var machine = new Machines.Tests.Machines.CaseSensitiveMachineLegacy(CaseSensitiveState.state);
         machine.Start();
 
         // Different cases are different states

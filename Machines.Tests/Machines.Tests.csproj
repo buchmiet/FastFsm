@@ -6,15 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
-
   <ItemGroup>
-    <Compile Include="..\FastFsm\Runtime\Extensions\ExtensionRunner.cs" Link="Runtime/Extensions/ExtensionRunner.cs" />
-  </ItemGroup>
-
-
-  <ItemGroup>
-    <ProjectReference Include="..\Abstractions\Abstractions.csproj" />
-    <ProjectReference Include="..\FastFsm\FastFsm.csproj" />
+	<PackageReference Include="FastFsm.Net" Version="0.0.0.2-nuget-pack" />
   </ItemGroup>
 
 </Project>

@@ -1,5 +1,6 @@
 using System;
 using FastFsm.Tests.Features.Performance;
+using Machines.Tests.Features.Performance;
 using Machines.Tests.Machines;
 using Xunit;
 

@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using Machines.Tests.Features.EdgeCases;
+using Machines.Tests.Features.Performance;
 using Machines.Tests.Machines;
 using Xunit;
 using Xunit.Abstractions;
@@ -14,21 +16,21 @@ public class BenchmarkTests(ITestOutputHelper output)
     public void Core_MillionTransitions_PerformanceTest()
     {
         // Arrange
-        var machine = new CoreBenchmarkMachineFluent(BenchmarkState.A);
+        var machine = new ConflictingNamesMachineLegacy(ConflictState.A);
         machine.Start();
         const int iterations = 1_000_000;
 
         // Warmup
         for (int i = 0; i < 1000; i++)
         {
-            machine.TryFire(BenchmarkTrigger.Next);
+            machine.TryFire(ConflictTrigger.Go);
         }
 
         // Act
         var sw = Stopwatch.StartNew();
         for (int i = 0; i < iterations; i++)
         {
-            machine.TryFire(BenchmarkTrigger.Next);
+            machine.TryFire(ConflictTrigger.Go );
         }
         sw.Stop();
 
@@ -50,7 +52,7 @@ public class BenchmarkTests(ITestOutputHelper output)
     public void CoreWithCallbacks_MillionTransitions_PerformanceTest()
     {
         // Arrange
-        var machine = new BasicBenchmarkMachineFluent(BenchmarkState.A);
+        var machine = new BasicBenchmarkMachineLegacy(BenchmarkState.A);
         machine.Start();
         const int iterations = 1_000_000;
 
@@ -88,7 +90,7 @@ public class BenchmarkTests(ITestOutputHelper output)
         const int iterations = 100_000;
 
         // Core baseline
-        var pureMachine = new CoreBenchmarkMachineFluent(BenchmarkState.A);
+        var pureMachine = new CoreBenchmarkMachineLegacy(BenchmarkState.A);
         pureMachine.Start();
         var sw1 = Stopwatch.StartNew();
         for (int i = 0; i < iterations; i++)
@@ -99,7 +101,7 @@ public class BenchmarkTests(ITestOutputHelper output)
         var pureTime = sw1.Elapsed.TotalMilliseconds;
 
         // Core + callbacks
-        var basicMachine = new BasicBenchmarkMachineFluent(BenchmarkState.A);
+        var basicMachine = new BasicBenchmarkMachineLegacy(BenchmarkState.A);
         basicMachine.Start();
         var sw2 = Stopwatch.StartNew();
         for (int i = 0; i < iterations; i++)
@@ -110,7 +112,7 @@ public class BenchmarkTests(ITestOutputHelper output)
         var basicTime = sw2.Elapsed.TotalMilliseconds;
 
         // Calculate overhead
-        var overhead = ((basicTime - pureTime) / pureTime) * 100;
+        var overhead = (basicTime - pureTime) / pureTime * 100;
 
         output.WriteLine($"Feature Comparison ({iterations:N0} transitions):");
         output.WriteLine($"  Core:           {pureTime:F2}ms");
@@ -128,9 +130,9 @@ public class BenchmarkTests(ITestOutputHelper output)
         const int warmupIterations = 100_000;
 
         // Warmup dla obu maszyn
-        var noGuardMachine = new NoGuardBenchmarkMachineFluent(BenchmarkState.A);
+        var noGuardMachine = new NoGuardBenchmarkMachineLegacy(BenchmarkState.A);
         noGuardMachine.Start();
-        var withGuardMachine = new WithGuardBenchmarkMachineFluent(BenchmarkState.A);
+        var withGuardMachine = new WithGuardBenchmarkMachineLegacy(BenchmarkState.A);
         withGuardMachine.Start();
 
         for (int i = 0; i < warmupIterations; i++)
@@ -140,9 +142,9 @@ public class BenchmarkTests(ITestOutputHelper output)
         }
 
         // Reset maszyn
-        noGuardMachine = new NoGuardBenchmarkMachineFluent(BenchmarkState.A);
+        noGuardMachine = new NoGuardBenchmarkMachineLegacy(BenchmarkState.A);
         noGuardMachine.Start();
-        withGuardMachine = new WithGuardBenchmarkMachineFluent(BenchmarkState.A);
+        withGuardMachine = new WithGuardBenchmarkMachineLegacy(BenchmarkState.A);
         withGuardMachine.Start();
 
         // Pomiar bez guards - wielokrotne próby
@@ -175,9 +177,9 @@ public class BenchmarkTests(ITestOutputHelper output)
         var noGuardMedian = noGuardTimes.OrderBy(x => x).ElementAt(noGuardTimes.Count / 2);
         var withGuardMedian = withGuardTimes.OrderBy(x => x).ElementAt(withGuardTimes.Count / 2);
 
-        var guardOverhead = ((withGuardMedian - noGuardMedian) / noGuardMedian) * 100;
-        var nsPerTransitionNoGuard = (noGuardMedian * 1_000_000) / iterations;
-        var nsPerTransitionWithGuard = (withGuardMedian * 1_000_000) / iterations;
+        var guardOverhead = (withGuardMedian - noGuardMedian) / noGuardMedian * 100;
+        var nsPerTransitionNoGuard = noGuardMedian * 1_000_000 / iterations;
+        var nsPerTransitionWithGuard = withGuardMedian * 1_000_000 / iterations;
 
         output.WriteLine($"Guard Impact ({iterations:N0} transitions, median of 5 runs):");
         output.WriteLine($"  No Guard: {noGuardMedian:F2}ms ({nsPerTransitionNoGuard:F1}ns per transition)");
@@ -200,7 +202,7 @@ public class BenchmarkTests(ITestOutputHelper output)
     public void GuardEvaluation_RealWorldPerformance()
     {
         // Test symulujący bardziej realistyczne użycie
-        var machine = new WithGuardBenchmarkMachineFluent(BenchmarkState.A);
+        var machine = new WithGuardBenchmarkMachineLegacy(BenchmarkState.A);
         machine.Start();
         const int operations = 1_000_000;
 
