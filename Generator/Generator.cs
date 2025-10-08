@@ -15,8 +15,6 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using static Generator.Strings;
 
@@ -389,18 +387,6 @@ public class StateMachineGenerator : IIncrementalGenerator
     {
         var ((candidate, compilation), optionsProvider) = tuple;
         
-        // Debug trace diagnostics removed (noise reduction)
-        var debugName = GetFullTypeName(candidate.Symbol);
-        
-        // Report MSBuild properties for valid candidates
-        // Note: Can't use static in source generator methods - they run in parallel
-        // MSBuild / logging diagnostics removed (noise reduction)
-        
-        var fullName = GetFullTypeName(candidate.Symbol);
-        
-        // Report that we're processing this candidate
-        // ProcessingCandidate diagnostic removed
-        
         // Handle pre-parse skipped candidates (those with a skip reason)
         if (!string.IsNullOrEmpty(candidate.SkipReason))
         {
@@ -498,14 +484,7 @@ public class StateMachineGenerator : IIncrementalGenerator
             }
             // No internal variants — unified generator gates purely on feature flags
             
-            // Extract metrics for diagnostics
-            int totalStates = model.States?.Count ?? 0;
-            int totalTransitions = model.Transitions?.Count ?? 0;
-            int internalCount = model.Transitions?.Count(t => t.IsInternal) ?? 0;
-            int externalCount = model.Transitions?.Count(t => !t.IsInternal) ?? 0;
-            int payloadTypesCount = model.TriggerPayloadTypes?.Count ?? 0;
-            bool hasPayload = payloadTypesCount > 0 || !string.IsNullOrEmpty(model.DefaultPayloadType);
-            
+       
             // Variant summary diagnostic suppressed
             
             // Get configuration
@@ -513,85 +492,9 @@ public class StateMachineGenerator : IIncrementalGenerator
             model.GenerateDependencyInjection = BuildProperties.GetGenerateDI(optionsProvider.GlobalOptions);
             
             // Declaration plan suppressed
-            var ns = model.Namespace ?? "";
-            var nesting = model.ContainerClasses != null && model.ContainerClasses.Count > 0
-                ? string.Join("->", model.ContainerClasses)
-                : "(none)";
-            var className = model.ClassName;
+     
             var accessibility = "public"; // We generate public partial classes
             
-            {
-            }
-            
-            // Create appropriate generator
-            // HSM flag tracking suppressed
-            
-            // Use flattened unified generator
-            var generator = new Generator.SourceGenerators.UnifiedStateMachineGenerator(model);
-            
-            var source = generator.Generate();
-            
-            // Serialize both models to JSON for comparison
-            var jsonOptions = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                ReferenceHandler = ReferenceHandler.IgnoreCycles
-            };
-            
-            string originalModelJson;
-            string fluentModelJson;
-            
-            try
-            {
-                originalModelJson = JsonSerializer.Serialize(model, jsonOptions);
-            }
-            catch (Exception ex)
-            {
-                originalModelJson = $"{{ \"error\": \"Failed to serialize: {ex.Message}\" }}";
-            }
-            
-            try
-            {
-                fluentModelJson = fluentModel != null 
-                    ? JsonSerializer.Serialize(fluentModel, jsonOptions) 
-                    : "{}";
-            }
-            catch (Exception ex)
-            {
-                fluentModelJson = $"{{ \"error\": \"Failed to serialize: {ex.Message}\" }}";
-            }
-            
-            // Add JSON representations as multi-line comments at the end of generated source
-            var jsonComments = $@"
-/*
-====== PARSER COMPARISON DEBUG INFO ======
-Original StateMachineParser Model:
-{originalModelJson}
-
-FluentParser Model:
-{fluentModelJson}
-==========================================
-*/";
-            
-            source = source + jsonComments;
-            
-            // Check if generated source is valid
-            if (string.IsNullOrWhiteSpace(source) || source.Length == 0)
-            {
-                // Do NOT call AddSource for empty code
-                return;
-            }
-            
-            // Generate hint name - each FQN should be unique
-            var fqn = candidate.Symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            var sanitized = SanitizeHintName(fqn);
-            var hintName = $"{sanitized}.Generated.cs";
-            
-            // Add source
-            context.AddSource(hintName, SourceText.From(source, Encoding.UTF8));
-            
-            // Success diagnostic suppressed
 
             // Add logging helper if enabled (now using LoggingClassGenerator as single source of truth)
             if (model.GenerateLogging)
