@@ -8,6 +8,7 @@ using System.Reflection;
 using FastFsm.Contracts;
 using Xunit;
 using Xunit.Abstractions;
+using Machines.Tests.Features.Integration;
 
 namespace FastFsm.Tests.Features.Integration;
 
