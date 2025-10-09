@@ -3,7 +3,7 @@
 import argparse, re, subprocess, sys
 from pathlib import Path
 import xml.etree.ElementTree as ET
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 # Import TUI system
 sys.path.insert(0, str(Path(__file__).parent))
@@ -238,10 +238,13 @@ def collect_tasks(args) -> List[str]:
         if not args.no_tag:
             tasks.append("git tag")
     
-    # Pack tasks
+    # Pack and push tasks
     tasks.append("pack FastFsm")
     tasks.append("pack FastFsm.DependencyInjection")
     tasks.append("pack FastFsm.Logging")
+    tasks.append("push FastFsm.Net.nupkg")
+    tasks.append("push FastFsm.Net.DependencyInjection.nupkg")
+    tasks.append("push FastFsm.Net.Logging.nupkg")
     
     # Restore tasks
     test_projects = [p for p in find_csprojs() if is_test_project(p)]
@@ -296,12 +299,13 @@ def git_commit_and_tag(new_version: str, do_commit: bool, do_tag: bool):
             run(["git", "tag", "-a", f"v{new_version}", "-m", f"v{new_version}"],
                 label="git tag", fatal=False)
 
-def dotnet_pack(csproj: Path, configuration: str, label: str):
+def dotnet_pack(csproj: Path, configuration: str, label: str, output_dir: Path):
     """Reliably pack a project by building first, then packing without building."""
-    # Build first to ensure all referenced analyzer outputs exist
-    run(["dotnet", "build", str(csproj), "-c", configuration])
+    # Build first to ensure all referenced analyzer outputs exist - exclude LocalBaGet during build
+    run(["dotnet", "build", str(csproj), "-c", configuration,
+         "--source", "https://api.nuget.org/v3/index.json"])
     # Then pack without building again
-    run(["dotnet", "pack", str(csproj), "-c", configuration, "--no-build", "-o", str(NUGET_DIR)],
+    run(["dotnet", "pack", str(csproj), "-c", configuration, "--no-build", "-o", str(output_dir)],
         label=label)
 
 def restore_tests_with_local():
@@ -327,6 +331,71 @@ def run_tests(configuration: str) -> List[Path]:
                 failed.append(csproj)
     return failed
 
+def check_nuget_source(source_name: str = "LocalBaGet") -> Tuple[bool, str]:
+    """Check if a NuGet source exists and return (exists, url)"""
+    try:
+        result = subprocess.check_output(
+            ["dotnet", "nuget", "list", "source"],
+            cwd=ROOT, text=True, stderr=subprocess.STDOUT
+        )
+
+        lines = result.strip().split('\n')
+        found = False
+        url = ""
+
+        for i, line in enumerate(lines):
+            # Look for the source name in the numbered list
+            if source_name in line and '[Enabled]' in line:
+                found = True
+                # Next line should contain the URL
+                if i + 1 < len(lines):
+                    url = lines[i + 1].strip()
+                break
+
+        return found, url
+    except subprocess.CalledProcessError as e:
+        print(f"Error checking NuGet sources: {e}")
+        return False, ""
+
+def push_to_nuget(nupkg_path: Path, source_name: str = "LocalBaGet", source_url: str = "", api_key: str = "") -> bool:
+    """Push a NuGet package to the specified source"""
+    try:
+        # For HTTP sources, use curl instead of dotnet nuget push
+        if source_url and source_url.startswith("http://"):
+            # Extract the base URL (remove /v3/index.json if present)
+            base_url = source_url.replace("/v3/index.json", "")
+            push_url = f"{base_url}/api/v2/package"
+
+            cmd = ["curl", "-X", "PUT", push_url,
+                   "-H", f"X-NuGet-ApiKey: {api_key}" if api_key else "X-NuGet-ApiKey: ",
+                   "-F", f"file=@{nupkg_path}",
+                   "-s", "-o", "/dev/null", "-w", "%{http_code}"]
+
+            result = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
+            http_code = result.stdout.strip()
+
+            if http_code in ["201", "202", "409"]:  # 201 Created, 202 Accepted, 409 Conflict (already exists)
+                if http_code == "409":
+                    print(f"   {nupkg_path.name} already exists (skipped)")
+                return True
+            else:
+                print(f"   HTTP {http_code} for {nupkg_path.name}")
+                return False
+        else:
+            # For HTTPS sources, use standard dotnet nuget push
+            cmd = ["dotnet", "nuget", "push", str(nupkg_path),
+                   "--source", source_name,
+                   "--skip-duplicate"]
+
+            if api_key:
+                cmd.extend(["--api-key", api_key])
+
+            run(cmd, label=f"push {nupkg_path.name}")
+            return True
+    except Exception as e:
+        print(f"Failed to push {nupkg_path.name}: {e}")
+        return False
+
 def main():
     global _ui, _show_warnings
     
@@ -343,6 +412,10 @@ def main():
     ap.add_argument("--no-commit", action="store_true")
     ap.add_argument("--no-tag", action="store_true")
     ap.add_argument("--no-tests", action="store_true")
+    ap.add_argument("--push-source", default="LocalBaGet",
+                    help="NuGet source to push packages to (default: LocalBaGet)")
+    ap.add_argument("--api-key", default="NUGET-SERVER-API-KEY",
+                    help="API key for NuGet source (default: NUGET-SERVER-API-KEY)")
     
     # Branch suffix options
     ap.add_argument("--no-branch-suffix", action="store_true",
@@ -392,6 +465,15 @@ def main():
         if not proj.exists():
             print(f"Missing project: {proj}", file=sys.stderr)
             sys.exit(1)
+
+    # Check if NuGet source is configured
+    source_exists, source_url = check_nuget_source(args.push_source)
+    if not source_exists:
+        print(f"ERROR: NuGet source '{args.push_source}' is not configured!", file=sys.stderr)
+        print(f"Please add it using: dotnet nuget add source <URL> --name {args.push_source}", file=sys.stderr)
+        sys.exit(-1)
+
+    print(f"Using NuGet source: {args.push_source} ({source_url})")
     
     # Version determination
     current = parse_version_from_stamp(FASTFSM_PROJ)
@@ -443,14 +525,41 @@ def main():
                           do_commit=not args.no_commit, 
                           do_tag=not args.no_tag)
         
-        # Pack
-        NUGET_DIR.mkdir(exist_ok=True)
-        dotnet_pack(FASTFSM_PROJ, args.configuration, "pack FastFsm")
-        dotnet_pack(DI_PROJ, args.configuration, "pack FastFsm.DependencyInjection")
-        dotnet_pack(LOGGING_PROJ, args.configuration, "pack FastFsm.Logging")
-        
-        # Restore
-        restore_tests_with_local()
+        # Pack - using temp directory now
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+
+            dotnet_pack(FASTFSM_PROJ, args.configuration, "pack FastFsm", temp_path)
+            dotnet_pack(DI_PROJ, args.configuration, "pack FastFsm.DependencyInjection", temp_path)
+            dotnet_pack(LOGGING_PROJ, args.configuration, "pack FastFsm.Logging", temp_path)
+
+            # Push packages to NuGet source
+            print(f"\nPushing packages to {args.push_source}...")
+            pushed_packages = []
+            failed_packages = []
+
+            for nupkg in temp_path.glob("*.nupkg"):
+                if push_to_nuget(nupkg, args.push_source, source_url, args.api_key):
+                    pushed_packages.append(nupkg.name)
+                else:
+                    failed_packages.append(nupkg.name)
+
+            if failed_packages:
+                print(f"\nFailed to push: {', '.join(failed_packages)}")
+            if pushed_packages:
+                print(f"\nSuccessfully pushed: {', '.join(pushed_packages)}")
+
+        # Restore - now using the NuGet source instead of local folder
+        # Update restore function call to use the NuGet source
+        for csproj in find_csprojs():
+            if is_test_project(csproj):
+                name = csproj.parent.name
+                run(["dotnet", "restore", str(csproj),
+                     "--force-evaluate",
+                     "--source", args.push_source,
+                     "--source", "https://api.nuget.org/v3/index.json"],
+                    label=f"restore {name}")
         
         # Test
         failed_tests = []
@@ -459,8 +568,8 @@ def main():
         
         # Final summary
         _ui.summary()
-        
-        print(f"\nPackages in: {NUGET_DIR}")
+
+        print(f"\nPackages pushed to: {args.push_source}")
         
         if failed_tests:
             print("\nTest failures:")
