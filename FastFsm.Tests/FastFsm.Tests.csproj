@@ -28,7 +28,7 @@
 		</PackageReference>
 		<PackageReference Include="Shouldly" Version="4.3.0" />
 		<PackageReference Include="Moq" Version="4.20.72" />
-<PackageReference Include="FastFsm.Net" Version="0.0.0.5-nuget-pack" />
+<PackageReference Include="FastFsm.Net" Version="0.0.0.6-nuget-pack" />
 
 	</ItemGroup>
 
