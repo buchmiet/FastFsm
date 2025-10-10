@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build script with advanced TUI support"""
-import argparse, re, subprocess, sys
+import argparse, re, subprocess, sys, json
 from pathlib import Path
 import xml.etree.ElementTree as ET
 from typing import List, Optional, Tuple
@@ -12,7 +12,11 @@ from tui import create_tui, ITui
 # Constants
 SEMVER_RE = re.compile(r'^(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?(?:-([0-9A-Za-z\-\.]+))?$')
 ROOT = Path(__file__).resolve().parent
-NUGET_DIR = ROOT / "nuget"
+
+# NuGet configuration constants
+DEFAULT_NUGET_SOURCE = "LocalBaGet"  # Local BaGet server for pushing packages
+DEFAULT_API_KEY = "NUGET-SERVER-API-KEY"
+# Note: nuget.org is used ONLY for fetching dependencies, NEVER for pushing
 
 FASTFSM_PROJ = ROOT / "FastFsm" / "FastFsm.csproj"
 LOGGING_PROJ = ROOT / "FastFsm.Logging" / "FastFsm.Logging.csproj"
@@ -187,30 +191,104 @@ def compare_versions(a: str, b: str) -> int:
     na = pa[:4]; nb = pb[:4]
     return (na > nb) - (na < nb)
 
-def iter_local_nupkgs_for_id(package_id: str):
-    if not NUGET_DIR.exists():
-        return
-    prefix = f"{package_id}."
-    for p in NUGET_DIR.glob("*.nupkg"):
-        name = p.name
-        if not name.startswith(prefix):
-            continue
-        ver = name[len(prefix):]
-        if ver.lower().endswith(".nupkg"):
-            ver = ver[:-6]
-        yield (ver, p)
+def query_nuget_versions(package_id: str, source: str = None, prerelease: bool = True) -> List[str]:
+    """Query NuGet source for available versions of a package"""
+    if source is None:
+        source = DEFAULT_NUGET_SOURCE
+    
+    try:
+        # Use dotnet package search to find versions
+        # Note: This requires .NET SDK 8.0+ for better search functionality
+        cmd = [
+            "dotnet", "package", "search", package_id,
+            "--source", source,
+            "--exact-match",
+            "--format", "json"
+        ]
+        if prerelease:
+            cmd.append("--prerelease")
+        
+        result = subprocess.check_output(cmd, cwd=ROOT, text=True, stderr=subprocess.DEVNULL)
+        
+        # Parse JSON output
+        try:
+            data = json.loads(result)
+            versions = []
+            
+            # Extract versions from search results
+            if "searchResult" in data:
+                for result_item in data.get("searchResult", []):
+                    for package in result_item.get("packages", []):
+                        if package.get("id", "").lower() == package_id.lower():
+                            version = package.get("latestVersion", "")
+                            if version:
+                                versions.append(version)
+                            # Also get all versions if available
+                            for ver_info in package.get("versions", []):
+                                ver = ver_info.get("version", "")
+                                if ver and ver not in versions:
+                                    versions.append(ver)
+            
+            return versions
+        except json.JSONDecodeError:
+            # Fallback to parsing text output if JSON fails
+            pass
+            
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+    
+    # Alternative method using nuget list (works with older .NET SDKs)
+    try:
+        cmd = [
+            "dotnet", "nuget", "list", package_id,
+            "--source", source
+        ]
+        if prerelease:
+            cmd.append("--prerelease")
+        
+        result = subprocess.check_output(cmd, cwd=ROOT, text=True, stderr=subprocess.DEVNULL)
+        
+        versions = []
+        for line in result.strip().split('\n'):
+            # Parse lines like "FastFsm.Net 1.0.0-branch"
+            parts = line.strip().split()
+            if len(parts) >= 2 and parts[0].lower() == package_id.lower():
+                versions.append(parts[1])
+        
+        return versions
+            
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return []
 
 def find_highest_version_for_branch(package_ids, branch_label: str) -> str:
+    """Find highest version for a given branch by querying NuGet source"""
     best = None
+    
+    print(f"Querying {DEFAULT_NUGET_SOURCE} for existing versions with suffix '{branch_label}'...")
+    
     for pkg_id in package_ids:
-        for ver, _ in iter_local_nupkgs_for_id(pkg_id):
+        versions = query_nuget_versions(pkg_id, prerelease=True)
+        
+        branch_versions = []
+        for ver in versions:
             parsed = parse_semver(ver)
             if not parsed:
                 continue
             *nums, pre = parsed
+            # Check if prerelease label matches the branch
             if pre == branch_label:
+                branch_versions.append(ver)
                 if best is None or compare_versions(ver, best) > 0:
                     best = ver
+        
+        if branch_versions:
+            print(f"  {pkg_id}: found {len(branch_versions)} version(s) for this branch")
+    
+    if best:
+        print(f"  Highest version found: {best}")
+    else:
+        print(f"  No existing versions found for branch '{branch_label}'")
+    
     return best
 
 def next_branch_version_from(seed: str) -> str:
@@ -301,23 +379,12 @@ def git_commit_and_tag(new_version: str, do_commit: bool, do_tag: bool):
 
 def dotnet_pack(csproj: Path, configuration: str, label: str, output_dir: Path):
     """Reliably pack a project by building first, then packing without building."""
-    # Build first to ensure all referenced analyzer outputs exist - exclude LocalBaGet during build
+    # Build first to ensure all referenced analyzer outputs exist - exclude custom NuGet source during build
     run(["dotnet", "build", str(csproj), "-c", configuration,
          "--source", "https://api.nuget.org/v3/index.json"])
     # Then pack without building again
     run(["dotnet", "pack", str(csproj), "-c", configuration, "--no-build", "-o", str(output_dir)],
         label=label)
-
-def restore_tests_with_local():
-    """Restore test projects"""
-    for csproj in find_csprojs():
-        if is_test_project(csproj):
-            name = csproj.parent.name
-            run(["dotnet", "restore", str(csproj),
-                 "--force-evaluate",
-                 "--source", str(NUGET_DIR),
-                 "--source", "https://api.nuget.org/v3/index.json"],
-                label=f"restore {name}")
 
 def run_tests(configuration: str) -> List[Path]:
     """Run tests and return list of failed projects"""
@@ -331,7 +398,10 @@ def run_tests(configuration: str) -> List[Path]:
                 failed.append(csproj)
     return failed
 
-def check_nuget_source(source_name: str = "LocalBaGet") -> Tuple[bool, str]:
+def check_nuget_source(source_name: str = None) -> Tuple[bool, str]:
+    """Check if a NuGet source exists and return (exists, url)"""
+    if source_name is None:
+        source_name = DEFAULT_NUGET_SOURCE
     """Check if a NuGet source exists and return (exists, url)"""
     try:
         result = subprocess.check_output(
@@ -357,7 +427,20 @@ def check_nuget_source(source_name: str = "LocalBaGet") -> Tuple[bool, str]:
         print(f"Error checking NuGet sources: {e}")
         return False, ""
 
-def push_to_nuget(nupkg_path: Path, source_name: str = "LocalBaGet", source_url: str = "", api_key: str = "") -> bool:
+def push_to_nuget(nupkg_path: Path, source_name: str = None, source_url: str = "", api_key: str = None) -> bool:
+    """Push a NuGet package to the specified source"""
+    if source_name is None:
+        source_name = DEFAULT_NUGET_SOURCE
+    if api_key is None:
+        api_key = DEFAULT_API_KEY
+    
+    # Safety check: NEVER push to nuget.org
+    if source_url and "nuget.org" in source_url.lower():
+        print(f"ERROR: Refusing to push to nuget.org! Use local NuGet source instead.", file=sys.stderr)
+        return False
+    if source_name.lower() in ["nuget.org", "nuget", "nuget.org/v3/index.json"]:
+        print(f"ERROR: Refusing to push to {source_name}! Use local NuGet source instead.", file=sys.stderr)
+        return False
     """Push a NuGet package to the specified source"""
     try:
         # For HTTP sources, use curl instead of dotnet nuget push
@@ -412,10 +495,10 @@ def main():
     ap.add_argument("--no-commit", action="store_true")
     ap.add_argument("--no-tag", action="store_true")
     ap.add_argument("--no-tests", action="store_true")
-    ap.add_argument("--push-source", default="LocalBaGet",
-                    help="NuGet source to push packages to (default: LocalBaGet)")
-    ap.add_argument("--api-key", default="NUGET-SERVER-API-KEY",
-                    help="API key for NuGet source (default: NUGET-SERVER-API-KEY)")
+    ap.add_argument("--push-source", default=DEFAULT_NUGET_SOURCE,
+                    help=f"NuGet source to push packages to (default: {DEFAULT_NUGET_SOURCE})")
+    ap.add_argument("--api-key", default=DEFAULT_API_KEY,
+                    help=f"API key for NuGet source (default: {DEFAULT_API_KEY})")
     
     # Branch suffix options
     ap.add_argument("--no-branch-suffix", action="store_true",
