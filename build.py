@@ -706,16 +706,20 @@ def main():
             if pushed_packages:
                 print(f"\nSuccessfully pushed: {', '.join(pushed_packages)}")
 
-        # Restore - now using the NuGet source instead of local folder
-        # Update restore function call to use the NuGet source
+        # Restore projects using repo NuGet configuration when available
+        repo_nuget_config = ROOT / ".nuget" / "NuGet.Config"
         for csproj in find_csprojs():
             if is_test_project(csproj):
                 name = csproj.parent.name
-                run(["dotnet", "restore", str(csproj),
-                     "--force-evaluate",
-                     "--source", args.push_source,
-                     "--source", "https://api.nuget.org/v3/index.json"],
-                    label=f"restore {name}")
+                restore_cmd = ["dotnet", "restore", str(csproj), "--force-evaluate"]
+                if repo_nuget_config.exists():
+                    restore_cmd.extend(["--configfile", str(repo_nuget_config)])
+                else:
+                    primary_source = source_url or args.push_source
+                    if primary_source:
+                        restore_cmd.extend(["--source", primary_source])
+                    restore_cmd.extend(["--source", "https://api.nuget.org/v3/index.json"])
+                run(restore_cmd, label=f"restore {name}")
         
         # Test
         failed_tests = []
