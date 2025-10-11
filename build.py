@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build script with advanced TUI support"""
-import argparse, re, subprocess, sys, json
+import argparse, re, subprocess, sys, json, urllib.request, urllib.error
 from pathlib import Path
 import xml.etree.ElementTree as ET
 from typing import List, Optional, Tuple
@@ -193,72 +193,145 @@ def compare_versions(a: str, b: str) -> int:
 
 def query_nuget_versions(package_id: str, source: str = None, prerelease: bool = True) -> List[str]:
     """Query NuGet source for available versions of a package"""
-    if source is None:
-        source = DEFAULT_NUGET_SOURCE
-    
+    source_name = source or DEFAULT_NUGET_SOURCE
+
+    def _dedupe_keep_order(items: List[str]) -> List[str]:
+        seen = set()
+        ordered: List[str] = []
+        for item in items:
+            if item and item not in seen:
+                seen.add(item)
+                ordered.append(item)
+        return ordered
+
+    # First try the modern search endpoint which returns JSON
+    search_cmd = [
+        "dotnet", "package", "search", package_id,
+        "--source", source_name,
+        "--exact-match",
+        "--format", "json"
+    ]
+    if prerelease:
+        search_cmd.append("--prerelease")
+
+    versions: List[str] = []
+
     try:
-        # Use dotnet package search to find versions
-        # Note: This requires .NET SDK 8.0+ for better search functionality
-        cmd = [
-            "dotnet", "package", "search", package_id,
-            "--source", source,
-            "--exact-match",
-            "--format", "json"
-        ]
-        if prerelease:
-            cmd.append("--prerelease")
-        
-        result = subprocess.check_output(cmd, cwd=ROOT, text=True, stderr=subprocess.DEVNULL)
-        
-        # Parse JSON output
-        try:
-            data = json.loads(result)
-            versions = []
-            
-            # Extract versions from search results
-            if "searchResult" in data:
-                for result_item in data.get("searchResult", []):
+        search_raw = subprocess.check_output(
+            search_cmd, cwd=ROOT, text=True, stderr=subprocess.STDOUT
+        )
+    except subprocess.CalledProcessError as exc:
+        print(f"[query_nuget_versions] dotnet package search failed for {package_id}: {exc}", file=sys.stderr)
+        if exc.output:
+            print(exc.output.strip(), file=sys.stderr)
+    except FileNotFoundError:
+        print("[query_nuget_versions] dotnet executable not found when running package search", file=sys.stderr)
+    else:
+        json_start = search_raw.find('{')
+        if json_start == -1:
+            print(f"[query_nuget_versions] package search returned no JSON payload for {package_id}", file=sys.stderr)
+        else:
+            json_payload = search_raw[json_start:]
+            try:
+                search_data = json.loads(json_payload)
+            except json.JSONDecodeError as exc:
+                print(f"[query_nuget_versions] failed to parse package search JSON for {package_id}: {exc}", file=sys.stderr)
+            else:
+                for result_item in search_data.get("searchResult", []):
                     for package in result_item.get("packages", []):
-                        if package.get("id", "").lower() == package_id.lower():
-                            version = package.get("latestVersion", "")
-                            if version:
-                                versions.append(version)
-                            # Also get all versions if available
-                            for ver_info in package.get("versions", []):
-                                ver = ver_info.get("version", "")
-                                if ver and ver not in versions:
-                                    versions.append(ver)
-            
-            return versions
-        except json.JSONDecodeError:
-            # Fallback to parsing text output if JSON fails
-            pass
-            
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        pass
-    
-    # Alternative method using nuget list (works with older .NET SDKs)
+                        if package.get("id", "").lower() != package_id.lower():
+                            continue
+                        latest = package.get("latestVersion") or package.get("version")
+                        if latest:
+                            versions.append(latest)
+                        for ver_info in package.get("versions", []):
+                            ver = ver_info.get("version")
+                            if ver:
+                                versions.append(ver)
+                versions = _dedupe_keep_order(versions)
+                if versions:
+                    return versions
+
+    # Fallback to dotnet nuget list which works on older SDKs
+    list_cmd = [
+        "dotnet", "nuget", "list", package_id,
+        "--source", source_name
+    ]
+    if prerelease:
+        list_cmd.append("--prerelease")
+
     try:
-        cmd = [
-            "dotnet", "nuget", "list", package_id,
-            "--source", source
-        ]
-        if prerelease:
-            cmd.append("--prerelease")
-        
-        result = subprocess.check_output(cmd, cwd=ROOT, text=True, stderr=subprocess.DEVNULL)
-        
-        versions = []
-        for line in result.strip().split('\n'):
-            # Parse lines like "FastFsm.Net 1.0.0-branch"
+        list_raw = subprocess.check_output(
+            list_cmd, cwd=ROOT, text=True, stderr=subprocess.STDOUT
+        )
+    except subprocess.CalledProcessError as exc:
+        print(f"[query_nuget_versions] dotnet nuget list failed for {package_id}: {exc}", file=sys.stderr)
+        if exc.output:
+            print(exc.output.strip(), file=sys.stderr)
+    except FileNotFoundError:
+        print("[query_nuget_versions] dotnet executable not found when running nuget list", file=sys.stderr)
+    else:
+        for line in list_raw.strip().split('\n'):
             parts = line.strip().split()
             if len(parts) >= 2 and parts[0].lower() == package_id.lower():
                 versions.append(parts[1])
-        
-        return versions
-            
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return []
+        versions = _dedupe_keep_order(versions)
+        if versions:
+            return versions
+
+    # Final fallback: query the BaGet registration feed directly
+    registration_url = None
+    source_url = source_name
+    if not source_url.lower().startswith("http"):
+        exists, resolved_url = check_nuget_source(source_name)
+        if exists and resolved_url:
+            source_url = resolved_url
+    if source_url and source_url.lower().startswith("http"):
+        base_url = source_url.rstrip('/')
+        if base_url.endswith("/v3/index.json"):
+            base_url = base_url[: -len("/v3/index.json")]
+        elif base_url.endswith("/index.json"):
+            base_url = base_url[: -len("/index.json")]
+        registration_url = f"{base_url}/v3/registration/{package_id.lower()}/index.json"
+    else:
+        registration_url = f"http://localhost:5555/v3/registration/{package_id.lower()}/index.json"
+
+    if registration_url:
+        try:
+            with urllib.request.urlopen(registration_url, timeout=5) as resp:
+                registration_data = json.load(resp)
+        except urllib.error.HTTPError as exc:
+            print(f"[query_nuget_versions] registration feed HTTP error for {package_id}: {exc}", file=sys.stderr)
+        except urllib.error.URLError as exc:
+            print(f"[query_nuget_versions] registration feed unreachable for {package_id}: {exc}", file=sys.stderr)
+        except json.JSONDecodeError as exc:
+            print(f"[query_nuget_versions] failed to parse registration JSON for {package_id}: {exc}", file=sys.stderr)
+        else:
+            def _collect_page_versions(page: dict) -> List[str]:
+                page_versions: List[str] = []
+                for item in page.get("items", []):
+                    entry = item.get("catalogEntry", item)
+                    version = entry.get("version")
+                    if version:
+                        page_versions.append(version)
+                return page_versions
+
+            reg_versions: List[str] = []
+            for page in registration_data.get("items", []):
+                if page.get("items"):
+                    reg_versions.extend(_collect_page_versions(page))
+                elif page.get("@id"):
+                    try:
+                        with urllib.request.urlopen(page["@id"], timeout=5) as page_resp:
+                            page_data = json.load(page_resp)
+                        reg_versions.extend(_collect_page_versions(page_data))
+                    except (urllib.error.URLError, json.JSONDecodeError) as exc:
+                        print(f"[query_nuget_versions] failed to load registration page for {package_id}: {exc}", file=sys.stderr)
+            reg_versions = _dedupe_keep_order(reg_versions)
+            if reg_versions:
+                return reg_versions
+
+    return []
 
 def find_highest_version_for_branch(package_ids, branch_label: str) -> str:
     """Find highest version for a given branch by querying NuGet source"""
