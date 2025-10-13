@@ -1,8 +1,10 @@
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Abstractions.Attributes;
 using Abstractions.Fluent;
+using StateMachineAttribute = Abstractions.Attributes.StateMachineAttribute;
 
 namespace FastFsm.Instance.Tests;
 

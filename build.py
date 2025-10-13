@@ -14,8 +14,8 @@ SEMVER_RE = re.compile(r'^(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?(?:-([0-9A-Za-z\-\.]+))
 ROOT = Path(__file__).resolve().parent
 
 # NuGet configuration constants
-DEFAULT_NUGET_SOURCE = "LocalBaGet"  # Local BaGet server for pushing packages
-DEFAULT_API_KEY = "NUGET-SERVER-API-KEY"
+DEFAULT_NUGET_SOURCE = "http://localhost:8624/nuget/fastfsm-nuget/v3/index.json"
+DEFAULT_API_KEY = "7aa315e9d1e9829caa7bfaba3f497f6c9a0b367a"
 # Note: nuget.org is used ONLY for fetching dependencies, NEVER for pushing
 
 FASTFSM_PROJ = ROOT / "FastFsm" / "FastFsm.csproj"
@@ -279,57 +279,71 @@ def query_nuget_versions(package_id: str, source: str = None, prerelease: bool =
         if versions:
             return versions
 
-    # Final fallback: query the BaGet registration feed directly
-    registration_url = None
-    source_url = source_name
-    if not source_url.lower().startswith("http"):
+    # Final fallback: query the ProGet registration feed directly
+    registration_data: dict | None = None
+    registration_urls: List[str] = []
+
+    source_url = source_name or ""
+    if isinstance(source_url, str) and not source_url.lower().startswith("http"):
         exists, resolved_url = check_nuget_source(source_name)
         if exists and resolved_url:
             source_url = resolved_url
-    if source_url and source_url.lower().startswith("http"):
-        base_url = source_url.rstrip('/')
-        if base_url.endswith("/v3/index.json"):
-            base_url = base_url[: -len("/v3/index.json")]
-        elif base_url.endswith("/index.json"):
-            base_url = base_url[: -len("/index.json")]
-        registration_url = f"{base_url}/v3/registration/{package_id.lower()}/index.json"
-    else:
-        registration_url = f"http://localhost:5555/v3/registration/{package_id.lower()}/index.json"
 
-    if registration_url:
+    http_source = ""
+    if isinstance(source_url, str) and source_url.lower().startswith(("http",)):
+        http_source = source_url
+    elif isinstance(DEFAULT_NUGET_SOURCE, str) and DEFAULT_NUGET_SOURCE.lower().startswith(("http",)):
+        http_source = DEFAULT_NUGET_SOURCE
+
+    if http_source:
+        base_url = http_source.rstrip('/')
+        if base_url.endswith('/v3/index.json'):
+            base_url = base_url[: -len('/v3/index.json')]
+        elif base_url.endswith('/index.json'):
+            base_url = base_url[: -len('/index.json')]
+        base_url = base_url.rstrip('/')
+        registration_urls.extend([
+            f"{base_url}/v3/registration5-semver2/{package_id.lower()}/index.json",
+            f"{base_url}/v3/registration5-gz-semver2/{package_id.lower()}/index.json",
+            f"{base_url}/v3/registration/{package_id.lower()}/index.json",
+        ])
+
+    for candidate in registration_urls:
         try:
-            with urllib.request.urlopen(registration_url, timeout=5) as resp:
+            with urllib.request.urlopen(candidate, timeout=5) as resp:
                 registration_data = json.load(resp)
+                break
         except urllib.error.HTTPError as exc:
             print(f"[query_nuget_versions] registration feed HTTP error for {package_id}: {exc}", file=sys.stderr)
         except urllib.error.URLError as exc:
             print(f"[query_nuget_versions] registration feed unreachable for {package_id}: {exc}", file=sys.stderr)
         except json.JSONDecodeError as exc:
             print(f"[query_nuget_versions] failed to parse registration JSON for {package_id}: {exc}", file=sys.stderr)
-        else:
-            def _collect_page_versions(page: dict) -> List[str]:
-                page_versions: List[str] = []
-                for item in page.get("items", []):
-                    entry = item.get("catalogEntry", item)
-                    version = entry.get("version")
-                    if version:
-                        page_versions.append(version)
-                return page_versions
 
-            reg_versions: List[str] = []
-            for page in registration_data.get("items", []):
-                if page.get("items"):
-                    reg_versions.extend(_collect_page_versions(page))
-                elif page.get("@id"):
-                    try:
-                        with urllib.request.urlopen(page["@id"], timeout=5) as page_resp:
-                            page_data = json.load(page_resp)
-                        reg_versions.extend(_collect_page_versions(page_data))
-                    except (urllib.error.URLError, json.JSONDecodeError) as exc:
-                        print(f"[query_nuget_versions] failed to load registration page for {package_id}: {exc}", file=sys.stderr)
-            reg_versions = _dedupe_keep_order(reg_versions)
-            if reg_versions:
-                return reg_versions
+    if registration_data:
+        def _collect_page_versions(page: dict) -> List[str]:
+            page_versions: List[str] = []
+            for item in page.get("items", []):
+                entry = item.get("catalogEntry", item)
+                version = entry.get("version")
+                if version:
+                    page_versions.append(version)
+            return page_versions
+
+        reg_versions: List[str] = []
+        for page in registration_data.get("items", []):
+            if page.get("items"):
+                reg_versions.extend(_collect_page_versions(page))
+            elif page.get("@id"):
+                try:
+                    with urllib.request.urlopen(page["@id"], timeout=5) as page_resp:
+                        page_data = json.load(page_resp)
+                    reg_versions.extend(_collect_page_versions(page_data))
+                except (urllib.error.URLError, json.JSONDecodeError) as exc:
+                    print(f"[query_nuget_versions] failed to load registration page for {package_id}: {exc}", file=sys.stderr)
+        reg_versions = _dedupe_keep_order(reg_versions)
+        if reg_versions:
+            return reg_versions
 
     return []
 
@@ -475,6 +489,8 @@ def check_nuget_source(source_name: str = None) -> Tuple[bool, str]:
     """Check if a NuGet source exists and return (exists, url)"""
     if source_name is None:
         source_name = DEFAULT_NUGET_SOURCE
+    if source_name.lower().startswith(('http://', 'https://')):
+        return True, source_name
     """Check if a NuGet source exists and return (exists, url)"""
     try:
         result = subprocess.check_output(
@@ -506,51 +522,59 @@ def push_to_nuget(nupkg_path: Path, source_name: str = None, source_url: str = "
         source_name = DEFAULT_NUGET_SOURCE
     if api_key is None:
         api_key = DEFAULT_API_KEY
-    
-    # Safety check: NEVER push to nuget.org
+
     if source_url and "nuget.org" in source_url.lower():
-        print(f"ERROR: Refusing to push to nuget.org! Use local NuGet source instead.", file=sys.stderr)
+        print("ERROR: Refusing to push to nuget.org! Use local NuGet source instead.", file=sys.stderr)
         return False
-    if source_name.lower() in ["nuget.org", "nuget", "nuget.org/v3/index.json"]:
+    if isinstance(source_name, str) and source_name.lower() in {"nuget.org", "nuget", "nuget.org/v3/index.json"}:
         print(f"ERROR: Refusing to push to {source_name}! Use local NuGet source instead.", file=sys.stderr)
         return False
-    """Push a NuGet package to the specified source"""
+
     try:
-        # For HTTP sources, use curl instead of dotnet nuget push
-        if source_url and source_url.startswith("http://"):
-            # Extract the base URL (remove /v3/index.json if present)
-            base_url = source_url.replace("/v3/index.json", "")
-            push_url = f"{base_url}/api/v2/package"
+        http_source = ""
+        if source_url and isinstance(source_url, str) and source_url.lower().startswith(("http://", "https://")):
+            http_source = source_url
+        elif isinstance(source_name, str) and source_name.lower().startswith(("http://", "https://")):
+            http_source = source_name
 
-            cmd = ["curl", "-X", "PUT", push_url,
-                   "-H", f"X-NuGet-ApiKey: {api_key}" if api_key else "X-NuGet-ApiKey: ",
-                   "-F", f"file=@{nupkg_path}",
-                   "-s", "-o", "/dev/null", "-w", "%{http_code}"]
-
+        if http_source:
+            base_url = http_source.rstrip('/')
+            if base_url.endswith('/v3/index.json'):
+                base_url = base_url[: -len('/v3/index.json')]
+            push_url = base_url.rstrip('/') + '/'
+            header_value = f"X-NuGet-ApiKey: {api_key}" if api_key else "X-NuGet-ApiKey:"
+            cmd = [
+                "curl", "-X", "PUT", push_url,
+                "-H", header_value,
+                "-F", f"file=@{nupkg_path}",
+                "-s", "-o", "/dev/null", "-w", "%{http_code}",
+            ]
             result = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
             http_code = result.stdout.strip()
-
-            if http_code in ["201", "202", "409"]:  # 201 Created, 202 Accepted, 409 Conflict (already exists)
+            if http_code in {"200", "201", "202", "204", "409"}:
                 if http_code == "409":
                     print(f"   {nupkg_path.name} already exists (skipped)")
                 return True
-            else:
-                print(f"   HTTP {http_code} for {nupkg_path.name}")
-                return False
-        else:
-            # For HTTPS sources, use standard dotnet nuget push
-            cmd = ["dotnet", "nuget", "push", str(nupkg_path),
-                   "--source", source_name,
-                   "--skip-duplicate"]
+            print(f"   HTTP {http_code} for {nupkg_path.name}")
+            if result.stderr:
+                stderr = result.stderr.strip()
+                if stderr:
+                    print(stderr)
+            return False
 
-            if api_key:
-                cmd.extend(["--api-key", api_key])
-
-            run(cmd, label=f"push {nupkg_path.name}")
-            return True
+        cmd = [
+            "dotnet", "nuget", "push", str(nupkg_path),
+            "--source", source_name,
+            "--skip-duplicate",
+        ]
+        if api_key:
+            cmd.extend(["--api-key", api_key])
+        run(cmd, label=f"push {nupkg_path.name}")
+        return True
     except Exception as e:
         print(f"Failed to push {nupkg_path.name}: {e}")
         return False
+
 
 def main():
     global _ui, _show_warnings
