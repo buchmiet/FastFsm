@@ -7,6 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-	<PackageReference Include="FastFsm.Net" Version="0.0.4.7-nuget-pack" /></ItemGroup>
+	<PackageReference Include="FastFsm.Net" Version="0.0.4.8-nuget-pack" /></ItemGroup>
 
 </Project>
