@@ -20,7 +20,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="FastFsm.Net" Version="0.0.4.9-nuget-pack" />
+		<PackageReference Include="FastFsm.Net" Version="0.0.4.10-nuget-pack" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.7" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
 	</ItemGroup>
@@ -51,7 +51,7 @@
 	
 	<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
 		<PropertyGroup>
-			<Version>0.0.4.9-nuget-pack</Version>
+			<Version>0.0.4.10-nuget-pack</Version>
 			<PackageVersion>$(Version)</PackageVersion>
 		</PropertyGroup>
 	</Target>
