@@ -96,10 +96,10 @@ public class StateMachineAnalyzer : DiagnosticAnalyzer
             {
                 var name = t.ConstructedFrom?.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)
                            ?? t.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
-                return name is "StateMachine.Runtime.StateMachineBase<TState, TTrigger>"
-                             or "StateMachine.Runtime.StateMachineBase`2"
-                             or "StateMachine.Runtime.AsyncStateMachineBase<TState, TTrigger>"
-                             or "StateMachine.Runtime.AsyncStateMachineBase`2";
+                return name is $"{FastFsmRuntime}.StateMachineBase<TState, TTrigger>"
+                             or $"{FastFsmRuntime}.StateMachineBase`2"
+                             or $"{FastFsmRuntime}.AsyncStateMachineBase<TState, TTrigger>"
+                             or $"{FastFsmRuntime}.AsyncStateMachineBase`2";
             }
             for (var bt = namedTypeSymbol.BaseType; bt != null; bt = bt.BaseType)
             {
@@ -114,14 +114,14 @@ public class StateMachineAnalyzer : DiagnosticAnalyzer
             {
                 var n = itf.ConstructedFrom?.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)
                         ?? itf.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
-                if (n is "StateMachine.Contracts.IStateMachineSync<TState, TTrigger>"
-                       or "StateMachine.Contracts.IStateMachineSync`2"
-                       or "StateMachine.Contracts.IStateMachineAsync<TState, TTrigger>"
-                       or "StateMachine.Contracts.IStateMachineAsync`2"
-                       or "StateMachine.Contracts.IExtensibleStateMachineSync<TState, TTrigger>"
-                       or "StateMachine.Contracts.IExtensibleStateMachineSync`2"
-                       or "StateMachine.Contracts.IExtensibleStateMachineAsync<TState, TTrigger>"
-                       or "StateMachine.Contracts.IExtensibleStateMachineAsync`2")
+                if (n is $"{FastFsmContracts}.IStateMachineSync<TState, TTrigger>"
+                       or $"{FastFsmContracts}.IStateMachineSync`2"
+                       or $"{FastFsmContracts}.IStateMachineAsync<TState, TTrigger>"
+                       or $"{FastFsmContracts}.IStateMachineAsync`2"
+                       or $"{FastFsmContracts}.IExtensibleStateMachineSync<TState, TTrigger>"
+                       or $"{FastFsmContracts}.IExtensibleStateMachineSync`2"
+                       or $"{FastFsmContracts}.IExtensibleStateMachineAsync<TState, TTrigger>"
+                       or $"{FastFsmContracts}.IExtensibleStateMachineAsync`2")
                     return true;
             }
             return false;
@@ -132,7 +132,7 @@ public class StateMachineAnalyzer : DiagnosticAnalyzer
         // Check if this is a framework base class that should be excluded
         bool isFrameworkBaseClass = namedTypeSymbol.Name == "StateMachineBase" || 
                                    namedTypeSymbol.Name == "AsyncStateMachineBase" ||
-                                   (namedTypeSymbol.ContainingNamespace?.ToDisplayString() == "StateMachine.Runtime");
+                                   (namedTypeSymbol.ContainingNamespace?.ToDisplayString() == FastFsmRuntime);
         
         bool machineLike = hasFsmRelatedAttributes || IsMachineLikeByInheritance() || IsMachineLikeByInterfaces();
 

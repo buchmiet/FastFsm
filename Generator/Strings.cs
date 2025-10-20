@@ -26,7 +26,9 @@ internal static class Strings
     public const string InitialStateProviderInterface = "IInitialStateProvider";
     public const string StateMachineFactoryInterface = "IStateMachineFactory";
     public const string StateMachineWithPayloadFactoryInterface = "IStateMachineWithPayloadFactory";
-
+    public const string FastFsmRuntime = "FastFsm.Runtime";
+    public const string FastFsmContracts = "FastFsm.Contracts";
+    public const string FastFsmDependencyInjection = "FastFsm.DependencyInjection";
     // ──────────────────────────────────────────────────────────────
     //  Full attribute names (Roslyn)
     // ──────────────────────────────────────────────────────────────
