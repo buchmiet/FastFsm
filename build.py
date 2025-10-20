@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build script with advanced TUI support"""
-import argparse, re, subprocess, sys, json, urllib.request, urllib.error
+import argparse, re, subprocess, sys, json, urllib.request, urllib.error, shutil
 from pathlib import Path
 import xml.etree.ElementTree as ET
 from typing import List, Optional, Tuple
@@ -21,6 +21,7 @@ DEFAULT_API_KEY = "7aa315e9d1e9829caa7bfaba3f497f6c9a0b367a"
 FASTFSM_PROJ = ROOT / "FastFsm" / "FastFsm.csproj"
 LOGGING_PROJ = ROOT / "FastFsm.Logging" / "FastFsm.Logging.csproj"
 DI_PROJ = ROOT / "FastFsm.DependencyInjection" / "FastFsm.DependencyInjection.csproj"
+GENERATOR_PROJ = ROOT / "Generator" / "Generator.csproj"
 
 PACKAGE_IDS = {
     "core": ("FastFsm.Net", FASTFSM_PROJ),
@@ -89,6 +90,47 @@ def run(cmd, cwd=ROOT, fatal=True, label=None):
         sys.exit(rc)
     
     return rc
+
+def get_global_packages_path() -> Optional[Path]:
+    """Return path to the global NuGet packages cache, if available."""
+    try:
+        output = subprocess.check_output(
+            ["dotnet", "nuget", "locals", "global-packages", "--list"],
+            cwd=ROOT,
+            text=True,
+            stderr=subprocess.STDOUT,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+    for line in output.splitlines():
+        if ":" not in line:
+            continue
+        name, path = line.split(":", 1)
+        if name.strip().lower() == "global-packages":
+            path = path.strip()
+            if path:
+                return Path(path)
+    return None
+
+def purge_cached_package_versions(version: str):
+    """Remove cached copies of freshly published packages to avoid stale restores."""
+    global_dir = get_global_packages_path()
+    if not global_dir:
+        return
+
+    removed: List[str] = []
+    for pkg_id, _ in PACKAGE_IDS.values():
+        pkg_cache = global_dir / pkg_id.lower() / version
+        if pkg_cache.exists():
+            try:
+                shutil.rmtree(pkg_cache)
+                removed.append(f"{pkg_id} {version}")
+            except OSError:
+                pass
+
+    if removed:
+        print("Purged cached packages:", ", ".join(removed))
 
 # Version management functions
 def parse_version_from_stamp(csproj: Path) -> str:
@@ -705,6 +747,12 @@ def main():
                           do_commit=not args.no_commit, 
                           do_tag=not args.no_tag)
         
+        # Ensure generator assembly exists so core package can include it
+        run(
+            ["dotnet", "build", str(GENERATOR_PROJ), "-c", args.configuration,
+             "--source", "https://api.nuget.org/v3/index.json"],
+            label="build Generator")
+
         # Pack - using temp directory now
         import tempfile
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -729,6 +777,8 @@ def main():
                 print(f"\nFailed to push: {', '.join(failed_packages)}")
             if pushed_packages:
                 print(f"\nSuccessfully pushed: {', '.join(pushed_packages)}")
+
+        purge_cached_package_versions(new_version)
 
         # Restore projects using repo NuGet configuration when available
         repo_nuget_config = ROOT / ".nuget" / "NuGet.Config"
