@@ -3,8 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using Xunit;
 using FastFsm.Tests.Machines;
+using Xunit;
+using FastFsm.Tests.Machines.Legacy;
 
 namespace FastFsm.Tests.Features.Hsm.Runtime
 {

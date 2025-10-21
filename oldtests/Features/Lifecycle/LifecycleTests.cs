@@ -1,9 +1,10 @@
-﻿using FastFsm.Tests.Machines;
+﻿using FastFsm.Tests.Machines.Legacy;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using FastFsm.Tests.Machines;
 using Xunit;
 using static FastFsm.Tests.Features.Performance.BenchmarkTests;
 

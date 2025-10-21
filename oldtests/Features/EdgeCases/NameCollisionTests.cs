@@ -1,6 +1,7 @@
+using FastFsm.Tests.Machines;
 using Xunit;
 using Xunit.Abstractions;
-using FastFsm.Tests.Machines;
+using FastFsm.Tests.Machines.Legacy;
 
 namespace FastFsm.Tests.Features.EdgeCases
 {
@@ -17,7 +18,7 @@ namespace FastFsm.Tests.Features.EdgeCases
         public void StateNames_WithCSharpKeywords_AreHandledCorrectly()
         {
             // Arrange & Act
-            var machine = new Machines.KeywordStateMachine(KeywordState.@class);
+            var machine = new Machines.Legacy.KeywordStateMachine(KeywordState.@class);
             machine.Start();
 
             // Assert - Machine works correctly with keyword names
@@ -42,9 +43,9 @@ namespace FastFsm.Tests.Features.EdgeCases
         public void ReservedMethodNames_DontConflictWithGenerated()
         {
             // Test that user methods with names like TryFire don't conflict
-            var machine = new Machines.ConflictingNamesMachine(ConflictState.A);
+            var machine = new Machines.Legacy.ConflictingNamesMachine(ConflictState.A);
             machine.Start();
-            var typedMachine = machine as Machines.ConflictingNamesMachine;
+            var typedMachine = machine as Machines.Legacy.ConflictingNamesMachine;
 
             // User's TryFire method (different signature)
             var userResult = typedMachine!.TryFire("test");
@@ -60,7 +61,7 @@ namespace FastFsm.Tests.Features.EdgeCases
         public void SpecialCharactersInEnumNames_HandledCorrectly()
         {
             // C# allows Unicode in identifiers
-            var machine = new Machines.UnicodeMachine(UnicodeState.αlpha);
+            var machine = new Machines.Legacy.UnicodeMachine(UnicodeState.αlpha);
             machine.Start();
 
             Assert.True(machine.TryFire(UnicodeTrigger.βeta));
@@ -71,7 +72,7 @@ namespace FastFsm.Tests.Features.EdgeCases
         public void VeryLongStateNames_HandledCorrectly()
         {
             // Test with extremely long enum names
-            var machine = new Machines.LongNameMachine(
+            var machine = new Machines.Legacy.LongNameMachine(
                 LongNameState.ThisIsAnExtremelyLongStateNameThatShouldStillWorkCorrectlyInTheGeneratedCode_Part1_Part2_Part3_Part4_Part5);
             machine.Start();
 
@@ -90,7 +91,7 @@ namespace FastFsm.Tests.Features.EdgeCases
         public void NumericPrefixedNames_HandledCorrectly()
         {
             // C# doesn't allow pure numeric names, but prefixed is OK
-            var machine = new Machines.NumericMachine(NumericState._1Start);
+            var machine = new Machines.Legacy.NumericMachine(NumericState._1Start);
             machine.Start();
 
             machine.Fire(NumericTrigger._2Next);
@@ -104,7 +105,7 @@ namespace FastFsm.Tests.Features.EdgeCases
         public void CaseSensitiveNames_HandledCorrectly()
         {
             // Test case-sensitive enum members
-            var machine = new Machines.CaseSensitiveMachine(CaseSensitiveState.state);
+            var machine = new Machines.Legacy.CaseSensitiveMachine(CaseSensitiveState.state);
             machine.Start();
 
             // Different cases are different states

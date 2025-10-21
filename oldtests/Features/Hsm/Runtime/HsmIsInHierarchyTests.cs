@@ -1,6 +1,7 @@
 using Xunit;
 using FastFsm.Tests.Features.Hsm.CompileTime;
 using FastFsm.Tests.Machines;
+using FastFsm.Tests.Machines.Legacy;
 
 namespace FastFsm.Tests.Features.Hsm.Runtime
 {

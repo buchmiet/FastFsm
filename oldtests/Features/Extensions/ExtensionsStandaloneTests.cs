@@ -1,9 +1,10 @@
 using Shouldly;
 using System.Collections.Generic;
 using FastFsm.Contracts;
+using FastFsm.Tests.Machines;
 using Xunit;
 using Xunit.Abstractions;
-using FastFsm.Tests.Machines;
+using FastFsm.Tests.Machines.Legacy;
 
 namespace FastFsm.Tests.Features.Extensions
 {
@@ -44,7 +45,7 @@ namespace FastFsm.Tests.Features.Extensions
             // Arrange
             var ext1 = new TestExtension();
             var ext2 = new TestExtension();
-            var machine = new Machines.ExtensionsMachine(ExtState.Idle, [ext1]);
+            var machine = new Machines.Legacy.ExtensionsMachine(ExtState.Idle, [ext1]);
             machine.Start();
 
             // Act & Assert - Initial extension works
@@ -72,7 +73,7 @@ namespace FastFsm.Tests.Features.Extensions
         {
             // Arrange
             var extension = new TestExtension();
-            var machine = new Machines.ExtensionsMachine(ExtState.Idle, [extension]);
+            var machine = new Machines.Legacy.ExtensionsMachine(ExtState.Idle, [extension]);
             machine.Start();
 
             // Act
@@ -88,7 +89,7 @@ namespace FastFsm.Tests.Features.Extensions
         {
             // Arrange
             var extension = new TestExtension();
-            var machine = new Machines.ExtensionsMachine(ExtState.Complete, [extension]);
+            var machine = new Machines.Legacy.ExtensionsMachine(ExtState.Complete, [extension]);
             machine.Start();
 
             // Act
@@ -104,7 +105,7 @@ namespace FastFsm.Tests.Features.Extensions
         public void Extensions_WithoutExtensions_MachineStillWorks()
         {
             // Arrange
-            var machine = new Machines.ExtensionsMachine(ExtState.Idle, null);
+            var machine = new Machines.Legacy.ExtensionsMachine(ExtState.Idle, null);
             machine.Start();
 
             // Act
@@ -121,7 +122,7 @@ namespace FastFsm.Tests.Features.Extensions
             // Arrange
             var faultyExtension = new FaultyExtension();
             var goodExtension = new TestExtension();
-            var machine = new Machines.ExtensionsMachine(ExtState.Idle, new IStateMachineExtension[] { faultyExtension, goodExtension });
+            var machine = new Machines.Legacy.ExtensionsMachine(ExtState.Idle, new IStateMachineExtension[] { faultyExtension, goodExtension });
             machine.Start();
 
             // Act

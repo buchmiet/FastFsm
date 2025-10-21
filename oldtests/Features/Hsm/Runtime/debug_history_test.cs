@@ -2,6 +2,7 @@ using System;
 using Xunit;
 using FastFsm.Tests.Features.Hsm.Runtime;
 using FastFsm.Tests.Machines;
+using FastFsm.Tests.Machines.Legacy;
 
 namespace FastFsm.Tests.Features.Hsm.Runtime
 {

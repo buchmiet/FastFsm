@@ -1,8 +1,9 @@
 ﻿using System.Collections.Generic;
 using Abstractions.Attributes;
 using FastFsm.Tests.Extensions;
-using Xunit;
 using FastFsm.Tests.Machines;
+using Xunit;
+using FastFsm.Tests.Machines.Legacy;
 
 namespace FastFsm.Tests.Features.Extensions
 {
@@ -15,7 +16,7 @@ namespace FastFsm.Tests.Features.Extensions
             // arrange
             var log = new List<string>();
             var ext = new RecordingExtension(log);
-            var machine = new Machines.HookOrderMachine(HookOrderState.A, [ext]);
+            var machine = new Machines.Legacy.HookOrderMachine(HookOrderState.A, [ext]);
             machine.Start();
 
             // act
