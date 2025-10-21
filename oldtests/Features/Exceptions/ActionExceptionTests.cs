@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using FastFsm.Contracts;
 using FastFsm.Tests.Extensions;
 using FastFsm.Tests.Machines;
+using FastFsm.Tests.Machines.Legacy;
 using Xunit;
 
 namespace FastFsm.Tests.Features.Exceptions;
@@ -17,7 +18,7 @@ public class ActionExceptionTests
     {
         // ── arrange ───────────────────────────────────────────────────────────
         var ext = new ResultCapturingExtension();
-        var machine = new Machines.ThrowingActionMachine(ThrowingActionMachine_TestState.A, [ext]);
+        var machine = new Machines.Legacy.ThrowingActionMachine(ThrowingActionMachine_TestState.A, [ext]);
         machine.Start();
 
         // sanity – przed przejściem

@@ -1,11 +1,12 @@
 using Shouldly;
 
-using FastFsm.Tests.Machines;
+using FastFsm.Tests.Machines.Legacy;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using FastFsm.Contracts;
+using FastFsm.Tests.Machines;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -56,7 +57,7 @@ namespace FastFsm.Tests.Features.Integration
 
             public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext
             {
-                if (context is IStateMachineContext<OrderState, OrderTrigger> orderContext &&
+                if (context is IStateMachineContext<PhysicalOrderState, PhysicalOrderTrigger> orderContext &&
                     context is IStateSnapshot snapshot)
                 {
                     Entries.Add(new AuditEntry
@@ -90,7 +91,7 @@ namespace FastFsm.Tests.Features.Integration
         {
             // Arrange
             var audit = new AuditExtension();
-            var machine = new FullOrderMachine(OrderState.New, new[] { audit });
+            var machine = new FullOrderMachine(PhysicalOrderState.New, new[] { audit });
             machine.Start();
 
             var orderPayload = new OrderPayload { OrderId = 123, Amount = 99.99m };
@@ -103,11 +104,11 @@ namespace FastFsm.Tests.Features.Integration
             };
 
             // Act
-            machine.TryFire(OrderTrigger.Process, orderPayload);
-            machine.TryFire(OrderTrigger.Pay, paymentPayload);
+            machine.TryFire(PhysicalOrderTrigger.Process, orderPayload);
+            machine.TryFire(PhysicalOrderTrigger.Pay, paymentPayload);
 
             // Assert
-            machine.CurrentState.ShouldBe(OrderState.Paid);
+            machine.CurrentState.ShouldBe(PhysicalOrderState.Paid);
 
             audit.Entries.Count.ShouldBe(2);
             audit.Entries[0].PayloadType.ShouldBe(typeof(OrderPayload));
@@ -123,20 +124,20 @@ namespace FastFsm.Tests.Features.Integration
         {
             // Arrange
             var processingExtension = new ConditionalProcessingExtension();
-            var machine = new FullOrderMachine(OrderState.New, new[] { processingExtension });
+            var machine = new FullOrderMachine(PhysicalOrderState.New, new[] { processingExtension });
             machine.Start();
 
             // Act - Process high value order
             var highValueOrder = new OrderPayload { OrderId = 1, Amount = 10000m };
-            machine.TryFire(OrderTrigger.Process, highValueOrder);
+            machine.TryFire(PhysicalOrderTrigger.Process, highValueOrder);
 
             // Reset to process another order
-            machine = new FullOrderMachine(OrderState.New, new[] { processingExtension });
+            machine = new FullOrderMachine(PhysicalOrderState.New, new[] { processingExtension });
             machine.Start();
 
             // Process low value order
             var lowValueOrder = new OrderPayload { OrderId = 2, Amount = 10m };
-            machine.TryFire(OrderTrigger.Process, lowValueOrder);
+            machine.TryFire(PhysicalOrderTrigger.Process, lowValueOrder);
 
             // Assert
             processingExtension.HighValueOrders.ShouldContain(1);
@@ -148,7 +149,7 @@ namespace FastFsm.Tests.Features.Integration
         {
             // Arrange
             var behaviorExtension = new BehaviorModifyingExtension();
-            var machine = new FullOrderMachine(OrderState.Paid, new[] { behaviorExtension });
+            var machine = new FullOrderMachine(PhysicalOrderState.Paid, new[] { behaviorExtension });
             machine.Start();
 
             // Configure extension to block shipping for certain orders
@@ -156,16 +157,16 @@ namespace FastFsm.Tests.Features.Integration
 
             // Act & Assert - Normal order ships successfully
             var normalOrder = new OrderPayload { OrderId = 123, TrackingNumber = "TRACK123" };
-            var shipped = machine.TryFire(OrderTrigger.Ship, normalOrder);
+            var shipped = machine.TryFire(PhysicalOrderTrigger.Ship, normalOrder);
             shipped.ShouldBeTrue();
 
             // Reset state
-            machine = new FullOrderMachine(OrderState.Paid, new[] { behaviorExtension });
+            machine = new FullOrderMachine(PhysicalOrderState.Paid, new[] { behaviorExtension });
             machine.Start();
 
             // Blocked order should fail (but extension still records the attempt)
             var blockedOrder = new OrderPayload { OrderId = 999, TrackingNumber = "TRACK999" };
-            machine.TryFire(OrderTrigger.Ship, blockedOrder);
+            machine.TryFire(PhysicalOrderTrigger.Ship, blockedOrder);
 
             // Extension recorded the attempt
             behaviorExtension.BlockedAttempts.ContainsKey(999).ShouldBeTrue();
@@ -203,7 +204,7 @@ namespace FastFsm.Tests.Features.Integration
         public void PayloadMap_ShouldPointTo_CompileTimeTypes()
         {
             // 1. Utwórz instancję (konstruktor NIE wywołuje TryFire)
-            var machine = new FullMultiPayloadMachine(OrderState.New, extensions: null);
+            var machine = new FastFsm.Tests.Machines.Legacy.FullMultiPayloadMachine(PhysicalOrderState.New, extensions: null);
             machine.Start();
 
             // 2. Wyciągnij prywatne, statyczne pole _payloadMap
@@ -212,7 +213,7 @@ namespace FastFsm.Tests.Features.Integration
                     BindingFlags.NonPublic | BindingFlags.Static);
 
             Assert.NotNull(field);                                  // pole istnieje
-            var map = (Dictionary<OrderTrigger, Type>)field!.GetValue(null)!;
+            var map = (Dictionary<PhysicalOrderTrigger, Type>)field!.GetValue(null)!;
 
             // 3. Wypisz co siedzi w mapie
             foreach (var (trigger, type) in map)
@@ -222,12 +223,12 @@ namespace FastFsm.Tests.Features.Integration
             }
 
             // 4. Assercje: czy to *te same* obiekty Type?
-            Assert.Same(typeof(OrderPayload), map[OrderTrigger.Process]);
-            Assert.Same(typeof(PaymentPayload), map[OrderTrigger.Pay]);
-            Assert.Same(typeof(ShippingPayload), map[OrderTrigger.Ship]);
+            Assert.Same(typeof(OrderPayload), map[PhysicalOrderTrigger.Process]);
+            Assert.Same(typeof(PaymentPayload), map[PhysicalOrderTrigger.Pay]);
+            Assert.Same(typeof(ShippingPayload), map[PhysicalOrderTrigger.Ship]);
 
             // 5. (opcjonalnie) szybki runtime-check bez TryFire:
-            var ok = map[OrderTrigger.Process].IsInstanceOfType(
+            var ok = map[PhysicalOrderTrigger.Process].IsInstanceOfType(
                 new OrderPayload { OrderId = 42 });
             Assert.True(ok);  // powinno być true dla „pasującego” payloadu
         }
@@ -238,13 +239,13 @@ namespace FastFsm.Tests.Features.Integration
             // Arrange
             var typeTracker = new PayloadTypeTracker();
             // Upewnij się, że maszyna ma konstruktor przyjmujący rozszerzenia
-            var machine = new FullMultiPayloadMachine(OrderState.New, new[] { typeTracker });
+            var machine = new FullMultiPayloadMachine(PhysicalOrderState.New, new[] { typeTracker });
             machine.Start();
 
             //// === Krok 1: Tylko pierwsze przejście ===
             output.WriteLine("---" + " Krok 1: Przejście Process -> Processing ---");
 
-            var processResult = machine.TryFire(OrderTrigger.Process, new OrderPayload { OrderId = 1 });
+            var processResult = machine.TryFire(PhysicalOrderTrigger.Process, new OrderPayload { OrderId = 1 });
             Assert.True(processResult, "Przejście Process -> Processing nie powiodło się.");
             Assert.Contains(typeof(OrderPayload), typeTracker.ObservedTypes);
             Assert.Single(typeTracker.ObservedTypes);
@@ -253,7 +254,7 @@ namespace FastFsm.Tests.Features.Integration
 
             //  === Krok 2: Drugie przejście ===
             output.WriteLine("\n--- Krok 2: Przejście Processing -> Paid ---");
-            var payResult = machine.TryFire(OrderTrigger.Pay, new PaymentPayload { OrderId = 1, PaymentMethod = "PayPal" });
+            var payResult = machine.TryFire(PhysicalOrderTrigger.Pay, new PaymentPayload { OrderId = 1, PaymentMethod = "PayPal" });
             Assert.True(payResult, "Przejście Processing -> Paid nie powiodło się.");
             Assert.Contains(typeof(PaymentPayload), typeTracker.ObservedTypes);
             Assert.Equal(2, typeTracker.ObservedTypes.Count);
@@ -262,7 +263,7 @@ namespace FastFsm.Tests.Features.Integration
 
             // === Krok 3: Trzecie przejście ===
             output.WriteLine("\n--- Krok 3: Przejście Paid -> Shipped ---");
-            var shipResult = machine.TryFire(OrderTrigger.Ship, new ShippingPayload { OrderId = 1, Carrier = "FedEx" });
+            var shipResult = machine.TryFire(PhysicalOrderTrigger.Ship, new ShippingPayload { OrderId = 1, Carrier = "FedEx" });
             Assert.True(shipResult, "Przejście Paid -> Shipped nie powiodło się.");
             Assert.Contains(typeof(ShippingPayload), typeTracker.ObservedTypes);
             Assert.Equal(3, typeTracker.ObservedTypes.Count);
@@ -275,7 +276,7 @@ namespace FastFsm.Tests.Features.Integration
         {
             // Arrange
             var observerExtension = new PayloadObserverExtension();
-            var machine = new FullOrderMachine(OrderState.New, new[] { observerExtension });
+            var machine = new FullOrderMachine(PhysicalOrderState.New, new[] { observerExtension });
             machine.Start();
 
             var order = new OrderPayload
@@ -286,7 +287,7 @@ namespace FastFsm.Tests.Features.Integration
             };
 
             // Act
-            var processed = machine.TryFire(OrderTrigger.Process, order);
+            var processed = machine.TryFire(PhysicalOrderTrigger.Process, order);
 
             // Assert
             processed.ShouldBeTrue();
@@ -308,7 +309,7 @@ namespace FastFsm.Tests.Features.Integration
 
             public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext
             {
-                if (success && context is IStateMachineContext<OrderState, OrderTrigger> orderContext)
+                if (success && context is IStateMachineContext<PhysicalOrderState, PhysicalOrderTrigger> orderContext)
                 {
                     if (orderContext.Payload is OrderPayload order && order.Amount > 1000)
                     {
@@ -338,8 +339,8 @@ namespace FastFsm.Tests.Features.Integration
 
             public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
             {
-                if (context is IStateMachineContext<OrderState, OrderTrigger> orderContext &&
-                    orderContext.Trigger == OrderTrigger.Ship &&
+                if (context is IStateMachineContext<PhysicalOrderState, PhysicalOrderTrigger> orderContext &&
+                    orderContext.Trigger == PhysicalOrderTrigger.Ship &&
                     orderContext.Payload is OrderPayload order &&
                     BlockedOrderIds.Contains(order.OrderId))
                 {
@@ -367,7 +368,7 @@ namespace FastFsm.Tests.Features.Integration
 
             public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
             {
-                if (context is IStateMachineContext<OrderState, OrderTrigger> orderContext &&
+                if (context is IStateMachineContext<PhysicalOrderState, PhysicalOrderTrigger> orderContext &&
                     orderContext.Payload != null)
                 {
                     ObservedTypes.Add(orderContext.Payload.GetType());
@@ -394,7 +395,7 @@ namespace FastFsm.Tests.Features.Integration
 
             public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
             {
-                if (context is IStateMachineContext<OrderState, OrderTrigger> orderContext &&
+                if (context is IStateMachineContext<PhysicalOrderState, PhysicalOrderTrigger> orderContext &&
                     orderContext.Payload != null)
                 {
                     ObservedPayloads.Add(orderContext.Payload);

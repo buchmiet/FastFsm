@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using FastFsm.Tests.Machines;
+using FastFsm.Tests.Machines.Legacy;
 using Xunit;
 using Xunit.Abstractions;
 

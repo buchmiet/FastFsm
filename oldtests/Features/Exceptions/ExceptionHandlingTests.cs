@@ -4,8 +4,9 @@ using FastFsm.Runtime;
 using System.Linq;
 using FastFsm.Tests.Extensions;
 using FastFsm.Tests.Features.Exceptions;
-using Xunit;
 using FastFsm.Tests.Machines;
+using Xunit;
+using FastFsm.Tests.Machines.Legacy;
 
 
 namespace FastFsm.Tests.Features.Exceptions
@@ -26,7 +27,7 @@ namespace FastFsm.Tests.Features.Exceptions
             var throwing = new ThrowingExtension();
             var counting = new CountingExtension();
             // Tworzymy maszynę, przekazując rozszerzenia bezpośrednio do konstruktora
-            var machine = new Machines.TestMachine(State.Initial, [throwing, counting]);
+            var machine = new Machines.Legacy.TestMachine(State.Initial, [throwing, counting]);
             machine.Start();
 
             // Act

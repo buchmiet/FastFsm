@@ -1,7 +1,8 @@
 using System;
+using FastFsm.Tests.Machines;
+using FastFsm.Tests.Machines.Legacy;
 using Xunit;
 using Xunit.Abstractions;
-using FastFsm.Tests.Machines;
 using FastFsm.Tests.Payloads;
 
 namespace FastFsm.Tests.Features.Payload;
@@ -12,7 +13,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     public void SinglePayloadType_BasicTransition_PassesPayloadCorrectly()
     {
         // Arrange
-        var machine = new Machines.OrderStateMachine(OrderState.New);
+        var machine = new Machines.Legacy.OrderStateMachine(OrderState.New);
         machine.Start();
         var order = new OrderData { OrderId = 123, Amount = 100, Customer = "Test" };
 
@@ -30,7 +31,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     public void SinglePayloadType_GuardWithPayload_EvaluatesCorrectly()
     {
         // Arrange
-        var machine = new Machines.PaymentMachine(PaymentState.Pending);
+        var machine = new Machines.Legacy.PaymentMachine(PaymentState.Pending);
         machine.Start();
         var smallPayment = new PaymentData { Amount = 50 };
         var largePayment = new PaymentData { Amount = 150 };
@@ -41,7 +42,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
         Assert.Equal(PaymentState.Processed, machine.CurrentState);
 
         // Reset
-        machine = new Machines.PaymentMachine(PaymentState.Pending);
+        machine = new Machines.Legacy.PaymentMachine(PaymentState.Pending);
         machine.Start();
 
         // Act & Assert - Large payment needs approval
@@ -54,7 +55,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     public void SinglePayloadType_ActionWithPayload_ReceivesData()
     {
         // Arrange
-        var machine = new Machines.NotificationMachine(NotificationState.Ready);
+        var machine = new Machines.Legacy.NotificationMachine(NotificationState.Ready);
         machine.Start();
         var notification = new NotificationData
         {
@@ -75,7 +76,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     public void SinglePayloadType_OnEntryWithPayload_ReceivesTransitionData()
     {
         // Arrange
-        var machine = new Machines.ProcessingMachine(ProcessingState.Idle);
+        var machine = new Machines.Legacy.ProcessingMachine(ProcessingState.Idle);
         machine.Start();
         var config = new ProcessConfig { ThreadCount = 4, TimeoutSeconds = 30 };
 
@@ -93,7 +94,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     public void MultiPayloadType_DifferentTriggersWithDifferentPayloads_WorkCorrectly()
     {
         // Arrange
-        var machine = new Machines.MultiPayloadMachine(MultiState.Initial);
+        var machine = new Machines.Legacy.MultiPayloadMachine(MultiState.Initial);
         machine.Start();
         var config = new ConfigPayload { Setting = "Debug" };
         var data = new DataPayload { Value = 42 };
@@ -119,7 +120,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     public void MultiPayloadType_WrongPayloadType_FailsGracefully()
     {
         // Arrange
-        var machine = new Machines.MultiPayloadMachine(MultiState.Configured);
+        var machine = new Machines.Legacy.MultiPayloadMachine(MultiState.Configured);
         machine.Start();
         var wrongPayload = new ConfigPayload { Setting = "Wrong" };
 
@@ -135,7 +136,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     public void PayloadOverloading_BothParameterlessAndPayloadMethods_CalledCorrectly()
     {
         // Arrange
-        var machine = new Machines.OverloadedMachine(OverloadState.A);
+        var machine = new Machines.Legacy.OverloadedMachine(OverloadState.A);
         machine.Start();
         var payload = new OverloadPayload { Data = "test" };
 
@@ -150,7 +151,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
         Assert.Equal(OverloadState.B, machine.CurrentState);
 
         // Act - Fire with payload
-        machine = new Machines.OverloadedMachine(OverloadState.A);
+        machine = new Machines.Legacy.OverloadedMachine(OverloadState.A);
         machine.Start();
         machine.CallLog.Clear();
         machine.Fire(OverloadTrigger.Go, payload);
@@ -166,7 +167,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     public void InternalTransition_WithPayload_DoesNotChangeState()
     {
         // Arrange
-        var machine = new Machines.InternalPayloadMachine(InternalPayloadState.Active);
+        var machine = new Machines.Legacy.InternalPayloadMachine(InternalPayloadState.Active);
         machine.Start();
         var update = new UpdatePayload { Increment = 5 };
 
@@ -187,7 +188,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     public void MixedPayloadTypes_DefaultAndSpecific_WorkTogether()
     {
         // Arrange
-        var machine = new Machines.MixedPayloadMachine(MixedState.Start);
+        var machine = new Machines.Legacy.MixedPayloadMachine(MixedState.Start);
         machine.Start();
         var defaultData = new DefaultPayload { Id = 1 };
         var specialData = new SpecialPayload { SpecialValue = "Special" };
@@ -207,7 +208,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     public void InitialStateOnEntry_WithPayload_UsesParameterlessVersion()
     {
         // Arrange & Act
-        var machine = new Machines.InitialPayloadMachine(InitialPayloadState.Start);
+        var machine = new Machines.Legacy.InitialPayloadMachine(InitialPayloadState.Start);
         machine.Start();
 
         // Assert - Initial OnEntry should use parameterless version
@@ -219,7 +220,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     public void OnExitCallback_NeverReceivesPayload()
     {
         // Arrange
-        var machine = new Machines.ExitCallbackMachine(ExitState.A);
+        var machine = new Machines.Legacy.ExitCallbackMachine(ExitState.A);
         machine.Start();
         var payload = new ExitPayload { Data = "test" };
 
@@ -236,7 +237,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     public void ComplexScenario_ChainedTransitionsWithPayloads()
     {
         // Arrange
-        var machine = new Machines.WorkflowMachine(WorkflowState.Created);
+        var machine = new Machines.Legacy.WorkflowMachine(WorkflowState.Created);
         machine.Start();
         var initData = new WorkflowPayload { WorkflowId = "WF001", Priority = 1 };
         var approvalData = new WorkflowPayload { WorkflowId = "WF001", ApprovedBy = "Manager" };
@@ -263,7 +264,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     public void CanFire_WithPayload_EvaluatesGuards_Correctly()
     {
         // Arrange
-        var machine = new Machines.ConditionalPayloadMachine(ConditionalState.Ready);
+        var machine = new Machines.Legacy.ConditionalPayloadMachine(ConditionalState.Ready);
         machine.Start();
         var validPayload = new ConditionalPayload { IsValid = true };
         var invalidPayload = new ConditionalPayload { IsValid = false };
@@ -283,7 +284,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     public void GetPermittedTriggers_WithPayloadMachine_WorksCorrectly()
     {
         // Arrange
-        var machine = new Machines.PermittedTriggersMachine(PermittedState.A);
+        var machine = new Machines.Legacy.PermittedTriggersMachine(PermittedState.A);
         machine.Start();
 
         // Act
@@ -299,7 +300,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
     public void FireMethod_WithWrongPayloadType_ThrowsInMultiPayloadVariant()
     {
         // Arrange
-        var machine = new Machines.StrictMultiPayloadMachine(StrictState.Ready);
+        var machine = new Machines.Legacy.StrictMultiPayloadMachine(StrictState.Ready);
         machine.Start();
         var wrongPayload = new WrongPayload();
 
@@ -314,7 +315,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
         public void SinglePayloadType_WithoutPayload_TransitionsButNoAction()
         {
             // Arrange
-            var machine = new Machines.OrderStateMachine(OrderState.New);
+            var machine = new Machines.Legacy.OrderStateMachine(OrderState.New);
             machine.Start();
 
             // Act
@@ -332,7 +333,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
         public void MultiPayloadType_WithoutPayload_FailsAndStateUnchanged()
         {
             // Arrange
-            var machine = new Machines.MultiPayloadMachine(MultiState.Initial);
+            var machine = new Machines.Legacy.MultiPayloadMachine(MultiState.Initial);
             machine.Start();
 
             // Act
@@ -349,7 +350,7 @@ public class PayloadVariantTests(ITestOutputHelper output)
         public void Fire_MultiPayloadWithoutPayload_ThrowsInvalidOperation()
         {
             // Arrange
-            var machine = new Machines.MultiPayloadMachine(MultiState.Initial);
+            var machine = new Machines.Legacy.MultiPayloadMachine(MultiState.Initial);
             machine.Start();
 
             // Act & Assert

@@ -134,7 +134,7 @@ public enum NH_State { S1, S2 }
 
 public enum NotificationState { Ready, Sent, Failed }
 
-public enum OrderState { New, Submitted, Processing, Completed, Paid, Cancelled, Shipped }
+public enum OrderState { New, Submitted, Processing, Completed, Paid, Cancelled, Shipped,Delivered }
 
 public enum OrderTrigger { Submit, Process, Pay, Ship, Deliver, Cancel, Refund }
 
@@ -370,4 +370,7 @@ public enum InheritanceMachine_S { Outside, Parent, Parent_A, Parent_B }
 
 public enum InheritanceMachine_T { Enter, Next, Leave }
 
+
+public enum PhysicalOrderState { New, Processing, Paid, Shipped, Delivered, Cancelled }
+public enum PhysicalOrderTrigger { Process, Pay, Ship, Deliver, Cancel, Refund }
 

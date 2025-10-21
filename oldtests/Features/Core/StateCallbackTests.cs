@@ -1,7 +1,8 @@
 using System;
+using FastFsm.Tests.Machines;
 using Xunit;
 using Xunit.Abstractions;
-using FastFsm.Tests.Machines;
+using FastFsm.Tests.Machines.Legacy;
 
 namespace FastFsm.Tests.Features.Core;
 
@@ -13,7 +14,7 @@ public class StateCallbackTests(ITestOutputHelper output)
     public void OnEntryOnExit_ExecutionOrder_IsCorrect()
     {
         // Arrange
-        var machine = new Machines.CallbackOrderMachine(CallbackState.A);
+        var machine = new Machines.Legacy.CallbackOrderMachine(CallbackState.A);
         machine.Start();
         var typedMachine = machine;
 
@@ -37,7 +38,7 @@ public class StateCallbackTests(ITestOutputHelper output)
     public void InitialState_OnEntry_IsCalledInConstructor()
     {
         // Arrange & Act
-        var machine = new Machines.InitialStateMachine(InitialState.Start);
+        var machine = new Machines.Legacy.InitialStateMachine(InitialState.Start);
         machine.Start();
         var typedMachine = machine;
 
@@ -54,7 +55,7 @@ public class StateCallbackTests(ITestOutputHelper output)
     public void InternalTransition_DoesNotTrigger_OnEntryOnExit()
     {
         // Arrange
-        var machine = new Machines.InternalTransitionMachine(InternalState.Active);
+        var machine = new Machines.Legacy.InternalTransitionMachine(InternalState.Active);
         machine.Start();
         var typedMachine = machine;
 
@@ -82,7 +83,7 @@ public class StateCallbackTests(ITestOutputHelper output)
     public void FailedGuard_DoesNotTrigger_OnExitOnEntry()
     {
         // Arrange
-        var machine = new Machines.GuardedCallbackMachine(GuardedState.A);
+        var machine = new Machines.Legacy.GuardedCallbackMachine(GuardedState.A);
         machine.Start();
         var typedMachine = machine;
 
@@ -113,7 +114,7 @@ public class StateCallbackTests(ITestOutputHelper output)
     public void SelfTransition_Triggers_OnExitAndOnEntry()
     {
         // Arrange
-        var machine = new Machines.SelfTransitionMachine(SelfState.Active);
+        var machine = new Machines.Legacy.SelfTransitionMachine(SelfState.Active);
         machine.Start();
         var typedMachine = machine;
 
@@ -137,7 +138,7 @@ public class StateCallbackTests(ITestOutputHelper output)
     public void StateCallbacks_WithExceptions_HandledCorrectly()
     {
         // Arrange
-        var machine = new Machines.ExceptionCallbackMachine(ExceptionState.A);
+        var machine = new Machines.Legacy.ExceptionCallbackMachine(ExceptionState.A);
         machine.Start();
         var typedMachine = machine;
 
@@ -157,7 +158,7 @@ public class StateCallbackTests(ITestOutputHelper output)
     public void ComplexStateCallbacks_WithMultipleStates_WorkCorrectly()
     {
         // Arrange
-        var machine = new Machines.ComplexCallbackMachine(ComplexCallbackState.Idle);
+        var machine = new Machines.Legacy.ComplexCallbackMachine(ComplexCallbackState.Idle);
         machine.Start();
         var typedMachine = machine;
 
@@ -192,7 +193,7 @@ public class StateCallbackTests(ITestOutputHelper output)
         // The generator should handle multiple [State] attributes for the same state
         // by either using the last one or combining them
 
-        var machine = new Machines.MultipleCallbacksMachine(MultipleCallbacksState.A);
+        var machine = new Machines.Legacy.MultipleCallbacksMachine(MultipleCallbacksState.A);
         machine.Start();
         var typedMachine = machine;
 

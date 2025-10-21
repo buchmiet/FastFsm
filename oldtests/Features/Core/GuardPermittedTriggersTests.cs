@@ -1,6 +1,7 @@
 ﻿using Abstractions.Attributes;
-using Xunit;
 using FastFsm.Tests.Machines;
+using Xunit;
+using FastFsm.Tests.Machines.Legacy;
 
 namespace FastFsm.Tests.Features.Core
 {
@@ -9,7 +10,7 @@ namespace FastFsm.Tests.Features.Core
         [Fact]
         public void PermittedTriggers_ReflectCurrentGuardState()
         {
-            var machine = new Machines.GuardPermittedMachine(GuardPermittedState.Idle)
+            var machine = new Machines.Legacy.GuardPermittedMachine(GuardPermittedState.Idle)
             {
                 // guard initially false
                 Allow = false

@@ -1,7 +1,8 @@
 using System;
+using FastFsm.Tests.Machines;
 using Xunit;
 using Xunit.Abstractions;
-using FastFsm.Tests.Machines;
+using FastFsm.Tests.Machines.Legacy;
 
 namespace FastFsm.Tests.Features.EdgeCases
 {
@@ -13,7 +14,7 @@ namespace FastFsm.Tests.Features.EdgeCases
         public void EmptyStateMachine_WithNoTransitions_ShouldCompileAndWork()
         {
             // Arrange & Act
-            var machine = new Machines.NoTransitionsMachine(EmptyState.Only);
+            var machine = new Machines.Legacy.NoTransitionsMachine(EmptyState.Only);
             machine.Start();
 
             // Assert
@@ -30,7 +31,7 @@ namespace FastFsm.Tests.Features.EdgeCases
         public void StateMachine_WithSingleState_CanHaveSelfTransition()
         {
             // Arrange
-            var machine = new Machines.SingleStateMachine(SingleState.Only);
+            var machine = new Machines.Legacy.SingleStateMachine(SingleState.Only);
             machine.Start();
 
             // Act & Assert
@@ -38,7 +39,7 @@ namespace FastFsm.Tests.Features.EdgeCases
             Assert.True(machine.TryFire(SingleTrigger.Loop));
             Assert.Equal(SingleState.Only, machine.CurrentState);
 
-            var typedMachine = machine as Machines.SingleStateMachine;
+            var typedMachine = machine as Machines.Legacy.SingleStateMachine;
             Assert.Equal(1, typedMachine?.ActionCount);
         }
 
@@ -48,9 +49,9 @@ namespace FastFsm.Tests.Features.EdgeCases
         public void StateMachine_WithOnlyInternalTransitions_NeverChangesState()
         {
             // Arrange
-            var machine = new Machines.InternalOnlyMachine(InternalOnlyState.Static);
+            var machine = new Machines.Legacy.InternalOnlyMachine(InternalOnlyState.Static);
             machine.Start();
-            var typedMachine = machine as Machines.InternalOnlyMachine;
+            var typedMachine = machine as Machines.Legacy.InternalOnlyMachine;
 
             // Act
             for (int i = 0; i < 10; i++)
@@ -67,7 +68,7 @@ namespace FastFsm.Tests.Features.EdgeCases
         public void StateMachine_WithUnreachableStates_ShouldStillFunction()
         {
             // Arrange
-            var machine = new UnreachableMachineLegacy(UnreachableState.Start);
+            var machine = new UnreachableMachine(UnreachableState.Start);
             machine.Start();
 
             // Act & Assert
