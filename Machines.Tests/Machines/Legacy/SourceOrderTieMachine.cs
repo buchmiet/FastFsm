@@ -1,0 +1,14 @@
+namespace Machines.Tests.Machines.Legacy;
+
+[StateMachine(typeof(SourceOrderTieMachine_S), typeof(SourceOrderTieMachine_T))]
+public partial class SourceOrderTieMachine
+{
+    public List<string> Log { get; } = new();
+
+    [Transition(SourceOrderTieMachine_S.A, SourceOrderTieMachine_T.Go, SourceOrderTieMachine_S.B, Priority = 0, Action = (First))]
+    [Transition(SourceOrderTieMachine_S.A, SourceOrderTieMachine_T.Go, SourceOrderTieMachine_S.C, Priority = 0, Action = (Second))]
+    private void Configure() { }
+
+    private void First() => Log.Add("First");
+    private void Second() => Log.Add("Second");
+}

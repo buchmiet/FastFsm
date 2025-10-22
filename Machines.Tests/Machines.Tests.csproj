@@ -2,11 +2,13 @@
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
-    <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
+	<ItemGroup>
 
-  <ItemGroup>
-	<PackageReference Include="FastFsm.Net" Version="0.0.4.11-nuget-pack" /></ItemGroup>
+		<PackageReference Include="FastFsm.Net" Version="0.0.4.11-nuget-pack" />
 
+	
+	</ItemGroup>
 </Project>
