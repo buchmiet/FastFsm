@@ -4,12 +4,12 @@ using Abstractions.Attributes;
 namespace Machines.Tests.Machines.Legacy;
 
 [StateMachine(typeof(CSState), typeof(CSTrigger), ContinueOnCapturedContext = false)]
-[OnException((HandleAsync))]
+[OnException(nameof(HandleAsync))]
 public partial class AsyncOceOnEntryMachine
 {
     public bool ThrowOceOnEntryB { get; set; }
 
-    [State(CSState.B, OnEntry = (OnEntryBAsync))]
+    [State(CSState.B, OnEntry = nameof(OnEntryBAsync))]
     [Transition(CSState.A, CSTrigger.Go, CSState.B)]
     private void Configure() { }
 

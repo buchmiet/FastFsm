@@ -9,16 +9,16 @@ public partial class ComplexCallbackMachine
     public DateTime? CompletionTime { get; private set; }
 
     [State(ComplexCallbackState.Idle,
-        OnEntry = (OnEnterIdle),
-        OnExit = (OnExitIdle))]
+        OnEntry = nameof(OnEnterIdle),
+        OnExit = nameof(OnExitIdle))]
     [State(ComplexCallbackState.Ready,
-        OnEntry = (OnEnterReady),
-        OnExit = (OnExitReady))]
+        OnEntry = nameof(OnEnterReady),
+        OnExit = nameof(OnExitReady))]
     [State(ComplexCallbackState.Processing,
-        OnEntry = (OnEnterProcessing),
-        OnExit = (OnExitProcessing))]
+        OnEntry = nameof(OnEnterProcessing),
+        OnExit = nameof(OnExitProcessing))]
     [State(ComplexCallbackState.Done,
-        OnEntry = (OnEnterDone))]
+        OnEntry = nameof(OnEnterDone))]
     private void ConfigureStates() { }
 
     [Transition(ComplexCallbackState.Idle, ComplexCallbackTrigger.Start,

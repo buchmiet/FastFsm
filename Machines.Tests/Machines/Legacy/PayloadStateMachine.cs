@@ -9,8 +9,8 @@ public partial class PayloadStateMachine
     public bool GuardResult { get; set; } = true;
 
     [Transition(TestState.Initial, TestTrigger.Start, TestState.Processing,
-        Guard = (CanStart), Action = (ProcessAction))]
-    [State(TestState.Processing, OnEntry = (OnProcessingEntry))]
+        Guard = nameof(CanStart), Action = nameof(ProcessAction))]
+    [State(TestState.Processing, OnEntry = nameof(OnProcessingEntry))]
     private void ConfigureWithPayload() { }
 
     [Transition(TestState.Processing, TestTrigger.Complete, TestState.Completed)]

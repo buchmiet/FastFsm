@@ -6,10 +6,10 @@ public partial class BasicBenchmarkMachine
 {
     private int _counter;
 
-    [State(BenchmarkState.A, OnEntry = (IncrementCounter))]
-    [State(BenchmarkState.B, OnEntry = (IncrementCounter))]
-    [State(BenchmarkState.C, OnEntry = (IncrementCounter))]
-    [State(BenchmarkState.D, OnEntry = (IncrementCounter))]
+    [State(BenchmarkState.A, OnEntry = nameof(IncrementCounter))]
+    [State(BenchmarkState.B, OnEntry = nameof(IncrementCounter))]
+    [State(BenchmarkState.C, OnEntry = nameof(IncrementCounter))]
+    [State(BenchmarkState.D, OnEntry = nameof(IncrementCounter))]
     private void ConfigureStates() { }
 
     [Transition(BenchmarkState.A, BenchmarkTrigger.Next, BenchmarkState.B)]

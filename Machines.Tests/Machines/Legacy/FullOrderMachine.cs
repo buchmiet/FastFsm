@@ -14,18 +14,18 @@ public partial class FullOrderMachine
     public decimal TotalProcessed { get; private set; }
     public List<int> ProcessedOrderIds { get; } = new();
 
-    [State(PhysicalOrderState.New, OnEntry = (OnEnterNew))]
-    [State(PhysicalOrderState.Processing, OnEntry = (OnEnterProcessing))]
-    [State(PhysicalOrderState.Paid, OnEntry = (OnEnterPaid))]
+    [State(PhysicalOrderState.New, OnEntry = nameof(OnEnterNew))]
+    [State(PhysicalOrderState.Processing, OnEntry = nameof(OnEnterProcessing))]
+    [State(PhysicalOrderState.Paid, OnEntry = nameof(OnEnterPaid))]
     private void ConfigureStates() { }
 
     [Transition(PhysicalOrderState.New, PhysicalOrderTrigger.Process, PhysicalOrderState.Processing,
-        Guard = (CanProcess), Action = (ProcessOrder))]
+        Guard = nameof(CanProcess), Action = nameof(ProcessOrder))]
     [Transition(PhysicalOrderState.Processing, PhysicalOrderTrigger.Pay, PhysicalOrderState.Paid,
-        Action = (RecordPayment))]
+        Action = nameof(RecordPayment))]
     [Transition(PhysicalOrderState.Processing, PhysicalOrderTrigger.Cancel, PhysicalOrderState.Cancelled)]
     [Transition(PhysicalOrderState.Paid, PhysicalOrderTrigger.Ship, PhysicalOrderState.Shipped,
-        Guard = (CanShip))]
+        Guard = nameof(CanShip))]
     [Transition(PhysicalOrderState.Shipped, PhysicalOrderTrigger.Deliver, PhysicalOrderState.Delivered)]
     private void Configure() { }
 

@@ -3,10 +3,7 @@ using Abstractions.Attributes;
 
 namespace Machines.Tests.Machines.Legacy;
 
-public class PermittedTriggersPayload
-{
-    public int Id { get; set; }
-}
+
 
 [StateMachine(typeof(PermittedState), typeof(PermittedTrigger))]
 [PayloadType(typeof(DefaultPayload))]

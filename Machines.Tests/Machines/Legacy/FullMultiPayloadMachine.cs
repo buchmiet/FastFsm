@@ -12,9 +12,9 @@ namespace Machines.Tests.Machines.Legacy;
 public partial class FullMultiPayloadMachine
 {
 
-    [Transition(PhysicalOrderState.New, PhysicalOrderTrigger.Process, PhysicalOrderState.Processing, Action = (HandleOrder))]
-    [Transition(PhysicalOrderState.Processing, PhysicalOrderTrigger.Pay, PhysicalOrderState.Paid, Action = (HandlePayment))]
-    [Transition(PhysicalOrderState.Paid, PhysicalOrderTrigger.Ship, PhysicalOrderState.Shipped, Action = (HandleShipping))]
+    [Transition(PhysicalOrderState.New, PhysicalOrderTrigger.Process, PhysicalOrderState.Processing, Action = nameof(HandleOrder))]
+    [Transition(PhysicalOrderState.Processing, PhysicalOrderTrigger.Pay, PhysicalOrderState.Paid, Action = nameof(HandlePayment))]
+    [Transition(PhysicalOrderState.Paid, PhysicalOrderTrigger.Ship, PhysicalOrderState.Shipped, Action = nameof(HandleShipping))]
     private void Configure() { }
 
     private void HandleOrder(OrderPayload order) { }

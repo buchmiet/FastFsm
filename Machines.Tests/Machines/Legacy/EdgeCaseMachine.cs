@@ -26,8 +26,8 @@ public partial class EdgeCaseMachine
     // Maximum use of attributes on a single state
     [State(HsmState.EdgeComplexParent_Child2,
         Parent = HsmState.EdgeComplexParent,
-        OnEntry = (OnMaxEntry),
-        OnExit = (OnMaxExit))]
+        OnEntry = nameof(OnMaxEntry),
+        OnExit = nameof(OnMaxExit))]
     private void ConfigureMaxAttributes() { }
 
     // Callback methods

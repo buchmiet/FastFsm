@@ -7,6 +7,6 @@ public partial class HookOrderMachine
     private bool Guard() => true;
 
     [Transition(HookOrderState.A, HookOrderTrigger.Next, HookOrderState.B,
-        Guard = (Guard))]
+        Guard = nameof(Guard))]
     private void Configure() { }
 }

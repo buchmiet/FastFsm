@@ -6,21 +6,21 @@ public partial class SimpleParentChildMachine
 {
     // Parent state with children
     [State(HsmState.Working,
-        OnEntry = (OnWorkingEntry),
-        OnExit = (OnWorkingExit))]
+        OnEntry = nameof(OnWorkingEntry),
+        OnExit = nameof(OnWorkingExit))]
     private void ConfigureWorking() { }
 
     // Child states with proper Parent reference
     [State(HsmState.Working_Initializing,
         Parent = HsmState.Working,
         IsInitial = true,
-        OnEntry = (OnInitializingEntry),
-        OnExit = (OnInitializingExit))]
+        OnEntry = nameof(OnInitializingEntry),
+        OnExit = nameof(OnInitializingExit))]
     private void ConfigureInitializing() { }
 
     [State(HsmState.Working_Processing,
         Parent = HsmState.Working,
-        OnEntry = (OnProcessingEntry))]
+        OnEntry = nameof(OnProcessingEntry))]
     private void ConfigureProcessing() { }
 
     [State(HsmState.Working_Validating,

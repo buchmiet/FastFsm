@@ -6,20 +6,20 @@ public partial class ComplexMixedScenarioMachine
 {
     // Complex parent with multiple children
     [State(HsmState.ComplexParent,
-        OnEntry = (OnComplexParentEntry),
+        OnEntry = nameof(OnComplexParentEntry),
         History = HistoryMode.Shallow)]
     private void ConfigureComplexParent() { }
 
     [State(HsmState.ComplexParent_Child1,
         Parent = HsmState.ComplexParent,
         IsInitial = true,
-        OnEntry = (OnChild1Entry))]
+        OnEntry = nameof(OnChild1Entry))]
     private void ConfigureComplexChild1() { }
 
     [State(HsmState.ComplexParent_Child2,
         Parent = HsmState.ComplexParent,
-        OnEntry = (OnChild2Entry),
-        OnExit = (OnChild2Exit))]
+        OnEntry = nameof(OnChild2Entry),
+        OnExit = nameof(OnChild2Exit))]
     private void ConfigureComplexChild2() { }
 
     [State(HsmState.ComplexParent_Child3,
@@ -29,13 +29,13 @@ public partial class ComplexMixedScenarioMachine
     // Mixed transitions with guards, actions, and priorities
     [Transition(HsmState.ComplexParent_Child1, HsmTrigger.Process, HsmState.ComplexParent_Child2,
         Priority = 500,
-        Guard = (CanTransition),
-        Action = (TransitionAction))]
+        Guard = nameof(CanTransition),
+        Action = nameof(TransitionAction))]
     [Transition(HsmState.ComplexParent_Child2, HsmTrigger.Process, HsmState.ComplexParent_Child3,
         Priority = 100)]
     [InternalTransition(HsmState.ComplexParent_Child1, HsmTrigger.InternalUpdate,
         Priority = 1000,
-        Action = (InternalAction))]
+        Action = nameof(InternalAction))]
     private void ConfigureComplexTransitions() { }
 
     // Callback methods

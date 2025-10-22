@@ -13,7 +13,7 @@ public partial class ProcessingMachine
     public int Timeout { get; private set; }
     public bool IsInitialized { get; private set; }
 
-    [State(ProcessingState.Running, OnEntry = (InitializeProcessing))]
+    [State(ProcessingState.Running, OnEntry = nameof(InitializeProcessing))]
     private void ConfigureStates() { }
 
     [Transition(ProcessingState.Idle, ProcessingTrigger.Start, ProcessingState.Running)]

@@ -7,8 +7,8 @@ public partial class ExceptionCallbackMachine
     public bool ThrowInOnExit { get; set; }
     public bool ThrowInOnEntry { get; set; }
 
-    [State(ExceptionState.A, OnExit = (OnExitA))]
-    [State(ExceptionState.B, OnEntry = (OnEntryB))]
+    [State(ExceptionState.A, OnExit = nameof(OnExitA))]
+    [State(ExceptionState.B, OnEntry = nameof(OnEntryB))]
     private void ConfigureStates() { }
 
     [Transition(ExceptionState.A, ExceptionTrigger.Go, ExceptionState.B)]

@@ -7,8 +7,8 @@ public partial class MultipleCallbacksMachine
     public List<string> Log { get; } = [];
 
     // Multiple state attributes for same state
-    [State(MultipleCallbacksState.A, OnEntry = (OnEntry1))]
-    [State(MultipleCallbacksState.A, OnEntry = (OnEntry2))] // This might override
+    [State(MultipleCallbacksState.A, OnEntry = nameof(OnEntry1))]
+    [State(MultipleCallbacksState.A, OnEntry = nameof(OnEntry2))] // This might override
     private void ConfigureStates() { }
 
     [Transition(MultipleCallbacksState.A, MultipleCallbacksTrigger.Go, MultipleCallbacksState.B)]

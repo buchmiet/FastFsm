@@ -19,27 +19,27 @@ public partial class FullMultiPayloadMachine
 
     private void Configure() => FSM
         .State<OrderState>(OrderState.New)
-        .On(OrderTrigger.Process).Action((HandleOrder)).GoTo(OrderState.Processing)
+        .On(OrderTrigger.Process).Action<OrderPayload>(HandleOrder).GoTo(OrderState.Processing)
         .State(OrderState.Processing)
-        .On(OrderTrigger.Pay).Action((HandlePayment)).GoTo(OrderState.Paid)
+        .On(OrderTrigger.Pay).Action<PaymentPayload>(HandlePayment).GoTo(OrderState.Paid)
         .State(OrderState.Paid)
-        .On(OrderTrigger.Ship).Action((HandleShipping)).GoTo(OrderState.Shipped)
+        .On(OrderTrigger.Ship).Action<ShippingPayload>(HandleShipping).GoTo(OrderState.Shipped)
         .State(OrderState.Shipped)
         .State(OrderState.Delivered)
         .State(OrderState.Cancelled);
 
-    private void HandleOrder(OrderPayload order) 
+    private void HandleOrder(in OrderPayload order) 
     {
         ProcessedOrderIds.Add(order.OrderId);
         TotalProcessed += order.Amount;
     }
         
-    private void HandlePayment(PaymentPayload payment) 
+    private void HandlePayment(in PaymentPayload payment) 
     {
         ProcessedPaymentIds.Add(payment.OrderId);
     }
         
-    private void HandleShipping(ShippingPayload shipping) 
+    private void HandleShipping(in ShippingPayload shipping) 
     {
         ShippedTrackingNumbers.Add(shipping.OrderId);
     }

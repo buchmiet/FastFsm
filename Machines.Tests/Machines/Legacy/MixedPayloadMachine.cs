@@ -13,9 +13,9 @@ public partial class MixedPayloadMachine
     public string LastSpecialValue { get; private set; }
 
     [Transition(MixedState.Start, MixedTrigger.Regular, MixedState.Middle,
-        Action = (ProcessDefault))]
+        Action = nameof(ProcessDefault))]
     [Transition(MixedState.Middle, MixedTrigger.Special, MixedState.End,
-        Action = (ProcessSpecial))]
+        Action = nameof(ProcessSpecial))]
     private void Configure() { }
 
     private void ProcessDefault(DefaultPayload payload)

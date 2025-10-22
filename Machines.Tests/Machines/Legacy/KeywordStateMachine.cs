@@ -6,7 +6,7 @@ namespace Machines.Tests.Machines.Legacy;
 [StateMachine(typeof(KeywordState), typeof(KeywordTrigger))]
 public partial class KeywordStateMachine
 {
-    private  void Configure() => FSM
+    private void Configure() => FSM
         .State(KeywordState.@class)
         .On(KeywordTrigger.@goto).GoTo(KeywordState.@return)
         .State(KeywordState.@return)

@@ -13,34 +13,34 @@ public partial class FullOrderMachine
 
     private void Configure() => FSM
         .State<OrderState>(OrderState.New)
-        .OnEntry((OnEnterNew))
-        .On(OrderTrigger.Process).Guard((CanProcess)).Action((ProcessOrder)).GoTo(OrderState.Processing)
+        .OnEntry(OnEnterNew)
+        .On(OrderTrigger.Process).Guard<OrderPayload>(CanProcess).Action<OrderPayload>(ProcessOrder).GoTo(OrderState.Processing)
         .State(OrderState.Processing)
-        .OnEntry((OnEnterProcessing))
-        .On(OrderTrigger.Pay).Action((RecordPayment)).GoTo(OrderState.Paid)
+        .OnEntry<OrderPayload>(OnEnterProcessing)
+        .On(OrderTrigger.Pay).Action<OrderPayload>(RecordPayment).GoTo(OrderState.Paid)
         .On(OrderTrigger.Cancel).GoTo(OrderState.Cancelled)
         .State(OrderState.Paid)
-        .OnEntry((OnEnterPaid))
-        .On(OrderTrigger.Ship).Guard((CanShip)).GoTo(OrderState.Shipped)
+        .OnEntry<OrderPayload>(OnEnterPaid)
+        .On(OrderTrigger.Ship).Guard<OrderPayload>(CanShip).GoTo(OrderState.Shipped)
         .State(OrderState.Shipped)
         .On(OrderTrigger.Deliver).GoTo(OrderState.Delivered);
 
-    private bool CanProcess(OrderPayload order) => order.Amount > 0;
+    private bool CanProcess(in OrderPayload order) => order.Amount > 0;
 
-    private void ProcessOrder(OrderPayload order)
+    private void ProcessOrder(in OrderPayload order)
     {
         ProcessedOrderIds.Add(order.OrderId);
         TotalProcessed += order.Amount;
     }
 
-    private void RecordPayment(OrderPayload order)
+    private void RecordPayment(in OrderPayload order)
     {
         // Payment processing logic
     }
 
-    private bool CanShip(OrderPayload order) => !string.IsNullOrEmpty(order.TrackingNumber);
+    private bool CanShip(in OrderPayload order) => !string.IsNullOrEmpty(order.TrackingNumber);
 
     private void OnEnterNew() { }
-    private void OnEnterProcessing(OrderPayload order) { }
-    private void OnEnterPaid(OrderPayload order) { }
+    private void OnEnterProcessing(in OrderPayload order) { }
+    private void OnEnterPaid(in OrderPayload order) { }
 }

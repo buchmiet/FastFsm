@@ -6,7 +6,7 @@ namespace Machines.Tests.Machines.Legacy;
 [StateMachine(typeof(CaseSensitiveState), typeof(CaseSensitiveTrigger))]
 public partial class CaseSensitiveMachine
 {
-    private  void Configure() => FSM
+    private void Configure() => FSM
         .State(CaseSensitiveState.state)
         .On(CaseSensitiveTrigger.GO).GoTo(CaseSensitiveState.STATE)
         .State(CaseSensitiveState.STATE)
