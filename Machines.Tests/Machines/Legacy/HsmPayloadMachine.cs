@@ -12,9 +12,9 @@ public partial class HsmPayloadMachine
     [State(HP_State.ChildB, Parent = HP_State.Root)] private void S_ChildB() { }
 
     // Internal (no state change) with payload
-    [InternalTransition(HP_State.ChildA, HP_Trigger.Configure, Action = (ConfigureAction))]
+    [InternalTransition(HP_State.ChildA, HP_Trigger.Configure, Action = nameof(ConfigureAction))]
     // External with payload (guard + action)
-    [Transition(HP_State.ChildA, HP_Trigger.Submit, HP_State.ChildB, Guard = (CanSubmit), Action = (SubmitAction))]
+    [Transition(HP_State.ChildA, HP_Trigger.Submit, HP_State.ChildB, Guard = nameof(CanSubmit), Action = nameof(SubmitAction))]
     private void T_All() { }
 
     private void ConfigureAction(PayloadData p) { }

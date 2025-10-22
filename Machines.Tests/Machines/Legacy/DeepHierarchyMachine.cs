@@ -24,13 +24,13 @@ public partial class DeepHierarchyMachine
     [State(HsmState.Working_Processing_Computing_Loading,
         Parent = HsmState.Working_Processing_Computing,
         IsInitial = true,
-        OnEntry = (OnLoadingEntry))]
+        OnEntry = nameof(OnLoadingEntry))]
     private void ConfigureLoading() { }
 
     [State(HsmState.Working_Processing_Computing_Calculating,
         Parent = HsmState.Working_Processing_Computing,
-        OnEntry = (OnCalculatingEntry),
-        OnExit = (OnCalculatingExit))]
+        OnEntry = nameof(OnCalculatingEntry),
+        OnExit = nameof(OnCalculatingExit))]
     private void ConfigureCalculating() { }
 
     [State(HsmState.Working_Processing_Computing_Storing,

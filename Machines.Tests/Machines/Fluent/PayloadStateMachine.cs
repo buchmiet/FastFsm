@@ -13,9 +13,9 @@ public partial class PayloadStateMachine
 
     private void Configure() => FSM
         .State<TestState>(TestState.Initial)
-        .On(TestTrigger.Start).Guard((CanStart)).Action((ProcessAction)).GoTo(TestState.Processing)
+        .On(TestTrigger.Start).Guard<TestPayload>(CanStart).Action<TestPayload>(ProcessAction).GoTo(TestState.Processing)
         .State(TestState.Processing)
-        .OnEntry((OnProcessingEntry))
+        .OnEntry<TestPayload>(OnProcessingEntry)
         .On(TestTrigger.Complete).GoTo(TestState.Completed)
         .On(TestTrigger.Fail).GoTo(TestState.Failed)
         .State(TestState.Completed)
@@ -24,7 +24,7 @@ public partial class PayloadStateMachine
         .On(TestTrigger.Reset).GoTo(TestState.Initial);
 
     // Guard with payload overload
-    private bool CanStart(TestPayload payload)
+    private bool CanStart(in TestPayload payload)
     {
         LastPayload = payload;
         return GuardResult;
@@ -34,7 +34,7 @@ public partial class PayloadStateMachine
     private bool CanStart() => GuardResult;
 
     // Action with payload
-    private void ProcessAction(TestPayload payload)
+    private void ProcessAction(in TestPayload payload)
     {
         LastPayload = payload;
     }
@@ -43,7 +43,7 @@ public partial class PayloadStateMachine
     private void ProcessAction() { }
 
     // OnEntry with payload
-    private void OnProcessingEntry(TestPayload payload)
+    private void OnProcessingEntry(in TestPayload payload)
     {
         LastPayload = payload;
     }

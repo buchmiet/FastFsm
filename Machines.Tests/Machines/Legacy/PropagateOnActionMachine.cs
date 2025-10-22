@@ -4,7 +4,7 @@ using Abstractions.Attributes;
 namespace Machines.Tests.Machines.Legacy;
 
 [StateMachine(typeof(PSState), typeof(PSTrigger))]
-[OnException((nameof(Handle)))]
+[OnException(nameof(Handle))]
 public partial class PropagateOnActionMachine
 {
     [Transition(PSState.A, PSTrigger.Go, PSState.B, Action = nameof(DoWork))]

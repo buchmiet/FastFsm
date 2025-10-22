@@ -11,7 +11,7 @@ public partial class ExitCallbackMachine
     public bool OnExitCalled { get; private set; }
     public string OnExitPayloadData { get; private set; }
 
-    [State(ExitState.A, OnExit = (OnExitA))]
+    [State(ExitState.A, OnExit = nameof(OnExitA))]
     private void ConfigureStates() { }
 
     [Transition(ExitState.A, ExitTrigger.Go, ExitState.B)]

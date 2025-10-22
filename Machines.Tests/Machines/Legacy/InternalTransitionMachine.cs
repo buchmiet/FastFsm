@@ -10,12 +10,12 @@ public partial class InternalTransitionMachine
 
     private void Configure() => FSM
         .State(InternalState.Active)
-        .OnEntry((OnEntryActive)).OnExit((OnExitActive))
+        .OnEntry(nameof(OnEntryActive)).OnExit(nameof(OnExitActive))
         .On(InternalTrigger.Deactivate).GoTo(InternalState.Inactive)
         .State(InternalState.Inactive)
-        .OnEntry((OnEntryInactive))
+        .OnEntry(nameof(OnEntryInactive))
         .State(InternalState.Active)
-        .OnInternal(InternalTrigger.Update).Action((HandleUpdate));
+        .OnInternal(InternalTrigger.Update).Action(nameof(HandleUpdate));
 
     private void OnEntryActive() => EventLog.Add("OnEntry-Active");
     private void OnExitActive() => EventLog.Add("OnExit-Active");

@@ -12,7 +12,7 @@ public partial class NotificationMachine
     public int RecipientCount { get; private set; }
 
     [Transition(NotificationState.Ready, NotificationTrigger.Send, NotificationState.Sent,
-        Action = (SendNotification))]
+        Action = nameof(SendNotification))]
     private void Configure() { }
 
     private void SendNotification(NotificationData notification)

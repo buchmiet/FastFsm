@@ -1,4 +1,3 @@
-using Abstractions.Attributes;
 namespace Machines.Tests.Machines.Legacy;
 
 [StateMachine(typeof(SourceOrderTieMachine_S), typeof(SourceOrderTieMachine_T))]

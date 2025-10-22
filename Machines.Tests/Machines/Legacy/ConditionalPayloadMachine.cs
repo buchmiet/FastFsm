@@ -10,7 +10,7 @@ namespace Machines.Tests.Machines.Legacy;
 public partial class ConditionalPayloadMachine
 {
     [Transition(ConditionalState.Ready, ConditionalTrigger.Execute, ConditionalState.Done,
-        Guard = (IsValid))]
+        Guard = nameof(IsValid))]
     private void Configure() { }
 
     private bool IsValid(ConditionalPayload payload) => payload.IsValid;

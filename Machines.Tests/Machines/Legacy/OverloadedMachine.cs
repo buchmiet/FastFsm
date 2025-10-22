@@ -14,11 +14,11 @@ public partial class OverloadedMachine
 {
     public List<string> CallLog { get; } = [];
 
-    [State(OverloadState.B, OnEntry = (OnEntryB))]
+    [State(OverloadState.B, OnEntry = nameof(OnEntryB))]
     private void ConfigureStates() { }
 
     [Transition(OverloadState.A, OverloadTrigger.Go, OverloadState.B,
-        Guard = (CanGo), Action = (DoTransition))]
+        Guard = nameof(CanGo), Action = nameof(DoTransition))]
     private void Configure() { }
 
     // Parameterless versions

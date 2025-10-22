@@ -15,7 +15,7 @@ public partial class InitialPayloadMachine
     public bool InitialEntryCalledParameterless { get; private set; }
     public bool InitialEntryCalledWithPayload { get; private set; }
 
-    [State(InitialPayloadState.Start, OnEntry = (OnEntryStart))]
+    [State(InitialPayloadState.Start, OnEntry = nameof(OnEntryStart))]
     private void ConfigureStates() { }
 
     [Transition(InitialPayloadState.Start, InitialPayloadTrigger.Go, InitialPayloadState.Next)]

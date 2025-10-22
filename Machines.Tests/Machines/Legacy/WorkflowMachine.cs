@@ -12,9 +12,9 @@ public partial class WorkflowMachine
     public string ApprovedBy { get; private set; }
     public string Result { get; private set; }
 
-    [State(WorkflowState.Initialized, OnEntry = (OnInitialized))]
-    [State(WorkflowState.Approved, OnEntry = (OnApproved))]
-    [State(WorkflowState.Completed, OnEntry = (OnCompleted))]
+    [State(WorkflowState.Initialized, OnEntry = nameof(OnInitialized))]
+    [State(WorkflowState.Approved, OnEntry = nameof(OnApproved))]
+    [State(WorkflowState.Completed, OnEntry = nameof(OnCompleted))]
     private void ConfigureStates() { }
 
     [Transition(WorkflowState.Created, WorkflowTrigger.Initialize, WorkflowState.Initialized)]

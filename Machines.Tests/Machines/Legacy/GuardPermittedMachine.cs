@@ -9,6 +9,6 @@ public partial class GuardPermittedMachine
     private bool CanRun() => Allow;
 
     [Transition(GuardPermittedState.Idle, GuardPermittedTrigger.Run, GuardPermittedState.Done,
-        Guard = (CanRun))]
+        Guard = nameof(CanRun))]
     private void Configure() { }
 }

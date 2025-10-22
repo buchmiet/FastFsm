@@ -16,11 +16,11 @@ public partial class MultiPayloadMachine
     public string LastErrorCode { get; private set; }
 
     [Transition(MultiState.Initial, MultiTrigger.Configure, MultiState.Configured,
-        Action = (ApplyConfiguration))]
+        Action = nameof(ApplyConfiguration))]
     [Transition(MultiState.Configured, MultiTrigger.Process, MultiState.Processing,
-        Action = (ProcessData))]
+        Action = nameof(ProcessData))]
     [Transition(MultiState.Processing, MultiTrigger.Error, MultiState.Failed,
-        Action = (HandleError))]
+        Action = nameof(HandleError))]
     private void Configure() { }
 
     private void ApplyConfiguration(ConfigPayload config)

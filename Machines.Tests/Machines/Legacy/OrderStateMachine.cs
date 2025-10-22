@@ -13,7 +13,7 @@ public partial class OrderStateMachine
     public decimal LastProcessedAmount { get; private set; }
 
     [Transition(OrderState.New, OrderTrigger.Submit, OrderState.Submitted,
-        Action = (ProcessSubmission))]
+        Action = nameof(ProcessSubmission))]
     private void Configure() { }
 
     private void ProcessSubmission(OrderData order)

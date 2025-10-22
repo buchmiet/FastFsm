@@ -6,8 +6,8 @@ public partial class InitialStateMachine
 {
     public List<string> EventLog { get; } = [];
 
-    [State(InitialState.Start, OnEntry = (OnEntryStart), OnExit = (OnExitStart))]
-    [State(InitialState.Next, OnEntry = (OnEntryNext))]
+    [State(InitialState.Start, OnEntry = nameof(OnEntryStart), OnExit = nameof(OnExitStart))]
+    [State(InitialState.Next, OnEntry = nameof(OnEntryNext))]
     private void ConfigureStates() { }
 
     [Transition(InitialState.Start, InitialTrigger.Go, InitialState.Next)]
