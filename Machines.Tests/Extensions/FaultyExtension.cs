@@ -2,9 +2,8 @@ using FastFsm.Contracts;
 
 namespace Machines.Tests.Extensions
 {
-    public partial class ExtensionsStandaloneTests
-    {
-        private class FaultyExtension : IStateMachineExtension
+
+        public class FaultyExtension : IStateMachineExtension
         {
             public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
             {
@@ -40,4 +39,4 @@ namespace Machines.Tests.Extensions
 
 
 
-}
+

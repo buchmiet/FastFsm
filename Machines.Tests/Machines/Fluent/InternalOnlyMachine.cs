@@ -3,7 +3,7 @@
 namespace Machines.Tests.Machines.Fluent;
 
 [StateMachine(typeof(InternalOnlyState), typeof(InternalOnlyTrigger))]
-public partial class InternalOnlyMachineFluent
+public partial class InternalOnlyMachine
 {
     private int _actionCount;
     public int ActionCount => _actionCount;

@@ -8,7 +8,7 @@ namespace FastFsm.Logging.Tests;
 public partial class PureStateMachineFluent
 {
     private static void Configure() => FSM
-        .State(TestState.Initial).On(TestTrigger.Start).GoTo(TestState.Processing).And()
+        .State(TestState.Initial).On(TestTrigger.Start).GoTo(TestState.Processing)
         .State(TestState.Processing).On(TestTrigger.Complete).GoTo(TestState.Completed);
 }
 
@@ -21,7 +21,7 @@ public partial class BasicStateMachineFluent
     public int ActionCallCount { get; private set; }
     public bool GuardResult { get; set; } = true;
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(TestState.Initial)
             .OnExit(nameof(OnInitialExit))
             .On(TestTrigger.Start)
@@ -39,7 +39,7 @@ public partial class BasicStateMachineFluent
 
 // WithPayload variant - Fluent version
 [StateMachine(typeof(TestState), typeof(TestTrigger), DefaultPayloadType = typeof(TestPayload))]
-public partial class PayloadStateMachineFluent
+public partial class PayloadStateMachine
 {
     public TestPayload? LastPayload { get; private set; }
     public bool GuardResult { get; set; } = true;

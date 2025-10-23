@@ -3,6 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using FastFsm.Contracts;
+using Machines.Tests.Extensions;
+using Machines.Tests.Machines;
+using Machines.Tests.Machines.Legacy;
+using Machines.Tests.Payloads;
 using Shouldly;
 using Xunit;
 using Xunit.Abstractions;
@@ -139,7 +143,7 @@ namespace FastFsm.Tests.Integration
         public void PayloadMap_ShouldPointTo_CompileTimeTypes()
         {
             // 1. Utwórz instancję (konstruktor NIE wywołuje TryFire)
-            var machine = new FastFsm.Tests.Machines.Legacy.FullMultiPayloadMachine(PhysicalOrderState.New, extensions: null);
+            var machine = new FullMultiPayloadMachine(PhysicalOrderState.New, extensions: null);
             machine.Start();
 
             // 2. Wyciągnij prywatne, statyczne pole _payloadMap

@@ -1,10 +1,10 @@
 using System.Collections.Generic;
-using FastFsm.Tests.Extensions;
-using FastFsm.Tests.Machines;
-using FastFsm.Tests.Machines.Legacy;
+using Machines.Tests.Extensions;
+using Machines.Tests.Machines;
+using Machines.Tests.Machines.Legacy;
 using Xunit;
 
-namespace FastFsm.Tests.Features.Extensions;
+namespace FastFsm.Tests.Extensions;
 
 public class ExtensionsPermittedTriggersTests
 {
@@ -13,7 +13,7 @@ public class ExtensionsPermittedTriggersTests
     {
         var log = new List<string>();
         var ext = new RecordingExtension(log);
-        var machine = new Machines.Legacy.HookOrderMachine(HookOrderState.A, new[] { ext });
+        var machine = new HookOrderMachine(HookOrderState.A, new[] { ext });
         machine.Start();
 
         var permitted = machine.GetPermittedTriggers();
@@ -28,7 +28,7 @@ public class ExtensionsPermittedTriggersTests
     {
         var log = new List<string>();
         var ext = new RecordingExtension(log);
-        var machine = new Machines.Legacy.HookOrderMachine(HookOrderState.A, new[] { ext });
+        var machine = new HookOrderMachine(HookOrderState.A, new[] { ext });
         machine.Start();
 
         var canFire = machine.CanFire(HookOrderTrigger.Next);

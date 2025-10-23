@@ -1,4 +1,5 @@
 using Abstractions.Fluent;
+using Abstractions.Attributes;
 
 namespace Machines.Tests.Machines.Legacy;
 
@@ -9,16 +10,16 @@ public partial class BasicBenchmarkMachineFluentAPI
 
     private void Configure() => FSM
         .State(BenchmarkState.A)
-        .OnEntry((IncrementCounter))
+        .OnEntry(nameof(IncrementCounter))
         .On(BenchmarkTrigger.Next).GoTo(BenchmarkState.B)
         .State(BenchmarkState.B)
-        .OnEntry((IncrementCounter))
+        .OnEntry(nameof(IncrementCounter))
         .On(BenchmarkTrigger.Next).GoTo(BenchmarkState.C)
         .State(BenchmarkState.C)
-        .OnEntry((IncrementCounter))
+        .OnEntry(nameof(IncrementCounter))
         .On(BenchmarkTrigger.Next).GoTo(BenchmarkState.D)
         .State(BenchmarkState.D)
-        .OnEntry((IncrementCounter))
+        .OnEntry(nameof(IncrementCounter))
         .On(BenchmarkTrigger.Next).GoTo(BenchmarkState.A);
 
     private void IncrementCounter() => _counter++;

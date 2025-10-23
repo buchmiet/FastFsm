@@ -6,7 +6,7 @@ namespace Machines.Tests.Machines.Fluent;
 // Full variant machine with single payload type and extensions
 [StateMachine(typeof(OrderState), typeof(OrderTrigger), GenerateExtensibleVersion = true)]
 [PayloadType(typeof(OrderPayload))]
-public partial class FullOrderMachineFluent
+public partial class FullOrderMachine
 {
     public decimal TotalProcessed { get; private set; }
     public List<int> ProcessedOrderIds { get; } = new();

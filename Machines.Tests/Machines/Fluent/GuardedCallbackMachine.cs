@@ -3,7 +3,7 @@ using Abstractions.Fluent;
 namespace Machines.Tests.Machines.Fluent;
 
 [StateMachine(typeof(GuardedState), typeof(GuardedTrigger))]
-public partial class GuardedCallbackMachineFluent
+public partial class GuardedCallbackMachine
 {
     public bool AllowTransition { get; set; }
     public List<string> EventLog { get; } = [];

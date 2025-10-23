@@ -3,7 +3,7 @@
 namespace Machines.Tests.Machines.Fluent;
 
 [StateMachine(typeof(CallbackState), typeof(CallbackTrigger))]
-public partial class CallbackOrderMachineFluent
+public partial class CallbackOrderMachine
 {
     public List<string> ExecutionLog { get; } = [];
 

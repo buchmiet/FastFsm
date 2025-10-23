@@ -1,4 +1,4 @@
-// FastFsm.Tests/Machines/FullMultiPayloadMachineFluent.cs
+// FastFsm.Tests/Machines/FullMultiPayloadMachine.cs
 
 
 using Abstractions.Fluent;
@@ -10,7 +10,7 @@ namespace Machines.Tests.Machines.Fluent;
 [PayloadType(OrderTrigger.Process, typeof(OrderPayload))]
 [PayloadType(OrderTrigger.Pay, typeof(PaymentPayload))]
 [PayloadType(OrderTrigger.Ship, typeof(ShippingPayload))]
-public partial class FullMultiPayloadMachineFluent
+public partial class FullMultiPayloadMachine
 {
     public List<int> ProcessedOrderIds { get; } = new();
     public decimal TotalProcessed { get; private set; }

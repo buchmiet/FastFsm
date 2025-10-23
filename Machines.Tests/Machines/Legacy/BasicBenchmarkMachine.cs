@@ -1,3 +1,4 @@
+using Abstractions.Attributes;
 ﻿namespace Machines.Tests.Machines.Legacy;
 
 [StateMachine(typeof(BenchmarkState), typeof(BenchmarkTrigger))]

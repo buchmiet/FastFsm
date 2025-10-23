@@ -1,9 +1,8 @@
+using Machines.Tests.Machines;
+using Machines.Tests.Machines.Legacy;
 using Xunit;
-using Abstractions.Attributes;
-using FastFsm.Tests.Machines;
-using FastFsm.Tests.Machines.Legacy;
 
-namespace FastFsm.Tests.Features.Hsm.CompileTime;
+namespace FastFsm.Tests.Hsm.CompileTime;
 
 /// <summary>
 /// HSM Parsing Compilation Tests

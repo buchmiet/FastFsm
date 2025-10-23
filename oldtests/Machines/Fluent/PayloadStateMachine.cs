@@ -6,7 +6,7 @@ namespace FastFsm.Tests.Machines.Fluent;
 
 // WithPayload variant
 [StateMachine(typeof(TestState), typeof(TestTrigger), DefaultPayloadType = typeof(TestPayload))]
-public partial class PayloadStateMachineFluent
+public partial class PayloadStateMachine
 {
     public TestPayload? LastPayload { get; private set; }
     public bool GuardResult { get; set; } = true;

@@ -5,7 +5,7 @@ using FastFsm.Tests.Machines.Legacy;
 namespace FastFsm.Tests.Machines.Fluent;
 
 [StateMachine(typeof(InitialState), typeof(InitialTrigger))]
-public partial class InitialStateMachineFluent
+public partial class InitialStateMachine
 {
     public List<string> EventLog { get; } = [];
 

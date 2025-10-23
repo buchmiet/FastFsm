@@ -1,3 +1,4 @@
+using Abstractions.Attributes;
 ﻿using Abstractions.Fluent;
 
 namespace Machines.Tests.Machines.Legacy;
@@ -9,8 +10,8 @@ public partial class SelfTransitionMachine
 
     private void Configure() => FSM
         .State(SelfState.Active)
-        .OnEntry(OnEntryActive).OnExit(OnExitActive)
-        .On(SelfTrigger.Refresh).Action(RefreshAction).GoTo(SelfState.Active);
+        .OnEntry(nameof(OnEntryActive)).OnExit(nameof(OnExitActive))
+        .On(SelfTrigger.Refresh).Action(nameof(RefreshAction)).GoTo(SelfState.Active);
 
     private void OnEntryActive() => EventLog.Add("OnEntry-Active");
     private void OnExitActive() => EventLog.Add("OnExit-Active");

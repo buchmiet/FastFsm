@@ -4,7 +4,7 @@
 namespace FastFsm.Tests.Machines.Fluent;
 
 [StateMachine(typeof(NumericState), typeof(NumericTrigger))]
-public partial class NumericMachineFluent
+public partial class NumericMachine
 {
     private void Configure() => FSM
         .State(NumericState._1Start)

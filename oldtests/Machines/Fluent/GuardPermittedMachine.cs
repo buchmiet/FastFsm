@@ -3,7 +3,7 @@ using Abstractions.Fluent;
 namespace FastFsm.Tests.Machines.Fluent;
 
 [StateMachine(typeof(State), typeof(Trigger))]
-public partial class GuardPermittedMachineFluent
+public partial class GuardPermittedMachine
 {
     public bool Allow { get; set; }
 

@@ -3,7 +3,7 @@ using Abstractions.Fluent;
 namespace Machines.Tests.Machines.Fluent;
 
 [StateMachine(typeof(ComplexCallbackState), typeof(ComplexCallbackTrigger))]
-public partial class ComplexCallbackMachineFluent
+public partial class ComplexCallbackMachine
 {
     public List<string> EventSequence { get; } = [];
     public bool ResourcesCleaned { get; private set; }

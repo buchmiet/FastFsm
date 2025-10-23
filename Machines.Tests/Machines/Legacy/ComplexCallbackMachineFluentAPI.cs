@@ -1,4 +1,5 @@
 using Abstractions.Fluent;
+using Abstractions.Attributes;
 
 namespace Machines.Tests.Machines.Legacy;
 

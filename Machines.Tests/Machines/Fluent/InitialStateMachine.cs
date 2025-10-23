@@ -3,7 +3,7 @@ using Abstractions.Fluent;
 namespace Machines.Tests.Machines.Fluent;
 
 [StateMachine(typeof(InitialState), typeof(InitialTrigger))]
-public partial class InitialStateMachineFluent
+public partial class InitialStateMachine
 {
     public List<string> EventLog { get; } = [];
 

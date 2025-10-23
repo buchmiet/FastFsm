@@ -3,7 +3,7 @@
 namespace Machines.Tests.Machines.Fluent;
 
 [StateMachine(typeof(ConflictState), typeof(ConflictTrigger))]
-public partial class ConflictingNamesMachineFluent
+public partial class ConflictingNamesMachine
 {
     private void Configure() => FSM
         .State(ConflictState.A)

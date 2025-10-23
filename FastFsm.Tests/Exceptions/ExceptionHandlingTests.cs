@@ -1,15 +1,9 @@
-﻿using FastFsm.Contracts;
-using FastFsm.Runtime;
-
-using System.Linq;
-using FastFsm.Tests.Extensions;
-using FastFsm.Tests.Features.Exceptions;
-using FastFsm.Tests.Machines;
+﻿using Machines.Tests.Extensions;
+using Machines.Tests.Machines;
+using Machines.Tests.Machines.Legacy;
 using Xunit;
-using FastFsm.Tests.Machines.Legacy;
 
-
-namespace FastFsm.Tests.Features.Exceptions
+namespace FastFsm.Tests.Exceptions
 {
     /// <summary>
     /// Zestaw testów weryfikujących poprawną obsługę wyjątków w rozszerzeniach.
@@ -27,7 +21,7 @@ namespace FastFsm.Tests.Features.Exceptions
             var throwing = new ThrowingExtension();
             var counting = new CountingExtension();
             // Tworzymy maszynę, przekazując rozszerzenia bezpośrednio do konstruktora
-            var machine = new Machines.Legacy.TestMachine(State.Initial, [throwing, counting]);
+            var machine = new TestMachine(State.Initial, [throwing, counting]);
             machine.Start();
 
             // Act

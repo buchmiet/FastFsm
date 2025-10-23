@@ -4,7 +4,7 @@ using Abstractions.Fluent;
 namespace FastFsm.Tests.Machines.Fluent;
 
 [StateMachine(typeof(InternalState), typeof(InternalTrigger))]
-public partial class InternalTransitionMachineFluent
+public partial class InternalTransitionMachine
 {
     public List<string> EventLog { get; } = [];
 

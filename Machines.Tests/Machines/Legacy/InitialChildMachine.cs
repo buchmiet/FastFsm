@@ -1,3 +1,4 @@
+using Abstractions.Attributes;
 namespace Machines.Tests.Machines.Legacy;
 
 [Abstractions.Attributes.StateMachine(typeof(InitialChildMachine_S), typeof(InitialChildMachine_T), EnableHierarchy = true)]

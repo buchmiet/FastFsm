@@ -5,7 +5,7 @@ using FastFsm.Tests.Machines.Legacy;
 namespace FastFsm.Tests.Machines.Fluent;
 
 [StateMachine(typeof(ExceptionState), typeof(ExceptionTrigger))]
-public partial class ExceptionCallbackMachineFluent
+public partial class ExceptionCallbackMachine
 {
     public bool ThrowInOnExit { get; set; }
     public bool ThrowInOnEntry { get; set; }

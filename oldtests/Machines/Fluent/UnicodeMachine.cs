@@ -4,7 +4,7 @@ using FastFsm.Tests.Machines.Legacy;
 namespace FastFsm.Tests.Machines.Fluent;
 
 [StateMachine(typeof(UnicodeState), typeof(UnicodeTrigger))]
-public partial class UnicodeMachineFluent
+public partial class UnicodeMachine
 {
     private void Configure() => FSM
         .State(UnicodeState.αlpha)

@@ -97,34 +97,7 @@ namespace FastFsm.Logging.Tests
         }
     }
 
-    public enum HState { A, A1, A2, B, B1 }
-    public enum HTrigger { Refresh, MoveToA2, Switch, Back }
 
-    [StateMachine(typeof(HState), typeof(HTrigger), EnableHierarchy = true)]
-    public partial class HsmMachine
-    {
-        public int Counter { get; private set; }
 
-        // Define composite states and hierarchy
-        [State(HState.A, History = HistoryMode.Shallow)]
-        [State(HState.A1, Parent = HState.A, IsInitial = true)]
-        [State(HState.A2, Parent = HState.A)]
-        [State(HState.B)]
-        [State(HState.B1, Parent = HState.B, IsInitial = true)]
-        private void DefineStates() { }
-
-        // Internal transition defined on ancestor A; should be matched when in A1/A2
-        [InternalTransition(HState.A, HTrigger.Refresh, nameof(OnAncestorRefresh))]
-        private void DefineAncestorInternal() { }
-
-        private void OnAncestorRefresh() => Counter++;
-
-        // External transitions
-        private bool Always() => true;
-
-        [Transition(HState.A1, HTrigger.MoveToA2, HState.A2, Guard = nameof(Always))]
-        [Transition(HState.A, HTrigger.Switch, HState.B, Guard = nameof(Always))]
-        [Transition(HState.B, HTrigger.Back, HState.A, Guard = nameof(Always))]
-        private void DefineTransitions() { }
-    }
+  
 }

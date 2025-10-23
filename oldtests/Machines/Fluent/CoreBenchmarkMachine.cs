@@ -4,7 +4,7 @@ using FastFsm.Tests.Machines.Legacy;
 namespace FastFsm.Tests.Machines.Fluent;
 
 [StateMachine(typeof(BenchmarkState), typeof(BenchmarkTrigger))]
-public partial class CoreBenchmarkMachineFluent
+public partial class CoreBenchmarkMachine
 {
     private void Configure() => FSM
         .State<BenchmarkState>(BenchmarkState.A)

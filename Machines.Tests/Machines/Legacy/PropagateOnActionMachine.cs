@@ -1,4 +1,5 @@
 using FastFsm.Exceptions;
+using Abstractions.Attributes;
 
 namespace Machines.Tests.Machines.Legacy;
 
