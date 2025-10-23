@@ -4,7 +4,7 @@ using Abstractions.Fluent;
 namespace FastFsm.Tests.Machines.Fluent;
 
 [StateMachine(typeof(SelfState), typeof(SelfTrigger))]
-public partial class SelfTransitionMachineFluent
+public partial class SelfTransitionMachine
 {
     public List<string> EventLog { get; } = [];
 

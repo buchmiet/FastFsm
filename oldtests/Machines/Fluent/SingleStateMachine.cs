@@ -3,7 +3,7 @@
 namespace FastFsm.Tests.Machines.Fluent;
 
 [StateMachine(typeof(SingleState), typeof(SingleTrigger))]
-public partial class SingleStateMachineFluent
+public partial class SingleStateMachine
 {
     private int _actionCount;
     public int ActionCount => _actionCount;

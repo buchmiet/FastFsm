@@ -1,19 +1,15 @@
-﻿using System;
-using Abstractions.Attributes;
-using FastFsm.Exceptions;
-using FastFsm.Exceptions;
-using FastFsm.Tests.Machines;
+﻿using Machines.Tests.Machines;
+using Machines.Tests.Machines.Legacy;
 using Xunit;
-using FastFsm.Tests.Machines.Legacy;
 
-namespace FastFsm.Tests.Features.Exceptions;
+namespace FastFsm.Tests.Exceptions;
 
 public class ExceptionDirective_Continue_Action_Tests
 {
     [Fact]
     public void ActionThrow_Continue_Swallows_StateChanged()
     {
-        var m = new Machines.Legacy.ContinueOnActionMachine(ASState.A);
+        var m = new ContinueOnActionMachine(ASState.A);
         m.Start();
 
         Assert.Equal(ASState.A, m.CurrentState);

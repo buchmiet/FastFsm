@@ -3,7 +3,7 @@
 namespace FastFsm.Tests.Machines.Fluent;
 
 [StateMachine(typeof(LongNameState), typeof(LongNameTrigger))]
-public partial class LongNameMachineFluent
+public partial class LongNameMachine
 {
     private void Configure() => FSM
         .State(LongNameState.ThisIsAnExtremelyLongStateNameThatShouldStillWorkCorrectlyInTheGeneratedCode_Part1_Part2_Part3_Part4_Part5)

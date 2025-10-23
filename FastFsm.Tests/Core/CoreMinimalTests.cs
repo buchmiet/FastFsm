@@ -1,8 +1,8 @@
 using System;
 using Shouldly;
-using FastFsm.Tests.Machines.Legacy;
-using FastFsm.Tests.Features.Performance;
-using FastFsm.Tests.Machines;
+
+using Machines.Tests.Machines;
+using Machines.Tests.Machines.Legacy;
 using Xunit;
 
 namespace FastFsm.Tests.Core

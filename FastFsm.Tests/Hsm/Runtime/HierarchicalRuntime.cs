@@ -1,13 +1,10 @@
-﻿using Abstractions.Attributes;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using FastFsm.Tests.Machines;
+using Machines.Tests.Machines;
+using Machines.Tests.Machines.Legacy;
 using Xunit;
-using FastFsm.Tests.Machines.Legacy;
 
-namespace FastFsm.Tests.Features.Hsm.Runtime
+namespace FastFsm.Tests.Hsm.Runtime
 {
     #region 1) Auto‑descend to initial child + basic parent/child wiring
     public partial class InitialChildTests

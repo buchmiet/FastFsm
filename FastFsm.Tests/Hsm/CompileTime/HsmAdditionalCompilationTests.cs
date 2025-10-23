@@ -1,9 +1,8 @@
+using Machines.Tests.Machines;
+using Machines.Tests.Machines.Legacy;
 using Xunit;
-using Abstractions.Attributes;
-using FastFsm.Tests.Machines;
-using FastFsm.Tests.Machines.Legacy;
 
-namespace FastFsm.Tests.Features.Hsm.CompileTime
+namespace FastFsm.Tests.Hsm.CompileTime
 {
     /// <summary>
     /// Additional compilation-only tests to ensure the generator accepts
@@ -22,7 +21,7 @@ namespace FastFsm.Tests.Features.Hsm.CompileTime
             Assert.Equal(HP_State.Root, m.CurrentState); // Before Start, should be at Root
 
             // Basic API usage with payload (compile-time check)
-            var payload = new PayloadData { Value = 42 };
+            var payload = new Machines.Tests.Machines.Legacy.PayloadData { Value = 42 };
             m.Start();
             Assert.Equal(HP_State.ChildA, m.CurrentState); // After Start, should descend to initial child
 

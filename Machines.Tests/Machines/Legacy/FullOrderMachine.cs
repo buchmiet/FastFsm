@@ -1,3 +1,4 @@
+using Abstractions.Attributes;
 ﻿using Machines.Tests.Payloads;
 
 namespace Machines.Tests.Machines.Legacy;

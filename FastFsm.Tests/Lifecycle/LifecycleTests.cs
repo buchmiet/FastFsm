@@ -1,14 +1,9 @@
-﻿using FastFsm.Tests.Machines.Legacy;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FastFsm.Tests.Machines;
+﻿using System;
+using Machines.Tests.Machines;
+using Machines.Tests.Machines.Legacy;
 using Xunit;
-using static FastFsm.Tests.Features.Performance.BenchmarkTests;
 
-namespace FastFsm.Tests.Features.Lifecycle
+namespace FastFsm.Tests.Lifecycle
 {
     public class LifecycleTests
     {

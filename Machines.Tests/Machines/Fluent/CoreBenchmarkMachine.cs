@@ -3,7 +3,7 @@ using Abstractions.Fluent;
 namespace Machines.Tests.Machines.Fluent;
 
 [StateMachine(typeof(BenchmarkState), typeof(BenchmarkTrigger))]
-public partial class CoreBenchmarkMachineFluent
+public partial class CoreBenchmarkMachine
 {
     private void Configure() => FSM
         .State<BenchmarkState>(BenchmarkState.A)

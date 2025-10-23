@@ -1,3 +1,4 @@
+using Abstractions.Attributes;
 ﻿// FastFsm.Tests/Machines/FullMultiPayloadMachine.cs
 
 using Machines.Tests.Payloads;

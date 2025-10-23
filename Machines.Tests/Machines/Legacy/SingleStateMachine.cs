@@ -1,3 +1,4 @@
+using Abstractions.Attributes;
 ﻿using Abstractions.Fluent;
 
 namespace Machines.Tests.Machines.Legacy;
@@ -10,7 +11,7 @@ public partial class SingleStateMachine
 
     private void Configure() => FSM
         .State(SingleState.Only)
-        .On(SingleTrigger.Loop).Action(IncrementCounter).GoTo(SingleState.Only);
+        .On(SingleTrigger.Loop).Action(nameof(IncrementCounter)).GoTo(SingleState.Only);
 
     private void IncrementCounter() => _actionCount++;
 }

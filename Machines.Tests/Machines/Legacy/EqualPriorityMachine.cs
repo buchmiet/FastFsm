@@ -1,3 +1,4 @@
+using Abstractions.Attributes;
 namespace Machines.Tests.Machines.Legacy;
 
 [StateMachine(typeof(EP_State), typeof(EP_Trigger), EnableHierarchy = true)]

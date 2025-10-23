@@ -4,7 +4,7 @@ using FastFsm.Tests.Machines.Legacy;
 namespace FastFsm.Tests.Machines.Fluent;
 
 [StateMachine(typeof(BenchmarkState), typeof(BenchmarkTrigger))]
-public partial class BasicBenchmarkMachineFluent
+public partial class BasicBenchmarkMachine
 {
     private int _counter;
 

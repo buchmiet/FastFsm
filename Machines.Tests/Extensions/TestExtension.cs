@@ -1,6 +1,6 @@
 ﻿using FastFsm.Contracts;
 
-namespace FastFsm.Logging.Tests
+namespace Machines.Tests.Extensions
 {
     /// <summary>
     /// Test extension that can throw exceptions

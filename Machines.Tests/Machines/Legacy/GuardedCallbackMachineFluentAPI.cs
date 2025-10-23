@@ -1,4 +1,5 @@
 using Abstractions.Fluent;
+using Abstractions.Attributes;
 
 namespace Machines.Tests.Machines.Legacy;
 
@@ -8,15 +9,15 @@ public partial class GuardedCallbackMachineFluentAPI
     public bool AllowTransition { get; set; }
     public List<string> EventLog { get; } = [];
 
-    private  void Configure() => FSM
+    private void Configure() => FSM
         .State(GuardedState.A)
-        .OnEntry((OnEntryA))
-        .OnExit((OnExitA))
+        .OnEntry(nameof(OnEntryA))
+        .OnExit(nameof(OnExitA))
         .On(GuardedTrigger.Go)
-        .Guard((CanTransition))
+        .Guard(nameof(CanTransition))
         .GoTo(GuardedState.B)
         .State(GuardedState.B)
-        .OnEntry((OnEntryB));
+        .OnEntry(nameof(OnEntryB));
 
     private bool CanTransition() => AllowTransition;
     private void OnEntryA() => EventLog.Add("OnEntry-A");

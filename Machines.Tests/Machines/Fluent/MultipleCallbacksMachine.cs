@@ -3,7 +3,7 @@ using Abstractions.Fluent;
 namespace Machines.Tests.Machines.Fluent;
 
 [StateMachine(typeof(MultiState), typeof(MultiTrigger))]
-public partial class MultipleCallbacksMachineFluent
+public partial class MultipleCallbacksMachine
 {
     public List<string> Log { get; } = [];
 

@@ -1,9 +1,8 @@
+using Machines.Tests.Machines;
+using Machines.Tests.Machines.Legacy;
 using Xunit;
-using FastFsm.Tests.Features.Hsm.CompileTime;
-using FastFsm.Tests.Machines;
-using FastFsm.Tests.Machines.Legacy;
 
-namespace FastFsm.Tests.Features.Hsm.Runtime
+namespace FastFsm.Tests.Hsm.Runtime
 {
     public class HsmIsInHierarchyTests
     {

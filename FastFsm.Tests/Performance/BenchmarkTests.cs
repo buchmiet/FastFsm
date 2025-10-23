@@ -2,12 +2,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
-using FastFsm.Tests.Machines;
-using FastFsm.Tests.Machines.Legacy;
+using Machines.Tests.Machines;
+using Machines.Tests.Machines.Legacy;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace FastFsm.Tests.Features.Performance
+namespace FastFsm.Tests.Performance
 {
     public class BenchmarkTests(ITestOutputHelper output)
     {

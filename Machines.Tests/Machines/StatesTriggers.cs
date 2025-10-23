@@ -374,3 +374,8 @@ public enum InheritanceMachine_T { Enter, Next, Leave }
 public enum PhysicalOrderState { New, Processing, Paid, Shipped, Delivered, Cancelled }
 public enum PhysicalOrderTrigger { Process, Pay, Ship, Deliver, Cancel, Refund }
 
+public enum HState { A, A1, A2, B, B1 }
+public enum HTrigger { Refresh, MoveToA2, Switch, Back }
+
+public enum TestInitialState { Ready, Working, Done }
+public enum TestInitialTrigger { Go, Stop }

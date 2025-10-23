@@ -1,3 +1,4 @@
+using Abstractions.Attributes;
 ﻿namespace Machines.Tests.Machines.Legacy;
 
 [StateMachine(typeof(GuardedState), typeof(GuardedTrigger))]
@@ -6,12 +7,12 @@ public partial class GuardedCallbackMachine
     public bool AllowTransition { get; set; }
     public List<string> EventLog { get; } = [];
 
-    [State(GuardedState.A, OnEntry = (OnEntryA), OnExit = (OnExitA))]
-    [State(GuardedState.B, OnEntry = (OnEntryB))]
+    [State(GuardedState.A, OnEntry = nameof(OnEntryA), OnExit = nameof(OnExitA))]
+    [State(GuardedState.B, OnEntry = nameof(OnEntryB))]
     private void ConfigureStates() { }
 
     [Transition(GuardedState.A, GuardedTrigger.Go, GuardedState.B,
-        Guard = (CanTransition))]
+        Guard = nameof(CanTransition))]
     private void Configure() { }
 
     private bool CanTransition() => AllowTransition;

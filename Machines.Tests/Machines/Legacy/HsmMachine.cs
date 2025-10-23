@@ -1,16 +1,13 @@
-using Abstractions.Fluent;
-using Abstractions.Attributes;
-
-namespace FastFsm.Logging.Tests;
+namespace Machines.Tests.Machines.Legacy;
 
 // HSM machine - Fluent version
 [StateMachine(typeof(HState), typeof(HTrigger), EnableHierarchy = true)]
-public partial class HsmMachineFluent
+public partial class HsmMachine
 {
     public int Counter { get; private set; }
 
     // Define composite states and hierarchy
-    [State(HState.A, History = Abstractions.Attributes.HistoryMode.Shallow)]
+    [State(HState.A, History = HistoryMode.Shallow)]
     [State(HState.A1, Parent = HState.A, IsInitial = true)]
     [State(HState.A2, Parent = HState.A)]
     [State(HState.B)]

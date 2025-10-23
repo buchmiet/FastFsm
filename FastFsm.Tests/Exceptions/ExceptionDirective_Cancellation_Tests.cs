@@ -1,20 +1,17 @@
 ﻿using System;
-using System.Threading;
 using System.Threading.Tasks;
-using Abstractions.Attributes;
-using FastFsm.Exceptions;
-using FastFsm.Tests.Machines;
+using Machines.Tests.Machines;
+using Machines.Tests.Machines.Legacy;
 using Xunit;
-using FastFsm.Tests.Machines.Legacy;
 
-namespace FastFsm.Tests.Features.Exceptions;
+namespace FastFsm.Tests.Exceptions;
 
 public class ExceptionDirective_Cancellation_Tests
 {
     [Fact]
     public async Task OnEntry_OCE_AlwaysPropagates_EvenIfHandlerReturnsContinue()
     {
-        var m = new Machines.Legacy.AsyncOceOnEntryMachine(CSState.A) { ThrowOceOnEntryB = true };
+        var m = new AsyncOceOnEntryMachine(CSState.A) { ThrowOceOnEntryB = true };
         await m.StartAsync();
 
         await Assert.ThrowsAsync<OperationCanceledException>(async () =>

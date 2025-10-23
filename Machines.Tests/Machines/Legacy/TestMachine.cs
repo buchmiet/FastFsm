@@ -1,3 +1,4 @@
+using Abstractions.Attributes;
 namespace Machines.Tests.Machines.Legacy;
 
 [StateMachine(typeof(State), typeof(Trigger), GenerateExtensibleVersion = true)]

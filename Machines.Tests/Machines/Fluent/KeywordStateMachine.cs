@@ -3,7 +3,7 @@
 namespace Machines.Tests.Machines.Fluent;
 
 [StateMachine(typeof(KeywordState), typeof(KeywordTrigger))]
-public partial class KeywordStateMachineFluent
+public partial class KeywordStateMachine
 {
     private void Configure() => FSM
         .State(KeywordState.@class)

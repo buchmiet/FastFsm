@@ -4,7 +4,7 @@ using Abstractions.Fluent;
 namespace FastFsm.Tests.Machines.Fluent;
 
 [StateMachine(typeof(MultiState), typeof(MultiTrigger))]
-public partial class MultipleCallbacksMachineFluent
+public partial class MultipleCallbacksMachine
 {
     public List<string> Log { get; } = [];
 

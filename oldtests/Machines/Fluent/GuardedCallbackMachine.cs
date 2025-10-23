@@ -5,7 +5,7 @@ using FastFsm.Tests.Machines.Legacy;
 namespace FastFsm.Tests.Machines.Fluent;
 
 [StateMachine(typeof(GuardedState), typeof(GuardedTrigger))]
-public partial class GuardedCallbackMachineFluent
+public partial class GuardedCallbackMachine
 {
     public bool AllowTransition { get; set; }
     public List<string> EventLog { get; } = [];

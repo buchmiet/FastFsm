@@ -3,7 +3,7 @@ using Abstractions.Fluent;
 namespace Machines.Tests.Machines.Fluent;
 
 [StateMachine(typeof(ExceptionState), typeof(ExceptionTrigger))]
-public partial class ExceptionCallbackMachineFluent
+public partial class ExceptionCallbackMachine
 {
     public bool ThrowInOnExit { get; set; }
     public bool ThrowInOnEntry { get; set; }

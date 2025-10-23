@@ -19,7 +19,7 @@ public partial class InitialOnEntryStateMachineActionsFluent
 [PayloadType(OrderTriggerPayload.Process, typeof(OrderPayload))]
 [PayloadType(OrderTriggerPayload.Pay, typeof(PaymentPayload))]
 [PayloadType(OrderTriggerPayload.Ship, typeof(ShippingPayload))]
-public partial class FullMultiPayloadMachineFluent
+public partial class FullMultiPayloadMachine
 {
     private static void Configure() => FSM
         .State(OrderStatePayload.New)
@@ -42,4 +42,3 @@ public partial class FullMultiPayloadMachineFluent
     private void HandleShipping(ShippingPayload shipping) { }
 }
 
-// Payload classes are defined in LoggingIntegrationTests.cs

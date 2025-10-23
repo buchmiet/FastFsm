@@ -1,3 +1,4 @@
+using Abstractions.Attributes;
 namespace Machines.Tests.Machines.Legacy;
 
 [StateMachine(typeof(DeepHistoryMachine_S), typeof(DeepHistoryMachine_T), EnableHierarchy = true)]

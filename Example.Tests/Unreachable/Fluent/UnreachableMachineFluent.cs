@@ -4,7 +4,7 @@ using Abstractions.Fluent;
 namespace Example.Tests.Unreachable.Fluent;
 
 [StateMachine(typeof(UnreachableState), typeof(UnreachableTrigger))]
-public partial class UnreachableMachineFluent
+public partial class UnreachableMachine
 {
     private void Configure() => FSM
         .State(UnreachableState.Start).IsInitial()

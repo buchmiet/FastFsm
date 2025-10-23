@@ -1,3 +1,4 @@
+using Abstractions.Attributes;
 namespace Machines.Tests.Machines.Legacy;
 
 public class PayloadData { public int Value { get; set; } }

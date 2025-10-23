@@ -26,7 +26,7 @@ public class UnreachableMachineTests
     [Fact]
     public void Fluent_StateMachine_WithUnreachableStates_ShouldStillFunction()
     {
-        var machine = new UnreachableMachineFluent(UnreachableState.Start);
+        var machine = new UnreachableMachine(UnreachableState.Start);
         machine.Start();
 
         Assert.Equal(UnreachableState.Start, machine.CurrentState);

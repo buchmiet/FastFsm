@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using FastFsm.Contracts;
-using FastFsm.Tests.Extensions;
-using FastFsm.Tests.Machines;
-using FastFsm.Tests.Machines.Legacy;
+using Machines.Tests.Extensions;
+using Machines.Tests.Machines;
+using Machines.Tests.Machines.Legacy;
 using Xunit;
 
-namespace FastFsm.Tests.Features.Exceptions;
+namespace FastFsm.Tests.Exceptions;
 
 /// <summary>
 /// Sprawdza, że wyjątek w akcji nie zmienia stanu i prawidłowo ustawia wynik.
@@ -18,7 +16,7 @@ public class ActionExceptionTests
     {
         // ── arrange ───────────────────────────────────────────────────────────
         var ext = new ResultCapturingExtension();
-        var machine = new Machines.Legacy.ThrowingActionMachine(ThrowingActionMachine_TestState.A, [ext]);
+        var machine = new ThrowingActionMachine(ThrowingActionMachine_TestState.A, [ext]);
         machine.Start();
 
         // sanity – przed przejściem

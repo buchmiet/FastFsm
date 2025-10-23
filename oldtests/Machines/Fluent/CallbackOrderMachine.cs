@@ -4,7 +4,7 @@ using Abstractions.Fluent;
 namespace FastFsm.Tests.Machines.Fluent;
 
 [StateMachine(typeof(CallbackState), typeof(CallbackTrigger))]
-public partial class CallbackOrderMachineFluent
+public partial class CallbackOrderMachine
 {
     public List<string> ExecutionLog { get; } = [];
 

@@ -4,7 +4,7 @@ using FastFsm.Tests.Machines.Legacy;
 namespace FastFsm.Tests.Machines.Fluent;
 
 [StateMachine(typeof(UnreachableState), typeof(UnreachableTrigger))]
-public partial class UnreachableMachineFluent
+public partial class UnreachableMachine
 {
     // Note: No transition TO Isolated state - it's unreachable
     private void Configure() => FSM

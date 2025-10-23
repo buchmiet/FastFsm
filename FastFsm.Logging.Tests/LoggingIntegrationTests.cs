@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Shouldly;
 using Xunit;
-using Abstractions.Attributes;
 
 namespace FastFsm.Logging.Tests
 {
@@ -261,66 +260,5 @@ namespace FastFsm.Logging.Tests
     }
 
     // Additional test state machine for initial OnEntry testing
-    public enum TestInitialState { Ready, Working, Done }
-    public enum TestInitialTrigger { Go, Stop }
-
-    [StateMachine(typeof(TestInitialState), typeof(TestInitialTrigger))]
-    public partial class InitialOnEntryStateMachineActions
-    {
-        [State(TestInitialState.Ready, OnEntry = nameof(OnReadyEntry))]
-        private void ConfigureReady() { }
-
-        private void OnReadyEntry() { }
-    }
-
-    public enum OrderStatePayload { New, Processing, Paid, Shipped, Delivered, Cancelled }
-    public enum OrderTriggerPayload { Process, Pay, Ship, Deliver, Cancel, Refund }
-
-    [StateMachine(typeof(OrderStatePayload), typeof(OrderTriggerPayload), GenerateExtensibleVersion = true)]
-    [PayloadType(OrderTriggerPayload.Process, typeof(OrderPayload))]
-    [PayloadType(OrderTriggerPayload.Pay, typeof(PaymentPayload))]
-    [PayloadType(OrderTriggerPayload.Ship, typeof(ShippingPayload))]
-    
-    public partial class FullMultiPayloadMachine
-    {
-        // Konfiguracja stanu New z metodą OnEntry
-        [State(OrderStatePayload.New, OnEntry = nameof(OnNewEntry))]
-        private void ConfigureNew() { }
-
-        // Definicje przejść
-        [Transition(OrderStatePayload.New, OrderTriggerPayload.Process, OrderStatePayload.Processing, Action = nameof(HandleOrder))]
-        [Transition(OrderStatePayload.Processing, OrderTriggerPayload.Pay, OrderStatePayload.Paid, Action = nameof(HandlePayment))]
-        [Transition(OrderStatePayload.Paid, OrderTriggerPayload.Ship, OrderStatePayload.Shipped, Action = nameof(HandleShipping))]
-        private void Configure() { }
-
-        // Metoda OnEntry dla stanu New
-        private void OnNewEntry() { }
-
-        // Metody akcji
-        private void HandleOrder(OrderPayload order) { }
-        private void HandlePayment(PaymentPayload payment) { }
-        private void HandleShipping(ShippingPayload shipping) { }
-    }
-
-    // Klasy payload
-    public class OrderPayload
-    {
-        public int OrderId { get; set; }
-        public decimal Amount { get; set; }
-        public string? TrackingNumber { get; set; }
-    }
-
-    public class PaymentPayload : OrderPayload
-    {
-        public string PaymentMethod { get; set; } = "";
-        public DateTime PaymentDate { get; set; }
-    }
-
-    public class ShippingPayload : OrderPayload
-    {
-        public string Carrier { get; set; } = "";
-        public DateTime EstimatedDelivery { get; set; }
-    }
-
 
 }
