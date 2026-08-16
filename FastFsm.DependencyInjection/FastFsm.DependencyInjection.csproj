@@ -9,8 +9,11 @@
 		<PackageId>FastFsm.Net.DependencyInjection</PackageId>
 		<Authors>Lukasz Buchmiet</Authors>
 		<Description>Dependency Injection support for FastFsm.Net state machines. Includes logging support.</Description>
+		<PackageReleaseNotes>.NET 10 DI package for FastFsm.Net. Extension generation remains opt-in. See CHANGELOG.md.</PackageReleaseNotes>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<IsPackable>true</IsPackable>
 		<PackageOutputPath>../nuget</PackageOutputPath>
 		<IncludeBuildOutput>false</IncludeBuildOutput>
 		<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
@@ -28,6 +31,7 @@
 
 	<ItemGroup>
 		<None Include="build\FastFsm.Net.DependencyInjection.props" Pack="true" PackagePath="buildTransitive" />
+		<None Include="..\docs\dependency-injection.md" Pack="true" PackagePath="README.md" />
 	</ItemGroup>
 
 

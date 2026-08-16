@@ -4,7 +4,7 @@ Source-generated finite and hierarchical state machines for .NET 10.
 
 FastFsm generates `switch`-based state-machine code at build time. Machines can be configured with either the **Fluent API** or the **Attribute API**. The generator validates transitions, guards, callbacks, and hierarchy during compilation.
 
-**Repository package version:** `0.9.0` (defined in `Directory.Build.props`). This version is not published until the release packages are pushed to NuGet.
+**Repository package version:** `0.9.0` (defined in `Directory.Build.props`). See [CHANGELOG.md](CHANGELOG.md).
 
 ## Install
 
@@ -98,6 +98,7 @@ bool ok = door.TryFire(DoorTrigger.Close); // returns false when no valid transi
 | Diagnostics (FSM0100–FSM3083) | [docs/diagnostics.md](docs/diagnostics.md) |
 | Architecture | [docs/architecture.md](docs/architecture.md) |
 | Benchmarks | [docs/benchmarks.md](docs/benchmarks.md) |
+| Changelog | [CHANGELOG.md](CHANGELOG.md) |
 | Roadmap | [ROADMAP.md](ROADMAP.md) |
 
 ## Packages
@@ -121,10 +122,21 @@ bool ok = door.TryFire(DoorTrigger.Close); // returns false when no valid transi
 Build and test from a clean tree. With `UsePackages=false`, test projects use project references rather than a pre-built `0.9.0` package.
 
 ```bash
-dotnet test FastFsm.Tests/FastFsm.Tests.csproj
-dotnet test FastFsm.Async.Tests/FastFsm.Async.Tests.csproj
-dotnet test Generator.Tests/Generator.Tests.csproj
+dotnet test FastFsm.slnx -c Release
 ```
+
+That runs `FastFsm.Tests`, `FastFsm.Async.Tests`, `FastFsm.Logging.Tests`, `FastFsm.DependencyInjection.Tests`, `FastFsm.Instance.Tests`, and `Generator.Tests`. `Machines.Tests` is a shared machine library, not a test runner.
+
+Pack the three NuGet packages and compile clean consumer consoles against `./nuget`:
+
+```bash
+# Windows
+./scripts/pack-and-smoke.ps1
+# Linux / macOS
+bash ./scripts/pack-and-smoke.sh
+```
+
+CI (self-hosted Windows, Linux, macOS) is `.github/workflows/ci.yml`.
 
 See [docs/architecture.md](docs/architecture.md) for the generator layout.
 

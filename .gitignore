@@ -347,6 +347,16 @@ msbuild.binlog
 # IDE
 .idea/
 
+# Local junk / historical dump (not part of the repo)
+archive.zip
+archive/
+build-*.txt
+pyvenv.cfg
+lib64/
+.local-version
+.venv/
+FastFsm.Tests/FastFsm.Tests.sln
+
 
 
 Benchmark.cpp/vcpkg_installed/

@@ -1,6 +1,3 @@
 <Project>
-  <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)..\contentFiles\cs\any\ExtensionRunner.cs" Condition="Exists('$(MSBuildThisFileDirectory)..\contentFiles\cs\any\ExtensionRunner.cs')" />
-  </ItemGroup>
+  <!-- ExtensionRunner.cs is packed as contentFiles (BuildAction=Compile). Do not Compile-include it here. -->
 </Project>
-
