@@ -36,27 +36,21 @@ public partial class TrafficLight
 
 | Property | Description |
 |----------|-------------|
-| `GenerateExtensibleVersion` | Selects generation with `IStateMachineExtension` support when explicitly set to `true` |
+| `GenerateExtensibleVersion` | Generates `IStateMachineExtension` support when set to `true`; defaults to `false` |
 | `GenerateStructuralApi` | Generates structural query methods such as `HasTransition` when set to `true` |
 | `EnableHierarchy` | Enables HSM support; HSM metadata can also cause hierarchy support to be enabled by the generator |
 | `DefaultPayloadType` | Sets the default payload type for payload-enabled machines |
 | `ContinueOnCapturedContext` | Controls synchronization-context capture on asynchronous paths |
 
-### `GenerateExtensibleVersion` and the current 0.9 codebase
+### Extension generation
 
-`StateMachineAttribute.GenerateExtensibleVersion` is initialized to `true` in the attribute type, but the current generator derives its feature flag from the explicitly supplied named argument. As a result, omitting the property currently generates the non-extensible variant.
-
-Until that implementation inconsistency is resolved, specify the intended behavior explicitly:
+Extension support is opt-in:
 
 ```csharp
 [StateMachine(typeof(State), typeof(Trigger), GenerateExtensibleVersion = true)]
 ```
 
-or:
-
-```csharp
-[StateMachine(typeof(State), typeof(Trigger), GenerateExtensibleVersion = false)]
-```
+When the property is omitted or explicitly set to `false`, the generated machine does not include the extension interface, hooks, or extension-management constructor parameter.
 
 When extension support is enabled, generated constructors accept optional `IEnumerable<IStateMachineExtension>` parameters. Logging-enabled variants can also accept `ILogger<T>` where applicable.
 
