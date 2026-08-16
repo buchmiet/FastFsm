@@ -27,6 +27,7 @@ namespace FastFsm.Tests.Extensions
                 "Before",
                 "GuardEval",
                 "GuardEvaluated",
+                "Transitioned",
                 "After:Success"
             };
             Assert.Equal(expected, log);

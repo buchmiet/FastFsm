@@ -26,5 +26,8 @@ namespace Machines.Tests.Extensions
 
         public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
             => _log.Add("UnhandledTrigger");
+
+        public void OnTransitioned<T>(T ctx) where T : IStateMachineContext
+            => _log.Add("Transitioned");
     }
 }

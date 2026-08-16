@@ -148,7 +148,7 @@ public enum PermittedState { A, B, C }
 
 public enum ProcessingState { Idle, Running, Completed }
 
-public enum State { Initial, Final }
+public enum BasicState { Initial, Final }
 
 public enum Trigger { Next }
 

@@ -3,6 +3,9 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <FastFsmReferenceCore>true</FastFsmReferenceCore>
+    <FastFsmReferenceDependencyInjection>true</FastFsmReferenceDependencyInjection>
+    <DefineConstants>$(DefineConstants);FSM_DI_ENABLED;FSM_LOGGING_ENABLED</DefineConstants>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
@@ -17,7 +20,6 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
-    <PackageReference Include="FastFsm.Net.DependencyInjection" Version="0.9.0" />
   </ItemGroup>
 
   <ItemGroup>

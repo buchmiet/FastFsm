@@ -269,6 +269,8 @@ namespace FastFsm.Tests.Integration
             {
                 throw new NotImplementedException();
             }
+
+            public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
         }
 
         private class BehaviorModifyingExtension : IStateMachineExtension
@@ -299,6 +301,8 @@ namespace FastFsm.Tests.Integration
             {
                 throw new NotImplementedException();
             }
+
+            public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
         }
 
         private class PayloadTypeTracker : IStateMachineExtension
@@ -326,6 +330,8 @@ namespace FastFsm.Tests.Integration
             {
                 throw new NotImplementedException();
             }
+
+            public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
         }
 
         private class PayloadObserverExtension : IStateMachineExtension
@@ -353,6 +359,8 @@ namespace FastFsm.Tests.Integration
             {
                 throw new NotImplementedException();
             }
+
+            public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
         }
     }
 

@@ -21,6 +21,8 @@ namespace Machines.Tests.Extensions
         {
             throw new NotImplementedException();
         }
+
+        public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
     }
     public class CountingExtension : IStateMachineExtension
     {
@@ -41,5 +43,6 @@ namespace Machines.Tests.Extensions
         public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext { }
         public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
         public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext { }
+        public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
     }
 }

@@ -41,4 +41,9 @@ public class LoggingExtension : IStateMachineExtension
     {
         _output.WriteLine("Extension: Internal transition");
     }
+
+    public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext
+    {
+        _output.WriteLine("Extension: Transitioned");
+    }
 }

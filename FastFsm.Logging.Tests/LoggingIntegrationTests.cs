@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Shouldly;
 using Xunit;
-using OrderState = Machines.Tests.Machines.OrderState;
+using Abstractions.Attributes;
 
 namespace FastFsm.Logging.Tests
 {
@@ -58,9 +58,9 @@ namespace FastFsm.Logging.Tests
             LoggedMessages.Clear(); // Clear any previous logs
 
             // Act - OnEntry for initial state should be called in constructor
-            var machine = new InitialOnEntryStateMachineActionsFluent(
+            var machine = new InitialOnEntryStateMachineActions(
                 TestInitialState.Ready,
-                GetLogger<InitialOnEntryStateMachineActionsFluent>());
+                GetLogger<InitialOnEntryStateMachineActions>());
             machine.Start();
             // Assert - OnEntry is called first (in OnInitialEntry), then MachineStarted
             VerifyLogCount(2);
@@ -77,10 +77,10 @@ namespace FastFsm.Logging.Tests
             LoggedMessages.Clear();
 
             // Act
-            var machine = new LoggingFullMultiPayloadMachine(
-                OrderState.New,
+            var machine = new FullMultiPayloadMachine(
+                OrderStatePayload.New,
                 null,
-                GetLogger<LoggingFullMultiPayloadMachine>());
+                GetLogger<FullMultiPayloadMachine>());
             machine.Start();
             // Assert - OnEntry is called first (in OnInitialEntry), then MachineStarted
             VerifyLogCount(2);
@@ -261,5 +261,57 @@ namespace FastFsm.Logging.Tests
     }
 
     // Additional test state machine for initial OnEntry testing
+    public enum TestInitialState { Ready, Working, Done }
+    public enum TestInitialTrigger { Go, Stop }
 
+    [StateMachine(typeof(TestInitialState), typeof(TestInitialTrigger))]
+    public partial class InitialOnEntryStateMachineActions
+    {
+        [State(TestInitialState.Ready, OnEntry = nameof(OnReadyEntry))]
+        private void ConfigureReady() { }
+
+        private void OnReadyEntry() { }
+    }
+
+    public enum OrderStatePayload { New, Processing, Paid, Shipped, Delivered, Cancelled }
+    public enum OrderTriggerPayload { Process, Pay, Ship, Deliver, Cancel, Refund }
+
+    [StateMachine(typeof(OrderStatePayload), typeof(OrderTriggerPayload), GenerateExtensibleVersion = true)]
+    [PayloadType(OrderTriggerPayload.Process, typeof(OrderPayload))]
+    [PayloadType(OrderTriggerPayload.Pay, typeof(PaymentPayload))]
+    [PayloadType(OrderTriggerPayload.Ship, typeof(ShippingPayload))]
+    public partial class FullMultiPayloadMachine
+    {
+        [State(OrderStatePayload.New, OnEntry = nameof(OnNewEntry))]
+        private void ConfigureNew() { }
+
+        [Transition(OrderStatePayload.New, OrderTriggerPayload.Process, OrderStatePayload.Processing, Action = nameof(HandleOrder))]
+        [Transition(OrderStatePayload.Processing, OrderTriggerPayload.Pay, OrderStatePayload.Paid, Action = nameof(HandlePayment))]
+        [Transition(OrderStatePayload.Paid, OrderTriggerPayload.Ship, OrderStatePayload.Shipped, Action = nameof(HandleShipping))]
+        private void Configure() { }
+
+        private void OnNewEntry() { }
+        private void HandleOrder(OrderPayload order) { }
+        private void HandlePayment(PaymentPayload payment) { }
+        private void HandleShipping(ShippingPayload shipping) { }
+    }
+
+    public class OrderPayload
+    {
+        public int OrderId { get; set; }
+        public decimal Amount { get; set; }
+        public string? TrackingNumber { get; set; }
+    }
+
+    public class PaymentPayload : OrderPayload
+    {
+        public string PaymentMethod { get; set; } = "";
+        public DateTime PaymentDate { get; set; }
+    }
+
+    public class ShippingPayload : OrderPayload
+    {
+        public string Carrier { get; set; } = "";
+        public DateTime EstimatedDelivery { get; set; }
+    }
 }
