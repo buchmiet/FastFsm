@@ -34,17 +34,31 @@ public partial class TrafficLight
 
 ## `StateMachineAttribute` options
 
-| Property | Default | Description |
-|----------|---------|-------------|
-| `GenerateExtensibleVersion` | `true` | Generates the variant with `IStateMachineExtension` support |
-| `GenerateStructuralApi` | `false` | Generates structural query methods such as `HasTransition` |
-| `EnableHierarchy` | `false` | Enables HSM support; HSM metadata can also cause hierarchy support to be enabled by the generator |
-| `DefaultPayloadType` | unset | Sets the default payload type for payload-enabled machines |
-| `ContinueOnCapturedContext` | `false` | Controls synchronization-context capture on asynchronous paths |
+| Property | Description |
+|----------|-------------|
+| `GenerateExtensibleVersion` | Selects generation with `IStateMachineExtension` support when explicitly set to `true` |
+| `GenerateStructuralApi` | Generates structural query methods such as `HasTransition` when set to `true` |
+| `EnableHierarchy` | Enables HSM support; HSM metadata can also cause hierarchy support to be enabled by the generator |
+| `DefaultPayloadType` | Sets the default payload type for payload-enabled machines |
+| `ContinueOnCapturedContext` | Controls synchronization-context capture on asynchronous paths |
 
-When `GenerateExtensibleVersion` is `true`, generated constructors accept optional `IEnumerable<IStateMachineExtension>` parameters. Logging-enabled variants can also accept `ILogger<T>` where applicable.
+### `GenerateExtensibleVersion` and the current 0.9 codebase
 
-Set `GenerateExtensibleVersion = false` to generate the non-extensible variant.
+`StateMachineAttribute.GenerateExtensibleVersion` is initialized to `true` in the attribute type, but the current generator derives its feature flag from the explicitly supplied named argument. As a result, omitting the property currently generates the non-extensible variant.
+
+Until that implementation inconsistency is resolved, specify the intended behavior explicitly:
+
+```csharp
+[StateMachine(typeof(State), typeof(Trigger), GenerateExtensibleVersion = true)]
+```
+
+or:
+
+```csharp
+[StateMachine(typeof(State), typeof(Trigger), GenerateExtensibleVersion = false)]
+```
+
+When extension support is enabled, generated constructors accept optional `IEnumerable<IStateMachineExtension>` parameters. Logging-enabled variants can also accept `ILogger<T>` where applicable.
 
 ## Guards and actions
 
