@@ -2,5 +2,5 @@
 
 public class ConfigPayload
 {
-    public string Setting { get; set; }
+    public string Setting { get; set; } = null!;
 }

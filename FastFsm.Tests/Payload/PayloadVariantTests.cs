@@ -3,11 +3,10 @@ using Machines.Tests.Machines;
 using Machines.Tests.Machines.Legacy;
 using Machines.Tests.Payloads;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace FastFsm.Tests.Payload;
 
-public class PayloadVariantTests(ITestOutputHelper output)
+public class PayloadVariantTests
 {
     [Fact]
     public void SinglePayloadType_BasicTransition_PassesPayloadCorrectly()

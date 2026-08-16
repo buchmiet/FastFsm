@@ -11,9 +11,9 @@ namespace Machines.Tests.Machines.Legacy;
 [PayloadType(MultiTrigger.Error, typeof(ErrorPayload))]
 public partial class MultiPayloadMachine
 {
-    public string CurrentSetting { get; private set; }
+    public string CurrentSetting { get; private set; } = null!;
     public int ProcessedValue { get; private set; }
-    public string LastErrorCode { get; private set; }
+    public string LastErrorCode { get; private set; } = null!;
 
     [Transition(MultiState.Initial, MultiTrigger.Configure, MultiState.Configured,
         Action = nameof(ApplyConfiguration))]

@@ -158,7 +158,7 @@ public class TypeSystemHelperTests(ITestOutputHelper output)
     [InlineData(null, "object")]
     [InlineData("", "object")]
     [InlineData("global::System.String", "string")]
-    public void FormatTypeForUsage_EdgeCases_HandlesCorrectly(string input, string expected)
+    public void FormatTypeForUsage_EdgeCases_HandlesCorrectly(string? input, string expected)
     {
         _helper.FormatTypeForUsage(input).ShouldBe(expected);
     }
@@ -172,7 +172,7 @@ public class TypeSystemHelperTests(ITestOutputHelper output)
     [InlineData("System.Collections.Generic.List", "System.Collections.Generic")]
     [InlineData("MyApp.Models.User", "MyApp.Models")]
     [InlineData("SingleClass", null)]
-    public void GetNamespace_StandardCases_ReturnsCorrectNamespace(string input, string expected)
+    public void GetNamespace_StandardCases_ReturnsCorrectNamespace(string input, string? expected)
     {
         _helper.GetNamespace(input).ShouldBe(expected);
     }
@@ -197,7 +197,7 @@ public class TypeSystemHelperTests(ITestOutputHelper output)
     [InlineData(null, null)]
     [InlineData("", null)]
     [InlineData("global::System.String", "System")]
-    public void GetNamespace_EdgeCases_HandlesCorrectly(string input, string expected)
+    public void GetNamespace_EdgeCases_HandlesCorrectly(string? input, string? expected)
     {
         _helper.GetNamespace(input).ShouldBe(expected);
     }
@@ -234,7 +234,7 @@ public class TypeSystemHelperTests(ITestOutputHelper output)
     [Theory]
     [InlineData(null, "object")]
     [InlineData("", "object")]
-    public void GetSimpleTypeName_EdgeCases_ReturnsObject(string input, string expected)
+    public void GetSimpleTypeName_EdgeCases_ReturnsObject(string? input, string expected)
     {
         _helper.GetSimpleTypeName(input).ShouldBe(expected);
     }
@@ -264,7 +264,7 @@ public class TypeSystemHelperTests(ITestOutputHelper output)
     [Theory]
     [InlineData(null, false)]
     [InlineData("", false)]
-    public void IsNestedType_EdgeCases_ReturnsFalse(string input, bool expected)
+    public void IsNestedType_EdgeCases_ReturnsFalse(string? input, bool expected)
     {
         _helper.IsNestedType(input).ShouldBe(expected);
     }
@@ -293,7 +293,7 @@ public class TypeSystemHelperTests(ITestOutputHelper output)
     [Theory]
     [InlineData(null, false)]
     [InlineData("", false)]
-    public void IsGenericType_EdgeCases_ReturnsFalse(string input, bool expected)
+    public void IsGenericType_EdgeCases_ReturnsFalse(string? input, bool expected)
     {
         _helper.IsGenericType(input).ShouldBe(expected);
     }
@@ -331,7 +331,7 @@ public class TypeSystemHelperTests(ITestOutputHelper output)
     [Theory]
     [InlineData(null, null)]
     [InlineData("", "")]
-    public void EscapeIdentifier_EdgeCases_ReturnsInput(string input, string expected)
+    public void EscapeIdentifier_EdgeCases_ReturnsInput(string? input, string? expected)
     {
         _helper.EscapeIdentifier(input).ShouldBe(expected);
     }
@@ -373,7 +373,7 @@ public class TypeSystemHelperTests(ITestOutputHelper output)
     [Theory]
     [InlineData(null, new string[0])]
     [InlineData("", new string[0])]
-    public void GetRequiredNamespaces_EdgeCases_ReturnsEmpty(string input, string[] expected)
+    public void GetRequiredNamespaces_EdgeCases_ReturnsEmpty(string? input, string[] expected)
     {
         var result = _helper.GetRequiredNamespaces(input).ToArray();
         result.ShouldBe(expected);
@@ -403,7 +403,7 @@ public class TypeSystemHelperTests(ITestOutputHelper output)
     [Theory]
     [InlineData(null, "object")]
     [InlineData("", "object")]
-    public void FormatForTypeof_EdgeCases_ReturnsObject(string input, string expected)
+    public void FormatForTypeof_EdgeCases_ReturnsObject(string? input, string expected)
     {
         _helper.FormatForTypeof(input).ShouldBe(expected);
     }

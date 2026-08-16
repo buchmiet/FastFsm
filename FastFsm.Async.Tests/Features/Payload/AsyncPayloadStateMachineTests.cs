@@ -956,7 +956,7 @@ public class AsyncPayloadStateMachineTests
         await machine.StartAsync();
 
         // Act - Try to fire with null payload
-        var result = await machine.TryFireAsync(AsyncPayloadTriggers.Start, null as ProcessPayload);
+        var result = await machine.TryFireAsync(AsyncPayloadTriggers.Start, null!);
 
         // Assert
         result.ShouldBeFalse(); // Guard will receive null and likely fail

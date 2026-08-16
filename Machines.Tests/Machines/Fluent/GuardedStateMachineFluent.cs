@@ -7,7 +7,7 @@ public partial class GuardedStateMachine
 {
     public bool CanProcess { get; set; } = true;
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(ProcessState.Idle)
         .On(ProcessTrigger.Start)
         .Guard(nameof(CheckCanProcess))

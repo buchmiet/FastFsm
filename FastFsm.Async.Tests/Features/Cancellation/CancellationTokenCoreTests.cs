@@ -20,7 +20,7 @@ public static class TestSynchronization
         Func<bool> condition,
         int timeoutMs = 5000,
         int checkIntervalMs = 10,
-        string timeoutMessage = null)
+        string? timeoutMessage = null)
     {
         var timeout = DateTime.UtcNow.AddMilliseconds(timeoutMs);
         while (!condition())
@@ -219,7 +219,7 @@ public partial class CancellationMachine
         ExecutionLog.Add("Action:End-NoToken");
     }
 
-    private async Task StartAsync(System.Threading.CancellationToken cancellationToken)
+    private new async Task StartAsync(System.Threading.CancellationToken cancellationToken)
     {
         ExecutionLog.Add("Action:Begin");
         await Task.Delay(DelayMs, cancellationToken);
@@ -449,7 +449,7 @@ public partial class CancellationMachineFluentFsm
     private async ValueTask<bool> CanStartAsync() { ExecutionLog.Add("Guard:Begin-NoToken"); await Task.Delay(DelayMs); ExecutionLog.Add("Guard:End-NoToken"); return true; }
     private async ValueTask<bool> CanStartAsync(System.Threading.CancellationToken cancellationToken) { ExecutionLog.Add("Guard:Begin"); await Task.Delay(DelayMs, cancellationToken); ExecutionLog.Add("Guard:End"); return true; }
     private async Task StartAsync() { ExecutionLog.Add("Action:Begin-NoToken"); await Task.Delay(DelayMs); ExecutionLog.Add("Action:End-NoToken"); }
-    private async Task StartAsync(System.Threading.CancellationToken cancellationToken) { ExecutionLog.Add("Action:Begin"); await Task.Delay(DelayMs, cancellationToken); ExecutionLog.Add("Action:End"); }
+    private new async Task StartAsync(System.Threading.CancellationToken cancellationToken) { ExecutionLog.Add("Action:Begin"); await Task.Delay(DelayMs, cancellationToken); ExecutionLog.Add("Action:End"); }
     private async Task ProcessAsync() { ExecutionLog.Add("Process:Begin-NoToken"); await Task.Delay(DelayMs); ExecutionLog.Add("Process:End-NoToken"); }
     private async Task ProcessAsync(System.Threading.CancellationToken cancellationToken) { ExecutionLog.Add("Process:Begin"); await Task.Delay(DelayMs, cancellationToken); ExecutionLog.Add("Process:End"); }
     private async Task OnProcessingEntryAsync() { ExecutionLog.Add("OnEntry:Begin-NoToken"); await Task.Delay(DelayMs); ExecutionLog.Add("OnEntry:End-NoToken"); }

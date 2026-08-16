@@ -2,5 +2,5 @@
 
 public class SpecialPayload
 {
-    public string SpecialValue { get; set; }
+    public string SpecialValue { get; set; } = null!;
 }

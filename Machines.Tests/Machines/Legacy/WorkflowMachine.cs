@@ -9,8 +9,8 @@ namespace Machines.Tests.Machines.Legacy;
 public partial class WorkflowMachine
 {
     public int Priority { get; private set; }
-    public string ApprovedBy { get; private set; }
-    public string Result { get; private set; }
+    public string ApprovedBy { get; private set; } = null!;
+    public string Result { get; private set; } = null!;
 
     [State(WorkflowState.Initialized, OnEntry = nameof(OnInitialized))]
     [State(WorkflowState.Approved, OnEntry = nameof(OnApproved))]

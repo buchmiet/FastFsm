@@ -10,7 +10,7 @@ namespace Machines.Tests.Machines.Legacy;
 public partial class MixedPayloadMachine
 {
     public int LastDefaultId { get; private set; }
-    public string LastSpecialValue { get; private set; }
+    public string LastSpecialValue { get; private set; } = null!;
 
     [Transition(MixedState.Start, MixedTrigger.Regular, MixedState.Middle,
         Action = nameof(ProcessDefault))]

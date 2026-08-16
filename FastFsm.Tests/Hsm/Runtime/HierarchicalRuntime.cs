@@ -94,8 +94,6 @@ namespace FastFsm.Tests.Hsm.Runtime
 
         static int[] GetIntArray(Type t, object instance, string staticFieldName, string protectedPropName)
         {
-            var flags = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance;
-
             // 1) nowe pole g_*
             var f = t.GetField(staticFieldName, BindingFlags.NonPublic | BindingFlags.Static);
             if (f != null) return (int[])f.GetValue(null)!;

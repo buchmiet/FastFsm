@@ -7,7 +7,7 @@ namespace FastFsm.Logging.Tests;
 [StateMachine(typeof(TestState), typeof(TestTrigger))]
 public partial class PureStateMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(TestState.Initial).On(TestTrigger.Start).GoTo(TestState.Processing)
         .State(TestState.Processing).On(TestTrigger.Complete).GoTo(TestState.Completed);
 }
@@ -44,7 +44,7 @@ public partial class PayloadStateMachineFluent
     public TestPayload? LastPayload { get; private set; }
     public bool GuardResult { get; set; } = true;
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(TestState.Initial)
             .On(TestTrigger.Start)
                 .Guard(nameof(CanStart))
@@ -88,7 +88,7 @@ public partial class ExtensionsStateMachineFluent
 {
     public bool GuardResult { get; set; } = true;
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(TestState.Initial)
             .On(TestTrigger.Start)
                 .Guard(nameof(CanStart))
@@ -111,7 +111,7 @@ public partial class FullStateMachineFluent
     public TestPayload? LastPayload { get; private set; }
     public bool GuardResult { get; set; } = true;
 
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(TestState.Initial)
             .On(TestTrigger.Start)
                 .Guard(nameof(CanStart))
@@ -149,7 +149,7 @@ public partial class FullStateMachineFluent
 [PayloadType(TestTrigger.Process, typeof(string))]
 public partial class MultiPayloadStateMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(TestState.Initial)
             .On(TestTrigger.Start).GoTo(TestState.Processing)
             .On(TestTrigger.Process).GoTo(TestState.Processing);

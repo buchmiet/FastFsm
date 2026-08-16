@@ -15,12 +15,14 @@
 		<PackageOutputPath>../nuget</PackageOutputPath>
 		
 		<IncludeBuildOutput>false</IncludeBuildOutput>
+		<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
 
 		
 		<FsmGenerateLogging>true</FsmGenerateLogging>
 		<DefineConstants>$(DefineConstants);FSM_LOGGING_ENABLED</DefineConstants>
 
 		<LangVersion>latest</LangVersion>
+		<Nullable>enable</Nullable>
 
 
 		
