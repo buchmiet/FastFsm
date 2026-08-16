@@ -1,6 +1,6 @@
 # Architecture (0.9)
 
-Contributor-oriented overview of the FastFsm 0.9 codebase. User-facing API guides live under [docs/](.).
+Contributor-oriented overview of the FastFsm 0.9 codebase. API guides live under [docs/](.).
 
 ## High-level flow
 
@@ -25,38 +25,40 @@ Your partial class + [StateMachine] / Fluent Configure()
 
 | Project | Role |
 |---------|------|
-| `Abstractions` | `[StateMachine]`, transition/state attributes, Fluent `FSM` DSL stubs |
-| `Generator` | `IIncrementalGenerator` — parses models, emits C# |
-| `Generator.Model` | Shared AST / model types |
-| `Generator.Rules` | Validation rules + `RuleIdentifiers` / `DefinedRules` |
-| `Generator.Logger` | Logging codegen |
-| `Generator.DependencyInjection` | DI-aware codegen hooks |
-| `FastFsm` | Runtime bases, contracts, packaged as **FastFsm.Net** |
-| `FastFsm.Logging` | Logging package (**FastFsm.Net.Logging**) |
-| `FastFsm.DependencyInjection` | DI package (**FastFsm.Net.DependencyInjection**) |
-| `Machines.Tests` | Shared machine definitions for cross-project tests |
+| `Abstractions` | `[StateMachine]`, transition/state attributes, Fluent `FSM` API definitions |
+| `Generator` | `IIncrementalGenerator` — parses models and emits C# |
+| `Generator.Model` | Shared model types |
+| `Generator.Rules` | Validation rules and `RuleIdentifiers` / `DefinedRules` |
+| `Generator.Logger` | Logging code generation |
+| `Generator.DependencyInjection` | DI-related code-generation hooks |
+| `FastFsm` | Runtime bases and contracts; packaged as `FastFsm.Net` |
+| `FastFsm.Logging` | Logging package (`FastFsm.Net.Logging`) |
+| `FastFsm.DependencyInjection` | DI package (`FastFsm.Net.DependencyInjection`) |
+| `Machines.Tests` | Shared machine definitions for tests |
 
 ## Generator entry points
 
 - **Attribute parser** — `Generator/Parsers/StateMachineParser.cs`
 - **Fluent parser** — `Generator/Parsers/FluentParser.cs`
-- **Unified emitter** — `Generator/SourceGenerators/UnifiedStateMachineGenerator.cs` (successor to separate legacy/fluent generators)
+- **Unified emitter** — `Generator/SourceGenerators/UnifiedStateMachineGenerator.cs`
 
-Both API styles converge on the same internal model before emission.
+Both configuration APIs converge on the same internal model before emission.
 
 ## Runtime
 
-- `StateMachineBase<TState,TTrigger>` — sync transitions, `TryFire` / `Fire`
-- `AsyncStateMachineBase<…>` — async transitions, `ValueTask` API, serialized execution
-- `ExtensionRunner` — invokes extension hooks; shipped as compile-time content in the core package
-- `IStateMachineContext` / `IStateSnapshot` — context passed to extensions
+- `StateMachineBase<TState,TTrigger>` — synchronous transitions and `TryFire` / `Fire`
+- `AsyncStateMachineBase<…>` — asynchronous transitions, `ValueTask` API, serialized transition attempts
+- `ExtensionRunner` — invokes extension hooks; included as compile-time content in the core package
+- `IStateMachineContext` / `IStateSnapshot` — context exposed to extensions
 
 ## Packages and build
 
-- Target framework: **net10.0** (`Directory.Build.props`)
-- Version: `FastFsmPackageVersion` (0.9.0)
-- `UsePackages=false` in repo — test projects use `ProjectReference` + analyzer wiring (`eng/FastFsmReferences.props`, `Directory.Build.targets`)
-- `UsePackages=true` — consumers reference published `FastFsm.Net` 0.9.0 packages
+- Target framework: `net10.0` (`Directory.Build.props`)
+- Repository package version: `FastFsmPackageVersion` (`0.9.0`)
+- `UsePackages=false` — repository projects use project references and analyzer wiring from `eng/FastFsmReferences.props` / `Directory.Build.targets`
+- `UsePackages=true` — package references resolve the configured FastFsm package version from the configured NuGet sources
+
+The `0.9.0` repository version is not a public release until the corresponding packages are published.
 
 Analyzers are packed under `analyzers/dotnet/cs` in the NuGet package.
 
@@ -64,21 +66,20 @@ Analyzers are packed under `analyzers/dotnet/cs` in the NuGet package.
 
 | Project | Focus |
 |---------|-------|
-| `FastFsm.Tests` | Core sync, extensions, HSM compile tests |
-| `FastFsm.Async.Tests` | Async API + HSM |
-| `FastFsm.Logging.Tests` | Logging + Legacy/Fluent parity matrix |
+| `FastFsm.Tests` | Core synchronous behavior, extensions, HSM compile tests |
+| `FastFsm.Async.Tests` | Asynchronous API and HSM |
+| `FastFsm.Logging.Tests` | Logging and Attribute/Fluent parity matrix |
 | `FastFsm.DependencyInjection.Tests` | DI registration |
-| `Generator.Tests` | Generator rule and emission tests |
-| `Machines.Tests` | Machine catalog only (referenced by other test projects) |
+| `Generator.Tests` | Generator rules and emission tests |
+| `Machines.Tests` | Machine definitions referenced by other test projects |
 
 ## Maintenance docs
 
 Repository recovery and branch notes: [maintenance/repository-archeology-2026-08.md](maintenance/repository-archeology-2026-08.md).
 
-## Current product (0.9)
+## 0.9 codebase
 
-- Single unified generator for Fluent and attribute APIs
-- Fluent DSL is a first-class configuration style alongside attributes
+- Fluent and attribute configuration use a single generator pipeline
 - DI and logging are separate NuGet packages
 - Diagnostic IDs use FSM01xx / FSM11xx / FSM20xx / FSM30xx ranges
-- `OnTransitioned` extension hook is part of `IStateMachineExtension`
+- `OnTransitioned` is part of `IStateMachineExtension`
