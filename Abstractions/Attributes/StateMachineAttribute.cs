@@ -13,8 +13,9 @@ public sealed class StateMachineAttribute : Attribute
 
     /// <summary>
     /// Controls whether the generated machine includes <c>IStateMachineExtension</c> support.
+    /// The default is <see langword="false"/>; set this property to <see langword="true"/> to generate extension hooks and management APIs.
     /// </summary>
-    public bool GenerateExtensibleVersion { get; set; } = true;
+    public bool GenerateExtensibleVersion { get; set; } = false;
 
     /// <summary>
     /// Gets or sets the default payload type for triggers that do not declare a trigger-specific payload type.
