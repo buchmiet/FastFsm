@@ -2,7 +2,13 @@
 
 Implement `IStateMachineExtension` to observe transition processing without modifying generated transition tables.
 
-Extension support is controlled by `GenerateExtensibleVersion` on `[StateMachine]`; the default is `true`. Pass extension instances to the generated machine constructor:
+Extension support is selected with `GenerateExtensibleVersion` on `[StateMachine]`. In the current 0.9 codebase, set this property explicitly because the attribute property's initializer and the generator's handling of an omitted named argument are inconsistent.
+
+```csharp
+[StateMachine(typeof(State), typeof(Trigger), GenerateExtensibleVersion = true)]
+```
+
+Pass extension instances to the generated machine constructor:
 
 ```csharp
 var machine = new MyMachine(
@@ -46,7 +52,7 @@ A failed transition invokes `OnAfterTransition(context, success: false)`. `OnUnh
 
 ## Disabling extension support
 
-Set `GenerateExtensibleVersion = false` to generate the non-extensible variant.
+Set `GenerateExtensibleVersion = false` explicitly to generate the non-extensible variant.
 
 ## Tests
 
