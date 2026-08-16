@@ -1,43 +1,43 @@
 # Benchmarks
 
-FastFsm includes a BenchmarkDotNet project at `Benchmark/`. **The repository does not ship verified benchmark numbers for 0.9 / .NET 10.** Do not cite latency figures in user-facing docs until you have run benchmarks locally and recorded the environment.
+FastFsm includes a BenchmarkDotNet project at `Benchmark/`. The repository does not currently publish verified benchmark results for the 0.9 / .NET 10 line.
 
 ## Running benchmarks locally
 
-Prerequisites: .NET 10 SDK, Release configuration recommended.
+Prerequisite: .NET 10 SDK.
 
 ```bash
 dotnet run -c Release --project Benchmark/Benchmark.csproj
 ```
 
-Results are written under `Benchmark/BenchmarkDotNet.Artifacts/`. Review `*.md` reports in that folder after a run.
+BenchmarkDotNet writes results under `Benchmark/BenchmarkDotNet.Artifacts/`.
 
-### What the benchmark project covers
+## Benchmark coverage
 
-See `Benchmark/` sources:
+The benchmark sources include:
 
-- Flat sync transition hot paths (`StateMachineBenchmarks`)
-- HSM scenarios (`HsmBenchmarks`)
-- Comparisons against Stateless, LiquidState, Appccelerate (package references in `Benchmark.csproj`)
+- flat synchronous transition paths (`StateMachineBenchmarks`)
+- hierarchical-state-machine scenarios (`HsmBenchmarks`)
+- comparisons with Stateless, LiquidState, and Appccelerate as referenced by `Benchmark.csproj`
 
-## Publishing numbers in documentation
+## Publishing benchmark results
 
-Before quoting latency in README or release notes:
+Before adding performance numbers to README or release notes:
 
-1. Run BenchmarkDotNet on the **target** framework (.NET 10).
-2. Record hardware, SDK version, commit SHA, and configuration (Release, server GC, etc.).
-3. Summarize methodology and headline results in this document.
-4. Attach raw BenchmarkDotNet output to a **GitHub Release** or CI artifact — not as a committed log in the repo.
+1. Run BenchmarkDotNet on the target framework and the commit being released.
+2. Record hardware, operating system, .NET SDK/runtime version, commit SHA, and benchmark configuration.
+3. Record the package versions used for comparison libraries.
+4. Summarize the methodology and results in this document.
+5. Attach raw BenchmarkDotNet output to the corresponding GitHub Release or CI artifact rather than committing generated logs to the repository.
 
-Avoid absolute claims (“sub-nanosecond guarantees”, “near hardware-level”, “100% AOT”) unless each claim maps to a reproducible measurement or a specific technical guarantee (e.g. “generated code uses enum switches without reflection”).
+Performance statements should distinguish measured results from implementation properties. A measured latency or allocation result should identify the benchmark and environment that produced it.
 
-## Performance characteristics (qualitative)
+## Implementation properties relevant to benchmarking
 
-These are architectural properties, not benchmark results:
+The following describe the implementation rather than measured performance:
 
-- Transitions compile to direct `switch` on enum discriminators
-- Sync hot paths avoid heap allocations for transition dispatch
-- Async paths use `ValueTask` to reduce task allocations
-- Extension and logging hooks add cost proportional to registered extensions / log level
+- generated transition dispatch uses enum-based `switch` statements
+- asynchronous callback paths use `ValueTask`
+- optional extension and logging paths execute additional hooks when enabled
 
-Measure your own workload — domain actions (I/O, logging, extension logic) usually dominate once transition dispatch is already in the low tens of nanoseconds.
+Application-level performance depends on the state-machine definition, callbacks, logging, extensions, runtime, and workload. Measure the configuration used by the application when performance is a requirement.
