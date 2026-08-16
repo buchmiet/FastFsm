@@ -333,6 +333,20 @@ Benchmark.cpp/vcpkg_installed/
 Benchmark.Artifacts/
 BenchmarkDotNet.Artifacts/
 
+# Local NuGet feed servers (docker-compose data)
+baget-data/
+nexus-data/
+proget-postgres-data/
+proget-packages/
+proget-database/
+proget-backups/
+proget-extensions/
+nupkgs/
+msbuild.binlog
+
+# IDE
+.idea/
+
 
 
 Benchmark.cpp/vcpkg_installed/
