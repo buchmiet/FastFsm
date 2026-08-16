@@ -327,7 +327,7 @@ namespace FastFsm.Logging.Tests
     {
         private static void Configure() => FSM
             .State(FluentState.S2)
-                .OnEntry(nameof(ThrowEntry)).And()
+                .OnEntry(nameof(ThrowEntry))
             .State(FluentState.S1)
                 .On(FluentTrigger.T).GoTo(FluentState.S2);
 

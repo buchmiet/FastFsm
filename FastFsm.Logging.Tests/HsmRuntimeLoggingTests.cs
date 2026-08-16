@@ -11,7 +11,7 @@ namespace FastFsm.Logging.Tests
         public void InternalTransitionOnAncestor_IsLogged()
         {
             // Arrange
-            var machine = new HsmMachine(HState.A, GetLogger<HsmMachine>());
+            var machine = new HsmMachineFluent(HState.A, GetLogger<HsmMachineFluent>());
             machine.Start(); // Descends to A1 as initial
 
             // Act
@@ -26,7 +26,7 @@ namespace FastFsm.Logging.Tests
         {
             // Arrange
             LoggedMessages.Clear();
-            var machine = new HsmMachine(HState.A, GetLogger<HsmMachine>());
+            var machine = new HsmMachineFluent(HState.A, GetLogger<HsmMachineFluent>());
             machine.Start(); // A1
 
             // Act: A (A1) -> B (B1)
@@ -60,8 +60,8 @@ namespace FastFsm.Logging.Tests
         [Fact]
         public void HistoryRestored_WhenReturningToA_IsLogged()
         {
-            var logger = new TestLogger<HsmMachine>();
-            var machine = new HsmMachine(HState.A, logger);
+            var logger = new TestLogger<HsmMachineFluent>();
+            var machine = new HsmMachineFluent(HState.A, logger);
 
             machine.Start();                       // A1
             machine.TryFire(HTrigger.MoveToA2);    // A1 -> A2 (ustawia historię A=A2)
@@ -76,7 +76,7 @@ namespace FastFsm.Logging.Tests
         }
 
         private static void VerifyLogMessage(
-            TestLogger<HsmMachine> logger,
+            TestLogger<HsmMachineFluent> logger,
             LogLevel expectedLevel,
             string expectedEventName,
             params string[] expectedMessageParts)
@@ -86,7 +86,7 @@ namespace FastFsm.Logging.Tests
                 string.Equals(e.EventName, expectedEventName, StringComparison.Ordinal) &&
                 expectedMessageParts.All(p => e.Message.IndexOf(p, StringComparison.OrdinalIgnoreCase) >= 0));
 
-            if (match.Equals(default(TestLogger<HsmMachine>.LogEntry)))
+            if (match.Equals(default(TestLogger<HsmMachineFluent>.LogEntry)))
             {
                 var dump = string.Join(Environment.NewLine, logger.Entries.Select(e =>
                     $"[{e.Level}] {e.EventName}: {e.Message}"));

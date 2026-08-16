@@ -25,9 +25,9 @@ public partial class BasicStateMachineFluent
         .State(TestState.Initial)
             .OnExit(nameof(OnInitialExit))
             .On(TestTrigger.Start)
-                .If(nameof(CanStart))
+                .Guard(nameof(CanStart))
                 .Action(nameof(StartAction))
-                .GoTo(TestState.Processing).And()
+                .GoTo(TestState.Processing)
         .State(TestState.Processing)
             .OnEntry(nameof(OnProcessingEntry));
 
@@ -39,7 +39,7 @@ public partial class BasicStateMachineFluent
 
 // WithPayload variant - Fluent version
 [StateMachine(typeof(TestState), typeof(TestTrigger), DefaultPayloadType = typeof(TestPayload))]
-public partial class PayloadStateMachine
+public partial class PayloadStateMachineFluent
 {
     public TestPayload? LastPayload { get; private set; }
     public bool GuardResult { get; set; } = true;
@@ -47,15 +47,15 @@ public partial class PayloadStateMachine
     private static void Configure() => FSM
         .State(TestState.Initial)
             .On(TestTrigger.Start)
-                .If(nameof(CanStart))
+                .Guard(nameof(CanStart))
                 .Action(nameof(ProcessAction))
-                .GoTo(TestState.Processing).And()
+                .GoTo(TestState.Processing)
         .State(TestState.Processing)
             .OnEntry(nameof(OnProcessingEntry))
-            .On(TestTrigger.Complete).GoTo(TestState.Completed).And()
-            .On(TestTrigger.Fail).GoTo(TestState.Failed).And()
+            .On(TestTrigger.Complete).GoTo(TestState.Completed)
+            .On(TestTrigger.Fail).GoTo(TestState.Failed)
         .State(TestState.Completed)
-            .On(TestTrigger.Reset).GoTo(TestState.Initial).And()
+            .On(TestTrigger.Reset).GoTo(TestState.Initial)
         .State(TestState.Failed)
             .On(TestTrigger.Reset).GoTo(TestState.Initial);
 
@@ -91,12 +91,12 @@ public partial class ExtensionsStateMachineFluent
     private static void Configure() => FSM
         .State(TestState.Initial)
             .On(TestTrigger.Start)
-                .If(nameof(CanStart))
+                .Guard(nameof(CanStart))
                 .Action(nameof(StartAction))
-                .GoTo(TestState.Processing).And()
+                .GoTo(TestState.Processing)
         .State(TestState.Processing)
             .OnEntry(nameof(OnProcessingEntry))
-            .On(TestTrigger.Complete).GoTo(TestState.Completed).And()
+            .On(TestTrigger.Complete).GoTo(TestState.Completed)
             .On(TestTrigger.Fail).GoTo(TestState.Failed);
 
     private bool CanStart() => GuardResult;
@@ -114,9 +114,9 @@ public partial class FullStateMachineFluent
     private static void Configure() => FSM
         .State(TestState.Initial)
             .On(TestTrigger.Start)
-                .If(nameof(CanStart))
+                .Guard(nameof(CanStart))
                 .Action(nameof(ProcessAction))
-                .GoTo(TestState.Processing).And()
+                .GoTo(TestState.Processing)
         .State(TestState.Processing)
             .OnEntry(nameof(OnProcessingEntry));
 
@@ -151,6 +151,6 @@ public partial class MultiPayloadStateMachineFluent
 {
     private static void Configure() => FSM
         .State(TestState.Initial)
-            .On(TestTrigger.Start).GoTo(TestState.Processing).And()
+            .On(TestTrigger.Start).GoTo(TestState.Processing)
             .On(TestTrigger.Process).GoTo(TestState.Processing);
 }

@@ -2,7 +2,8 @@
   <Target Name="PurgeFastFsmPackageCache" BeforeTargets="Restore"
           Condition=" '$(ClearFastFsmCache)' == 'true' ">
     <PropertyGroup>
-      <NuGetPackagesFolder>$(USERPROFILE)\.nuget\packages\fastfsm.net</NuGetPackagesFolder>
+      <NuGetPackagesFolder Condition="'$(NuGetPackagesFolder)' == '' and '$(USERPROFILE)' != ''">$(USERPROFILE)\.nuget\packages\fastfsm.net</NuGetPackagesFolder>
+      <NuGetPackagesFolder Condition="'$(NuGetPackagesFolder)' == '' and '$(HOME)' != ''">$(HOME)/.nuget/packages/fastfsm.net</NuGetPackagesFolder>
     </PropertyGroup>
     <Message Text="Purging local FastFSM package cache at $(NuGetPackagesFolder)..." Importance="High" />
     <RemoveDir Directories="$(NuGetPackagesFolder)" Condition="Exists('$(NuGetPackagesFolder)')" />

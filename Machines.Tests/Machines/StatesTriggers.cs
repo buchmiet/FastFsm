@@ -176,7 +176,7 @@ public enum TestTrigger
     Reset
 }
 
-public enum WorkflowState { Created, Initialized, Submitted, Approved, Completed }
+public enum WorkflowState { Created, Draft, Initialized, Submitted, Approved, Completed }
 
 public enum TestState
 {
@@ -379,3 +379,15 @@ public enum HTrigger { Refresh, MoveToA2, Switch, Back }
 
 public enum TestInitialState { Ready, Working, Done }
 public enum TestInitialTrigger { Go, Stop }
+
+public enum LifecycleState { Initial, Processing, Failed, Completed }
+public enum LifecycleTrigger { Start, Complete, Fail }
+
+public enum ProcessState { Idle, Running, Completed }
+public enum ProcessTrigger { Start }
+
+public enum StructState : byte { One, Two, Three }
+public enum StructTrigger { Next }
+
+public enum AsyncLifecycleState { Initial, Processing, Failed, Completed }
+public enum AsyncLifecycleTrigger { StartAsync, FailAsync, CompleteAsync }

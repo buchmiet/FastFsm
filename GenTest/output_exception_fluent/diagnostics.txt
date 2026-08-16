@@ -1,2 +1,0 @@
-(10,1): info FSM997: Skipped state machine candidate TestMachines.ContinueOnEntryMachine_Fluent: No [StateMachine] attribute
-(48,1): info FSM997: Skipped state machine candidate TestMachines.ThrowingActionMachine_Fluent: No [StateMachine] attribute
