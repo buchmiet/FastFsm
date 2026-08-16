@@ -1,3 +1,5 @@
+> **HISTORICAL / NOT CURRENT PRODUCT DOCUMENTATION**
+
 Fast FSM obsługuje dziś “klasyczne” enumy (Int32 pod spodem). Tymczasem w nowoczesnych mikro-serwisach .NET coraz częściej spotyka się \*\*“string-enumy”\*\* – stałe symboliczne oparte na `record struct` lub klasach “Smart Enum”. Poniżej wyjaśniam, skąd ta moda, jakie są typowe implementacje i co to oznacza dla roadmapy FastFSM 0.8.
 
 

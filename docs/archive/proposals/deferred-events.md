@@ -1,3 +1,5 @@
+> **HISTORICAL / NOT CURRENT PRODUCT DOCUMENTATION**
+
 \# FastFSM Deferred Events - Final Implementation Specification v0.9
 
 \*Complete specification superseding initial deep research proposal\*
