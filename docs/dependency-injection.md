@@ -6,28 +6,25 @@ Install the DI package:
 dotnet add package FastFsm.Net.DependencyInjection
 ```
 
-The package defines `FSM_DI_ENABLED` and `FSM_LOGGING_ENABLED` and compiles `FsmServiceCollectionExtensions` into your project.
+The package defines `FSM_DI_ENABLED` and `FSM_LOGGING_ENABLED` and compiles `FsmServiceCollectionExtensions` into the consuming project.
 
 ## Register a state machine
 
-`AddStateMachine` requires **four** type parameters: interface, implementation, state enum, trigger enum.
+`AddStateMachine` requires four type parameters: interface, implementation, state enum, and trigger enum.
 
 ```csharp
 using FastFsm.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 
-public interface IOrderWorkflow { /* generated/sync API surface */ }
-// OrderWorkflow : partial class with [StateMachine]
-
 services.AddStateMachine<IOrderWorkflow, OrderWorkflow, OrderState, OrderTrigger>(
     ServiceLifetime.Singleton);
 ```
 
-The implementation type must be the generated `partial` state machine class.
+The implementation type is the generated `partial` state-machine class.
 
 ## Initial state
 
-By default the first enum value is used. Override with:
+By default, the registration uses the first enum value. Configure another initial state with:
 
 ```csharp
 services.ConfigureStateMachineInitialState<OrderState>(
@@ -40,11 +37,11 @@ services.ConfigureStateMachineInitialState<OrderState>(
 services.AddStateMachineExtension<AuditExtension>(ServiceLifetime.Singleton);
 ```
 
-Extensions registered in DI are supplied to machines created through the factory when the extensible variant is generated (`GenerateExtensibleVersion = true`, the default).
+Extensions registered in DI are supplied to machines generated with extension support. In the current 0.9 codebase, set `GenerateExtensibleVersion = true` explicitly on those machines; see [extensions.md](extensions.md).
 
 ## Factory
 
-Registration also exposes `IStateMachineFactory<TInterface, TState, TTrigger>` for explicit creation with a chosen initial state.
+Registration also exposes `IStateMachineFactory<TInterface, TState, TTrigger>` for explicit creation with a selected initial state.
 
 ## Related types
 
