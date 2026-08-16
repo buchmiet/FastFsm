@@ -213,6 +213,7 @@ public class ExtensionsVariantDITests : DITestBase
         }
         public virtual void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext { }
         public virtual void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
+        public virtual void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
     }
 
     private class OrderedTestExtension : TestExtension
@@ -254,6 +255,7 @@ public class ExtensionsVariantDITests : DITestBase
         public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext { }
         public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext { }
         public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
+        public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
     }
 
     private class SingletonExtension : TestExtension { }

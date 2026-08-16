@@ -21,7 +21,7 @@ namespace FastFsm.Tests.Exceptions
             var throwing = new ThrowingExtension();
             var counting = new CountingExtension();
             // Tworzymy maszynę, przekazując rozszerzenia bezpośrednio do konstruktora
-            var machine = new TestMachine(State.Initial, [throwing, counting]);
+            var machine = new TestMachine(BasicState.Initial, [throwing, counting]);
             machine.Start();
 
             // Act
@@ -29,7 +29,7 @@ namespace FastFsm.Tests.Exceptions
 
             // Assert
             Assert.True(result); // Przejście stanu powinno się powieść
-            Assert.Equal(State.Final, machine.CurrentState); // Maszyna jest w nowym stanie
+            Assert.Equal(BasicState.Final, machine.CurrentState); // Maszyna jest w nowym stanie
             Assert.Equal(1, counting.BeforeTransitionCount); // Drugie, poprawne rozszerzenie zostało wykonane
         }
 

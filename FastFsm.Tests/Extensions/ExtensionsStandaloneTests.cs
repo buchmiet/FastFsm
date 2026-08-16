@@ -38,6 +38,7 @@ namespace FastFsm.Tests.Extensions
 
             public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
             public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext { }
+            public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
         }
 
         [Fact]

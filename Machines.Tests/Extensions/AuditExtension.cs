@@ -57,5 +57,7 @@ namespace Machines.Tests.Extensions
         {
             throw new NotImplementedException();
         }
+
+        public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
     }
 }

@@ -52,5 +52,10 @@ namespace Machines.Tests.Extensions
         {
             // no-op by default
         }
+
+        public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext
+        {
+            // no-op by default
+        }
     }
 }

@@ -52,7 +52,7 @@ namespace FastFsm.Runtime.Extensions
     /// Executes extension hooks and – when <c>FSM_LOGGING_ENABLED</c> is defined –
     /// logs errors to <see cref="ILogger"/>.
     /// </summary>
-    public sealed partial class ExtensionRunner
+    internal sealed partial class ExtensionRunner
     {
         /// <summary>
         /// Common, logger-less instance for use where
@@ -147,6 +147,18 @@ namespace FastFsm.Runtime.Extensions
                         nameof(IStateMachineExtension.OnInternalTransition));
                 }
             }
+            // OnTransitioned: successful transition, after effects
+            if (success)
+            {
+                for (int i = 0; i < extensions.Count; i++)
+                {
+                    SafeExecute(
+                        extensions[i],
+                        context,
+                        (ext, ctx) => ext.OnTransitioned(ctx),
+                        nameof(IStateMachineExtension.OnTransitioned));
+                }
+            }
             for (int i = 0; i < extensions.Count; i++)
             {
                 SafeExecute(
@@ -239,7 +251,14 @@ namespace FastFsm.Runtime.Extensions
             IReadOnlyList<IStateMachineExtension> extensions,
             IStateMachineContext context)
         {
-            // TODO: invoke extension.OnTransitioned(context) when available
+            for (int i = 0; i < extensions.Count; i++)
+            {
+                SafeExecute(
+                    extensions[i],
+                    context,
+                    static (ext, ctx) => ext.OnTransitioned(ctx),
+                    nameof(IStateMachineExtension.OnTransitioned));
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

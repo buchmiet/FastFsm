@@ -16,5 +16,6 @@ namespace Machines.Tests.Extensions
         public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
 
         public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext { }
+        public void OnTransitioned<T>(T ctx) where T : IStateMachineContext { }
     }
 }

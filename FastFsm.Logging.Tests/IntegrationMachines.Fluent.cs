@@ -1,24 +1,9 @@
 using Abstractions.Fluent;
 using Abstractions.Attributes;
-using Machines.Tests.Payloads;
-using OrderState = Machines.Tests.Machines.OrderState;
-using OrderTrigger = Machines.Tests.Machines.OrderTrigger;
 
 namespace FastFsm.Logging.Tests;
 
-public enum TestInitialState { Ready, Working, Done }
-public enum TestInitialTrigger { Go, Stop }
-
-public enum WorkflowState { Draft, Submitted }
-public enum WorkflowTrigger { Submit }
-
-[StateMachine(typeof(WorkflowState), typeof(WorkflowTrigger), GenerateExtensibleVersion = true)]
-public partial class EmptyExtensibleMachine
-{
-    private static void Configure() => FSM
-        .State(WorkflowState.Draft).On(WorkflowTrigger.Submit).GoTo(WorkflowState.Submitted);
-}
-
+// Initial OnEntry state machine - Fluent version
 [StateMachine(typeof(TestInitialState), typeof(TestInitialTrigger))]
 public partial class InitialOnEntryStateMachineActionsFluent
 {
@@ -29,29 +14,32 @@ public partial class InitialOnEntryStateMachineActionsFluent
     private void OnReadyEntry() { }
 }
 
-[StateMachine(typeof(OrderState), typeof(OrderTrigger), GenerateExtensibleVersion = true)]
-[PayloadType(OrderTrigger.Process, typeof(OrderPayload))]
-[PayloadType(OrderTrigger.Pay, typeof(PaymentPayload))]
-[PayloadType(OrderTrigger.Ship, typeof(ShippingPayload))]
-public partial class LoggingFullMultiPayloadMachine
+// Full multi-payload machine - Fluent version
+[StateMachine(typeof(OrderStatePayload), typeof(OrderTriggerPayload), GenerateExtensibleVersion = true)]
+[PayloadType(OrderTriggerPayload.Process, typeof(OrderPayload))]
+[PayloadType(OrderTriggerPayload.Pay, typeof(PaymentPayload))]
+[PayloadType(OrderTriggerPayload.Ship, typeof(ShippingPayload))]
+public partial class FullMultiPayloadMachineFluent
 {
     private static void Configure() => FSM
-        .State(OrderState.New)
+        .State(OrderStatePayload.New)
             .OnEntry(nameof(OnNewEntry))
-            .On(OrderTrigger.Process)
+            .On(OrderTriggerPayload.Process)
                 .Action(nameof(HandleOrder))
-                .GoTo(OrderState.Processing)
-        .State(OrderState.Processing)
-            .On(OrderTrigger.Pay)
+                .GoTo(OrderStatePayload.Processing)
+        .State(OrderStatePayload.Processing)
+            .On(OrderTriggerPayload.Pay)
                 .Action(nameof(HandlePayment))
-                .GoTo(OrderState.Paid)
-        .State(OrderState.Paid)
-            .On(OrderTrigger.Ship)
+                .GoTo(OrderStatePayload.Paid)
+        .State(OrderStatePayload.Paid)
+            .On(OrderTriggerPayload.Ship)
                 .Action(nameof(HandleShipping))
-                .GoTo(OrderState.Shipped);
+                .GoTo(OrderStatePayload.Shipped);
 
     private void OnNewEntry() { }
     private void HandleOrder(OrderPayload order) { }
     private void HandlePayment(PaymentPayload payment) { }
     private void HandleShipping(ShippingPayload shipping) { }
 }
+
+// Payload classes are defined in LoggingIntegrationTests.cs

@@ -44,6 +44,8 @@ public class AsyncExtensionsStandaloneTests
         {
             Log.Add("Internal");
         }
+
+        public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
     }
 
     [Fact]
@@ -158,6 +160,11 @@ public class AsyncExtensionsStandaloneTests
         }
 
         public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
+        {
+            throw new Exception("Extension error");
+        }
+
+        public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext
         {
             throw new Exception("Extension error");
         }

@@ -40,4 +40,11 @@ public interface IStateMachineExtension
     /// </summary>
     void OnUnhandledTrigger<TContext>(TContext context)
         where TContext : IStateMachineContext;
+
+    /// <summary>
+    /// Called after a successful transition has completed all effects (exit/action/entry),
+    /// before the final AfterTransition(true) notification.
+    /// </summary>
+    void OnTransitioned<TContext>(TContext context)
+        where TContext : IStateMachineContext;
 }

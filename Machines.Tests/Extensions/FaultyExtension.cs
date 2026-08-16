@@ -34,6 +34,11 @@ namespace Machines.Tests.Extensions
             {
                 throw new Exception("Extension error");
             }
+
+            public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext
+            {
+                throw new Exception("Extension error");
+            }
         }
     }
 
