@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <RunConfiguration>
+    <!-- Kill the entire test session after this timeout (in milliseconds) -->
+    <TestSessionTimeout>120000</TestSessionTimeout>
+    <!-- Limit test host parallelism to reduce chances of deadlocks across async tests -->
+    <MaxCpuCount>1</MaxCpuCount>
+    <ResultsDirectory>TestResults</ResultsDirectory>
+  </RunConfiguration>
+</RunSettings>
+

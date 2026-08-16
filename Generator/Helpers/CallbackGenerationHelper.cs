@@ -30,7 +30,7 @@ namespace Generator.Helpers
         }
 
         /// <summary>
-        /// Generuje wywołanie callback z pełną obsługą wariantów.
+        /// Generates callback invocation with full variant handling.
         /// </summary>
         private static void EmitCallbackInvocation(
             IndentedStringBuilder.IndentedStringBuilder sb,
@@ -403,7 +403,7 @@ namespace Generator.Helpers
         }
 
         /// <summary>
-        /// Generuje wywołanie OnEntry dla StateModel z obsługą multi-payload.
+        /// Generates OnEntry invocation for StateModel with multi-payload support.
         /// </summary>
         public static void EmitOnEntryCall(
             IndentedStringBuilder.IndentedStringBuilder sb,
@@ -450,7 +450,7 @@ namespace Generator.Helpers
         }
 
         /// <summary>
-        /// Generuje wywołanie OnExit dla StateModel z obsługą multi-payload.
+        /// Generates OnExit invocation for StateModel with multi-payload support.
         /// </summary>
         public static void EmitOnExitCall(
             IndentedStringBuilder.IndentedStringBuilder sb,
@@ -494,7 +494,7 @@ namespace Generator.Helpers
         }
 
         /// <summary>
-        /// Generuje wywołanie Action dla TransitionModel.
+        /// Generates Action invocation for TransitionModel.
         /// </summary>
         public static void EmitActionCall(
             IndentedStringBuilder.IndentedStringBuilder sb,

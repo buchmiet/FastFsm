@@ -15,9 +15,9 @@ public readonly record struct OrderStatus(string Value)
 public enum OrderTrigger { Pay, Ship }
 
 /// <summary>
-/// Minimalny FSM proof-of-concept dla string-enum:
-/// Publicznie: OrderStatus (record struct z nazwą)
-/// Wewnętrznie: indeks int (_stateId) + parser bez alokacji
+/// Minimal FSM proof-of-concept for string-enum:
+/// Public: OrderStatus (record struct with name)
+/// Internal: int index (_stateId) + allocation-free parser
 /// </summary>
 public sealed class OrderFsm_PoC
 {
@@ -49,7 +49,7 @@ public sealed class OrderFsm_PoC
         _stateId = to;
     }
 
-    // Parser bez alokacji: rozgałęzienie po długości, SequenceEqual nad Span
+    // Allocation-free parser: branching by length, SequenceEqual over Span
     public static bool TryParseName(ReadOnlySpan<char> s, out int id)
     {
         switch (s.Length)
@@ -86,7 +86,7 @@ public sealed class OrderFsm_PoC
 /// JsonConverter dla OrderStatus:
 /// - Serializuje jako sam string (np. "paid").
 /// - Deserializuje z stringa; waliduje do znanego zbioru (opcjonalnie).
-/// W realnym generatorze można to powiązać z mapami compile-time.
+/// In a real generator this can be linked with compile-time maps.
 /// </summary>
 public sealed class OrderStatusJsonConverter : JsonConverter<OrderStatus>
 {
@@ -144,7 +144,7 @@ public static class Program
                         ?? throw new Exception("Deserialize failed");
         Console.WriteLine($"Roundtrip State: {roundtrip.State.Value}"); // shipped
 
-        // Próba z nieznaną wartością (spodziewany błąd JSON)
+        // Test with unknown value (expected JSON error)
         try
         {
             var bad = "{\"State\":\"unknown\"}";

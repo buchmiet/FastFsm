@@ -57,7 +57,7 @@ public abstract class GeneratorBaseClass(ITestOutputHelper output)
 
         // Dodaj StateMachine.dll
         string fsmFastDllPath = Path.Combine(
-            solutionDir, "FastFsm", "bin", configuration, "net9.0", "FastFsm.dll");
+            solutionDir, "FastFsm", "bin", configuration, "net10.0", "FastFsm.dll");
 
         if (File.Exists(fsmFastDllPath))
         {
@@ -204,7 +204,7 @@ public abstract class GeneratorBaseClass(ITestOutputHelper output)
                     "StateMachine.DependencyInjection",
                     "bin",
                     configuration,
-                    "net9.0",
+                    "net10.0",
                     "StateMachine.DependencyInjection.dll");
 
                 if (File.Exists(diDllPath))

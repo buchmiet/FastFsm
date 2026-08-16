@@ -188,5 +188,20 @@ namespace FastFsm.Logging.Tests
         {
             _output.WriteLine($"Extension: Guard '{guardName}' returned {result}");
         }
+
+        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
+        {
+            _output.WriteLine("Extension: Unhandled trigger");
+        }
+
+        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
+        {
+            _output.WriteLine("Extension: Internal transition");
+        }
+
+        public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext
+        {
+            _output.WriteLine("Extension: Transitioned");
+        }
     }
 }

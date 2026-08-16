@@ -2,9 +2,9 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Abstractions.Attributes;
+using Abstractions.Fluent;
 
-namespace  FastFsm.Async.Tests.Features.Cancellation
-{
+namespace FastFsm.Async.Tests.Features.Cancellation;
     // Simple machine to test cancellation token propagation
     [StateMachine(typeof(SimpleStates), typeof(SimpleTriggers))]
     public partial class SimpleCancellationMachine
@@ -37,6 +37,39 @@ namespace  FastFsm.Async.Tests.Features.Cancellation
         }
     }
 
+    // FluentFsm version 
+    [StateMachine(typeof(SimpleStates), typeof(SimpleTriggers))]
+    public partial class SimpleCancellationMachineFluentFsm
+    {
+        private void Configure() => FSM
+            .State(SimpleStates.Ready)
+                .OnEntryAsync(nameof(OnEnterReady))
+                .On(SimpleTriggers.Start)
+                    .Guard(nameof(CanStart))
+                    .Action(nameof(DoStart))
+                    .GoTo(SimpleStates.Working)
+            .State(SimpleStates.Working)
+                .On(SimpleTriggers.Finish).GoTo(SimpleStates.Done)
+            .State(SimpleStates.Done);
+
+        // All callbacks accept CancellationToken with default value
+        private async ValueTask<bool> CanStart(CancellationToken ct = default)
+        {
+            await Task.Delay(1, ct);
+            return true;
+        }
+
+        private async Task DoStart(CancellationToken ct = default)
+        {
+            await Task.Delay(1, ct);
+        }
+
+        private async Task OnEnterReady(CancellationToken ct = default)
+        {
+            await Task.Delay(1, ct);
+        }
+    }
+
     public enum SimpleStates
     {
         Ready,
@@ -49,4 +82,3 @@ namespace  FastFsm.Async.Tests.Features.Cancellation
         Start,
         Finish
     }
-}

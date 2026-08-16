@@ -4,27 +4,57 @@ namespace Generator.Rules.Definitions;
 
 public static class RuleIdentifiers
 {
-    public const string DuplicateTransition = "FSM001";
-    public const string UnreachableState = "FSM002";
-    public const string InvalidMethodSignature = "FSM003";
-    public const string MissingStateMachineAttribute = "FSM004";
-    public const string InvalidTypesInAttribute = "FSM005";
-    public const string InvalidEnumValueInTransition = "FSM006";
-    public const string MissingPayloadType = "FSM007";
-    public const string ConflictingPayloadConfiguration = "FSM008";
-    public const string InvalidForcedVariantConfiguration = "FSM009";
-    public const string GuardWithPayloadInNonPayloadMachine = "FSM010";
-    public const string MixedSyncAsyncCallbacks = "FSM011";
-    public const string InvalidGuardTaskReturnType = "FSM012";
-    public const string AsyncCallbackInSyncMachine = "FSM013";
-    public const string InvalidAsyncVoid = "FSM014";
+    // A. Model & Declarations (0100–0599)
+    public const string DuplicateTransition = "FSM0400";                         // was FSM001
+    public const string UnreachableState = "FSM0500";                            // was FSM002
+    public const string InvalidMethodSignature = "FSM0300";                      // was FSM003
+    public const string MissingStateMachineAttribute = "FSM0100";                // was FSM004
+    public const string InvalidTypesInAttribute = "FSM0101";                     // was FSM005
+    public const string InvalidEnumValueInTransition = "FSM0200";                // was FSM006
+    // Removed: FSM007 MissingPayloadType, FSM008 ConflictingPayloadConfiguration (unused)
+    public const string GuardWithPayloadInNonPayloadMachine = "FSM0301";          // was FSM010
+    public const string MixedSyncAsyncCallbacks = "FSM1100";                     // was FSM011
+    public const string InvalidGuardTaskReturnType = "FSM1110";                  // was FSM012
+    public const string AsyncCallbackInSyncMachine = "FSM1120";                  // was FSM013
+    public const string InvalidAsyncVoid = "FSM0302";                            // was FSM014
     
-    // HSM-specific diagnostics
-    public const string CircularHierarchy = "FSM100";                     // Cyclical hierarchy
-    public const string OrphanSubstate = "FSM101";                       // Multiple or divergent parent  
-    public const string InvalidHierarchyConfiguration = "FSM102";        // Composite without initial state
-    public const string MultipleInitialSubstates = "FSM103";             // Multiple initial children
-    public const string InvalidHistoryConfiguration = "FSM104";          // History on non-composite
-    public const string ConflictingTransitionTargets = "FSM105";         // Transition to composite without explicit child
+    // C. HSM-specific diagnostics (2000–2099)
+    public const string CircularHierarchy = "FSM2000";                           // was FSM100
+    public const string OrphanSubstate = "FSM2010";                              // was FSM101
+    public const string InvalidHierarchyConfiguration = "FSM2020";              // was FSM102
+    public const string MultipleInitialSubstates = "FSM2030";                   // was FSM103
+    public const string InvalidHistoryConfiguration = "FSM2040";                // was FSM104
+    // Removed: FSM105 ConflictingTransitionTargets (unused)
 
+    // D. Fluent API-specific diagnostics (3000–3099)
+    public const string OpenTransition = "FSM3000";                              // was FSM200
+    public const string AutoFinalizedTransition = "FSM3010";                     // was FSM201
+    public const string MultiplePayloadsOnTransition = "FSM3020";                // was FSM202
+    // Removed: FSM203/204/205/206 (unused Fluent/Async diagnostics)
+    public const string InvalidPriorityArgument = "FSM3030";                     // was FSM207
+
+    // Global handler diagnostics
+    public const string DuplicateOnExceptionHandler = "FSM3050";                 // was FSM208
+    public const string InvalidOnExceptionSignature = "FSM3060";                 // was FSM209
+    public const string PriorityWithoutActiveTransition = "FSM3040";             // was FSM210
+
+    // Method group diagnostics
+    public const string AmbiguousMethodGroup = "FSM3070";                        // ambiguous method group
+    public const string ImpureDslExpression = "FSM3071";
+    public const string PropertyMethodGroupNotAllowed = "FSM3072";
+    public const string ExternalMethodGroup = "FSM3073";
+    public const string DslSignatureMismatch = "FSM3074";
+    public const string LambdaExpressionNotAllowed = "FSM3075";
+    public const string FieldOrPropertyAccessInDsl = "FSM3076";
+    public const string MethodInvocationInDsl = "FSM3077";
+
+    public const string MultipleConfigureMethods = "FSM3080";
+    public const string ConfigureMustBePrivate = "FSM3081a";
+    public const string ConfigureMustBeParameterless = "FSM3081b";
+    public const string ConfigureCannotBeVirtual = "FSM3081c";
+    public const string ConfigureMustBeInstance = "FSM3081d";
+    public const string ConfigureNotDeclaredOnType = "FSM3082";
+    public const string ConfigureCannotBePartial = "FSM3083";
+
+    // E. Generator infrastructure diagnostics removed (9000–9013)
 }

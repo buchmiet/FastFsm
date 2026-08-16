@@ -16,24 +16,24 @@ public class UnreachableStateRule : IValidationRule<UnreachableStateContext>
     {
         if (context.AllDefinedStateNames == null || !context.AllDefinedStateNames.Any())
         {
-            // Jeśli nie ma zdefiniowanych stanów, nie ma czego sprawdzać.
-            // Można zwrócić sukces, bo nie znaleziono "nieosiągalnych" stanów.
+            // If there are no defined states, there's nothing to check.
+            // Can return success as no "unreachable" states were found.
             yield return ValidationResult.Success();
-            yield break; // lub po prostu yield break; jeśli Success() ma być tylko dla "aktywnego" sukcesuFSM005 
+            yield break; // or just yield break; if Success() should only be for "active" success FSM005 
         }
 
         var reachableStates = new HashSet<string>();
         var queue = new Queue<string>();
 
         // Determine initial state for traversal
-        string? effectiveInitialState = null; // Może być null
+        string? effectiveInitialState = null; // Can be null
         if (!string.IsNullOrEmpty(context.InitialState) && context.AllDefinedStateNames.Contains(context.InitialState))
         {
             effectiveInitialState = context.InitialState;
         }
         else if (context.AllDefinedStateNames.Any())
         {
-            // Domyślnie pierwszy stan z listy, jeśli nie podano jawnie stanu początkowego lub jest on nieprawidłowy
+            // Default to first state from list if no initial state was explicitly provided or if it's invalid
             effectiveInitialState = context.AllDefinedStateNames.First();
         }
 
@@ -44,14 +44,14 @@ public class UnreachableStateRule : IValidationRule<UnreachableStateContext>
         }
         else
         {
-            // Jeśli nie można ustalić stanu początkowego (np. brak zdefiniowanych stanów),
-            // wszystkie stany (jeśli jakiekolwiek były oczekiwane) można by uznać za nieosiągalne,
-            // ale praktyczniej jest nic nie sprawdzać lub zgłosić problem z konfiguracją.
-            // Na razie, jeśli nie ma stanu startowego, a są stany, to wszystkie są nieosiągalne z perspektywy braku startu.
-            // Jednak obecna logika poniżej obsłuży to poprawnie - żaden stan nie zostanie dodany do reachableStates.
-            // Jeśli lista AllDefinedStateNames nie jest pusta, poniższa pętla zgłosi je jako nieosiągalne.
-            // Można też rozważyć yield return ValidationResult.Success(); jeśli to jest stan "nie dotyczy".
-            // Dla uproszczenia - jeśli nie ma stanu startowego, dalsza logika poprawnie zidentyfikuje wszystkie jako nieosiągalne.
+            // If initial state cannot be determined (e.g., no defined states),
+            // all states (if any were expected) could be considered unreachable,
+            // but it's more practical to skip checking or report a configuration issue.
+            // For now, if there's no start state but there are states, they're all unreachable from the perspective of no start.
+            // However, the logic below will handle this correctly - no state will be added to reachableStates.
+            // If AllDefinedStateNames list is not empty, the loop below will report them as unreachable.
+            // Could also consider yield return ValidationResult.Success(); if this is a "not applicable" state.
+            // For simplicity - if there's no start state, the logic will correctly identify all as unreachable.
         }
 
         while (queue.Count > 0)
@@ -59,8 +59,8 @@ public class UnreachableStateRule : IValidationRule<UnreachableStateContext>
             var currentState = queue.Dequeue();
             foreach (var transition in context.AllTransitions.Where(t => t.FromState == currentState))
             {
-                // Używamy transition.ToState, które jest string?
-                // Interesują nas tylko przejścia, które mają zdefiniowany stan docelowy.
+                // We use transition.ToState, which is string?
+                // We're only interested in transitions that have a defined target state.
                 if (transition.ToState != null)
                 {
                     string toState = transition.ToState;
@@ -85,21 +85,21 @@ public class UnreachableStateRule : IValidationRule<UnreachableStateContext>
                 yield return ValidationResult.Fail(
                     RuleIdentifiers.UnreachableState,
                     message,
-                    DefinedRules.UnreachableState.DefaultSeverity // Użycie domyślnej ważności
+                    DefinedRules.UnreachableState.DefaultSeverity // Using default severity
                 );
             }
         }
 
         if (!foundUnreachable && (context.AllDefinedStateNames != null && context.AllDefinedStateNames.Any()))
         {
-            // Jeśli przeszliśmy przez wszystkie stany i żaden nie był nieosiągalny
-            // (a były jakieś stany do sprawdzenia), zwracamy sukces.
+            // If we went through all states and none were unreachable
+            // (and there were states to check), return success.
             yield return ValidationResult.Success();
         }
         else if (context.AllDefinedStateNames == null || !context.AllDefinedStateNames.Any())
         {
-            // Jeśli nie było stanów do sprawdzenia na początku, już zwróciliśmy sukces.
-            // Można by to scalić, ale dla jasności zostawiam.
+            // If there were no states to check at the beginning, we already returned success.
+            // Could merge this, but leaving for clarity.
         }
     }
 }

@@ -1,0 +1,822 @@
+#!/usr/bin/env python3
+"""Build script with advanced TUI support"""
+import argparse, re, subprocess, sys, json, urllib.request, urllib.error, shutil
+from pathlib import Path
+import xml.etree.ElementTree as ET
+from typing import List, Optional, Tuple
+
+# Import TUI system
+sys.path.insert(0, str(Path(__file__).parent))
+from tui import create_tui, ITui
+
+# Constants
+SEMVER_RE = re.compile(r'^(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?(?:-([0-9A-Za-z\-\.]+))?$')
+ROOT = Path(__file__).resolve().parent
+
+# NuGet configuration constants
+DEFAULT_NUGET_SOURCE = "http://localhost:8624/nuget/fastfsm-nuget/v3/index.json"
+DEFAULT_API_KEY = "7aa315e9d1e9829caa7bfaba3f497f6c9a0b367a"
+# Note: nuget.org is used ONLY for fetching dependencies, NEVER for pushing
+
+FASTFSM_PROJ = ROOT / "FastFsm" / "FastFsm.csproj"
+LOGGING_PROJ = ROOT / "FastFsm.Logging" / "FastFsm.Logging.csproj"
+DI_PROJ = ROOT / "FastFsm.DependencyInjection" / "FastFsm.DependencyInjection.csproj"
+GENERATOR_PROJ = ROOT / "Generator" / "Generator.csproj"
+
+PACKAGE_IDS = {
+    "core": ("FastFsm.Net", FASTFSM_PROJ),
+    "log": ("FastFsm.Net.Logging", LOGGING_PROJ),
+    "di": ("FastFsm.Net.DependencyInjection", DI_PROJ),
+}
+
+# Warning/error detection
+_MS_WARN_RE = re.compile(r'\bwarning\s+(CS|NU|NETSDK|MSB)\w*[: ]', re.IGNORECASE)
+_MS_ERR_RE = re.compile(r'\berror\s+(CS|NU|NETSDK|MSB)\w*[: ]', re.IGNORECASE)
+
+def _is_warning_line(s: str) -> bool:
+    return bool(_MS_WARN_RE.search(s) or ': warning ' in s.lower())
+
+def _is_error_line(s: str) -> bool:
+    return bool(_MS_ERR_RE.search(s) or ': error ' in s.lower())
+
+# Global UI instance
+_ui: Optional[ITui] = None
+_show_warnings = False
+
+def run(cmd, cwd=ROOT, fatal=True, label=None):
+    """Run command with TUI integration"""
+    global _ui, _show_warnings
+    
+    if label and _ui:
+        _ui.start(label)
+    
+    warn_count = 0
+    err_count = 0
+    
+    proc = subprocess.Popen(
+        cmd, cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True, bufsize=1
+    )
+    
+    assert proc.stdout is not None
+    for raw in proc.stdout:
+        line = raw.rstrip("\n")
+        if _is_error_line(line):
+            err_count += 1
+            print(line)  # Always show errors
+        elif _is_warning_line(line):
+            warn_count += 1
+            if _show_warnings:
+                print(line)
+        else:
+            # Only print other output if not using TUI
+            if not _ui or not label:
+                print(line)
+        
+        # Update TUI
+        if label and _ui:
+            _ui.update(label, warn_count, err_count)
+    
+    proc.wait()
+    rc = proc.returncode
+    
+    if label and _ui:
+        _ui.finish(label, rc == 0, warn_count, err_count)
+    
+    if fatal and rc != 0:
+        print(f"ERROR: command failed (exit {rc}): {' '.join(cmd)}")
+        sys.exit(rc)
+    
+    return rc
+
+def get_global_packages_path() -> Optional[Path]:
+    """Return path to the global NuGet packages cache, if available."""
+    try:
+        output = subprocess.check_output(
+            ["dotnet", "nuget", "locals", "global-packages", "--list"],
+            cwd=ROOT,
+            text=True,
+            stderr=subprocess.STDOUT,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+    for line in output.splitlines():
+        if ":" not in line:
+            continue
+        name, path = line.split(":", 1)
+        if name.strip().lower() == "global-packages":
+            path = path.strip()
+            if path:
+                return Path(path)
+    return None
+
+def purge_cached_package_versions(version: str):
+    """Remove cached copies of freshly published packages to avoid stale restores."""
+    global_dir = get_global_packages_path()
+    if not global_dir:
+        return
+
+    removed: List[str] = []
+    for pkg_id, _ in PACKAGE_IDS.values():
+        pkg_cache = global_dir / pkg_id.lower() / version
+        if pkg_cache.exists():
+            try:
+                shutil.rmtree(pkg_cache)
+                removed.append(f"{pkg_id} {version}")
+            except OSError:
+                pass
+
+    if removed:
+        print("Purged cached packages:", ", ".join(removed))
+
+# Version management functions
+def parse_version_from_stamp(csproj: Path) -> str:
+    tree = ET.parse(csproj)
+    root = tree.getroot()
+    for t in root.findall("./Target"):
+        if t.get("Name") == "StampVersionForNupkg":
+            for pg in t.findall("./PropertyGroup"):
+                ver = pg.find("Version")
+                if ver is not None and ver.text:
+                    return ver.text.strip()
+    ver = root.find(".//Version")
+    if ver is None or not (ver.text or "").strip():
+        raise RuntimeError(f"No <Version> found in {csproj}")
+    return ver.text.strip()
+
+def set_version_in_stamp(csproj: Path, new_version: str):
+    tree = ET.parse(csproj)
+    root = tree.getroot()
+    target = None
+    for t in root.findall("./Target"):
+        if t.get("Name") == "StampVersionForNupkg":
+            target = t
+            break
+    if target is None:
+        target = ET.SubElement(root, "Target", {"Name":"StampVersionForNupkg","BeforeTargets":"GenerateNuspec"})
+        ET.SubElement(target, "PropertyGroup")
+    pg = target.find("./PropertyGroup")
+    if pg is None:
+        pg = ET.SubElement(target, "PropertyGroup")
+    
+    ver = pg.find("Version")
+    if ver is None:
+        ver = ET.SubElement(pg, "Version")
+    ver.text = new_version
+    
+    pkgver = pg.find("PackageVersion")
+    if pkgver is None:
+        pkgver = ET.SubElement(pg, "PackageVersion")
+    pkgver.text = "$(Version)"
+    
+    tree.write(csproj, encoding="utf-8", xml_declaration=True)
+
+def bump(ver: str, which: str) -> str:
+    parts = [int(x) for x in ver.split(".")]
+    while len(parts) < 3: parts.append(0)
+    if which == "patch":
+        parts[-1] += 1
+    elif which == "minor":
+        parts[-2] += 1; parts[-1] = 0
+    elif which == "major":
+        parts[0] += 1; parts[1:] = [0]*(len(parts)-1)
+    else:
+        raise ValueError(which)
+    return ".".join(map(str, parts))
+
+def update_packageref(csproj: Path, include_id: str, new_version: str) -> bool:
+    tree = ET.parse(csproj)
+    root = tree.getroot()
+    changed = False
+    for pr in root.findall(".//PackageReference"):
+        if pr.get("Include") == include_id:
+            if pr.get("Version") != new_version:
+                pr.set("Version", new_version)
+                changed = True
+    if changed:
+        tree.write(csproj, encoding="utf-8", xml_declaration=True)
+    return changed
+
+# Branch versioning functions
+def get_current_branch() -> str:
+    try:
+        out = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=ROOT, text=True
+        ).strip()
+        return out
+    except subprocess.CalledProcessError:
+        return "unknown"
+
+def sanitize_branch_for_prerelease(name: str) -> str:
+    name = name.replace('/', '-').replace('_', '-').replace(' ', '-')
+    name = re.sub(r'[^0-9A-Za-z\-.]', '-', name)
+    name = re.sub(r'-{2,}', '-', name)
+    name = name.strip('-.')
+    return name or "branch"
+
+def parse_semver(version: str):
+    m = SEMVER_RE.match(version)
+    if not m:
+        return None
+    major, minor, patch, rev, pre = m.groups()
+    return (int(major), int(minor), int(patch), int(rev) if rev else 0, pre or "")
+
+def compare_versions(a: str, b: str) -> int:
+    pa = parse_semver(a); pb = parse_semver(b)
+    if pa is None and pb is None: return 0
+    if pa is None: return -1
+    if pb is None: return 1
+    na = pa[:4]; nb = pb[:4]
+    return (na > nb) - (na < nb)
+
+def query_nuget_versions(package_id: str, source: str = None, prerelease: bool = True) -> List[str]:
+    """Query NuGet source for available versions of a package"""
+    source_name = source or DEFAULT_NUGET_SOURCE
+
+    def _dedupe_keep_order(items: List[str]) -> List[str]:
+        seen = set()
+        ordered: List[str] = []
+        for item in items:
+            if item and item not in seen:
+                seen.add(item)
+                ordered.append(item)
+        return ordered
+
+    # First try the modern search endpoint which returns JSON
+    search_cmd = [
+        "dotnet", "package", "search", package_id,
+        "--source", source_name,
+        "--exact-match",
+        "--format", "json"
+    ]
+    if prerelease:
+        search_cmd.append("--prerelease")
+
+    versions: List[str] = []
+
+    try:
+        search_raw = subprocess.check_output(
+            search_cmd, cwd=ROOT, text=True, stderr=subprocess.STDOUT
+        )
+    except subprocess.CalledProcessError as exc:
+        print(f"[query_nuget_versions] dotnet package search failed for {package_id}: {exc}", file=sys.stderr)
+        if exc.output:
+            print(exc.output.strip(), file=sys.stderr)
+    except FileNotFoundError:
+        print("[query_nuget_versions] dotnet executable not found when running package search", file=sys.stderr)
+    else:
+        json_start = search_raw.find('{')
+        if json_start == -1:
+            print(f"[query_nuget_versions] package search returned no JSON payload for {package_id}", file=sys.stderr)
+        else:
+            json_payload = search_raw[json_start:]
+            try:
+                search_data = json.loads(json_payload)
+            except json.JSONDecodeError as exc:
+                print(f"[query_nuget_versions] failed to parse package search JSON for {package_id}: {exc}", file=sys.stderr)
+            else:
+                for result_item in search_data.get("searchResult", []):
+                    for package in result_item.get("packages", []):
+                        if package.get("id", "").lower() != package_id.lower():
+                            continue
+                        latest = package.get("latestVersion") or package.get("version")
+                        if latest:
+                            versions.append(latest)
+                        for ver_info in package.get("versions", []):
+                            ver = ver_info.get("version")
+                            if ver:
+                                versions.append(ver)
+                versions = _dedupe_keep_order(versions)
+                if versions:
+                    return versions
+
+    # Fallback to dotnet nuget list which works on older SDKs
+    list_cmd = [
+        "dotnet", "nuget", "list", package_id,
+        "--source", source_name
+    ]
+    if prerelease:
+        list_cmd.append("--prerelease")
+
+    try:
+        list_raw = subprocess.check_output(
+            list_cmd, cwd=ROOT, text=True, stderr=subprocess.STDOUT
+        )
+    except subprocess.CalledProcessError as exc:
+        print(f"[query_nuget_versions] dotnet nuget list failed for {package_id}: {exc}", file=sys.stderr)
+        if exc.output:
+            print(exc.output.strip(), file=sys.stderr)
+    except FileNotFoundError:
+        print("[query_nuget_versions] dotnet executable not found when running nuget list", file=sys.stderr)
+    else:
+        for line in list_raw.strip().split('\n'):
+            parts = line.strip().split()
+            if len(parts) >= 2 and parts[0].lower() == package_id.lower():
+                versions.append(parts[1])
+        versions = _dedupe_keep_order(versions)
+        if versions:
+            return versions
+
+    # Final fallback: query the ProGet registration feed directly
+    registration_data: dict | None = None
+    registration_urls: List[str] = []
+
+    source_url = source_name or ""
+    if isinstance(source_url, str) and not source_url.lower().startswith("http"):
+        exists, resolved_url = check_nuget_source(source_name)
+        if exists and resolved_url:
+            source_url = resolved_url
+
+    http_source = ""
+    if isinstance(source_url, str) and source_url.lower().startswith(("http",)):
+        http_source = source_url
+    elif isinstance(DEFAULT_NUGET_SOURCE, str) and DEFAULT_NUGET_SOURCE.lower().startswith(("http",)):
+        http_source = DEFAULT_NUGET_SOURCE
+
+    if http_source:
+        base_url = http_source.rstrip('/')
+        if base_url.endswith('/v3/index.json'):
+            base_url = base_url[: -len('/v3/index.json')]
+        elif base_url.endswith('/index.json'):
+            base_url = base_url[: -len('/index.json')]
+        base_url = base_url.rstrip('/')
+        registration_urls.extend([
+            f"{base_url}/v3/registration5-semver2/{package_id.lower()}/index.json",
+            f"{base_url}/v3/registration5-gz-semver2/{package_id.lower()}/index.json",
+            f"{base_url}/v3/registration/{package_id.lower()}/index.json",
+        ])
+
+    for candidate in registration_urls:
+        try:
+            with urllib.request.urlopen(candidate, timeout=5) as resp:
+                registration_data = json.load(resp)
+                break
+        except urllib.error.HTTPError as exc:
+            print(f"[query_nuget_versions] registration feed HTTP error for {package_id}: {exc}", file=sys.stderr)
+        except urllib.error.URLError as exc:
+            print(f"[query_nuget_versions] registration feed unreachable for {package_id}: {exc}", file=sys.stderr)
+        except json.JSONDecodeError as exc:
+            print(f"[query_nuget_versions] failed to parse registration JSON for {package_id}: {exc}", file=sys.stderr)
+
+    if registration_data:
+        def _collect_page_versions(page: dict) -> List[str]:
+            page_versions: List[str] = []
+            for item in page.get("items", []):
+                entry = item.get("catalogEntry", item)
+                version = entry.get("version")
+                if version:
+                    page_versions.append(version)
+            return page_versions
+
+        reg_versions: List[str] = []
+        for page in registration_data.get("items", []):
+            if page.get("items"):
+                reg_versions.extend(_collect_page_versions(page))
+            elif page.get("@id"):
+                try:
+                    with urllib.request.urlopen(page["@id"], timeout=5) as page_resp:
+                        page_data = json.load(page_resp)
+                    reg_versions.extend(_collect_page_versions(page_data))
+                except (urllib.error.URLError, json.JSONDecodeError) as exc:
+                    print(f"[query_nuget_versions] failed to load registration page for {package_id}: {exc}", file=sys.stderr)
+        reg_versions = _dedupe_keep_order(reg_versions)
+        if reg_versions:
+            return reg_versions
+
+    return []
+
+def find_highest_version_for_branch(package_ids, branch_label: str) -> str:
+    """Find highest version for a given branch by querying NuGet source"""
+    best = None
+    
+    print(f"Querying {DEFAULT_NUGET_SOURCE} for existing versions with suffix '{branch_label}'...")
+    
+    for pkg_id in package_ids:
+        versions = query_nuget_versions(pkg_id, prerelease=True)
+        
+        branch_versions = []
+        for ver in versions:
+            parsed = parse_semver(ver)
+            if not parsed:
+                continue
+            *nums, pre = parsed
+            # Check if prerelease label matches the branch
+            if pre == branch_label:
+                branch_versions.append(ver)
+                if best is None or compare_versions(ver, best) > 0:
+                    best = ver
+        
+        if branch_versions:
+            print(f"  {pkg_id}: found {len(branch_versions)} version(s) for this branch")
+    
+    if best:
+        print(f"  Highest version found: {best}")
+    else:
+        print(f"  No existing versions found for branch '{branch_label}'")
+    
+    return best
+
+def next_branch_version_from(seed: str) -> str:
+    parsed = parse_semver(seed)
+    if not parsed:
+        return f"0.0.0.1-{seed}"
+    major, minor, patch, rev, pre = parsed
+    rev = (rev or 0) + 1
+    return f"{major}.{minor}.{patch}.{rev}-{pre}"
+
+# Build task functions
+def find_csprojs(pattern=None):
+    return list(ROOT.glob("**/*.csproj"))
+
+def is_test_project(csproj: Path) -> bool:
+    return re.match(r"^Fast.*\.Tests$", csproj.parent.name) is not None
+
+def collect_tasks(args) -> List[str]:
+    """Collect all build tasks that will be executed"""
+    tasks = []
+    
+    if not args.no_commit and not args.no_tag:
+        if not args.no_commit:
+            tasks.append("git commit")
+        if not args.no_tag:
+            tasks.append("git tag")
+    
+    # Pack and push tasks
+    tasks.append("pack FastFsm")
+    tasks.append("pack FastFsm.DependencyInjection")
+    tasks.append("pack FastFsm.Logging")
+    tasks.append("push FastFsm.Net.nupkg")
+    tasks.append("push FastFsm.Net.DependencyInjection.nupkg")
+    tasks.append("push FastFsm.Net.Logging.nupkg")
+    
+    # Restore tasks
+    test_projects = [p for p in find_csprojs() if is_test_project(p)]
+    for csproj in test_projects:
+        name = csproj.parent.name
+        tasks.append(f"restore {name}")
+    
+    # Test tasks
+    if not args.no_tests:
+        for csproj in test_projects:
+            name = csproj.parent.name
+            tasks.append(f"test {name}")
+    
+    return tasks
+
+def update_tests_versions(new_version: str):
+    """Update package references in test projects"""
+    touched = []
+    for csproj in find_csprojs():
+        if is_test_project(csproj):
+            c1 = update_packageref(csproj, "FastFsm.Net", new_version)
+            c2 = update_packageref(csproj, "FastFsm.Net.Logging", new_version)
+            c3 = update_packageref(csproj, "FastFsm.Net.DependencyInjection", new_version)
+            if c1 or c2 or c3:
+                touched.append(csproj)
+    if touched:
+        print("Updated versions in tests:")
+        for p in touched:
+            print("  -", p.relative_to(ROOT))
+
+def git_commit_and_tag(new_version: str, do_commit: bool, do_tag: bool):
+    """Git operations with TUI integration"""
+    if not do_commit and not do_tag:
+        return
+    
+    if do_commit:
+        run(["git", "add", "-A"], label="git commit")
+        run(["git", "commit", "-m", f"chore(release): v{new_version}"], 
+            label="git commit", fatal=False)
+    
+    if do_tag:
+        try:
+            existing = subprocess.check_output(
+                ["git", "tag", "-l", f"v{new_version}"], cwd=ROOT, text=True
+            ).strip()
+        except subprocess.CalledProcessError:
+            existing = ""
+        
+        if existing:
+            print(f"Tag v{new_version} already exists — skipping")
+        else:
+            run(["git", "tag", "-a", f"v{new_version}", "-m", f"v{new_version}"],
+                label="git tag", fatal=False)
+
+def dotnet_pack(csproj: Path, configuration: str, label: str, output_dir: Path):
+    """Reliably pack a project by building first, then packing without building."""
+    # Build first to ensure all referenced analyzer outputs exist - exclude custom NuGet source during build
+    run(["dotnet", "build", str(csproj), "-c", configuration,
+         "--source", "https://api.nuget.org/v3/index.json"])
+    # Then pack without building again
+    run(["dotnet", "pack", str(csproj), "-c", configuration, "--no-build", "-o", str(output_dir)],
+        label=label)
+
+def run_tests(configuration: str) -> List[Path]:
+    """Run tests and return list of failed projects"""
+    failed = []
+    for csproj in find_csprojs():
+        if is_test_project(csproj):
+            name = csproj.parent.name
+            rc = run(["dotnet", "test", str(csproj), "-c", configuration],
+                    fatal=False, label=f"test {name}")
+            if rc != 0:
+                failed.append(csproj)
+    return failed
+
+def check_nuget_source(source_name: str = None) -> Tuple[bool, str]:
+    """Check if a NuGet source exists and return (exists, url)"""
+    if source_name is None:
+        source_name = DEFAULT_NUGET_SOURCE
+    if source_name.lower().startswith(('http://', 'https://')):
+        return True, source_name
+    """Check if a NuGet source exists and return (exists, url)"""
+    try:
+        result = subprocess.check_output(
+            ["dotnet", "nuget", "list", "source"],
+            cwd=ROOT, text=True, stderr=subprocess.STDOUT
+        )
+
+        lines = result.strip().split('\n')
+        found = False
+        url = ""
+
+        for i, line in enumerate(lines):
+            # Look for the source name in the numbered list
+            if source_name in line and '[Enabled]' in line:
+                found = True
+                # Next line should contain the URL
+                if i + 1 < len(lines):
+                    url = lines[i + 1].strip()
+                break
+
+        return found, url
+    except subprocess.CalledProcessError as e:
+        print(f"Error checking NuGet sources: {e}")
+        return False, ""
+
+def push_to_nuget(nupkg_path: Path, source_name: str = None, source_url: str = "", api_key: str = None) -> bool:
+    """Push a NuGet package to the specified source"""
+    if source_name is None:
+        source_name = DEFAULT_NUGET_SOURCE
+    if api_key is None:
+        api_key = DEFAULT_API_KEY
+
+    if source_url and "nuget.org" in source_url.lower():
+        print("ERROR: Refusing to push to nuget.org! Use local NuGet source instead.", file=sys.stderr)
+        return False
+    if isinstance(source_name, str) and source_name.lower() in {"nuget.org", "nuget", "nuget.org/v3/index.json"}:
+        print(f"ERROR: Refusing to push to {source_name}! Use local NuGet source instead.", file=sys.stderr)
+        return False
+
+    try:
+        http_source = ""
+        if source_url and isinstance(source_url, str) and source_url.lower().startswith(("http://", "https://")):
+            http_source = source_url
+        elif isinstance(source_name, str) and source_name.lower().startswith(("http://", "https://")):
+            http_source = source_name
+
+        if http_source:
+            base_url = http_source.rstrip('/')
+            if base_url.endswith('/v3/index.json'):
+                base_url = base_url[: -len('/v3/index.json')]
+            push_url = base_url.rstrip('/') + '/'
+            header_value = f"X-NuGet-ApiKey: {api_key}" if api_key else "X-NuGet-ApiKey:"
+            cmd = [
+                "curl", "-X", "PUT", push_url,
+                "-H", header_value,
+                "-F", f"file=@{nupkg_path}",
+                "-s", "-o", "/dev/null", "-w", "%{http_code}",
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
+            http_code = result.stdout.strip()
+            if http_code in {"200", "201", "202", "204", "409"}:
+                if http_code == "409":
+                    print(f"   {nupkg_path.name} already exists (skipped)")
+                return True
+            print(f"   HTTP {http_code} for {nupkg_path.name}")
+            if result.stderr:
+                stderr = result.stderr.strip()
+                if stderr:
+                    print(stderr)
+            return False
+
+        cmd = [
+            "dotnet", "nuget", "push", str(nupkg_path),
+            "--source", source_name,
+            "--skip-duplicate",
+        ]
+        if api_key:
+            cmd.extend(["--api-key", api_key])
+        run(cmd, label=f"push {nupkg_path.name}")
+        return True
+    except Exception as e:
+        print(f"Failed to push {nupkg_path.name}: {e}")
+        return False
+
+
+def main():
+    global _ui, _show_warnings
+    
+    ap = argparse.ArgumentParser(description="Release builder with advanced TUI")
+    
+    # Version options
+    g = ap.add_mutually_exclusive_group()
+    g.add_argument("--version", help="Set version, e.g. 0.8.0.18")
+    g.add_argument("--bump", choices=["patch","minor","major"], 
+                   help="Bump version from current")
+    
+    # Build options
+    ap.add_argument("--configuration", default="Release")
+    ap.add_argument("--no-commit", action="store_true")
+    ap.add_argument("--no-tag", action="store_true")
+    ap.add_argument("--no-tests", action="store_true")
+    ap.add_argument("--push-source", default=DEFAULT_NUGET_SOURCE,
+                    help=f"NuGet source to push packages to (default: {DEFAULT_NUGET_SOURCE})")
+    ap.add_argument("--api-key", default=DEFAULT_API_KEY,
+                    help=f"API key for NuGet source (default: {DEFAULT_API_KEY})")
+    
+    # Branch suffix options
+    ap.add_argument("--no-branch-suffix", action="store_true",
+                    help="Don't add branch as prerelease suffix")
+    ap.add_argument("--branch", help="Force branch name")
+    
+    # TUI options
+    ap.add_argument("--ui", choices=['auto', 'rich', 'ansi', 'plain'], default='auto',
+                    help="UI mode (default: auto)")
+    ap.add_argument("--progress", action="store_true",
+                    help="Show progress percentage")
+    ap.add_argument("--no-color", action="store_true",
+                    help="Disable colors")
+    ap.add_argument("--show-warnings", action="store_true",
+                    help="Show all warnings")
+    ap.add_argument("--plain", action="store_true",
+                    help="Force plain output (same as --ui plain)")
+    ap.add_argument("--loader", action="store_true",
+                    help="Show demoscene loader at startup")
+    
+    args = ap.parse_args()
+    
+    # UI mode override
+    if args.plain:
+        args.ui = 'plain'
+    
+    # Show loader if requested
+    if args.loader and args.ui != 'plain':
+        from tui import show_loader
+        import shutil
+        # Get terminal size
+        try:
+            width, height = shutil.get_terminal_size((80, 24))
+            height = min(40, height - 1)
+            width = min(120, width)
+        except:
+            width, height = 80, 24
+        show_loader(duration=3.0, width=width, height=height)
+    
+    # Initialize UI
+    _show_warnings = args.show_warnings
+    use_color = not args.no_color
+    _ui = create_tui(mode=args.ui, use_progress=args.progress, use_color=use_color)
+    
+    # Sanity checks
+    for key, (_, proj) in PACKAGE_IDS.items():
+        if not proj.exists():
+            print(f"Missing project: {proj}", file=sys.stderr)
+            sys.exit(1)
+
+    # Check if NuGet source is configured
+    source_exists, source_url = check_nuget_source(args.push_source)
+    if not source_exists:
+        print(f"ERROR: NuGet source '{args.push_source}' is not configured!", file=sys.stderr)
+        print(f"Please add it using: dotnet nuget add source <URL> --name {args.push_source}", file=sys.stderr)
+        sys.exit(-1)
+
+    print(f"Using NuGet source: {args.push_source} ({source_url})")
+    
+    # Version determination
+    current = parse_version_from_stamp(FASTFSM_PROJ)
+    
+    branch_name = args.branch.strip() if args.branch else get_current_branch()
+    branch_label = sanitize_branch_for_prerelease(branch_name)
+    use_branch_suffix = not args.no_branch_suffix
+    
+    if not use_branch_suffix:
+        new_version = args.version.strip() if args.version else bump(current, args.bump or "patch")
+    else:
+        if args.version:
+            base = args.version.strip()
+            bparsed = parse_semver(base)
+            if not bparsed:
+                print(f"ERROR: Invalid version: {base}", file=sys.stderr)
+                sys.exit(2)
+            major, minor, patch, rev, _ = bparsed
+            rev = rev or 1
+            new_version = f"{major}.{minor}.{patch}.{rev}-{branch_label}"
+        else:
+            ids = [PACKAGE_IDS["core"][0], PACKAGE_IDS["log"][0], PACKAGE_IDS["di"][0]]
+            highest = find_highest_version_for_branch(ids, branch_label)
+            if highest:
+                new_version = next_branch_version_from(highest)
+            else:
+                new_version = f"0.0.0.1-{branch_label}"
+    
+    print(f"Branch: {branch_name} → suffix: {branch_label}")
+    print(f"Version: {current} -> {new_version}")
+    
+    # Collect and register tasks
+    tasks = collect_tasks(args)
+    _ui.register(tasks)
+    
+    try:
+        # Update versions
+        set_version_in_stamp(FASTFSM_PROJ, new_version)
+        set_version_in_stamp(LOGGING_PROJ, new_version)
+        set_version_in_stamp(DI_PROJ, new_version)
+        
+        update_packageref(DI_PROJ, "FastFsm.Net", new_version)
+        update_packageref(LOGGING_PROJ, "FastFsm.Net", new_version)
+        
+        update_tests_versions(new_version)
+        
+        # Git operations
+        git_commit_and_tag(new_version, 
+                          do_commit=not args.no_commit, 
+                          do_tag=not args.no_tag)
+        
+        # Ensure generator assembly exists so core package can include it
+        run(
+            ["dotnet", "build", str(GENERATOR_PROJ), "-c", args.configuration,
+             "--source", "https://api.nuget.org/v3/index.json"],
+            label="build Generator")
+
+        # Pack - using temp directory now
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+
+            dotnet_pack(FASTFSM_PROJ, args.configuration, "pack FastFsm", temp_path)
+            dotnet_pack(DI_PROJ, args.configuration, "pack FastFsm.DependencyInjection", temp_path)
+            dotnet_pack(LOGGING_PROJ, args.configuration, "pack FastFsm.Logging", temp_path)
+
+            # Push packages to NuGet source
+            print(f"\nPushing packages to {args.push_source}...")
+            pushed_packages = []
+            failed_packages = []
+
+            for nupkg in temp_path.glob("*.nupkg"):
+                if push_to_nuget(nupkg, args.push_source, source_url, args.api_key):
+                    pushed_packages.append(nupkg.name)
+                else:
+                    failed_packages.append(nupkg.name)
+
+            if failed_packages:
+                print(f"\nFailed to push: {', '.join(failed_packages)}")
+            if pushed_packages:
+                print(f"\nSuccessfully pushed: {', '.join(pushed_packages)}")
+
+        purge_cached_package_versions(new_version)
+
+        # Restore projects using repo NuGet configuration when available
+        repo_nuget_config = ROOT / ".nuget" / "NuGet.Config"
+        for csproj in find_csprojs():
+            if is_test_project(csproj):
+                name = csproj.parent.name
+                restore_cmd = ["dotnet", "restore", str(csproj), "--force-evaluate"]
+                if repo_nuget_config.exists():
+                    restore_cmd.extend(["--configfile", str(repo_nuget_config)])
+                else:
+                    primary_source = source_url or args.push_source
+                    if primary_source:
+                        restore_cmd.extend(["--source", primary_source])
+                    restore_cmd.extend(["--source", "https://api.nuget.org/v3/index.json"])
+                run(restore_cmd, label=f"restore {name}")
+        
+        # Test
+        failed_tests = []
+        if not args.no_tests:
+            failed_tests = run_tests(args.configuration)
+        
+        # Final summary
+        _ui.summary()
+
+        print(f"\nPackages pushed to: {args.push_source}")
+        
+        if failed_tests:
+            print("\nTest failures:")
+            for p in failed_tests:
+                print(" -", p.relative_to(ROOT))
+            sys.exit(1)
+            
+    except KeyboardInterrupt:
+        print("\nBuild interrupted")
+        sys.exit(130)
+    finally:
+        if _ui:
+            _ui.close()
+
+if __name__ == "__main__":
+    main()

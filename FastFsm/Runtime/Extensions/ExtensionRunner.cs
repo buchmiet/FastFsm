@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using FastFsm.Contracts;
-
 #if FSM_LOGGING_ENABLED
 using Microsoft.Extensions.Logging;
 #endif
@@ -51,13 +50,13 @@ namespace FastFsm.Runtime.Extensions
 
     /// <summary>
     /// Executes extension hooks and – when <c>FSM_LOGGING_ENABLED</c> is defined –
-    /// zapisuje błędy do <see cref="ILogger"/>.
+    /// logs errors to <see cref="ILogger"/>.
     /// </summary>
-    public sealed partial class ExtensionRunner
+    internal sealed partial class ExtensionRunner
     {
         /// <summary>
-        /// Wspólna, bez-loggerowa instancja do użycia tam,
-        /// gdzie dodatkowe obiekty nie są potrzebne.
+        /// Common, logger-less instance for use where
+        /// additional objects are not needed.
         /// </summary>
         public static ExtensionRunner Default { get; } = new();
 
@@ -83,7 +82,7 @@ namespace FastFsm.Runtime.Extensions
             {
                 action(extension, context);
             }
-            // Uwaga: nagłówek catch zależny od kompilacji eliminujący CS0168 przy wyłączonym logowaniu
+            // Note: compilation-dependent catch header eliminating CS0168 when logging is disabled
 #if FSM_LOGGING_ENABLED
             catch (Exception ex)
 #else
@@ -103,12 +102,12 @@ namespace FastFsm.Runtime.Extensions
                         ex);
                 }
 #endif
-                // Błąd w rozszerzeniu nie powinien przerwać działania maszyny.
+                // Extension error should not interrupt state machine operation.
             }
         }
 
         /// <summary>
-        /// Wywołuje <see cref="IStateMachineExtension.OnBeforeTransition"/> dla wszystkich rozszerzeń.
+        /// Calls <see cref="IStateMachineExtension.OnBeforeTransition"/> for all extensions.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RunBeforeTransition<TContext>(
@@ -127,7 +126,7 @@ namespace FastFsm.Runtime.Extensions
         }
 
         /// <summary>
-        /// Wywołuje <see cref="IStateMachineExtension.OnAfterTransition"/> dla wszystkich rozszerzeń.
+        /// Calls <see cref="IStateMachineExtension.OnAfterTransition"/> for all extensions.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RunAfterTransition<TContext>(
@@ -136,6 +135,30 @@ namespace FastFsm.Runtime.Extensions
             bool success)
             where TContext : IStateMachineContext
         {
+            // Heuristic: if transition succeeded and From == To, treat as internal
+            if (success && context is IStateSnapshot snap && Equals(snap.FromState, snap.ToState))
+            {
+                for (int i = 0; i < extensions.Count; i++)
+                {
+                    SafeExecute(
+                        extensions[i],
+                        context,
+                        (ext, ctx) => ext.OnInternalTransition(ctx),
+                        nameof(IStateMachineExtension.OnInternalTransition));
+                }
+            }
+            // OnTransitioned: successful transition, after effects
+            if (success)
+            {
+                for (int i = 0; i < extensions.Count; i++)
+                {
+                    SafeExecute(
+                        extensions[i],
+                        context,
+                        (ext, ctx) => ext.OnTransitioned(ctx),
+                        nameof(IStateMachineExtension.OnTransitioned));
+                }
+            }
             for (int i = 0; i < extensions.Count; i++)
             {
                 SafeExecute(
@@ -147,7 +170,7 @@ namespace FastFsm.Runtime.Extensions
         }
 
         /// <summary>
-        /// Wywołuje <see cref="IStateMachineExtension.OnGuardEvaluation"/> dla wszystkich rozszerzeń.
+        /// Calls <see cref="IStateMachineExtension.OnGuardEvaluation"/> for all extensions.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RunGuardEvaluation<TContext>(
@@ -167,7 +190,7 @@ namespace FastFsm.Runtime.Extensions
         }
 
         /// <summary>
-        /// Wywołuje <see cref="IStateMachineExtension.OnGuardEvaluated"/> dla wszystkich rozszerzeń.
+        /// Calls <see cref="IStateMachineExtension.OnGuardEvaluated"/> for all extensions.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RunGuardEvaluated<TContext>(
@@ -185,6 +208,108 @@ namespace FastFsm.Runtime.Extensions
                     (ext, ctx) => ext.OnGuardEvaluated(ctx, guardName, result),
                     nameof(IStateMachineExtension.OnGuardEvaluated));
             }
+        }
+
+        // ------------------------------------------------------------
+        // Experimental/Planned hooks – stub implementations
+        // These are no-ops for now to allow generator call sites to compile.
+        // Once the IStateMachineExtension interface is expanded, wire them
+        // similarly to the existing Run* methods above.
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RunUnhandledTrigger(
+            IReadOnlyList<IStateMachineExtension> extensions,
+            IStateMachineContext context)
+        {
+            for (int i = 0; i < extensions.Count; i++)
+            {
+                SafeExecute(
+                    extensions[i],
+                    context,
+                    static (ext, ctx) => ext.OnUnhandledTrigger(ctx),
+                    nameof(IStateMachineExtension.OnUnhandledTrigger));
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RunInternalTransition(
+            IReadOnlyList<IStateMachineExtension> extensions,
+            IStateMachineContext context)
+        {
+            for (int i = 0; i < extensions.Count; i++)
+            {
+                SafeExecute(
+                    extensions[i],
+                    context,
+                    (ext, ctx) => ext.OnInternalTransition(ctx),
+                    "OnInternalTransition");
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RunTransitioned(
+            IReadOnlyList<IStateMachineExtension> extensions,
+            IStateMachineContext context)
+        {
+            for (int i = 0; i < extensions.Count; i++)
+            {
+                SafeExecute(
+                    extensions[i],
+                    context,
+                    static (ext, ctx) => ext.OnTransitioned(ctx),
+                    nameof(IStateMachineExtension.OnTransitioned));
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RunTransitionCompleted(
+            IReadOnlyList<IStateMachineExtension> extensions,
+            IStateMachineContext context)
+        {
+            // TODO: invoke extension.OnTransitionCompleted(context) when available
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RunBubbleToParent<TState>(
+            IReadOnlyList<IStateMachineExtension> extensions,
+            IStateMachineContext context,
+            TState handledAt)
+            where TState : unmanaged, Enum
+        {
+            // TODO: invoke extension.OnBubbleToParent(context, handledAt) when available
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RunInitialSubstateEntered<TState>(
+            IReadOnlyList<IStateMachineExtension> extensions,
+            IStateMachineContext parentContext,
+            TState child)
+            where TState : unmanaged, Enum
+        {
+            // TODO: invoke extension.OnInitialSubstateEntered(parentContext, child) when available
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RunHistoryRestore<TState>(
+            IReadOnlyList<IStateMachineExtension> extensions,
+            IStateMachineContext parentContext,
+            Abstractions.Attributes.HistoryMode mode,
+            TState restoredState)
+            where TState : unmanaged, Enum
+        {
+            // TODO: invoke extension.OnHistoryRestore(parentContext, mode, restoredState) when available
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RunAncestorPathChanged<TState>(
+            IReadOnlyList<IStateMachineExtension> extensions,
+            IStateMachineContext context,
+            ReadOnlySpan<TState> exitedPath,
+            ReadOnlySpan<TState> enteredPath,
+            TState lca)
+            where TState : unmanaged, Enum
+        {
+            // TODO: invoke extension.OnAncestorPathChanged(context, exitedPath, enteredPath, lca) when available
         }
     }
 }

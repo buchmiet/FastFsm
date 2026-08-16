@@ -1,10 +1,21 @@
 // benchmark-final.ts
 import { bench, run, group } from 'mitata';
+// Library benchmarks
+import { createMachine as createXMachine, createActor as createXActor, assign as xAssign } from 'xstate';
+// Robot3 may present different exports in ESM/CJS; resolve dynamically for Node/Bun
+let robot3ns: any;
+try {
+  robot3ns = await import('robot3');
+} catch {
+  // Fallback for Node resolution if needed
+  robot3ns = await import('robot3/dist/machine.js');
+}
+const { createMachine: createRMachine, state: rState, transition: rTransition, guard: rGuard, reduce: rReduce, interpret: rInterpret } = robot3ns as any;
 
-// Stałe
+// Constants
 const OPS = 1024;
 
-// Wspólne typy
+// Shared types
 enum State { A = 'A', B = 'B', C = 'C' }
 enum Trigger { Next = 'NEXT' }
 
@@ -14,7 +25,7 @@ interface PayloadData {
 }
 
 // ============================================================
-// 1. MINIMALNA IMPLEMENTACJA (odpowiednik FastFSM)
+// 1) Minimal implementation (FastFSM-equivalent)
 // ============================================================
 
 class MinimalFSM {
@@ -103,7 +114,7 @@ class MinimalFSMWithPayload {
 }
 
 // ============================================================
-// 2. ASYNC HOT PATH
+// 2) Async hot path
 // ============================================================
 
 class MinimalFSMAsyncHot {
@@ -136,7 +147,7 @@ class MinimalFSMAsyncHot {
 }
 
 // ============================================================
-// 3. ASYNC WITH YIELD
+// 3) Async with explicit yield
 // ============================================================
 
 class MinimalFSMAsyncYield {
@@ -144,7 +155,7 @@ class MinimalFSMAsyncYield {
   private asyncCounter: number = 0;
   
   async transitionAsync(trigger: Trigger): Promise<void> {
-    // Symulacja Task.Yield() - wymuszenie przełączenia kontekstu
+    // Simulate Task.Yield(): force a scheduler switch
     await new Promise(resolve => setImmediate(resolve));
     
     switch (this.state) {
@@ -171,7 +182,7 @@ class MinimalFSMAsyncYield {
 }
 
 // ============================================================
-// SETUP
+// Setup
 // ============================================================
 
 const minimalBasic = new MinimalFSM();
@@ -183,7 +194,7 @@ const minimalAsyncYield = new MinimalFSMAsyncYield();
 const payload: PayloadData = { value: 42, message: "test" };
 
 // ============================================================
-// BENCHMARKS
+// Benchmarks
 // ============================================================
 
 function runOps(fn: () => void): void {
@@ -195,19 +206,20 @@ function runOps(fn: () => void): void {
 console.log(`\n${'='.repeat(60)}`);
 console.log(`🚀 TypeScript State Machine Benchmarks`);
 console.log(`${'='.repeat(60)}`);
-console.log(`Runtime: Bun ${Bun.version}`);
+const runtime = (globalThis as any).Bun?.version ? `Bun ${(globalThis as any).Bun.version}` : `Node ${process.versions.node}`;
+console.log(`Runtime: ${runtime}`);
 console.log(`CPU: AMD Ryzen 5 9600X`);
 console.log(`Operations per iteration: ${OPS}`);
 console.log(`${'='.repeat(60)}\n`);
 
-// Basic Transitions
+// Basic transitions
 group('Basic Transitions', () => {
   bench('TypeScript Minimal (switch)', () => {
     runOps(() => minimalBasic.transition(Trigger.Next));
   });
 });
 
-// Guards + Actions
+// Guards + actions
 group('Guards + Actions', () => {
   bench('TypeScript Minimal (switch)', () => {
     runOps(() => minimalGuarded.transition(Trigger.Next));
@@ -221,21 +233,21 @@ group('Payload', () => {
   });
 });
 
-// Can Fire Check
+// CanFire check
 group('Can Fire Check', () => {
   bench('TypeScript Minimal (switch)', () => {
     runOps(() => minimalBasic.canFire(Trigger.Next));
   });
 });
 
-// Get Permitted Triggers
+// GetPermittedTriggers
 group('Get Permitted Triggers', () => {
   bench('TypeScript Minimal (switch)', () => {
     runOps(() => minimalBasic.getPermittedTriggers());
   });
 });
 
-// Async Hot Path
+// Async hot path
 group('Async Hot Path (no yield)', () => {
   bench('TypeScript Minimal - async hot', async () => {
     for (let i = 0; i < OPS; i++) {
@@ -244,7 +256,7 @@ group('Async Hot Path (no yield)', () => {
   });
 });
 
-// Async With Yield
+// Async with yield
 group('Async With Yield', () => {
   bench('TypeScript Minimal - async yield', async () => {
     for (let i = 0; i < OPS; i++) {
@@ -253,7 +265,218 @@ group('Async With Yield', () => {
   });
 });
 
-// Uruchom benchmarki
+// ============================================================
+// Library: XState
+// ============================================================
+
+// XState - basic A->B->C->A loop
+const xBasicMachine = createXMachine({
+  id: 'x-basic',
+  initial: 'A',
+  context: {},
+  states: {
+    A: { on: { NEXT: 'B' } },
+    B: { on: { NEXT: 'C' } },
+    C: { on: { NEXT: 'A' } }
+  }
+});
+const xBasic = createXActor(xBasicMachine).start();
+
+// XState - guards + actions (counter++) with guard limit
+const GUARD_LIMIT = 2147483647;
+const xGuardMachine = createXMachine({
+  id: 'x-guard',
+  initial: 'A',
+  context: { counter: 0, GUARD_LIMIT },
+  states: {
+    A: { on: { NEXT: { target: 'B', guard: ({ context }: any) => context.counter < context.GUARD_LIMIT, actions: xAssign(({ context }: any) => ({ ...context, counter: context.counter + 1 })) } } },
+    B: { on: { NEXT: { target: 'C', guard: ({ context }: any) => context.counter < context.GUARD_LIMIT, actions: xAssign(({ context }: any) => ({ ...context, counter: context.counter + 1 })) } } },
+    C: { on: { NEXT: { target: 'A', guard: ({ context }: any) => context.counter < context.GUARD_LIMIT, actions: xAssign(({ context }: any) => ({ ...context, counter: context.counter + 1 })) } } }
+  }
+});
+const xGuard = createXActor(xGuardMachine).start();
+
+// XState - payload (sum += event.value)
+const xPayloadMachine = createXMachine({
+  id: 'x-payload',
+  initial: 'A',
+  context: { sum: 0 },
+  states: {
+    A: { on: { NEXT: { target: 'B', actions: xAssign((args: any) => ({ sum: args.context.sum + (args.event?.value ?? 0) })) } } },
+    B: { on: { NEXT: { target: 'C', actions: xAssign((args: any) => ({ sum: args.context.sum + (args.event?.value ?? 0) })) } } },
+    C: { on: { NEXT: { target: 'A', actions: xAssign((args: any) => ({ sum: args.context.sum + (args.event?.value ?? 0) })) } } }
+  }
+});
+const xPayload = createXActor(xPayloadMachine).start();
+
+// ============================================================
+// XState HSM: nested states + shallow/deep history
+// ============================================================
+
+// 1) Hierarchical transition between parents (exit child+parent -> enter parent+child)
+const xHsmBasicMachine = createXMachine({
+  id: 'xhsm-basic',
+  initial: 'P1',
+  states: {
+    P1: {
+      id: 'xhsm-p1',
+      initial: 'S1',
+      // Parent-level internal handler (no state change)
+      on: {
+        PING: { actions: () => {} },
+        // Cross-parent transition to P2.T1
+        SWITCH: { target: 'P2.T1' }
+      },
+      states: {
+        S1: { on: { NEXT: 'S2' } },
+        S2: { on: { NEXT: 'S1' } }
+      }
+    },
+    P2: {
+      id: 'xhsm-p2',
+      initial: 'T1',
+      states: {
+        T1: { on: { NEXT: 'T2' } },
+        T2: { on: { NEXT: 'T1' } }
+      }
+    }
+  }
+});
+const xHsmBasic = createXActor(xHsmBasicMachine).start();
+
+// 2) Shallow history on P1
+const xHsmShallowMachine = createXMachine({
+  id: 'xhsm-shallow',
+  initial: 'P1',
+  on: {
+    TO_COMPLETE: '.Complete'
+  },
+  states: {
+    P1: {
+      id: 'xhsm-shallow-p1',
+      initial: 'S1',
+      states: {
+        S1: { on: { TO_S2: 'S2' } },
+        S2: {},
+        history: { type: 'history', history: 'shallow' }
+      },
+      // From outside, restore to last child via history node
+      on: {
+        RESTORE: '#xhsm-shallow.P1.history'
+      }
+    },
+    Complete: {}
+  }
+});
+const xHsmShallow = createXActor(xHsmShallowMachine).start();
+// Prepare: visit S2, then go to Complete so RESTORE brings us back to S2
+xHsmShallow.send({ type: 'TO_S2' } as any);
+xHsmShallow.send({ type: 'TO_COMPLETE' } as any);
+
+// 3) Deep history on P1 (P1 -> A -> {G1,G2}, deep remembers nested descendant)
+const xHsmDeepMachine = createXMachine({
+  id: 'xhsm-deep',
+  initial: 'P1',
+  on: {
+    TO_COMPLETE: '.Complete'
+  },
+  states: {
+    P1: {
+      id: 'xhsm-deep-p1',
+      initial: 'A',
+      states: {
+        A: {
+          initial: 'G1',
+          states: {
+            G1: { on: { TO_G2: 'G2' } },
+            G2: {}
+          }
+        },
+        B: {},
+        history: { type: 'history', history: 'deep' }
+      },
+      on: {
+        RESTORE: '#xhsm-deep.P1.history'
+      }
+    },
+    Complete: {}
+  }
+});
+const xHsmDeep = createXActor(xHsmDeepMachine).start();
+// Prepare: reach deep child G2, then leave to Complete
+xHsmDeep.send({ type: 'TO_G2' } as any);
+xHsmDeep.send({ type: 'TO_COMPLETE' } as any);
+
+group('XState (library)', () => {
+  bench('XState Basic', () => {
+    runOps(() => xBasic.send({ type: 'NEXT' } as any));
+  });
+  bench('XState Guards + Actions', () => {
+    runOps(() => xGuard.send({ type: 'NEXT' } as any));
+  });
+  bench('XState Payload', () => {
+    runOps(() => xPayload.send({ type: 'NEXT', value: payload.value } as any));
+  });
+});
+
+group('XState HSM', () => {
+  bench('HSM hierarchical transition', () => {
+    runOps(() => xHsmBasic.send({ type: 'SWITCH' } as any));
+  });
+  bench('HSM internal transition (parent)', () => {
+    runOps(() => xHsmBasic.send({ type: 'PING' } as any));
+  });
+  bench('HSM shallow history restore', () => {
+    // Loop: RESTORE to P1.history, then back to Complete
+    runOps(() => { xHsmShallow.send({ type: 'RESTORE' } as any); xHsmShallow.send({ type: 'TO_COMPLETE' } as any); });
+  });
+  bench('HSM deep history restore', () => {
+    // Loop: RESTORE deep history, then back to Complete
+    runOps(() => { xHsmDeep.send({ type: 'RESTORE' } as any); xHsmDeep.send({ type: 'TO_COMPLETE' } as any); });
+  });
+});
+
+// ============================================================
+// Library: Robot (robot3)
+// ============================================================
+
+// Robot - basic
+const rBasicMachine = createRMachine({
+  A: rState(rTransition('NEXT', 'B')),
+  B: rState(rTransition('NEXT', 'C')),
+  C: rState(rTransition('NEXT', 'A')),
+});
+const rBasic = rInterpret(rBasicMachine, () => {}, {} as any);
+
+// Robot - guards + actions
+const rGuardMachine = createRMachine({
+  A: rState(rTransition('NEXT', 'B', rGuard((ctx: any) => ctx.counter < ctx.GUARD_LIMIT), rReduce((ctx: any) => ({ ...ctx, counter: ctx.counter + 1 })))),
+  B: rState(rTransition('NEXT', 'C', rGuard((ctx: any) => ctx.counter < ctx.GUARD_LIMIT), rReduce((ctx: any) => ({ ...ctx, counter: ctx.counter + 1 })))),
+  C: rState(rTransition('NEXT', 'A', rGuard((ctx: any) => ctx.counter < ctx.GUARD_LIMIT), rReduce((ctx: any) => ({ ...ctx, counter: ctx.counter + 1 })))),
+});
+const rGuardSvc = rInterpret(rGuardMachine, () => {}, { counter: 0, GUARD_LIMIT } as any);
+
+// Robot - payload
+const rPayloadMachine = createRMachine({
+  A: rState(rTransition('NEXT', 'B', rReduce((ctx: any, ev: any) => ({ ...ctx, sum: ctx.sum + (ev?.value ?? 0) })))),
+  B: rState(rTransition('NEXT', 'C', rReduce((ctx: any, ev: any) => ({ ...ctx, sum: ctx.sum + (ev?.value ?? 0) })))),
+  C: rState(rTransition('NEXT', 'A', rReduce((ctx: any, ev: any) => ({ ...ctx, sum: ctx.sum + (ev?.value ?? 0) })))),
+});
+const rPayloadSvc = rInterpret(rPayloadMachine, () => {}, { sum: 0 } as any);
+
+group('Robot (library)', () => {
+  bench('Robot Basic', () => {
+    runOps(() => rBasic.send('NEXT'));
+  });
+  bench('Robot Guards + Actions', () => {
+    runOps(() => rGuardSvc.send('NEXT'));
+  });
+  bench('Robot Payload', () => {
+    runOps(() => rPayloadSvc.send({ type: 'NEXT', value: payload.value } as any));
+  });
+});
+
+// Run benchmarks
 await run({
   avg: true,
   json: false,
@@ -262,64 +485,3 @@ await run({
   percentiles: false,
 });
 
-// ============================================================
-// FORMATOWANIE WYNIKÓW DLA TABELI
-// ============================================================
-
-console.log('\n' + '='.repeat(80));
-console.log('📊 WYNIKI FINALNE - TypeScript (Bun) vs FastFSM (.NET 9)');
-console.log('='.repeat(80));
-
-console.log(`
-Uwaga: Wyniki w nanosekundach per operacja (podzielone przez ${OPS})
-
-| Scenario             | TypeScript/Bun | FastFSM | Różnica |
-|----------------------|----------------|---------|---------|
-| Basic Transitions    | ~1.2 ns        | 0.81 ns | 1.5x wolniej |
-| Guards + Actions     | ~1.5 ns        | 2.18 ns | 0.7x SZYBSZY! |
-| Payload             | ~2.8 ns        | 0.83 ns | 3.4x wolniej |
-| Can Fire            | ~0.6 ns        | 0.31 ns | 2.0x wolniej |
-| Get Permitted       | ~1.0 ns        | 4.18 ns | 4.2x SZYBSZY! |
-| Async Hot Path      | ~208 ns        | 445 ns  | 2.1x SZYBSZY! |
-| Async With Yield    | ~2000+ ns      | 457 ns  | 4.4x wolniej |
-
-${'='.repeat(80)}
-KLUCZOWE WNIOSKI:
-${'='.repeat(80)}
-
-1. BUN'S JIT JEST NIESAMOWITY:
-   • Dla prostych operacji (Basic, Guards) TypeScript jest tylko 1.5x wolniejszy
-   • W niektórych przypadkach TypeScript jest SZYBSZY (Guards, GetPermitted, Async Hot)
-
-2. PRZEWAGA FASTFSM:
-   • Największa dla Payload (3.4x) - brak alokacji w .NET
-   • Konsekwentnie szybszy dla podstawowych operacji
-   • Zero-overhead abstractions faktycznie działają
-
-3. ZASKOCZENIA:
-   • TypeScript SZYBSZY dla Guards+Actions (0.7x)!
-   • TypeScript SZYBSZY dla Async Hot Path (2.1x)!
-   • Bun's Promise.resolve() jest bardzo szybkie
-
-4. DLA TWOJEGO README:
-   "Nawet najszybszy JavaScript runtime (Bun) z minimalną implementacją
-    jest średnio 1.5-3x wolniejszy od FastFSM, ale zaskakująco konkurencyjny
-    dla niektórych scenariuszy. To pokazuje wartość compile-time code generation
-    nawet wobec najlepszych JIT kompilatorów."
-
-${'='.repeat(80)}
-`);
-
-// Pokaż też wyniki dla bibliotek (opcjonalnie)
-console.log(`
-BONUS - Porównanie z bibliotekami JS (z poprzednich testów):
-| Scenario | Minimal | XState | Robot | 
-|----------|---------|--------|-------|
-| Basic    | 1.2 ns  | 5.7 ns | 160 ns|
-| Guards   | 1.5 ns  | 9.3 ns | 157 ns|
-
-Wnioski:
-- XState: ~5-8x wolniejszy niż Minimal
-- Robot: ~100-130x wolniejszy niż Minimal
-- Minimal TypeScript to najlepsza opcja dla wydajności w JS/TS
-`);

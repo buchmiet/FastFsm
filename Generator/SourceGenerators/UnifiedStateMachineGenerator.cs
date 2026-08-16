@@ -1,14 +1,9 @@
 ﻿#nullable enable
-using Abstractions.Attributes;
 using Generator.Helpers;
-using Generator.Infrastructure;
 using Generator.Model;
-using Generator.Planning;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using Generator.Log;
 using static Generator.Strings;
 
 namespace Generator.SourceGenerators;
@@ -54,7 +49,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             using (Sb.Block($"namespace {userNamespace}"))
         {
                 WriteContainingTypesAndClass(className, stateTypeForUsage, triggerTypeForUsage);
-            }
+        }
         }
         else
     {
@@ -145,7 +140,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
     // Emits optional partial hook for action exception reporting
     private void WriteActionExceptionHook()
     {
-        Sb.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        Sb.AppendLine(AggressiveInliningString);
         Sb.AppendLine("partial void OnActionException(string context, System.Exception ex);");
         Sb.AppendLine();
     }
@@ -167,7 +162,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             var evalName = $"EvaluateGuard__{from}__{trig}";
 
             // Core guard invocation without try/catch
-            Sb.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+            Sb.AppendLine(AggressiveInliningString);
             using (Sb.Block($"private bool {guardWrapper}(object? payload)"))
             {
                 // No guard method? Always true (shouldn't happen for this emission path)
@@ -194,7 +189,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             }
 
             // Safe wrapper that handles exceptions if FASTFSM_SAFE_GUARDS is enabled
-            Sb.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+            Sb.AppendLine(AggressiveInliningString);
             using (Sb.Block($"private bool {evalName}(object? payload)"))
             {
                 Sb.AppendLine("#if FASTFSM_SAFE_GUARDS");
@@ -215,14 +210,14 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
     private void WriteFields(string className)
     {
-        // Instance ID for async machines
-        if (IsAsyncMachine)
+        // Instance ID for async machines (or for logging in sync machines)
+        if (IsAsyncMachine || ShouldGenerateLogging)
     {
             Sb.AppendLine("private readonly string _instanceId = Guid.NewGuid().ToString();");
             Sb.AppendLine();
         }
 
-        // Logger field
+        // Logger field (but not the _instanceId since we handle it above)
         WriteLoggerField(className);
 
         // Extensions fields
@@ -237,6 +232,12 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             WritePayloadMap(GetTypeNameForUsage(Model.TriggerType));
         }
 
+        // State and trigger name arrays for zero-allocation logging
+        if (ShouldGenerateLogging)
+        {
+            WriteStateAndTriggerNameArrays(GetTypeNameForUsage(Model.StateType), GetTypeNameForUsage(Model.TriggerType));
+        }
+        
         // HSM arrays
         if (IsHierarchical)
     {
@@ -264,7 +265,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         {
             var stateNameRaw = stateGroup.Key;
             var stateFieldSuffix = MakeSafeMemberSuffix(stateNameRaw);
-            var stateEnumName = TypeHelper.EscapeIdentifier(stateNameRaw);
+            TypeHelper.EscapeIdentifier(stateNameRaw);
             var unguarded = stateGroup.Where(t => string.IsNullOrEmpty(t.GuardMethod))
                                       .Select(t => $"{triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(t.Trigger)}")
                                       .Distinct()
@@ -339,7 +340,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         {
             case "class": case "return": case "void": case "int": case "interface": case "namespace":
             case "new": case "throw": case "break": case "continue": case "goto":
-                s = s + "_"; break;
+                s += "_"; break;
         }
         return s;
     }
@@ -376,11 +377,82 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
     private void WriteStartMethods()
 {
-        if (IsHierarchical || HasOnEntryExit)
+        // Generate Start/StartAsync if:
+        // 1. It's hierarchical (needs DescendToInitialIfComposite)
+        // 2. It has logging (to add MachineStarted log)
+        // Note: We avoid duplicate StartAsync for async machines that have OnEntryExit
+        //       by checking if OnInitialEntry is being overridden separately
+        if (IsHierarchical || ShouldGenerateLogging)
     {
             WriteStartMethod();
         }
 }
+
+    private void WriteStartMethod()
+    {
+        if (IsAsyncMachine)
+        {
+            WriteStartAsyncMethod();
+        }
+        else
+        {
+            WriteStartSyncMethod();
+        }
+    }
+
+    private void WriteStartSyncMethod()
+    {
+        using (Sb.Block("public override void Start()"))
+        {
+            Sb.AppendLine("if (IsStarted) return;");
+            Sb.AppendLine();
+            
+            if (IsHierarchical)
+            {
+                Sb.AppendLine("// For HSM: resolve composite initial state to leaf before calling OnInitialEntry");
+                Sb.AppendLine("DescendToInitialIfComposite();");
+                Sb.AppendLine();
+            }
+            
+            Sb.AppendLine("base.Start();");
+            
+            // Log machine started
+            if (ShouldGenerateLogging)
+            {
+                Sb.AppendLine();
+                var stateAccessor = Model.HierarchyEnabled ? $"NameOf({CurrentStateField})" : $"{CurrentStateField}.ToString()";
+                Sb.AppendLine($"{Model.ClassName}Log.MachineStarted(_logger, _instanceId, {stateAccessor});");
+            }
+        }
+        Sb.AppendLine();
+    }
+
+    private void WriteStartAsyncMethod()
+    {
+        using (Sb.Block("public override async ValueTask StartAsync(CancellationToken cancellationToken = default)"))
+        {
+            Sb.AppendLine("if (IsStarted) return;");
+            Sb.AppendLine();
+            
+            if (IsHierarchical)
+            {
+                Sb.AppendLine("// For HSM: resolve composite initial state to leaf before calling OnInitialEntry");
+                Sb.AppendLine("DescendToInitialIfComposite();");
+                Sb.AppendLine();
+            }
+            
+            Sb.AppendLine("await base.StartAsync(cancellationToken).ConfigureAwait(false);");
+            
+            // Log machine started
+            if (ShouldGenerateLogging)
+            {
+                Sb.AppendLine();
+                var stateAccessor = Model.HierarchyEnabled ? $"NameOf({CurrentStateField})" : $"{CurrentStateField}.ToString()";
+                Sb.AppendLine($"{Model.ClassName}Log.MachineStarted(_logger, _instanceId, {stateAccessor});");
+            }
+        }
+        Sb.AppendLine();
+    }
 
     private void WriteInitialEntryMethods(string stateType)
 {
@@ -418,18 +490,18 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 Sb.AppendLine("int depth = 0;");
                 Sb.AppendLine("for (int i = leafIdx; i >= 0; i = g_parent[i]) depth++;");
                 Sb.AppendLine();
-                Sb.AppendLine("// Rent path buffer and fill from leaf to root");
-                Sb.AppendLine("var pool = System.Buffers.ArrayPool<int>.Shared;");
-                Sb.AppendLine("int[] path = pool.Rent(depth);");
+                Sb.AppendLine("// Get path from root to leaf using runtime helper with ArrayPool");
+                Sb.AppendLine($"var pool = System.Buffers.ArrayPool<{stateTypeForUsage}>.Shared;");
+                Sb.AppendLine($"{stateTypeForUsage}[] rented = pool.Rent(depth);");
                 Sb.AppendLine("try");
                 using (Sb.Block(""))
                 {
-                    Sb.AppendLine("int k = depth - 1;");
-                    Sb.AppendLine("for (int i = leafIdx; i >= 0; i = g_parent[i]) path[k--] = i;");
+                    Sb.AppendLine("var span = rented.AsSpan(0, depth);");
+                    Sb.AppendLine("int written = GetActivePath(span);");
                     Sb.AppendLine();
                     Sb.AppendLine("// Execute OnEntry from root to leaf");
-                    using (Sb.Block("for (int i = 0; i < depth; i++)"))
-                    using (Sb.Block($"switch (({stateTypeForUsage})path[i])"))
+                    using (Sb.Block("for (int i = 0; i < written; i++)"))
+                    using (Sb.Block($"switch (rented[i])"))
                 {
                     foreach (var stateEntry in statesWithParameterlessOnEntry)
                     {
@@ -458,6 +530,8 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 catch (System.OperationCanceledException) { }
                 catch (System.Exception) { }
 #endif
+                            WriteLogStatement("Debug",
+                                $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
                             Sb.AppendLine("break;");
                         }
                     }
@@ -467,7 +541,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 Sb.AppendLine("finally");
                 using (Sb.Block(""))
                 {
-                    Sb.AppendLine("pool.Return(path, clearArray: false);");
+                    Sb.AppendLine("pool.Return(rented, clearArray: false);");
                 }
             }
             else
@@ -501,6 +575,8 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 catch (System.OperationCanceledException) { }
                 catch (System.Exception) { }
                 #endif
+                    WriteLogStatement("Debug",
+                        $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
                     Sb.AppendLine("break;");
                 }
             }
@@ -532,14 +608,13 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             Sb.AppendLine("int depth = 0;");
             Sb.AppendLine("for (int i = leafIdx; i >= 0; i = g_parent[i]) depth++;");
             Sb.AppendLine();
-            Sb.AppendLine("// Build path from root to leaf without allocations");
-            Sb.AppendLine("Span<int> path = depth <= 128 ? stackalloc int[depth] : new int[depth];");
-            Sb.AppendLine("int k = depth - 1;");
-            Sb.AppendLine("for (int i = leafIdx; i >= 0; i = g_parent[i]) path[k--] = i;");
+            Sb.AppendLine("// Get path from root to leaf using runtime helper");
+            Sb.AppendLine($"Span<{stateTypeForUsage}> path = depth <= 128 ? stackalloc {stateTypeForUsage}[depth] : new {stateTypeForUsage}[depth];");
+            Sb.AppendLine("int written = GetActivePath(path);");
             Sb.AppendLine();
             Sb.AppendLine("// Execute OnEntry from root to leaf");
-            using (Sb.Block("for (int i = 0; i < path.Length; i++)"))
-            using (Sb.Block($"switch (({stateTypeForUsage})path[i])"))
+            using (Sb.Block("for (int i = 0; i < written; i++)"))
+            using (Sb.Block($"switch (path[i])"))
         {
             foreach (var stateEntry in statesWithParameterlessOnEntry)
         {
@@ -549,9 +624,13 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                     Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
                     Sb.AppendLine("try { ");
                     Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                    WriteLogStatement("Debug",
+                        $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
                     Sb.AppendLine($"}} catch (System.OperationCanceledException oce) {{ OnActionException(\"OnInitialEntry:{stateEntry.OnEntryMethod}\", oce); return; }} catch (System.Exception ex) {{ OnActionException(\"OnInitialEntry:{stateEntry.OnEntryMethod}\", ex); return; }}");
                     Sb.AppendLine("#else");
                     Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                    WriteLogStatement("Debug",
+                        $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
                     Sb.AppendLine("#endif");
                     Sb.AppendLine("break;");
                 }
@@ -571,9 +650,13 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                     Sb.AppendLine("#if FASTFSM_SAFE_ACTIONS");
                     Sb.AppendLine("try { ");
                     Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                    WriteLogStatement("Debug",
+                        $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
                     Sb.AppendLine($"}} catch (System.OperationCanceledException oce) {{ OnActionException(\"OnInitialEntry:{stateEntry.OnEntryMethod}\", oce); return; }} catch (System.Exception ex) {{ OnActionException(\"OnInitialEntry:{stateEntry.OnEntryMethod}\", ex); return; }}");
                     Sb.AppendLine("#else");
                     Sb.AppendLine($"{stateEntry.OnEntryMethod}();");
+                    WriteLogStatement("Debug",
+                        $"OnEntryExecuted(_logger, _instanceId, \"{stateEntry.OnEntryMethod}\", \"{stateEntry.Name}\");");
                     Sb.AppendLine("#endif");
                     Sb.AppendLine("break;");
                 }
@@ -780,10 +863,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             Sb.AppendLine("        // Payload-type validation for multi-payload variant");
             Sb.AppendLine($"        if ({PayloadMapField}.TryGetValue(trigger, out var expectedType) && (payload == null || !expectedType.IsInstanceOfType(payload)))");
             Sb.AppendLine("        {");
-            if (ShouldGenerateLogging)
-        {
-                WriteLogStatement("Warning", $"PayloadValidationFailed(_logger, _instanceId, trigger.ToString(), expectedType?.Name ?? \"unknown\", payload?.GetType().Name ?? \"null\");");
-            }
+            WriteLogStatement("Warning", $"PayloadValidationFailed(_logger, _instanceId, trigger.ToString(), expectedType?.Name ?? \"unknown\", payload?.GetType().Name ?? \"null\");");
             Sb.AppendLine("            return false; // wrong payload type");
             Sb.AppendLine("        }");
             Sb.AppendLine();
@@ -835,6 +915,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             }
             }
 
+        // TODO(EXT): emit OnTransitionCompleted at end of async attempt with the last known context
         Sb.AppendLine($"return {SuccessVar};");
         }
         Sb.AppendLine();
@@ -844,7 +925,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
     private bool IsPureBasicFastPath()
     {
-        // Musi być: flat (brak HSM), sync, bez payloadu, bez extensions i bez OnEntry/OnExit
+        // Must be: flat (no HSM), sync, no payload, no extensions and no OnEntry/OnExit
         if (IsHierarchical) return false;
         if (HasPayload || HasMultiPayload) return false;
         if (ExtensionsOn) return false;
@@ -854,27 +935,26 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         var transitions = Model.Transitions;
         if (transitions == null || transitions.Count == 0) return false;
 
-        // Brak guardów i akcji, brak internal transitions
+        // No guards and actions, no internal transitions
         if (transitions.Any(t =>
             !string.IsNullOrEmpty(t.GuardMethod) ||
             !string.IsNullOrEmpty(t.ActionMethod) ||
             t.IsInternal))
             return false;
 
-        // Wszystkie przejścia muszą mieć dokładnie jeden trigger – ten sam
+        // All transitions must have exactly one trigger – the same one
         var distinctTriggers = transitions.Select(t => t.Trigger).Distinct().ToList();
         if (distinctTriggers.Count != 1) return false;
 
-        // Każdy stan musi mieć co najwyżej jedno przejście (Basic sekwencja)
+        // Each state must have at most one transition (Basic sequence)
         var multiplePerState = transitions
             .GroupBy(t => t.FromState)
             .Any(g => g.Count() > 1);
         if (multiplePerState) return false;
 
-        // Sprawdzamy, że to rzeczywiście „łańcuch" (From -> To) bez dziur
+        // Check that it's really a "chain" (From -> To) without gaps
         // Nie wymuszamy cyklu, ale dopuszczamy go (A->B, B->C, C->A)
         var fromSet = new HashSet<string>(transitions.Select(t => t.FromState));
-        var toSet   = new HashSet<string>(transitions.Select(t => t.ToState));
         if (fromSet.Count < 2) return false; // co najmniej 2 stany, inaczej zysk marginalny
 
         return true;
@@ -888,7 +968,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
     private List<(string fromState, string toState)> GetOrderedStateMapping()
     {
-        // Uporządkuj deterministycznie po ordinalu stanu źródłowego, aby switch był stabilny
+        // Order deterministically by source state ordinal, so switch is stable
         // (Model.States zawiera definicje z OrdinalValue)
         var ord = Model.States; // Dictionary<string, StateDef> (Name -> Def z OrdinalValue)
         var list = Model.Transitions
@@ -901,6 +981,8 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
     private void EmitTryFireInternalFastPath(string stateTypeForUsage, string triggerTypeForUsage)
     {
         var triggerLit = GetSingleTriggerForFastPath(triggerTypeForUsage);
+        // We also need the trigger name as string for logging
+        var triggerName = Model.Transitions.Select(t => t.Trigger).Distinct().Single();
         var mapping = GetOrderedStateMapping();
 
         // Generujemy: if (trigger != <TRIGGER>) return false; + switch(_currentState){ case FROM: _currentState = TO; return true; ... }
@@ -917,7 +999,16 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             {
                 var fromEsc = TypeHelper.EscapeIdentifier(fromState);
                 var toEsc   = TypeHelper.EscapeIdentifier(toState);
-                Sb.AppendLine($"case {stateTypeForUsage}.{fromEsc}: {CurrentStateField} = {stateTypeForUsage}.{toEsc}; return true;");
+                Sb.AppendLine($"case {stateTypeForUsage}.{fromEsc}:");
+                using (Sb.Block(""))
+                {
+                    WriteLogStatement("Debug",
+                        $"TransitionStarted(_logger, _instanceId, \"{fromState}\", \"{triggerName}\", \"{toState}\");");
+                    Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{toEsc};");
+                    WriteLogStatement("Information",
+                        $"TransitionSucceeded(_logger, _instanceId, \"{fromState}\", \"{toState}\", \"{triggerName}\");");
+                    Sb.AppendLine("return true;");
+                }
             }
             Sb.AppendLine("default: return false;");
         }
@@ -1070,13 +1161,13 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             return;
         }
 
-        // >>> FAST-PATH: prosty wariant Basic A->B->C->A, jeden trigger, brak payload/guardów/akcji/onEntry/onExit/extensions/hsm
+        // >>> FAST-PATH: simple Basic A->B->C->A variant, one trigger, no payload/guards/actions/onEntry/onExit/extensions/hsm
         if (IsPureBasicFastPath())
         {
             EmitTryFireInternalFastPath(stateType, triggerType);
-            Sb.AppendLine(); // odstęp
+            Sb.AppendLine(); // spacing
             Sb.AppendLine("// (fast-path) end");
-            return; // ważne: kończymy generowanie TryFireInternal tutaj
+            return; // important: we finish TryFireInternal generation here
         }
 
         // >>> HSM FAST-PATH: hierarchical without guards and equal priority
@@ -1086,24 +1177,21 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             return; // important: end TryFireInternal generation here
         }
 
-        // --- dotychczasowa ścieżka ---
+        // --- existing path ---
         // For sync: choose writer depending on features
         if (HasPayload && HasMultiPayload)
     {
             Sb.AppendLine("        // Payload-type validation for multi-payload variant");
             Sb.AppendLine($"        if ({PayloadMapField}.TryGetValue(trigger, out var expectedType) && (payload == null || !expectedType.IsInstanceOfType(payload)))");
             Sb.AppendLine("        {");
-            if (ShouldGenerateLogging)
-        {
-                WriteLogStatement("Warning", $"PayloadValidationFailed(_logger, _instanceId, trigger.ToString(), expectedType?.Name ?? \"unknown\", payload?.GetType().Name ?? \"null\");");
-            }
+            WriteLogStatement("Warning", $"PayloadValidationFailed(_logger, _instanceId, trigger.ToString(), expectedType?.Name ?? \"unknown\", payload?.GetType().Name ?? \"null\");");
             Sb.AppendLine("            return false; // wrong payload type");
             Sb.AppendLine("        }");
             Sb.AppendLine();
         }
 
         var writer = HasPayload
-            ? (Action<TransitionModel, string, string>)WriteTransitionLogicPayloadSyncDirect
+            ? WriteTransitionLogicPayloadSyncDirect
             : (Action<TransitionModel, string, string>)WriteTransitionLogicSyncCore;
 
         WriteTryFireStructureDispatcher(stateType, triggerType, (transition, stateType, triggerType) =>
@@ -1159,7 +1247,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
     // Special sync transition logic for WithExtensions variant
     // Wraps entire transition in try-catch to handle exceptions properly
     private void WriteTransitionLogicSyncWithExtensions(TransitionModel transition, string stateTypeForUsage, string triggerTypeForUsage)
-{
+    {
         var hasOnEntryExit = ShouldGenerateOnEntryExit();
 
         // Create context for hooks
@@ -1170,6 +1258,10 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         Sb.AppendLine($"    {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)},");
         Sb.AppendLine("    payload);");
         Sb.AppendLine();
+
+        // Log transition started
+        WriteLogStatement("Debug",
+            $"TransitionStarted(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\", \"{transition.ToState}\");");
 
         // Hook: Before transition
         Sb.AppendLine("_extensionRunner.RunBeforeTransition(_extensions, smCtx);");
@@ -1185,13 +1277,18 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
         // Guard check (if present)
         if (!string.IsNullOrEmpty(transition.GuardMethod))
-    {
+        {
             // Notify extensions about guard evaluation
             Sb.AppendLine($"    _extensionRunner.RunGuardEvaluation(_extensions, smCtx, \"{transition.GuardMethod}\");");
             Sb.AppendLine($"    var guardResult = {transition.GuardMethod}();");
             Sb.AppendLine($"    _extensionRunner.RunGuardEvaluated(_extensions, smCtx, \"{transition.GuardMethod}\", guardResult);");
             Sb.AppendLine("    if (!guardResult)");
             Sb.AppendLine("    {");
+            // Emit logging for guard failure and failed transition (parity with base path)
+            WriteLogStatement("Warning",
+                $"GuardFailed(_logger, _instanceId, \"{transition.GuardMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+            WriteLogStatement("Warning",
+                $"TransitionFailed(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\");");
             Sb.AppendLine("        _extensionRunner.RunAfterTransition(_extensions, smCtx, false);");
             Sb.AppendLine("        return false;");
             Sb.AppendLine("    }");
@@ -1204,28 +1301,151 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         if (!transition.IsInternal && hasOnEntryExit &&
             Model.States.TryGetValue(transition.FromState, out var fromStateDef) &&
             !string.IsNullOrEmpty(fromStateDef.OnExitMethod))
-    {
+        {
             Sb.AppendLine($"    {fromStateDef.OnExitMethod}();");
+            WriteLogStatement("Debug",
+                $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
         }
 
         // Action (if present) - BEFORE OnEntry (Extensions order)
         if (!string.IsNullOrEmpty(transition.ActionMethod))
-    {
-            Sb.AppendLine($"    {transition.ActionMethod}();");
+        {
+            // For async actions, generate async-specific logging
+            if (IsAsyncMachine && transition.ActionIsAsync)
+            {
+                if (ShouldGenerateLogging)
+                {
+                    WriteLogStatement("Debug",
+                        $"AsyncActionStarted(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {transition.FromState} -> {transition.ToState}\");");
+                    Sb.AppendLine("    var actionStart = System.Diagnostics.Stopwatch.GetTimestamp();");
+                }
+                
+                Sb.AppendLine($"    await {transition.ActionMethod}().ConfigureAwait({Model.ContinueOnCapturedContext.ToString().ToLowerInvariant()});");
+                
+                if (ShouldGenerateLogging)
+                {
+                    Sb.AppendLine("    var elapsedMs = System.Diagnostics.Stopwatch.GetElapsedTime(actionStart).TotalMilliseconds;");
+                    WriteLogStatement("Debug",
+                        $"AsyncActionCompleted(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {transition.FromState} -> {transition.ToState}\", elapsedMs);");
+                }
+            }
+            else
+            {
+                Sb.AppendLine($"    {transition.ActionMethod}();");
+                WriteLogStatement("Debug",
+                    $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+            }
         }
 
         // State change BEFORE OnEntry (so OnEntry runs in target state)
         if (!transition.IsInternal)
-    {
-            Sb.AppendLine($"    {CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+        {
+            if (IsHierarchical)
+            {
+                Sb.AppendLine("    RecordHistoryForCurrentPath();");
+                
+                // For HSM, we need to properly handle composite states and add diagnostics
+                Sb.AppendLine($"    string __fromName = {CurrentStateField}.ToString();");
+                
+                // Inline the composite handling with proper indentation
+                Sb.AppendLine($"    // Set destination and resolve through GetCompositeEntryTarget");
+                
+                // SAVE COMPOSITE BEFORE ASSIGNING _currentState
+                Sb.AppendLine($"    int __targetComposite = (int){stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+                Sb.AppendLine();
+                
+                // Check if target is composite (has initial child)
+                Sb.AppendLine("    // Check if target is composite (has initial child)");
+                Sb.AppendLine("    bool __isComposite = (uint)__targetComposite < (uint)g_initialChild.Length && g_initialChild[__targetComposite] >= 0;");
+                Sb.AppendLine();
+                
+                using (Sb.Block("    if (__isComposite)"))
+                {
+                    Sb.AppendLine("// Resolve entry into composite (Initial vs History)");
+                    Sb.AppendLine("int __resolvedIndex = GetCompositeEntryTarget(__targetComposite);");
+                    // TODO(EXT): emit OnInitialSubstateEntered(parentCtx: smCtx, child: (" + stateTypeForUsage + ")__resolvedIndex)
+                    Sb.AppendLine("var __histMode = HistoryArray[__targetComposite];");
+                    Sb.AppendLine("string __resolution = (__histMode == Abstractions.Attributes.HistoryMode.None ? \"Initial\" : \"History\");");
+                    Sb.AppendLine();
+                    
+                    if (ShouldGenerateLogging)
+                    {
+                        using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
+                        {
+                            Sb.AppendLine($"{Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                        }
+                        using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)"))
+                        {
+                            Sb.AppendLine($"{Model.ClassName}Log.HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
+                            Sb.AppendLine($"// TODO(EXT): emit OnHistoryRestore(parentCtx: smCtx, mode: __histMode, restoredState: (" + stateTypeForUsage + ")__resolvedIndex)");
+                        }
+                    }
+                    
+                    Sb.AppendLine($"{CurrentStateField} = ({stateTypeForUsage})__resolvedIndex;");
+                }
+                using (Sb.Block("    else"))
+                {
+                    Sb.AppendLine($"// Target is not composite - simple assignment");
+                    Sb.AppendLine($"{CurrentStateField} = ({stateTypeForUsage})__targetComposite;");
+                }
+                Sb.AppendLine();
+                
+                // Add HierarchicalTransition and ActivePath logging
+                if (ShouldGenerateLogging)
+                {
+                    Sb.AppendLine($"    // HSM transition diagnostics");
+                Sb.AppendLine($"    int lca = FindLowestCommonAncestor((int)Enum.Parse<{stateTypeForUsage}>(__fromName), (int){CurrentStateField});");
+                // TODO(EXT): compute exitedPath/enteredPath spans and emit OnAncestorPathChanged(smCtx, exitedPath, enteredPath, (" + stateTypeForUsage + ")lca)
+                    Sb.AppendLine($"    int __exitCount = 0;");
+                    Sb.AppendLine($"    for (int s = (int)Enum.Parse<{stateTypeForUsage}>(__fromName); s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __exitCount++; }}");
+                    Sb.AppendLine($"    int __entryCount = 0;");
+                    Sb.AppendLine($"    for (int s = (int){CurrentStateField}; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __entryCount++; }}");
+                    
+                    using (Sb.Block("    if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
+                    {
+                        Sb.AppendLine($"HierarchicalTransition(_logger, _instanceId, __fromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
+                    }
+                    using (Sb.Block("    if (_logger?.IsEnabled(LogLevel.Trace) == true)"))
+                    {
+                        Sb.AppendLine($"ActivePath(_logger, _instanceId, DumpActivePath());");
+                    }
+                }
+            }
+            else
+            {
+                Sb.AppendLine($"    {CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            }
         }
 
         // OnEntry (if applicable) - AFTER state change
         if (!transition.IsInternal && hasOnEntryExit &&
             Model.States.TryGetValue(transition.ToState, out var toStateDef) &&
             !string.IsNullOrEmpty(toStateDef.OnEntryMethod))
-    {
+        {
+            Sb.AppendLine("    #if FASTFSM_SAFE_ACTIONS");
+            Sb.AppendLine("    try {");
+            Sb.AppendLine($"        {toStateDef.OnEntryMethod}();");
+            WriteLogStatement("Debug",
+                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
+            Sb.AppendLine("    }");
+            Sb.AppendLine("    catch (System.OperationCanceledException)");
+            Sb.AppendLine("    {");
+            Sb.AppendLine("        _extensionRunner.RunAfterTransition(_extensions, smCtx, false);");
+            Sb.AppendLine("        return false;");
+            Sb.AppendLine("    }");
+            Sb.AppendLine("    catch (System.Exception ex)");
+            Sb.AppendLine("    {");
+            /**/ if (true) { /* placeholder to keep WriteLogStatement inline below */ }
+            WriteLogStatement("Warning",
+                $"CallbackException(_logger, _instanceId, \"OnEntry\", \"{toStateDef.OnEntryMethod}\", \"transition {transition.FromState} -> {transition.ToState}\", ex);");
+            Sb.AppendLine("        _extensionRunner.RunAfterTransition(_extensions, smCtx, false);");
+            Sb.AppendLine("        return false;");
+            Sb.AppendLine("    }");
+            Sb.AppendLine("    #else");
             Sb.AppendLine($"    {toStateDef.OnEntryMethod}();");
+            WriteLogStatement("Debug",
+                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
+            Sb.AppendLine("    #endif");
         }
 
         Sb.AppendLine("}");
@@ -1236,8 +1456,12 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
         // Success
         Sb.AppendLine("_extensionRunner.RunAfterTransition(_extensions, smCtx, true);");
+        // TODO(EXT): Emit OnTransitioned here once available
+        // _extensionRunner.RunTransitioned(_extensions, smCtx);
+        WriteLogStatement("Information",
+            $"TransitionSucceeded(_logger, _instanceId, \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
         Sb.AppendLine("return true;");
-}
+    }
 
     private void WriteTryFireStructureDispatcher(string stateType, string triggerType, Action<TransitionModel, string, string> writeTransitionLogic)
 {
@@ -1250,7 +1474,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         else
     {
             // Reuse the robust base implementation for non-extension variants
-            base.WriteTryFireStructure(stateType, triggerType, writeTransitionLogic);
+            WriteTryFireStructure(stateType, triggerType, writeTransitionLogic);
         }
 }
 
@@ -1267,51 +1491,123 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             Sb.AppendLine("    trigger,");
             Sb.AppendLine($"    {CurrentStateField},");
             Sb.AppendLine("    payload);");
+            // Planned hook: unhandled trigger
+            Sb.AppendLine("_extensionRunner.RunUnhandledTrigger(_extensions, failCtx);");
             Sb.AppendLine("_extensionRunner.RunAfterTransition(_extensions, failCtx, false);");
             Sb.AppendLine("return false;");
             return;
         }
 
-        // Generate our own structure (don't call base which would duplicate)
-        var sortedTransitions = Model.Transitions
-            .Select((t, index) => new { Transition = t, Index = index })
-            .OrderByDescending(x => x.Transition.Priority)
-            .ThenBy(x => x.Index)
-            .Select(x => x.Transition);
-
-        var grouped = sortedTransitions.GroupBy(t => t.FromState);
-
-        Sb.AppendLine($"switch ({CurrentStateField}) {{");
-        foreach (var state in grouped)
-    {
-            Sb.AppendLine($"    case {stateType}.{TypeHelper.EscapeIdentifier(state.Key)}: {{");
-
-            var triggerGroups = state.GroupBy(t => t.Trigger);
-            Sb.AppendLine("        switch (trigger) {");
-
-            foreach (var triggerGroup in triggerGroups)
+        // For HSM: implement ancestor chain traversal similar to base generator
+        if (Model.HierarchyEnabled)
         {
-                Sb.AppendLine($"            case {triggerType}.{TypeHelper.EscapeIdentifier(triggerGroup.Key)}: {{");
-
-                foreach (var tr in triggerGroup)
+            // HSM implementation: walk up the parent chain
+            Sb.AppendLine($"int check = (int){CurrentStateField};");
+            Sb.AppendLine("string __fromName = " + CurrentStateField + ".ToString();");
+            Sb.AppendLine("while (check >= 0)");
+            Sb.AppendLine("{");
+            Sb.AppendLine($"    var state = ({stateType})check;");
+            Sb.AppendLine("    switch (state)");
+            Sb.AppendLine("    {");
+            
+            // Group transitions by from state
+            var grouped = Model.Transitions.GroupBy(t => t.FromState).OrderBy(g => g.Key);
+            
+            foreach (var group in grouped)
             {
-                    Sb.AppendLine($"                // Transition: {tr.FromState} -> {tr.ToState} (Priority: {tr.Priority})");
-                    writeTransitionLogic(tr, stateType, triggerType);
-                    break; // Only first matching transition
+                Sb.AppendLine($"        case {stateType}.{TypeHelper.EscapeIdentifier(group.Key)}:");
+                Sb.AppendLine("        {");
+                Sb.AppendLine("            switch (trigger)");
+                Sb.AppendLine("            {");
+                
+                // Group by trigger, with priority ordering
+                var triggerGroups = group
+                    .GroupBy(t => t.Trigger)
+                    .OrderBy(tg => tg.Key);
+                
+                foreach (var triggerGroup in triggerGroups)
+                {
+                    Sb.AppendLine($"                case {triggerType}.{TypeHelper.EscapeIdentifier(triggerGroup.Key)}:");
+                    Sb.AppendLine("                {");
+                    
+                    // Get the highest priority transition
+                    var bestTransition = triggerGroup
+                        .OrderByDescending(t => t.Priority)
+                        .First();
+                    
+                    // For internal transitions, emit InternalTransitionOnAncestor
+                    if (bestTransition.IsInternal && ShouldGenerateLogging)
+                    {
+                        Sb.AppendLine($"                    // Internal transition on ancestor: {bestTransition.FromState}");
+                        using (Sb.Block("                    if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
+                        {
+                            Sb.AppendLine($"                        InternalTransitionOnAncestor(_logger, _instanceId, (({stateType})check).ToString(), __fromName, trigger.ToString());");
+                        }
+                        // TODO(EXT): emit OnInternalTransition hook here for HSM ancestor internal
+                    }
+                    
+                    Sb.AppendLine($"                    // Transition: {bestTransition.FromState} -> {bestTransition.ToState} (Priority: {bestTransition.Priority})");
+                    // TODO(EXT): if this transition is handled at a parent, consider emitting OnBubbleToParent(ctx, handledAt: state)
+                    writeTransitionLogic(bestTransition, stateType, triggerType);
+                    
+                    Sb.AppendLine("                }");
+                }
+                
+                Sb.AppendLine("                default: break;");
+                Sb.AppendLine("            }");
+                Sb.AppendLine("            break;");
+                Sb.AppendLine("        }");
+            }
+            
+            Sb.AppendLine("        default: break;");
+            Sb.AppendLine("    }");
+            Sb.AppendLine("    check = (uint)check < (uint)g_parent.Length ? g_parent[check] : -1;");
+            Sb.AppendLine("}");
+            Sb.AppendLine();
+        }
+        else
+        {
+            // Flat FSM implementation: original code
+            var sortedTransitions = Model.Transitions
+                .Select((t, index) => new { Transition = t, Index = index })
+                .OrderByDescending(x => x.Transition.Priority)
+                .ThenBy(x => x.Index)
+                .Select(x => x.Transition);
+
+            var grouped = sortedTransitions.GroupBy(t => t.FromState);
+
+            Sb.AppendLine($"switch ({CurrentStateField}) {{");
+            foreach (var state in grouped)
+            {
+                Sb.AppendLine($"    case {stateType}.{TypeHelper.EscapeIdentifier(state.Key)}: {{");
+
+                var triggerGroups = state.GroupBy(t => t.Trigger);
+                Sb.AppendLine("        switch (trigger) {");
+
+                foreach (var triggerGroup in triggerGroups)
+                {
+                    Sb.AppendLine($"            case {triggerType}.{TypeHelper.EscapeIdentifier(triggerGroup.Key)}: {{");
+
+                    foreach (var tr in triggerGroup)
+                    {
+                        Sb.AppendLine($"                // Transition: {tr.FromState} -> {tr.ToState} (Priority: {tr.Priority})");
+                        writeTransitionLogic(tr, stateType, triggerType);
+                        break; // Only first matching transition
+                    }
+
+                    Sb.AppendLine("            }");
                 }
 
-                Sb.AppendLine("            }");
+                Sb.AppendLine("            default: break;");
+                Sb.AppendLine("        }");
+                Sb.AppendLine("        break;");
+                Sb.AppendLine("    }");
             }
-
-            Sb.AppendLine("            default: break;");
-            Sb.AppendLine("        }");
-            Sb.AppendLine("        break;");
-            Sb.AppendLine("    }");
+            Sb.AppendLine("    default: break;");
+            Sb.AppendLine("}");
+            Sb.AppendLine();
         }
-        Sb.AppendLine("    default: break;");
-        Sb.AppendLine("}");
-        Sb.AppendLine();
-
+        
         // No transition found - notify extensions
         Sb.AppendLine("// No matching transition - notify extensions");
         Sb.AppendLine($"var noTransitionCtx = new StateMachineContext<{stateType}, {triggerType}>(");
@@ -1320,6 +1616,8 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         Sb.AppendLine("    trigger,");
         Sb.AppendLine($"    {CurrentStateField},");
         Sb.AppendLine("    payload);");
+        // Planned hook: unhandled trigger
+        Sb.AppendLine("_extensionRunner.RunUnhandledTrigger(_extensions, noTransitionCtx);");
         Sb.AppendLine("_extensionRunner.RunAfterTransition(_extensions, noTransitionCtx, false);");
         Sb.AppendLine("return false;");
 }
@@ -1421,7 +1719,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         }
 }
 
-    protected override void WriteCanFireMethod(string stateTypeForUsage, string triggerTypeForUsage)
+    protected virtual void WriteCanFireMethod(string stateTypeForUsage, string triggerTypeForUsage)
 {
         if (IsAsyncMachine)
     {
@@ -1851,7 +2149,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         Sb.AppendLine();
 }
 
-    protected override bool ShouldGenerateInitialOnEntry()
+    protected virtual bool ShouldGenerateInitialOnEntry()
 {
         // Variants were removed; gate solely on callbacks presence
         return Model.GenerationConfig.HasOnEntryExit;
@@ -1869,6 +2167,9 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         string stateTypeForUsage,
         string triggerTypeForUsage)
 {
+        // Debug to trace the call path
+        Sb.AppendLine($"// DEBUG: WriteTransitionLogic called in UnifiedStateMachineGenerator for {transition.ActionMethod}");
+        
         var hasOnEntryExit = ShouldGenerateOnEntryExit();
 
         // Hook: Before transition
@@ -1888,7 +2189,6 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         {
             if (IsAsyncMachine)
             {
-                // Async semantics: Always swallow exceptions from OnExit by returning false.
                 Sb.AppendLine("try");
                 Sb.AppendLine("{");
                 WriteOnExitCall(fromStateDef, null);
@@ -1897,9 +2197,51 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 Sb.AppendLine("}");
                 Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
                 Sb.AppendLine("{");
-                Sb.AppendLine($"{SuccessVar} = false;");
-                WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-                Sb.AppendLine($"goto {EndOfTryFireLabel};");
+                
+                // Check if we have an exception handler configured
+                if (Model.ExceptionHandler != null)
+                {
+                    Sb.AppendLine("    // Call the exception handler");
+                    var stateType = GetTypeNameForUsage(Model.StateType);
+                    var triggerType = GetTypeNameForUsage(Model.TriggerType);
+                    
+                    // Build ExceptionContext type with proper namespace
+                    Sb.AppendLine($"    var exceptionContext = new global::FastFsm.Exceptions.ExceptionContext<{stateType}, {triggerType}>(");
+                    Sb.AppendLine($"        {stateType}.{TypeHelper.EscapeIdentifier(transition.FromState)},");
+                    Sb.AppendLine($"        {stateType}.{TypeHelper.EscapeIdentifier(transition.ToState)},");
+                    Sb.AppendLine($"        {triggerType}.{TypeHelper.EscapeIdentifier(transition.Trigger)},");
+                    Sb.AppendLine("        ex,");
+                    Sb.AppendLine("        global::FastFsm.Exceptions.TransitionStage.OnExit,");
+                    Sb.AppendLine("        stateAlreadyChanged: false);");
+                    Sb.AppendLine();
+                    
+                    // Call the handler - check if it's async
+                    if (Model.ExceptionHandler.IsAsync)
+                    {
+                        var ctParam = Model.ExceptionHandler.AcceptsCancellationToken ? ", cancellationToken" : "";
+                        Sb.AppendLine($"    var directive = await {Model.ExceptionHandler.MethodName}(exceptionContext{ctParam}).ConfigureAwait({Model.ContinueOnCapturedContext.ToString().ToLowerInvariant()});");
+                    }
+                    else
+                    {
+                        var ctParam = Model.ExceptionHandler.AcceptsCancellationToken ? ", cancellationToken" : "";
+                        Sb.AppendLine($"    var directive = {Model.ExceptionHandler.MethodName}(exceptionContext{ctParam});");
+                    }
+                    
+                    Sb.AppendLine("    if (directive != global::FastFsm.Exceptions.ExceptionDirective.Continue)");
+                    Sb.AppendLine("    {");
+                    Sb.AppendLine($"        {SuccessVar} = false;");
+                    // Note: Hook emission is handled elsewhere - don't emit inline here
+                    Sb.AppendLine($"        goto {EndOfTryFireLabel};");
+                    Sb.AppendLine("    }");
+                    Sb.AppendLine("    // Continue directive - transition proceeds");
+                }
+                else
+                {
+                    Sb.AppendLine("    // No exception handler configured - fail the transition");
+                    Sb.AppendLine($"    {SuccessVar} = false;");
+                    // Note: Hook emission is handled elsewhere - don't emit inline here
+                    Sb.AppendLine($"    goto {EndOfTryFireLabel};");
+                }
                 Sb.AppendLine("}");
             }
             else
@@ -1909,7 +2251,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 WriteOnExitCall(fromStateDef, null);
                 WriteLogStatement("Debug",
                     $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
-                Sb.AppendLine("} catch (System.OperationCanceledException) { return false; } catch (System.Exception) { return false; }");
+                Sb.AppendLine("} catch (System.OperationCanceledException) { return false; } catch (System.Exception ex) { if (Model.ExceptionHandler != null) { /* handled below */ } else { return false; } }");
                 Sb.AppendLine("#else");
                 WriteOnExitCall(fromStateDef, null);
                 WriteLogStatement("Debug",
@@ -1928,6 +2270,8 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             }
             else
         {
+                WriteLogStatement("Debug",
+                    $"TransitionStarted(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\", \"{transition.ToState}\");");
                 Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
             }
         }
@@ -2033,27 +2377,6 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         Sb.AppendLine($"_extensionRunner.RunAfterTransition(_extensions, {HookVarContext}, {success.ToString().ToLowerInvariant()});");
 }
 
-    protected  void WriteTransitionFailureHook(
-        string stateTypeForUsage,
-        string triggerTypeForUsage)
-{
-        if (!ExtensionsOn) return;
-        // Note: This method is called from two different contexts:
-        // 1. From async TryFire where SuccessVar exists
-        // 2. From sync TryFire wrapper where we use 'result' 
-        // The wrapper handles the condition, so we just emit the body
-        Sb.AppendLine($"var failCtx = new StateMachineContext<{stateTypeForUsage}, {triggerTypeForUsage}>(");
-        using (Sb.Indent())
-    {
-            Sb.AppendLine("Guid.NewGuid().ToString(),");
-            Sb.AppendLine($"{OriginalStateVar},");
-            Sb.AppendLine("trigger,");
-            Sb.AppendLine($"{OriginalStateVar},");
-            Sb.AppendLine($"{PayloadVar});");
-        }
-        Sb.AppendLine("_extensionRunner.RunAfterTransition(_extensions, failCtx, false);");
-}
-
     // Payload-aware async transition logic (uses success var + END_TRY_FIRE)
     private void WriteTransitionLogicPayloadAsync(
         TransitionModel transition,
@@ -2122,9 +2445,16 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             Sb.AppendLine("}");
             Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
             Sb.AppendLine("{");
-            Sb.AppendLine($"{SuccessVar} = false;");
-            WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-            Sb.AppendLine($"goto {EndOfTryFireLabel};");
+            Sb.AppendLine("    if (Model.ExceptionHandler != null)");
+            Sb.AppendLine("    {");
+            Sb.AppendLine($"        base.EmitExceptionHandlerCall(\"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\", \"TransitionStage.OnExit\", false);");
+            Sb.AppendLine("    }");
+            Sb.AppendLine("    else");
+            Sb.AppendLine("    {");
+            Sb.AppendLine($"        {SuccessVar} = false;");
+            Sb.AppendLine($"        WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);");
+            Sb.AppendLine($"        goto {EndOfTryFireLabel};");
+            Sb.AppendLine("    }");
             Sb.AppendLine("}");
         }
 
@@ -2138,6 +2468,8 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             }
             else
         {
+                WriteLogStatement("Debug",
+                    $"TransitionStarted(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\", \"{transition.ToState}\");");
                 Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
             }
         }
@@ -2186,7 +2518,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         TransitionModel transition,
         string stateTypeForUsage,
         string triggerTypeForUsage)
-{
+    {
         // Hook: Before transition (must be before guard check)
         WriteBeforeTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage);
 
@@ -2250,7 +2582,77 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         // State change BEFORE action
         if (!transition.IsInternal)
     {
-            Sb.AppendLine($"                        {CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            if (IsHierarchical)
+        {
+                Sb.AppendLine("                        RecordHistoryForCurrentPath();");
+                
+                // Create a temporary StringBuilder with proper indentation for HSM logic
+                var indent = "                        ";
+                Sb.AppendLine($"{indent}string __fromName = {CurrentStateField}.ToString();");
+                Sb.AppendLine($"{indent}// Set destination and resolve through GetCompositeEntryTarget");
+                
+                // SAVE COMPOSITE BEFORE ASSIGNING _currentState
+                Sb.AppendLine($"{indent}int __targetComposite = (int){stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+                Sb.AppendLine();
+                
+                // Check if target is composite (has initial child)
+                Sb.AppendLine($"{indent}// Check if target is composite (has initial child)");
+                Sb.AppendLine($"{indent}bool __isComposite = (uint)__targetComposite < (uint)g_initialChild.Length && g_initialChild[__targetComposite] >= 0;");
+                Sb.AppendLine();
+                
+                Sb.AppendLine($"{indent}if (__isComposite)");
+                Sb.AppendLine($"{indent}{{");
+                Sb.AppendLine($"{indent}    // Resolve entry into composite (Initial vs History)");
+                Sb.AppendLine($"{indent}    int __resolvedIndex = GetCompositeEntryTarget(__targetComposite);");
+                Sb.AppendLine($"{indent}    var __histMode = HistoryArray[__targetComposite];");
+                Sb.AppendLine($"{indent}    string __resolution = (__histMode == Abstractions.Attributes.HistoryMode.None ? \"Initial\" : \"History\");");
+                Sb.AppendLine();
+                
+                if (ShouldGenerateLogging)
+                {
+                    Sb.AppendLine($"{indent}    if (_logger?.IsEnabled(LogLevel.Debug) == true)");
+                    Sb.AppendLine($"{indent}    {{");
+                    Sb.AppendLine($"{indent}        {Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                    Sb.AppendLine($"{indent}    }}");
+                    Sb.AppendLine($"{indent}    if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)");
+                    Sb.AppendLine($"{indent}    {{");
+                    Sb.AppendLine($"{indent}        {Model.ClassName}Log.HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
+                    Sb.AppendLine($"{indent}    }}");
+                }
+                
+                Sb.AppendLine($"{indent}    {CurrentStateField} = ({stateTypeForUsage})__resolvedIndex;");
+                Sb.AppendLine($"{indent}}}");
+                Sb.AppendLine($"{indent}else");
+                Sb.AppendLine($"{indent}{{");
+                Sb.AppendLine($"{indent}    // Target is not composite - simple assignment");
+                Sb.AppendLine($"{indent}    {CurrentStateField} = ({stateTypeForUsage})__targetComposite;");
+                Sb.AppendLine($"{indent}}}");
+                Sb.AppendLine();
+                
+                // Add HierarchicalTransition and ActivePath logging
+                if (ShouldGenerateLogging)
+                {
+                    Sb.AppendLine($"{indent}// HSM transition diagnostics");
+                    Sb.AppendLine($"{indent}int lca = FindLowestCommonAncestor((int)Enum.Parse<{stateTypeForUsage}>(__fromName), (int){CurrentStateField});");
+                    Sb.AppendLine($"{indent}int __exitCount = 0;");
+                    Sb.AppendLine($"{indent}for (int s = (int)Enum.Parse<{stateTypeForUsage}>(__fromName); s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __exitCount++; }}");
+                    Sb.AppendLine($"{indent}int __entryCount = 0;");
+                    Sb.AppendLine($"{indent}for (int s = (int){CurrentStateField}; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __entryCount++; }}");
+                    
+                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true)");
+                    Sb.AppendLine($"{indent}{{");
+                    Sb.AppendLine($"{indent}    HierarchicalTransition(_logger, _instanceId, __fromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
+                    Sb.AppendLine($"{indent}}}");
+                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Trace) == true)");
+                    Sb.AppendLine($"{indent}{{");
+                    Sb.AppendLine($"{indent}    ActivePath(_logger, _instanceId, DumpActivePath());");
+                    Sb.AppendLine($"{indent}}}");
+                }
+            }
+            else
+            {
+                Sb.AppendLine($"                        {CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            }
         }
 
         // OnEntry with exception policy (sync)
@@ -2279,8 +2681,15 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         // Hook: After successful transition
         WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
 
+        // Log success (parity with other sync/async paths)
+        if (!transition.IsInternal && ShouldGenerateLogging)
+        {
+            WriteLogStatement("Information",
+                $"TransitionSucceeded(_logger, _instanceId, \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+        }
+
         Sb.AppendLine("                        return true;");
-}
+    }
 
     private void WriteAsyncCanFireWithPayload(string stateTypeForUsage, string triggerTypeForUsage)
 {
@@ -2673,7 +3082,77 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         // State change BEFORE action (policy relies on stateAlreadyChanged)
         if (!transition.IsInternal)
     {
-            Sb.AppendLine($"                        {CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            if (IsHierarchical)
+        {
+                Sb.AppendLine("                        RecordHistoryForCurrentPath();");
+                
+                // Create HSM logic with proper indentation
+                var indent = "                        ";
+                Sb.AppendLine($"{indent}string __fromName = {CurrentStateField}.ToString();");
+                Sb.AppendLine($"{indent}// Set destination and resolve through GetCompositeEntryTarget");
+                
+                // SAVE COMPOSITE BEFORE ASSIGNING _currentState
+                Sb.AppendLine($"{indent}int __targetComposite = (int){stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+                Sb.AppendLine();
+                
+                // Check if target is composite (has initial child)
+                Sb.AppendLine($"{indent}// Check if target is composite (has initial child)");
+                Sb.AppendLine($"{indent}bool __isComposite = (uint)__targetComposite < (uint)g_initialChild.Length && g_initialChild[__targetComposite] >= 0;");
+                Sb.AppendLine();
+                
+                Sb.AppendLine($"{indent}if (__isComposite)");
+                Sb.AppendLine($"{indent}{{");
+                Sb.AppendLine($"{indent}    // Resolve entry into composite (Initial vs History)");
+                Sb.AppendLine($"{indent}    int __resolvedIndex = GetCompositeEntryTarget(__targetComposite);");
+                Sb.AppendLine($"{indent}    var __histMode = HistoryArray[__targetComposite];");
+                Sb.AppendLine($"{indent}    string __resolution = (__histMode == Abstractions.Attributes.HistoryMode.None ? \"Initial\" : \"History\");");
+                Sb.AppendLine();
+                
+                if (ShouldGenerateLogging)
+                {
+                    Sb.AppendLine($"{indent}    if (_logger?.IsEnabled(LogLevel.Debug) == true)");
+                    Sb.AppendLine($"{indent}    {{");
+                    Sb.AppendLine($"{indent}        {Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
+                    Sb.AppendLine($"{indent}    }}");
+                    Sb.AppendLine($"{indent}    if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)");
+                    Sb.AppendLine($"{indent}    {{");
+                    Sb.AppendLine($"{indent}        {Model.ClassName}Log.HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
+                    Sb.AppendLine($"{indent}    }}");
+                }
+                
+                Sb.AppendLine($"{indent}    {CurrentStateField} = ({stateTypeForUsage})__resolvedIndex;");
+                Sb.AppendLine($"{indent}}}");
+                Sb.AppendLine($"{indent}else");
+                Sb.AppendLine($"{indent}{{");
+                Sb.AppendLine($"{indent}    // Target is not composite - simple assignment");
+                Sb.AppendLine($"{indent}    {CurrentStateField} = ({stateTypeForUsage})__targetComposite;");
+                Sb.AppendLine($"{indent}}}");
+                Sb.AppendLine();
+                
+                // Add HierarchicalTransition and ActivePath logging
+                if (ShouldGenerateLogging)
+                {
+                    Sb.AppendLine($"{indent}// HSM transition diagnostics");
+                    Sb.AppendLine($"{indent}int lca = FindLowestCommonAncestor((int)Enum.Parse<{stateTypeForUsage}>(__fromName), (int){CurrentStateField});");
+                    Sb.AppendLine($"{indent}int __exitCount = 0;");
+                    Sb.AppendLine($"{indent}for (int s = (int)Enum.Parse<{stateTypeForUsage}>(__fromName); s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __exitCount++; }}");
+                    Sb.AppendLine($"{indent}int __entryCount = 0;");
+                    Sb.AppendLine($"{indent}for (int s = (int){CurrentStateField}; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __entryCount++; }}");
+                    
+                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true)");
+                    Sb.AppendLine($"{indent}{{");
+                    Sb.AppendLine($"{indent}    HierarchicalTransition(_logger, _instanceId, __fromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
+                    Sb.AppendLine($"{indent}}}");
+                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Trace) == true)");
+                    Sb.AppendLine($"{indent}{{");
+                    Sb.AppendLine($"{indent}    ActivePath(_logger, _instanceId, DumpActivePath());");
+                    Sb.AppendLine($"{indent}}}");
+                }
+            }
+            else
+            {
+                Sb.AppendLine($"                        {CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            }
         }
 
         // OnEntry with exception policy (sync)
@@ -2695,32 +3174,16 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
     #region Helper Methods (moved from base class)
 
-    protected void WriteMethodAttribute() =>
+    protected new void WriteMethodAttribute() =>
         Sb.AppendLine($"[{Strings.MethodImplAttribute}({AggressiveInliningAttribute})]");
 
-    protected string GetTypeNameForUsage(string fullyQualifiedName) =>
+    protected new string GetTypeNameForUsage(string fullyQualifiedName) =>
         TypeHelper.FormatTypeForUsage(fullyQualifiedName, useGlobalPrefix: false);
-
-    protected void AddUsing(string usingStatement)
-    {
-        if (AddedUsings.Add(usingStatement))
-        {
-            Sb.AppendLine($"using {usingStatement};");
-        }
-    }
 
     protected string GetConfigureAwait() => 
         AsyncGenerationHelper.GetConfigureAwait(IsAsyncMachine, Model.ContinueOnCapturedContext);
 
-    protected string GetCtVar() => IsAsyncMachine
-        ? "cancellationToken"
-        : "System.Threading.CancellationToken.None";
-
     // Helper to mirror MakeSafeMemberSuffix - keeping for compatibility
-    protected static string UnifiedStateMachineGenerator_MemberSuffixWrapper(string raw)
-    {
-        return MakeSafeMemberSuffix(raw);
-    }
 
     #endregion
 }

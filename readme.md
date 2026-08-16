@@ -1,6 +1,6 @@
 ﻿# FastFSM -- High-Performance State Machines for .NET
 
-FastFSM is a powerful, zero-overhead state machine framework for .NET that leverages C# source generators to create highly optimized code at compile time. It combines easy, declarative configuration with performance that rivals hand-written code. **FastFSM lets you define Finite State Machines (FSM) and Hierarchical State Machines (HSM)** with simple attributes, while achieving near hardware-level execution speeds.
+FastFSM is a powerful, zero-overhead state machine framework for .NET that leverages C# source generators to create highly optimized code at compile time. It combines an intuitive fluent API with performance that rivals hand-written code. **FastFSM lets you define Finite State Machines (FSM) and Hierarchical State Machines (HSM)** with a clean, method-chaining DSL, while achieving near hardware-level execution speeds.
 
 **🎉 Version 0.7 Complete (August 17, 2024)** -- Full Hierarchical State Machine (HSM) support is now available! Create parent-child state relationships, use shallow/deep history modes, set transition priorities, and leverage internal transitions -- all while maintaining our zero-allocation, sub-nanosecond performance guarantees.
 
@@ -49,7 +49,7 @@ FastFSM solves these problems by generating optimized code at compile time, givi
 - **Compile-time validation** -- invalid states and transitions are caught during build
 - **Predictable lifecycle** -- explicit startup (`Start()` method) eliminates race conditions
 - **AOT-friendly** -- works with .NET Native AOT and trimming without issues
-- **Intuitive API** -- define states and transitions with attributes instead of complex fluent builders
+- **Intuitive API** -- define states and transitions with a clean, fluent DSL using method groups
 
 ## Key Features
 
@@ -63,6 +63,7 @@ FastFSM solves these problems by generating optimized code at compile time, givi
 - 📚 **History States** (v0.7) -- shallow and deep history modes for returning to prior sub-states
 - 🎚️ **Transition Priorities** (v0.7) -- explicit control over transition resolution order in ambiguous cases
 - 🔄 **Internal Transitions** (v0.7) -- handle events with actions *without* leaving the current state (no exit/entry)
+- 🎯 **Fluent API** (v0.8) -- intuitive method-chaining DSL with method groups for clean, refactor-safe code
 
 ## Getting Started
 
@@ -90,17 +91,17 @@ public enum DoorTrigger { Open, Close, Lock, Unlock }
 [StateMachine(typeof(DoorState), typeof(DoorTrigger))]
 public partial class DoorController
 {
-    // 3. Define transitions using attributes on a dummy method
-    [Transition(DoorState.Closed, DoorTrigger.Open,   DoorState.Open)]
-    [Transition(DoorState.Open,   DoorTrigger.Close,  DoorState.Closed)]
-    [Transition(DoorState.Closed, DoorTrigger.Lock,   DoorState.Locked)]
-    [Transition(DoorState.Locked, DoorTrigger.Unlock, DoorState.Closed)]
-    private void ConfigureTransitions() { }
+    // 3. Define transitions using the Fluent API
+    private void Configure() => FSM
+        .State(DoorState.Closed)
+            .On(DoorTrigger.Open).GoTo(DoorState.Open)
+            .On(DoorTrigger.Lock).GoTo(DoorState.Locked)
+        .State(DoorState.Open)
+            .OnEntry(OnDoorOpened)
+            .On(DoorTrigger.Close).GoTo(DoorState.Closed)
+        .State(DoorState.Locked)
+            .On(DoorTrigger.Unlock).GoTo(DoorState.Closed);
 
-    // (Optional) Define state entry/exit behaviors:
-    [State(DoorState.Open, OnEntry = nameof(OnDoorOpened))]
-    private void ConfigureOpen() { }
-    
     private void OnDoorOpened() => Console.WriteLine("Door opened!");
 }
 
@@ -117,8 +118,8 @@ Console.WriteLine(door.CurrentState);  // Outputs: Open
 
 ```csharp
 // Define states with parent-child relationships (using naming convention for clarity)
-public enum WorkflowState 
-{ 
+public enum WorkflowState
+{
     Idle,
     Processing,           // Parent state
     Processing_Loading,   // Child of Processing
@@ -132,25 +133,29 @@ public enum WorkflowTrigger { Start, UpdateProgress, Finish }
 [StateMachine(typeof(WorkflowState), typeof(WorkflowTrigger), EnableHierarchy = true)]
 public partial class WorkflowMachine
 {
-    // Define parent state with shallow history (remembers last substate on re-entry)
-    [State(WorkflowState.Processing, History = HistoryMode.Shallow)]
-    private void ConfigureProcessing() { }
+    private void Configure() => FSM
+        // Define parent state with shallow history (remembers last substate on re-entry)
+        .State(WorkflowState.Processing)
+            .HistoryShallow()
+            .OnInternal(WorkflowTrigger.UpdateProgress)
+                .Action(LogProgress)
+                .Internal()
 
-    // Define initial child state (Parent = Processing, IsInitial marks the default substate)
-    [State(WorkflowState.Processing_Loading, Parent = WorkflowState.Processing, IsInitial = true)]
-    private void ConfigureLoading() { }
-    [State(WorkflowState.Processing_Working, Parent = WorkflowState.Processing)]
-    private void ConfigureWorking() { }
-    [State(WorkflowState.Processing_Saving, Parent = WorkflowState.Processing)]
-    private void ConfigureSaving() { }
+        // Define initial child state (IsInitial marks the default substate)
+        .State(WorkflowState.Processing_Loading)
+            .ChildOf(WorkflowState.Processing)
+            .Initial(WorkflowState.Processing_Loading)
 
-    // Define transitions (including across hierarchy boundaries)
-    [Transition(WorkflowState.Idle, WorkflowTrigger.Start, WorkflowState.Processing)]
-    // When transitioning into Processing, it will automatically enter Processing_Loading (initial child)
+        .State(WorkflowState.Processing_Working)
+            .ChildOf(WorkflowState.Processing)
 
-    // Internal transition in a parent state – action executes without state change
-    [InternalTransition(WorkflowState.Processing, WorkflowTrigger.UpdateProgress, Action = nameof(LogProgress))]
-    private void ConfigureTransitions() { }
+        .State(WorkflowState.Processing_Saving)
+            .ChildOf(WorkflowState.Processing)
+
+        // Define transitions (including across hierarchy boundaries)
+        .State(WorkflowState.Idle)
+            .On(WorkflowTrigger.Start).GoTo(WorkflowState.Processing);
+        // When transitioning into Processing, it will automatically enter Processing_Loading (initial child)
 
     private void LogProgress() => Console.WriteLine("Progress updated.");
 }
@@ -219,10 +224,12 @@ For more advanced examples, including hierarchical states, internal transitions,
 [StateMachine(typeof(OrderState), typeof(OrderTrigger))]
 public partial class OrderWorkflow
 {
-    [Transition(OrderState.New, OrderTrigger.Submit, OrderState.Submitted)]
-    [Transition(OrderState.Submitted, OrderTrigger.Approve, OrderState.Approved)]
-    [Transition(OrderState.Submitted, OrderTrigger.Reject, OrderState.Rejected)]
-    private void Configure() { }
+    private void Configure() => FSM
+        .State(OrderState.New)
+            .On(OrderTrigger.Submit).GoTo(OrderState.Submitted)
+        .State(OrderState.Submitted)
+            .On(OrderTrigger.Approve).GoTo(OrderState.Approved)
+            .On(OrderTrigger.Reject).GoTo(OrderState.Rejected);
 }
 
 // Usage
@@ -240,12 +247,14 @@ Guards are boolean conditions that must be true for a transition to occur. Actio
 public partial class BankAccount
 {
     private decimal _balance;
-    
-    [Transition(AccountState.Active, AccountTrigger.Withdraw, AccountState.Active,
-        Guard = nameof(HasSufficientFunds),
-        Action = nameof(DebitAccount))]
-    private void ConfigureWithdrawal() { }
-    
+
+    private void Configure() => FSM
+        .State(AccountState.Active)
+            .On(AccountTrigger.Withdraw)
+                .Guard(HasSufficientFunds)
+                .Action(DebitAccount)
+                .GoTo(AccountState.Active);
+
     private bool HasSufficientFunds() => _balance >= 100;
     private void DebitAccount() => _balance -= 100;
 }
@@ -264,15 +273,14 @@ if (account.CanFire(AccountTrigger.Withdraw)) {
 [StateMachine(typeof(ConnectionState), typeof(ConnectionTrigger))]
 public partial class NetworkConnection
 {
-    [State(ConnectionState.Connected, 
-        OnEntry = nameof(StartHeartbeat),
-        OnExit = nameof(StopHeartbeat))]
-    private void ConfigureStates() { }
-    
-    [Transition(ConnectionState.Disconnected, ConnectionTrigger.Connect, ConnectionState.Connected)]
-    [Transition(ConnectionState.Connected, ConnectionTrigger.Disconnect, ConnectionState.Disconnected)]
-    private void ConfigureTransitions() { }
-    
+    private void Configure() => FSM
+        .State(ConnectionState.Connected)
+            .OnEntry(StartHeartbeat)
+            .OnExit(StopHeartbeat)
+            .On(ConnectionTrigger.Disconnect).GoTo(ConnectionState.Disconnected)
+        .State(ConnectionState.Disconnected)
+            .On(ConnectionTrigger.Connect).GoTo(ConnectionState.Connected);
+
     private void StartHeartbeat() => Console.WriteLine("Heartbeat started");
     private void StopHeartbeat() => Console.WriteLine("Heartbeat stopped");
 }
@@ -302,53 +310,29 @@ Marks a partial class as a state machine.
 - `GenerateExtensibleVersion` - Enable extension support (default: false)
 - `EnableHierarchy` - Enable hierarchical state machine features (default: false)
 
-### Transition Attribute
+### Fluent API DSL Methods
 
-Defines a state transition.
+**State Configuration:**
+- `.State(TState)` - Define a state
+- `.OnEntry(method)` - Set entry callback using method group
+- `.OnExit(method)` - Set exit callback using method group
+- `.ChildOf(TState)` - Define parent-child relationship (HSM)
+- `.Initial(TState)` - Set initial substate (HSM)
+- `.HistoryShallow()` - Enable shallow history mode (HSM)
+- `.HistoryDeep()` - Enable deep history mode (HSM)
 
-```csharp
-[Transition(fromState, trigger, toState, Guard = "method", Action = "method", Priority = 0)]
-```
+**Transition Configuration:**
+- `.On(TTrigger)` - Start transition definition
+- `.OnInternal(TTrigger)` - Start internal transition
+- `.Guard(method)` - Add guard condition using method group
+- `.Action(method)` - Add transition action using method group
+- `.Payload<T>()` - Specify payload type
+- `.Priority(int)` - Set transition priority (HSM)
+- `.GoTo(TState)` - Set target state
+- `.Internal()` - Mark as internal transition
 
-**Parameters:**
-- `fromState` - Source state
-- `trigger` - Trigger that causes transition
-- `toState` - Destination state
-- `Guard` (optional) - Method name that returns bool
-- `Action` (optional) - Method name to execute during transition
-- `Priority` (optional) - Transition priority (higher values = higher priority, default: 0)
-
-### InternalTransition Attribute
-
-Defines an internal transition that executes an action without changing state.
-
-```csharp
-[InternalTransition(state, trigger, Guard = "method", Action = "method", Priority = 0)]
-```
-
-**Parameters:**
-- `state` - State where the internal transition is active
-- `trigger` - Trigger that causes the internal transition
-- `Guard` (optional) - Method name that returns bool
-- `Action` (optional) - Method name to execute
-- `Priority` (optional) - Transition priority for resolution order
-
-### State Attribute
-
-Configures state-specific behavior.
-
-```csharp
-[State(state, OnEntry = "method", OnExit = "method", 
-       Parent = parentState, IsInitial = false, History = HistoryMode.None)]
-```
-
-**Parameters:**
-- `state` - The state to configure
-- `OnEntry` (optional) - Method to execute when entering state
-- `OnExit` (optional) - Method to execute when leaving state
-- `Parent` (optional) - Parent state for hierarchical relationships
-- `IsInitial` (optional) - Marks state as initial child of parent (default: false)
-- `History` (optional) - History mode: None, Shallow, or Deep
+**Exception Handling:**
+- `.OnException(method)` - Set exception handler using method group
 
 ### Generated Methods
 
@@ -404,11 +388,13 @@ When extension support is enabled (`GenerateExtensibleVersion = true`), the foll
 [StateMachine(typeof(ProcessState), typeof(ProcessTrigger), DefaultPayloadType = typeof(ProcessData))]
 public partial class DataProcessor
 {
-    [Transition(ProcessState.Ready, ProcessTrigger.Start, ProcessState.Processing,
-        Guard = nameof(IsValidData),
-        Action = nameof(ProcessData))]
-    private void Configure() { }
-    
+    private void Configure() => FSM
+        .State(ProcessState.Ready)
+            .On(ProcessTrigger.Start)
+                .Guard(IsValidData)
+                .Action(ProcessData)
+                .GoTo(ProcessState.Processing);
+
     private bool IsValidData(ProcessData data) => data != null && data.IsValid;
     private void ProcessData(ProcessData data) => Console.WriteLine($"Processing {data.Id}");
 }
@@ -428,10 +414,12 @@ FastFSM provides separate sync and async APIs for clarity and type safety.
 [StateMachine(typeof(DownloadState), typeof(DownloadTrigger))]
 public partial class FileDownloader
 {
-    [Transition(DownloadState.Ready, DownloadTrigger.Start, DownloadState.Downloading,
-        Action = nameof(StartDownloadAsync))]
-    private void Configure() { }
-    
+    private void Configure() => FSM
+        .State(DownloadState.Ready)
+            .On(DownloadTrigger.Start)
+                .Action(StartDownloadAsync)
+                .GoTo(DownloadState.Downloading);
+
     private async ValueTask StartDownloadAsync()
     {
         await Task.Delay(100); // Simulate async work
@@ -504,9 +492,14 @@ public class GameController
     [StateMachine(typeof(PlayerState), typeof(PlayerTrigger))]
     public partial class PlayerStateMachine
     {
-        [Transition(PlayerState.Idle, PlayerTrigger.Move, PlayerState.Moving)]
-        [Transition(PlayerState.Moving, PlayerTrigger.Attack, PlayerState.Attacking)]
-        private void Configure() { }
+        private void Configure() => FSM
+            .State(PlayerState.Idle)
+                .On(PlayerTrigger.Move).GoTo(PlayerState.Moving)
+            .State(PlayerState.Moving)
+                .On(PlayerTrigger.Attack).GoTo(PlayerState.Attacking)
+                .On(PlayerTrigger.Stop).GoTo(PlayerState.Idle)
+            .State(PlayerState.Attacking)
+                .On(PlayerTrigger.Stop).GoTo(PlayerState.Idle);
     }
 }
 
@@ -544,7 +537,7 @@ Benchmarks were conducted on two different architectures to demonstrate FastFSM'
 |-----------|------------------|
 | **CPU** | AMD Ryzen 5 9600X (6C/12T, Zen 5 @ 3.9--5.4 GHz, AVX-512 enabled) |
 | **Memory** | 32 GB DDR5, Windows 11 Pro 24H2 (High Performance power profile) |
-| **.NET Runtime** | .NET 9.0.5 (RyuJIT with AVX-512, Server GC) |
+| **.NET Runtime** | .NET 10.0 (RyuJIT with AVX-512, Server GC) |
 | **JVM** | OpenJDK 21.0.8+9 (Temurin, Server VM, G1 GC) |
 | **C++ Compiler** | MSVC 19.44 (Visual C++ 2022, /O2 /GL, AVX512) + Google Benchmark 1.8.4 |
 | **Rust** | rustc 1.80.0 + Statig 0.4 (LTO, codegen-units=1, criterion 0.5.1) |
@@ -555,7 +548,7 @@ Benchmarks were conducted on two different architectures to demonstrate FastFSM'
 |-----------|------------------|
 | **CPU** | Rockchip RK3588 (4x Cortex-A76 @ 2.3GHz + 4x Cortex-A55 @ 1.8GHz) |
 | **Memory** | 8 GB LPDDR4, Ubuntu Linux |
-| **.NET Runtime** | .NET 9.0.8 (RyuJIT with AdvSIMD, Server GC) |
+| **.NET Runtime** | .NET 10.0 (RyuJIT with AdvSIMD, Server GC) |
 | **Architecture** | AArch64, Little Endian |
 | **CPU Features** | AdvSIMD, AES, CRC32, SHA1, SHA256, Atomics |
 
@@ -796,8 +789,8 @@ One of FastFSM's design goals is **zero runtime allocations**, which it achieves
 
 FastFSM uses a multi-stage, compile-time code generation approach to create your state machine:
 
-1. **Declaration Stage** -- You describe states, triggers, and transitions in your code using attributes (as shown in examples above). This is all done in normal C# code, in a partial class.
-2. **Analysis Stage** -- A C# Source Generator (part of the FastFSM package) runs at compile time. It reads your partial class and the attributes you've declared. It performs validations (like ensuring state and trigger enums are valid, transitions are consistent, etc.) and builds an internal model of your state machine.
+1. **Declaration Stage** -- You describe states, triggers, and transitions in your code using the Fluent API in a Configure() method. This is all done in normal C# code, in a partial class.
+2. **Analysis Stage** -- A C# Source Generator (part of the FastFSM package) runs at compile time. It reads your partial class and the Fluent API calls in your Configure() method. It performs validations (like ensuring state and trigger enums are valid, transitions are consistent, etc.) and builds an internal model of your state machine.
 3. **Code Generation Stage** -- Based on that model, the source generator emits additional C# code into your assembly. This generated code is optimized for your specific state machine (unnecessary features are omitted).
 4. **Compilation Stage** -- Your project then compiles as usual, including the generated code. The end result is a set of concrete methods (usually a big `switch` statement or nested switches) that implement the state machine logic with zero reflection or boxing.
 
@@ -806,12 +799,12 @@ FastFSM uses a multi-stage, compile-time code generation approach to create your
 FastFSM's generator automatically includes code only for the features you use:
 
 - **Core FSM** -- Always included: supports basic state transitions, guards, and actions.
-- **Payload Support** -- Included only if you use the `[PayloadType]` attribute to attach data to triggers. This generates strongly-typed payload handling.
+- **Payload Support** -- Included only if you use `.Payload<T>()` in the Fluent API to attach data to triggers. This generates strongly-typed payload handling.
 - **Extensibility Hooks** -- Included only if `GenerateExtensibleVersion = true` on your `[StateMachine]`. This generates a base class that your partial class inherits, allowing advanced extension (used for logging/DI).
 - **Async Support** -- Included only if you have any `async` state methods or transitions returning `Task/ValueTask`. The generator produces an async-safe version of `Fire` and related logic.
 - **Hierarchical States** -- Included if `EnableHierarchy=true` and you declare parent/child states. Generates additional logic for parent state tracking, substate transitions, etc.
 - **History Tracking** -- Included if any state has `History = Shallow/Deep`. Emits code to record last active child states and restore them on re-entry.
-- **Internal Transitions** -- Included if you use `[InternalTransition]` attributes. The generator creates handlers that execute without state changes.
+- **Internal Transitions** -- Included if you use `.OnInternal()` and `.Internal()` in the Fluent API. The generator creates handlers that execute without state changes.
 
 This feature-gating ensures minimal code and maximal performance -- you aren't paying for what you don't use.
 
@@ -874,6 +867,26 @@ This way, if a child state doesn't handle a trigger, the code jumps to the paren
 
 Overall, the generated code is akin to what you might write by hand for maximum speed, but produced for you automatically.
 
+## Documentation
+
+Comprehensive documentation for both APIs:
+
+- **[Fluent API Guide](FluentAPI.md)** - Modern, method-chaining syntax with method groups (recommended)
+- **[Legacy API Guide](LegacyAPI.md)** - Traditional attribute-based syntax
+
+Both APIs generate identical high-performance runtime code. Choose based on your team's preference:
+
+**Fluent API (v0.8+, Recommended):**
+- Cleaner syntax with method groups
+- Better refactoring support
+- Compile-time DSL validation
+- More intuitive flow
+
+**Legacy API:**
+- Attribute-based declarative approach
+- Familiar to developers from other frameworks
+- All configuration visible at class level
+
 ## Migration Guide
 
 ### Upgrading to v0.7 (HSM Support)
@@ -885,13 +898,13 @@ Version 0.7 adds Hierarchical State Machine support while maintaining **100% bac
 - **Hierarchical States** -- You can designate states as children of other states (see [Hierarchical States](#hierarchical-state-machines-hsm----new-in-v07) above). Parent states can have one initial child and optional history retention.
 - **History Modes** -- Use `History = HistoryMode.Shallow` or `HistoryMode.Deep` on a parent state to automatically record the last active substate. On re-entering the parent, FastFSM will restore the child state (shallow = last direct child, deep = last nested descendant).
 - **Internal Transitions** -- Use `[InternalTransition]` in a parent state to handle an event without leaving that state (no exit/entry calls). Great for periodic updates or self-loops that shouldn't reset the state.
-- **Transition Priorities** -- In complex state machines, multiple transitions might be valid for a given trigger (for example, a parent state and a child state both respond to the same trigger). FastFSM now resolves these by an optional `Priority` parameter on `[Transition]` attributes. Higher priority transitions are considered before lower ones.
+- **Transition Priorities** -- In complex state machines, multiple transitions might be valid for a given trigger (for example, a parent state and a child state both respond to the same trigger). FastFSM now resolves these by an optional `.Priority()` method in the Fluent API. Higher priority transitions are considered before lower ones.
 - **No Performance Loss** -- All the above features introduce *zero* runtime overhead if you're not using them. If you do use them, the overhead is minimal (as shown in benchmarks).
 
 **How to Use HSM Features:**  
 If you want to take advantage of HSM in FastFSM:
 1. Set `EnableHierarchy = true` on your `[StateMachine]` attribute.
-2. For each group of related states, designate a parent state (no parent itself) and use `Parent = ParentState` on child state attributes.
+2. For each group of related states, designate a parent state and use `.ChildOf(ParentState)` in the Fluent API for child states.
 3. Mark one child state as `IsInitial = true` under each parent so the machine knows where to enter initially.
 4. Optionally add `History = HistoryMode.Shallow` or `Deep` on the parent to remember child state.
 5. Use `[InternalTransition(ParentState, Trigger, Action = nameof(YourMethod))]` for any triggers the parent should handle without leaving the state.
@@ -958,7 +971,7 @@ public partial class MyMachine
 }
 ```
 
-FastFSM condenses the declaration into attributes. The above configures that `Initial --(Start)--> Running` transition and sets up the hierarchy (Running is a child of Parent). It also attaches `OnEntry` actions for Initial and Running states.
+FastFSM condenses the declaration into a fluent DSL. The above configures that `Initial --(Start)--> Running` transition and sets up the hierarchy (Running is a child of Parent). It also attaches `OnEntry` actions for Initial and Running states.
 
 **Firing triggers:** In Stateless, you would call `machine.Fire(Trigger.Start)`. In FastFSM, you call `myMachine.Fire(Trigger.Start)` similarly. Checking state is `machine.State` vs `myMachine.CurrentState`.
 

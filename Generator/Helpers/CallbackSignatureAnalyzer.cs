@@ -49,7 +49,7 @@ internal sealed class CallbackSignatureAnalyzer
         {
             var methods = typeSymbol.GetMembers(callbackName)
                 .OfType<IMethodSymbol>()
-                .Where(m => !m.IsStatic && m.DeclaredAccessibility != Accessibility.Public)
+                .Where(m => !m.IsStatic)
                 .ToList();
 
             if (!methods.Any())
@@ -170,7 +170,7 @@ internal sealed class CallbackSignatureAnalyzer
         var allOverloads = method.ContainingType
             .GetMembers(method.Name)
             .OfType<IMethodSymbol>()
-            .Where(m => !m.IsStatic && m.DeclaredAccessibility != Accessibility.Public) // Same filter as AnalyzeCallback
+            .Where(m => !m.IsStatic) // Fixed: removed incorrect accessibility filter
             .ToList();
 
         string? payloadType = info.PayloadTypeFullName;

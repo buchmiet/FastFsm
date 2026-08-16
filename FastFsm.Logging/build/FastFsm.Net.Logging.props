@@ -1,6 +1,16 @@
 ﻿<Project>
-	<PropertyGroup>
-		<FsmGenerateLogging>true</FsmGenerateLogging>
-		<DefineConstants>$(DefineConstants);FSM_LOGGING_ENABLED</DefineConstants>
-	</PropertyGroup>
+    <PropertyGroup>
+        <FsmGenerateLogging>true</FsmGenerateLogging>
+        <DefineConstants>$(DefineConstants);FSM_LOGGING_ENABLED</DefineConstants>
+    </PropertyGroup>
+    <ItemGroup>
+        <!-- Make property visible to source generators -->
+        <CompilerVisibleProperty Include="FsmGenerateLogging" />
+    </ItemGroup>
+    <!-- Ensure compatibility shim is compiled even if NuGet contentFiles are not wired -->
+    <ItemGroup>
+        <!-- Include shim directly from build folder -->
+        <Compile Include="$(MSBuildThisFileDirectory)Compatibility.FastFsm.Extensions.cs" Condition="Exists('$(MSBuildThisFileDirectory)Compatibility.FastFsm.Extensions.cs')" />
+        <!-- Core package provides ExtensionRunner.cs as content; no duplicate include here -->
+    </ItemGroup>
 </Project>

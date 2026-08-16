@@ -11,7 +11,7 @@
 		<IncludeBuildOutput>false</IncludeBuildOutput>
 		<DevelopmentDependency>true</DevelopmentDependency>
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-		<!-- skopiuj wszystkie zależności do bin/, żeby były współlokowane z generatorem -->
+		<!-- skopiuj zależności do bin/, ALE NIE Microsoft.CodeAnalysis (dla hot-reload) -->
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 
 		<Authors>Lukasz Buchmiet</Authors>
@@ -40,11 +40,8 @@
 
 	<!-- podstawowy plik analyzera do nupkg -->
 	<ItemGroup>
-		<None Include="$(OutputPath)$(AssemblyName).dll"
-			  Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-		<None Include="$(OutputPath)$(AssemblyName).xml"
-			  Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false"
-			  Condition="Exists('$(OutputPath)$(AssemblyName).xml')" />
+		<None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+		<None Include="$(OutputPath)$(AssemblyName).xml" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" Condition="Exists('$(OutputPath)$(AssemblyName).xml')" />
 	</ItemGroup>
 
 	<!-- zapakuj zależności generatora obok analyzera -->

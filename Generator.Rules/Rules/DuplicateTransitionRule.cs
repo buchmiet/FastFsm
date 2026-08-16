@@ -7,14 +7,14 @@ using Generator.Rules.Definitions;
 
 namespace Generator.Rules.Rules;
 
-// Zmieniono typ kontekstu na DuplicateTransitionContext
+// Changed context type to DuplicateTransitionContext
 public class DuplicateTransitionRule : IValidationRule<DuplicateTransitionContext>
 {
-    // Zmieniono typ zwracany na IEnumerable<ValidationResult>
+    // Changed return type to IEnumerable<ValidationResult>
     public IEnumerable<ValidationResult> Validate(DuplicateTransitionContext context)
     {
-        // Logika .Add() na HashSet<TransitionDefinition> będzie działać zgodnie z oczekiwaniami
-        // dzięki implementacji Equals/GetHashCode w TransitionDefinition (porównującej FromState i Trigger).
+        // Logic .Add() on HashSet<TransitionDefinition> will work as expected
+        // thanks to Equals/GetHashCode implementation in TransitionDefinition (comparing FromState and Trigger).
         if (!context.ProcessedTransitions.Add(context.CurrentTransition))
         {
             // MessageFormat dla FSM001: "Duplicate transition from state '{0}' on trigger '{1}'. Only the first one will be used by the generator."
@@ -23,19 +23,19 @@ public class DuplicateTransitionRule : IValidationRule<DuplicateTransitionContex
                 context.CurrentTransition.FromState, // {0}
                 context.CurrentTransition.Trigger    // {1}
             );
-            // Zwracamy kolekcję z jednym wynikiem błędu
+            // Return collection with single error result
             yield return ValidationResult.Fail(
                 RuleIdentifiers.DuplicateTransition,
                 message,
-                DefinedRules.DuplicateTransition.DefaultSeverity // Używamy domyślnej ważności z RuleDefinition
+                DefinedRules.DuplicateTransition.DefaultSeverity // Use default severity from RuleDefinition
             );
         }
         else
         {
-            // Jeśli nie ma duplikatu, zwracamy kolekcję z jednym wynikiem sukcesu.
-            // Alternatywnie można by użyć yield break; jeśli parser byłby przygotowany
-            // na obsługę pustej kolekcji jako "brak problemów".
-            // Dla spójności z tym, że każda reguła "coś" zwraca, Success() jest tutaj OK.
+            // If no duplicate, return collection with single success result.
+            // Alternatively could use yield break; if parser was prepared
+            // for handling empty collection as "no problems".
+            // For consistency that every rule "returns something", Success() is OK here.
             yield return ValidationResult.Success();
         }
     }

@@ -2,11 +2,11 @@
 using Microsoft.Extensions.Logging;
 using Moq;
 using Shouldly;
-using FastFsm.Runtime;
-using FastFsm.Runtime.Extensions;
 using System;
 using System.Linq;
 using System.Reflection.PortableExecutable;
+using FastFsm.Runtime;
+using FastFsm.Runtime.Extensions;
 using Xunit;
 
 namespace FastFsm.Logging.Tests
@@ -66,6 +66,7 @@ namespace FastFsm.Logging.Tests
                 GetLogger<PayloadStateMachine>());
 
             // Act
+            machine.Start();
             var result = machine.TryFire(TestTrigger.Start, payload: null);
 
             // Assert
@@ -112,6 +113,9 @@ namespace FastFsm.Logging.Tests
             errorLogs.Any(l => l.Message.Contains("OnAfterTransition")).ShouldBeTrue();
             errorLogs.Any(l => l.Message.Contains("OnGuardEvaluation")).ShouldBeTrue();
             errorLogs.Any(l => l.Message.Contains("OnGuardEvaluated")).ShouldBeTrue();
+
+            // Verify EventId for extension errors
+            errorLogs.All(l => l.EventId.Id == 1001 && l.EventId.Name == "ExtensionError").ShouldBeTrue();
         }
 
         [Fact]
@@ -135,11 +139,12 @@ namespace FastFsm.Logging.Tests
         {
             // Arrange
             var machine = new MultiPayloadStateMachine(
-                TestState.Initial,null,
+                TestState.Initial,
                 GetLogger<MultiPayloadStateMachine>());
             var wrongPayload = new { Wrong = "Type" };
 
             // Act
+            machine.Start();
             var result = machine.TryFire(TestTrigger.Start, wrongPayload);
 
             // Assert

@@ -3,10 +3,11 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Abstractions.Attributes;
+using Abstractions.Fluent;
 using FastFsm.Contracts;
 using Xunit;
 
-namespace  FastFsm.Async.Tests.Features.Extensions;
+namespace FastFsm.Async.Tests.Features.Extensions;
 
 public class AsyncExtensionsStandaloneTests
 {
@@ -33,6 +34,18 @@ public class AsyncExtensionsStandaloneTests
         {
             Log.Add($"GuardResult: {guardName} = {result}");
         }
+
+        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
+        {
+            Log.Add("Unhandled");
+        }
+
+        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
+        {
+            Log.Add("Internal");
+        }
+
+        public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
     }
 
     [Fact]
@@ -40,7 +53,7 @@ public class AsyncExtensionsStandaloneTests
     {
         var ext1 = new TestExtension();
         var ext2 = new TestExtension();
-        var machine = new AsyncExtensionsMachine(ExtState.Idle, new IStateMachineExtension[] { ext1 });
+        var machine = new AsyncExtensionsMachineFluentFsm(ExtState.Idle, new IStateMachineExtension[] { ext1 });
         await machine.StartAsync();
 
         // Initial extension active
@@ -70,7 +83,7 @@ public class AsyncExtensionsStandaloneTests
     public async Task Extensions_GuardNotifications_ReceiveCorrectInfo()
     {
         var extension = new TestExtension();
-        var machine = new AsyncExtensionsMachine(ExtState.Idle, new[] { extension });
+        var machine = new AsyncExtensionsMachineFluentFsm(ExtState.Idle, new[] { extension });
         await machine.StartAsync();
 
         await machine.TryFireAsync(ExtTrigger.Start); // Has guard
@@ -83,7 +96,7 @@ public class AsyncExtensionsStandaloneTests
     public async Task Extensions_FailedTransition_StillNotified()
     {
         var extension = new TestExtension();
-        var machine = new AsyncExtensionsMachine(ExtState.Complete, new[] { extension });
+        var machine = new AsyncExtensionsMachineFluentFsm(ExtState.Complete, new[] { extension });
         await machine.StartAsync();
 
         var result = await machine.TryFireAsync(ExtTrigger.Start); // Invalid from Complete
@@ -95,7 +108,7 @@ public class AsyncExtensionsStandaloneTests
     [Fact]
     public async Task Extensions_WithoutExtensions_MachineStillWorks()
     {
-        var machine = new AsyncExtensionsMachine(ExtState.Idle, null);
+        var machine = new AsyncExtensionsMachineFluentFsm(ExtState.Idle, null);
         await machine.StartAsync();
 
         var result = await machine.TryFireAsync(ExtTrigger.Start);
@@ -109,7 +122,7 @@ public class AsyncExtensionsStandaloneTests
     {
         var faultyExtension = new FaultyExtension();
         var goodExtension = new TestExtension();
-        var machine = new AsyncExtensionsMachine(ExtState.Idle, new IStateMachineExtension[] { faultyExtension, goodExtension });
+        var machine = new AsyncExtensionsMachineFluentFsm(ExtState.Idle, new IStateMachineExtension[] { faultyExtension, goodExtension });
         await machine.StartAsync();
 
         var result = await machine.TryFireAsync(ExtTrigger.Start);
@@ -140,10 +153,64 @@ public class AsyncExtensionsStandaloneTests
         {
             throw new Exception("Extension error");
         }
+
+        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
+        {
+            throw new Exception("Extension error");
+        }
+
+        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
+        {
+            throw new Exception("Extension error");
+        }
+
+        public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext
+        {
+            throw new Exception("Extension error");
+        }
     }
 }
 
 // Async machine with extensions support
+[StateMachine(typeof(ExtState), typeof(ExtTrigger), GenerateExtensibleVersion = true)]
+public partial class AsyncExtensionsMachineFluentFsm
+{
+    private void Configure() => FSM
+        .State(ExtState.Idle)
+            .OnEntryAsync(nameof(OnEnterIdleAsync))
+            .On(ExtTrigger.Start)
+                .Guard(nameof(CanStartAsync))
+                .Action(nameof(StartWorkAsync))
+                .GoTo(ExtState.Working)
+        .State(ExtState.Working)
+            .OnExitAsync(nameof(OnExitWorkingAsync))
+            .On(ExtTrigger.Finish).GoTo(ExtState.Complete)
+        .State(ExtState.Complete)
+            .On(ExtTrigger.Cancel).GoTo(ExtState.Idle);
+
+    private async ValueTask<bool> CanStartAsync()
+    {
+        await Task.Yield();
+        return true;
+    }
+
+    private async Task StartWorkAsync()
+    {
+        await Task.Yield();
+    }
+
+    private async Task OnEnterIdleAsync()
+    {
+        await Task.Yield();
+    }
+
+    private async Task OnExitWorkingAsync()
+    {
+        await Task.Yield();
+    }
+}
+
+// Async machine with extensions support (Legacy version)
 [StateMachine(typeof(ExtState), typeof(ExtTrigger), GenerateExtensibleVersion = true)]
 public partial class AsyncExtensionsMachine
 {
