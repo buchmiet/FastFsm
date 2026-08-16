@@ -90,18 +90,18 @@ public abstract class GeneratorBaseClass(ITestOutputHelper output)
         string current = testAssemblyPath;
         for (int i = 0; i < 10; i++)
         {
-            // Jeśli w bieżącym katalogu jest plik .sln → to nasz root
-            if (Directory.GetFiles(current, "*.sln").Any())
+            if (Directory.GetFiles(current, "*.sln").Any()
+                || Directory.GetFiles(current, "*.slnx").Any())
                 return current;
 
             var parent = Directory.GetParent(current);
             if (parent == null)
-                break;                     // dotarliśmy do korzenia dysku
+                break;
 
-            current = parent.FullName;     // przejdź katalog wyżej
+            current = parent.FullName;
         }
 
-        return null;                       // nie znaleziono pliku .sln
+        return null;
     }
 
 
