@@ -1,10 +1,10 @@
 # Payloads
 
-Payloads let triggers carry typed data into guards and actions.
+Payloads associate typed data with triggers and make that data available to guards and actions.
 
 ## Per-trigger payload types
 
-**Attributes:**
+### Attribute API
 
 ```csharp
 [StateMachine(typeof(OrderState), typeof(OrderTrigger), GenerateExtensibleVersion = true)]
@@ -13,13 +13,13 @@ Payloads let triggers carry typed data into guards and actions.
 public partial class OrderMachine
 {
     [Transition(OrderState.New, OrderTrigger.Process, OrderState.Processing, Action = nameof(HandleOrder))]
-    private void Configure() { }
+    private void ConfigureTransitions() { }
 
     private void HandleOrder(OrderPayload order) { }
 }
 ```
 
-**Fluent:**
+### Fluent API
 
 ```csharp
 [StateMachine(typeof(OrderState), typeof(OrderTrigger), GenerateExtensibleVersion = true)]
@@ -38,35 +38,35 @@ public partial class OrderMachineFluent
 
 ## Default payload type
 
-When every trigger uses the same payload:
+Set a default payload type when triggers share the same payload type:
 
 ```csharp
 [StateMachine(typeof(S), typeof(T), DefaultPayloadType = typeof(MyPayload))]
 ```
 
-## Firing with payload
+## Firing with a payload
 
 ```csharp
 machine.TryFire(T.Process, new OrderPayload { OrderId = 42 });
 machine.Fire(T.Process, payload);
 ```
 
-Async machines use `TryFireAsync` / `FireAsync` with the same payload argument.
+Asynchronous machines use `TryFireAsync` and `FireAsync` with the same payload argument.
 
-## Guards with payload
+## Guards with payloads
 
-Guards may accept the payload type:
+A guard can accept the configured payload type:
 
 ```csharp
 private bool CanProcess(OrderPayload payload) => payload.Amount > 0;
 ```
 
-Using payload guards on a non-payload machine is an error (FSM0301).
+A payload guard on a machine without payload configuration is reported as FSM0301.
 
-## Multiple payloads on one transition
+## Multiple payload declarations
 
-Fluent `.Payload()` may be called more than once; the last wins (FSM3020 warning). Prefer one payload type per transition.
+When Fluent `.Payload()` is called more than once for one transition, the generator reports FSM3020 and uses the last configured value.
 
-## Extensible machines
+## Extensions
 
-Payload machines that also use extensions typically set `GenerateExtensibleVersion = true` (the default) so constructors accept both extensions and logger.
+Payload configuration does not change the `GenerateExtensibleVersion` setting. Extension support defaults to enabled and can be disabled by setting `GenerateExtensibleVersion = false`.
