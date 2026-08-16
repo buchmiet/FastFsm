@@ -16,7 +16,7 @@ GenTest is a command-line tool designed for rapid testing and development of Ros
 
 ### Prerequisites
 
-- .NET 9.0 SDK or later
+- .NET 10.0 SDK or later
 - FastFSM Generator assemblies built in Release mode
 
 ### Build

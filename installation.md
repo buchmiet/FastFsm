@@ -26,7 +26,7 @@ dotnet --version  # Should output: 9.0.x or higher
 ### Create a New Project
 
 ```bash
-dotnet new console -n MyStateMachine -f net9.0
+dotnet new console -n MyStateMachine -f net10.0
 cd MyStateMachine
 ```
 
@@ -105,7 +105,7 @@ This wraps guards and actions in try/catch blocks during development.
 
 FastFSM uses Roslyn source generators to create optimized code at compile time. Generated files are located in:
 ```
-obj/Debug/net9.0/generated/Generator.StateMachineGenerator/
+obj/Debug/net10.0/generated/Generator.StateMachineGenerator/
 ```
 
 No configuration required – the generator automatically processes classes with `[StateMachine]` attribute.
@@ -122,7 +122,7 @@ dotnet build -warnaserror
 # Should succeed with 0 warnings, 0 errors
 
 # Verify generated code exists
-ls obj/Debug/net9.0/generated/*/*.cs
+ls obj/Debug/net10.0/generated/*/*.cs
 ```
 
 ## Troubleshooting
@@ -234,10 +234,10 @@ After installation, generated code is located in:
 MyStateMachine/
 ├── MyStateMachine.csproj
 ├── Program.cs
-├── bin/Debug/net9.0/
+├── bin/Debug/net10.0/
 │   ├── Abstractions.dll
 │   └── FastFsm.dll
-└── obj/Debug/net9.0/generated/
+└── obj/Debug/net10.0/generated/
     └── Generator.StateMachineGenerator/
         └── *.Generated.cs
 ```
