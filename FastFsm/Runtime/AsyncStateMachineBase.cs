@@ -23,16 +23,16 @@ namespace FastFsm.Runtime
         protected TState _currentState;
         private bool _started;
 
-        // HSM: domyślnie „płasko” — puste tablice (HSM je nadpisze w klasie generowanej)
+        // HSM: defaults to "flat" — empty arrays (HSM will override them in generated class)
         protected virtual int[] ParentArray => Array.Empty<int>();
         protected virtual int[] DepthArray => Array.Empty<int>();
         protected virtual int[] InitialChildArray => Array.Empty<int>();
         protected virtual HistoryMode[] HistoryArray => Array.Empty<HistoryMode>();
 
-        // Czy którakolwiek kompozycja używa historii (HSM nadpisze na true, jeśli trzeba)
+        // Whether any composition uses history (HSM will override to true if needed)
         protected virtual bool HasHistory => false;
 
-        // Ostatnio aktywne dzieci dla stanów z historią (alokowane tylko gdy HasHistory == true)
+        // Last active children for states with history (allocated only when HasHistory == true)
         protected int[]? _lastActiveChild;
 
 

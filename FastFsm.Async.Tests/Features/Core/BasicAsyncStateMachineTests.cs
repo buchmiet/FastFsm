@@ -1,4 +1,5 @@
 ﻿using Abstractions.Attributes;
+using Abstractions.Fluent;
 using Shouldly;
 
 using System;
@@ -9,9 +10,9 @@ using System.Threading.Tasks;
 using FastFsm.Exceptions;
 using Xunit;
 
-namespace  FastFsm.Async.Tests.Features.Core;
+namespace FastFsm.Async.Tests.Features.Core;
 
-// Definicje dla testów
+// Test definitions
 public enum AsyncStates
 {
     Initial,
@@ -29,7 +30,7 @@ public enum AsyncTriggers
     Reset
 }
 
-// Prosta maszyna asynchroniczna
+// Simple asynchronous machine
 [StateMachine(typeof(AsyncStates), typeof(AsyncTriggers))]
 public partial class SimpleAsyncMachine
 {
@@ -41,7 +42,7 @@ public partial class SimpleAsyncMachine
     private async ValueTask<bool> CanStartAsync()
     {
         _executionLog.Add("CanStartAsync:Begin");
-        await Task.Delay(10); // Symulacja async operacji
+        await Task.Delay(10); // Simulate async operation
         _executionLog.Add("CanStartAsync:End");
         return true;
     }
@@ -55,7 +56,7 @@ public partial class SimpleAsyncMachine
         _executionLog.Add("ProcessAsync:End");
     }
 
-    // Sync action (dozwolone w async maszynie)
+    // Sync action (allowed in async machine)
     [Transition(AsyncStates.Processing, AsyncTriggers.Complete, AsyncStates.Completed, Action = nameof(Complete))]
     private void Complete()
     {
@@ -81,13 +82,76 @@ public partial class SimpleAsyncMachine
     }
 }
 
+// Fluent API equivalent of SimpleAsyncMachine
+[StateMachine(typeof(AsyncStates), typeof(AsyncTriggers))]
+public partial class SimpleAsyncMachineFluentFsm
+{
+    private readonly List<string> _executionLog = new();
+    public IReadOnlyList<string> ExecutionLog => _executionLog;
+
+    private void Configure() => FSM
+        .State(AsyncStates.Initial)
+            .On(AsyncTriggers.Start)
+                .Guard(nameof(CanStartAsync))
+                .GoTo(AsyncStates.Processing)
+        .State(AsyncStates.Processing)
+            .OnEntryAsync(nameof(OnProcessingEntryAsync))
+            .OnExitAsync(nameof(OnProcessingExitAsync))
+            .On(AsyncTriggers.Process)
+                .Action(nameof(ProcessAsync))
+                .GoTo(AsyncStates.Processing)
+            .On(AsyncTriggers.Complete)
+                .Action(nameof(Complete))
+                .GoTo(AsyncStates.Completed)
+        .State(AsyncStates.Completed);
+
+    // Async guard
+    private async ValueTask<bool> CanStartAsync()
+    {
+        _executionLog.Add("CanStartAsync:Begin");
+        await Task.Delay(10); // Simulate async operation
+        _executionLog.Add("CanStartAsync:End");
+        return true;
+    }
+
+    // Async action
+    private async Task ProcessAsync()
+    {
+        _executionLog.Add("ProcessAsync:Begin");
+        await Task.Delay(10);
+        _executionLog.Add("ProcessAsync:End");
+    }
+
+    // Sync action (allowed in async machine)
+    private void Complete()
+    {
+        _executionLog.Add("Complete:Sync");
+    }
+
+    // Async OnEntry
+    private async Task OnProcessingEntryAsync()
+    {
+        _executionLog.Add("OnProcessingEntry:Begin");
+        await Task.Delay(5);
+        _executionLog.Add("OnProcessingEntry:End");
+    }
+
+    // Async OnExit
+    private async ValueTask OnProcessingExitAsync()
+    {
+        _executionLog.Add("OnProcessingExit:Begin");
+        await Task.Delay(5);
+        _executionLog.Add("OnProcessingExit:End");
+    }
+}
+
 public class BasicAsyncStateMachineTests
 {
     [Fact]
     public async Task Should_Execute_Async_Guard_And_Action_In_Order()
     {
         // Arrange
-        var machine = new SimpleAsyncMachine(AsyncStates.Initial);
+        var machine = new SimpleAsyncMachineFluentFsm(AsyncStates.Initial);
         await machine.StartAsync();
 
         // Act
@@ -97,7 +161,7 @@ public class BasicAsyncStateMachineTests
         result.ShouldBeTrue();
         machine.CurrentState.ShouldBe(AsyncStates.Processing);
 
-        // Sprawdzamy kolejność wykonania
+        // Check execution order
         machine.ExecutionLog.ShouldBe(new[]
         {
             "CanStartAsync:Begin",
@@ -111,13 +175,13 @@ public class BasicAsyncStateMachineTests
     public async Task Should_Execute_Async_Action_With_Internal_Transition()
     {
         // Arrange
-        var machine = new SimpleAsyncMachine(AsyncStates.Processing);
+        var machine = new SimpleAsyncMachineFluentFsm(AsyncStates.Processing);
         await machine.StartAsync();
         // Act
         await machine.FireAsync(AsyncTriggers.Process);
 
         // Assert
-        machine.CurrentState.ShouldBe(AsyncStates.Processing); // Stan się nie zmienił
+        machine.CurrentState.ShouldBe(AsyncStates.Processing); // State did not change
         machine.ExecutionLog.ShouldContain("ProcessAsync:Begin");
         machine.ExecutionLog.ShouldContain("ProcessAsync:End");
         machine.ExecutionLog.IndexOf("ProcessAsync:Begin").ShouldBeLessThan(
@@ -128,7 +192,7 @@ public class BasicAsyncStateMachineTests
     public async Task Should_Execute_OnExit_Before_OnEntry()
     {
         // Arrange
-        var machine = new SimpleAsyncMachine(AsyncStates.Processing);
+        var machine = new SimpleAsyncMachineFluentFsm(AsyncStates.Processing);
         await machine.StartAsync();
         // Act
         await machine.FireAsync(AsyncTriggers.Complete);
@@ -137,7 +201,7 @@ public class BasicAsyncStateMachineTests
         machine.CurrentState.ShouldBe(AsyncStates.Completed);
         var log = machine.ExecutionLog;
 
-        // OnExit powinno być przed akcją
+        // OnExit should be before action
         log.IndexOf("OnProcessingExit:Begin").ShouldBeLessThan(log.IndexOf("Complete:Sync"));
     }
 
@@ -145,10 +209,10 @@ public class BasicAsyncStateMachineTests
     public async Task Should_Throw_When_Calling_Sync_Methods_On_Async_Machine()
     {
         // Arrange
-        var machine = new SimpleAsyncMachine(AsyncStates.Initial);
+        var machine = new SimpleAsyncMachineFluentFsm(AsyncStates.Initial);
         await machine.StartAsync();
 
-        // Act & Assert - wszystkie sync metody powinny rzucać wyjątek
+        // Act & Assert - all sync methods should throw exception
         Should.Throw<SyncCallOnAsyncMachineException>(() => machine.TryFire(AsyncTriggers.Start));
         Should.Throw<SyncCallOnAsyncMachineException>(() => machine.Fire(AsyncTriggers.Start));
         Should.Throw<SyncCallOnAsyncMachineException>(() => machine.CanFire(AsyncTriggers.Start));
@@ -159,11 +223,11 @@ public class BasicAsyncStateMachineTests
     public async Task Should_Support_CancellationToken()
     {
         // Arrange
-        var machine = new SimpleAsyncMachine(AsyncStates.Initial);
+        var machine = new SimpleAsyncMachineFluentFsm(AsyncStates.Initial);
         await machine.StartAsync();
         using var cts = new CancellationTokenSource();
 
-        // Act - anuluj przed operacją
+        // Act - cancel before operation
         cts.Cancel();
 
         // Assert
@@ -174,8 +238,8 @@ public class BasicAsyncStateMachineTests
     [Fact]
     public async Task Initial_OnEntry_Is_FireAndForget_When_Constructed_In_Processing()
     {
-        // Arrange – stan startowy ma OnEntry async
-        var machine = new SimpleAsyncMachine(AsyncStates.Processing);
+        // Arrange - initial state has OnEntry async
+        var machine = new SimpleAsyncMachineFluentFsm(AsyncStates.Processing);
         await machine.StartAsync();
 
         // Assert
@@ -204,7 +268,7 @@ public class BasicAsyncStateMachineTests
     public async Task GetPermittedTriggersAsync_Returns_Empty_For_Terminal_State()
     {
         // Arrange
-        var machine = new SimpleAsyncMachine(AsyncStates.Completed);
+        var machine = new SimpleAsyncMachineFluentFsm(AsyncStates.Completed);
         await machine.StartAsync();
         // Act
         var triggers = await machine.GetPermittedTriggersAsync();
@@ -217,7 +281,7 @@ public class BasicAsyncStateMachineTests
     public async Task CanFireAsync_Returns_False_For_Unknown_Trigger_In_Current_State()
     {
         // Arrange
-        var machine = new SimpleAsyncMachine(AsyncStates.Processing);
+        var machine = new SimpleAsyncMachineFluentFsm(AsyncStates.Processing);
         await machine.StartAsync();
         // Act
         var canReset = await machine.CanFireAsync(AsyncTriggers.Reset);
@@ -230,7 +294,7 @@ public class BasicAsyncStateMachineTests
     public async Task Parallel_Fires_Do_Not_Break_State_And_All_Internal_Actions_Run()
     {
         // Arrange
-        var machine = new SimpleAsyncMachine(AsyncStates.Processing);
+        var machine = new SimpleAsyncMachineFluentFsm(AsyncStates.Processing);
         await machine.StartAsync();
         // Act
         var tasks = new List<Task>();
@@ -242,10 +306,10 @@ public class BasicAsyncStateMachineTests
         await Task.WhenAll(vtasks.Select(vt => vt.AsTask()));
 
 
-        // Assert – stan się nie zmienia (internal transition)
+        // Assert - state does not change (internal transition)
         machine.CurrentState.ShouldBe(AsyncStates.Processing);
 
-        // Powinno być tyle samo Begin/End co wywołań
+        // Should be the same number of Begin/End as calls
         machine.ExecutionLog.Count(s => s == "ProcessAsync:Begin").ShouldBe(fires);
         machine.ExecutionLog.Count(s => s == "ProcessAsync:End").ShouldBe(fires);
     }

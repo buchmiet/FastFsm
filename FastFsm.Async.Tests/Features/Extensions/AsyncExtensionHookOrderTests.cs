@@ -5,8 +5,9 @@ using FastFsm.Contracts;
 using Shouldly;
 
 using Xunit;
+using Dsl;
 
-namespace  FastFsm.Async.Tests.Features.Extensions;
+namespace FastFsm.Async.Tests.Features.Extensions;
 
 // Minimal async machines with extensions enabled
 [StateMachine(typeof(AState), typeof(ATrigger), GenerateExtensibleVersion = true)]
@@ -45,6 +46,9 @@ public sealed class AsyncRecordingExtension : IStateMachineExtension
     public void OnAfterTransition<T>(T ctx, bool s) where T : IStateMachineContext => Log.Add($"After:{(s ? "Success" : "Fail")}");
     public void OnGuardEvaluation<T>(T ctx, string _) where T : IStateMachineContext => Log.Add("GuardEval");
     public void OnGuardEvaluated<T>(T ctx, string _, bool res) where T : IStateMachineContext => Log.Add("GuardEvaluated");
+    public void OnUnhandledTrigger<T>(T ctx) where T : IStateMachineContext => Log.Add("Unhandled");
+    public void OnInternalTransition<T>(T ctx) where T : IStateMachineContext => Log.Add("Internal");
+    public void OnTransitioned<T>(T ctx) where T : IStateMachineContext => Log.Add("Transitioned");
 }
 
 public class AsyncExtensionHookOrderTests
@@ -96,4 +100,31 @@ public class AsyncExtensionHookOrderTests
         // No GuardEval hooks are emitted during GetPermittedTriggersAsync
         ext.Log.ShouldBeEmpty();
     }
+}
+
+// Fluent API versions for parity
+[StateMachine(typeof(AState), typeof(ATrigger), GenerateExtensibleVersion = true)]
+public partial class AsyncHookOrderMachineSuccessFluentFsm
+{
+    private void Configure() => FSM
+        .State(AState.A)
+            .On(ATrigger.Next)
+                .Guard(nameof(GuardTrueAsync))
+                .GoTo(AState.B)
+        .State(AState.B);
+
+    private async ValueTask<bool> GuardTrueAsync() { await Task.Yield(); return true; }
+}
+
+[StateMachine(typeof(AState), typeof(ATrigger), GenerateExtensibleVersion = true)]
+public partial class AsyncHookOrderMachineFailFluentFsm
+{
+    private void Configure() => FSM
+        .State(AState.A)
+            .On(ATrigger.Fail)
+                .Guard(nameof(GuardFalseAsync))
+                .GoTo(AState.B)
+        .State(AState.B);
+
+    private async ValueTask<bool> GuardFalseAsync() { await Task.Yield(); return false; }
 }

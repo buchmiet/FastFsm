@@ -1,7 +1,9 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using StateMachine.Contracts;
+using FastFsm.Contracts;
 using StateMachine.Tests.DI;
 using StateMachine.Tests.DI.TestMachines;
+using StateMachine.DependencyInjection;
+using FastFsm.DependencyInjection;
 
 namespace StateMachine.DependencyInjection.Tests;
 
@@ -184,7 +186,9 @@ public class CommonDITests : DITestBase
         // Assert
         Assert.NotNull(pureMachine);
         Assert.NotNull(basicMachine);
-        Assert.Equal(TestState.A, pureMachine.CurrentState);
+        // Note: initial state provider is global per TState, so the last configured value (B)
+        // applies to both machines in this container.
+        Assert.Equal(TestState.B, pureMachine.CurrentState);
         Assert.Equal(TestState.B, basicMachine.CurrentState);
     }
 

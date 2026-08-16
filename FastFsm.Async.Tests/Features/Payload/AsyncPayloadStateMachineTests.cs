@@ -8,8 +8,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using FastFsm.Exceptions;
 using Xunit;
+using Dsl;
 
-namespace  FastFsm.Async.Tests.Features.Payload;
+namespace FastFsm.Async.Tests.Features.Payload;
 
 #region Test Enums and Payload Classes
 
@@ -332,6 +333,289 @@ public partial class InitialOnEntryAsyncPayloadMachine
 
     [Transition(AsyncPayloadStates.Initial, AsyncPayloadTriggers.Start, AsyncPayloadStates.Processing)]
     private void Configure() { }
+
+    private async Task OnEntryInitial()
+    {
+        CallLog.Add("OnEntry()");
+        await Task.Delay(10);
+        InitialEntryCalledParameterless = true;
+    }
+
+    private async Task OnEntryInitial(ProcessPayload payload)
+    {
+        CallLog.Add($"OnEntry(payload:{payload.Id})");
+        await Task.Delay(10);
+        InitialEntryCalledWithPayload = true;
+    }
+}
+
+#endregion
+
+#region Fluent API Versions
+
+[StateMachine(typeof(AsyncPayloadStates), typeof(AsyncPayloadTriggers))]
+[PayloadType(typeof(ProcessPayload))]
+public partial class BasicAsyncPayloadMachineFluentFsm
+{
+    private readonly List<string> _executionLog = new();
+    public IReadOnlyList<string> ExecutionLog => _executionLog;
+    public ProcessPayload? LastProcessedPayload { get; private set; }
+
+    private void Configure() => FSM
+        .State(AsyncPayloadStates.Initial)
+            .On(AsyncPayloadTriggers.Start)
+                .Guard(nameof(CanStartAsync))
+                .Action(nameof(StartProcessingAsync))
+                .GoTo(AsyncPayloadStates.Processing)
+        .State(AsyncPayloadStates.Processing)
+            .OnEntryAsync(nameof(OnProcessingEntryAsync))
+        .State(AsyncPayloadStates.Completed)
+        .State(AsyncPayloadStates.Failed);
+
+    private async ValueTask<bool> CanStartAsync(ProcessPayload payload)
+    {
+        _executionLog.Add($"CanStartAsync:Begin:{payload.Id}");
+        await Task.Delay(10);
+        _executionLog.Add($"CanStartAsync:End:{payload.Id}");
+        return payload?.IsValid == true;
+    }
+
+    private async Task StartProcessingAsync(ProcessPayload payload)
+    {
+        _executionLog.Add($"StartProcessingAsync:Begin:{payload.Id}");
+        await Task.Delay(10);
+        LastProcessedPayload = payload;
+        _executionLog.Add($"StartProcessingAsync:End:{payload.Id}");
+    }
+
+    private async Task OnProcessingEntryAsync(ProcessPayload payload)
+    {
+        _executionLog.Add($"OnProcessingEntry:Begin:{payload.Data}");
+        await Task.Delay(5);
+        _executionLog.Add($"OnProcessingEntry:End:{payload.Data}");
+    }
+}
+
+[StateMachine(typeof(AsyncPayloadStates), typeof(AsyncPayloadTriggers))]
+[PayloadType(typeof(ProcessPayload))]
+public partial class OverloadedAsyncMachineFluentFsm
+{
+    public List<string> CallLog { get; } = [];
+
+    private void Configure() => FSM
+        .State(AsyncPayloadStates.Processing)
+            .OnEntryAsync(nameof(OnEntryProcessing))
+        .State(AsyncPayloadStates.Initial)
+            .On(AsyncPayloadTriggers.Start)
+                .Guard(nameof(CanStart))
+                .Action(nameof(DoStart))
+                .GoTo(AsyncPayloadStates.Processing);
+
+    // Parameterless versions
+    private async ValueTask<bool> CanStart()
+    {
+        CallLog.Add("Guard()");
+        await Task.Delay(5);
+        return true;
+    }
+
+    private async Task DoStart()
+    {
+        CallLog.Add("Action()");
+        await Task.Delay(5);
+    }
+
+    private async Task OnEntryProcessing()
+    {
+        CallLog.Add("OnEntry()");
+        await Task.Delay(5);
+    }
+
+    // Payload versions
+    private async ValueTask<bool> CanStart(ProcessPayload payload)
+    {
+        CallLog.Add($"Guard(payload:{payload.Id})");
+        await Task.Delay(5);
+        return payload.IsValid;
+    }
+
+    private async Task DoStart(ProcessPayload payload)
+    {
+        CallLog.Add($"Action(payload:{payload.Id})");
+        await Task.Delay(5);
+    }
+
+    private async Task OnEntryProcessing(ProcessPayload payload)
+    {
+        CallLog.Add($"OnEntry(payload:{payload.Id})");
+        await Task.Delay(5);
+    }
+}
+
+[StateMachine(typeof(MultiPayloadStates), typeof(MultiPayloadTriggers))]
+[PayloadType(MultiPayloadTriggers.Configure, typeof(ConfigPayload))]
+[PayloadType(MultiPayloadTriggers.Process, typeof(DataPayload))]
+[PayloadType(MultiPayloadTriggers.Complete, typeof(ResultPayload))]
+[PayloadType(MultiPayloadTriggers.HandleError, typeof(ErrorPayload))]
+public partial class MultiPayloadAsyncMachineFluentFsm
+{
+    public string CurrentSetting { get; private set; } = string.Empty;
+    public int ProcessedValue { get; private set; }
+    public string LastResult { get; private set; } = string.Empty;
+    public string LastErrorCode { get; private set; } = string.Empty;
+
+    private void Configure() => FSM
+        .State(MultiPayloadStates.Ready)
+            .On(MultiPayloadTriggers.Configure)
+                .Action(nameof(ApplyConfigurationAsync))
+                .GoTo(MultiPayloadStates.ConfigSet)
+        .State(MultiPayloadStates.ConfigSet)
+            .On(MultiPayloadTriggers.Process)
+                .Guard(nameof(CanProcessAsync))
+                .Action(nameof(ProcessDataAsync))
+                .GoTo(MultiPayloadStates.Processing)
+        .State(MultiPayloadStates.Processing)
+            .On(MultiPayloadTriggers.Complete)
+                .Action(nameof(CompleteProcessingAsync))
+                .GoTo(MultiPayloadStates.Done)
+            .On(MultiPayloadTriggers.HandleError)
+                .Action(nameof(HandleErrorAsync))
+                .GoTo(MultiPayloadStates.Error)
+        .State(MultiPayloadStates.Done)
+        .State(MultiPayloadStates.Error);
+
+    private async Task ApplyConfigurationAsync(ConfigPayload config)
+    {
+        await Task.Delay(10);
+        CurrentSetting = config.Setting;
+    }
+
+    private async ValueTask<bool> CanProcessAsync(DataPayload data)
+    {
+        await Task.Delay(5);
+        return data.Value > 0;
+    }
+
+    private async Task ProcessDataAsync(DataPayload data)
+    {
+        await Task.Delay(10);
+        ProcessedValue = data.Value;
+    }
+
+    private async Task CompleteProcessingAsync(ResultPayload result)
+    {
+        await Task.Delay(5);
+        LastResult = result.Result;
+    }
+
+    private async Task HandleErrorAsync(ErrorPayload error)
+    {
+        await Task.Delay(5);
+        LastErrorCode = error.ErrorCode;
+    }
+}
+
+[StateMachine(typeof(AsyncPayloadStates), typeof(AsyncPayloadTriggers))]
+[PayloadType(typeof(ProcessPayload))]
+public partial class ExceptionAsyncPayloadMachineFluentFsm
+{
+    private readonly List<string> _log = new();
+    public IReadOnlyList<string> Log => _log;
+
+    private void Configure() => FSM
+        .State(AsyncPayloadStates.Initial)
+            .On(AsyncPayloadTriggers.Start)
+                .Guard(nameof(ThrowingGuardAsync))
+                .GoTo(AsyncPayloadStates.Processing)
+            .On(AsyncPayloadTriggers.Process)
+                .Action(nameof(ThrowingActionAsync))
+                .GoTo(AsyncPayloadStates.Processing)
+            .On(AsyncPayloadTriggers.Fail)
+                .GoTo(AsyncPayloadStates.Failed)
+        .State(AsyncPayloadStates.Failed)
+            .OnEntryAsync(nameof(ThrowingOnEntryAsync));
+
+    private async ValueTask<bool> ThrowingGuardAsync(ProcessPayload payload)
+    {
+        _log.Add($"Guard:Begin:{payload.Id}");
+        await Task.Yield();
+        throw new InvalidOperationException("guard with payload failed");
+    }
+
+    private async Task ThrowingActionAsync(ProcessPayload payload)
+    {
+        _log.Add($"Action:Begin:{payload.Id}");
+        await Task.Yield();
+        throw new InvalidOperationException("action with payload failed");
+    }
+
+    private async Task ThrowingOnEntryAsync(ProcessPayload payload)
+    {
+        _log.Add($"OnEntry:Begin:{payload.Id}");
+        await Task.Yield();
+        throw new InvalidOperationException("onentry with payload failed");
+    }
+}
+
+[StateMachine(typeof(AsyncPayloadStates), typeof(AsyncPayloadTriggers))]
+[PayloadType(typeof(ProcessPayload))]
+public partial class CanFireAsyncPayloadMachineFluentFsm
+{
+    private readonly int _threshold;
+    public CanFireAsyncPayloadMachineFluentFsm(AsyncPayloadStates initialState, int threshold) : this(initialState) => _threshold = threshold;
+
+    private void Configure() => FSM
+        .State(AsyncPayloadStates.Initial)
+            .On(AsyncPayloadTriggers.Start)
+                .Guard(nameof(CheckThresholdAsync))
+                .GoTo(AsyncPayloadStates.Processing)
+        .State(AsyncPayloadStates.Processing);
+
+    private async ValueTask<bool> CheckThresholdAsync(ProcessPayload payload)
+    {
+        await Task.Delay(10);
+        return payload.Id >= _threshold;
+    }
+}
+
+[StateMachine(typeof(AsyncPayloadStates), typeof(AsyncPayloadTriggers))]
+[PayloadType(typeof(ProcessPayload))]
+public partial class ConcurrentAsyncPayloadMachineFluentFsm
+{
+    public IReadOnlyList<int> ProcessedIds => _processedIds.ToList();
+    private readonly List<int> _processedIds = new();
+    private readonly object _lock = new();
+
+    private void Configure() => FSM
+        .State(AsyncPayloadStates.Processing)
+            .OnInternal(AsyncPayloadTriggers.Process)
+                .Action(nameof(ProcessDataAsync))
+                .Internal();
+
+    private async Task ProcessDataAsync(ProcessPayload payload)
+    {
+        await Task.Delay(Random.Shared.Next(5, 20));
+        lock (_lock)
+        {
+            _processedIds.Add(payload.Id);
+        }
+    }
+}
+
+[StateMachine(typeof(AsyncPayloadStates), typeof(AsyncPayloadTriggers))]
+[PayloadType(typeof(ProcessPayload))]
+public partial class InitialOnEntryAsyncPayloadMachineFluentFsm
+{
+    public bool InitialEntryCalledParameterless { get; private set; }
+    public bool InitialEntryCalledWithPayload { get; private set; }
+    public List<string> CallLog { get; } = [];
+
+    private void Configure() => FSM
+        .State(AsyncPayloadStates.Initial)
+            .OnEntryAsync(nameof(OnEntryInitial))
+            .On(AsyncPayloadTriggers.Start)
+                .GoTo(AsyncPayloadStates.Processing)
+        .State(AsyncPayloadStates.Processing);
 
     private async Task OnEntryInitial()
     {

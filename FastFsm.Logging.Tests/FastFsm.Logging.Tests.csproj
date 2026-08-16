@@ -1,13 +1,17 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<?xml version='1.0' encoding='utf-8'?>
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
+    <FastFsmReferenceLogging>true</FastFsmReferenceLogging>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\GeneratedFiles</CompilerGeneratedFilesOutputPath>
+    <FsmGenerateLogging>true</FsmGenerateLogging>
+    <DefineConstants>$(DefineConstants);FASTFSM_SAFE_ACTIONS;FSM_LOGGING_ENABLED</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,12 +21,18 @@
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
     <PackageReference Include="Shouldly" Version="4.2.1" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.7" />
-    <PackageReference Include="FastFsm.Net.Logging" Version="0.6.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.8" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Machines.Tests\Machines.Tests.csproj" />
+  </ItemGroup>
+
+  
+
+  <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="Machines.Tests.Extensions" />
   </ItemGroup>
 
 </Project>

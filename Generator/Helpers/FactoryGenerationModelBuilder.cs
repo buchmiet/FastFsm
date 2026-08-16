@@ -65,7 +65,7 @@ internal class FactoryGenerationModelBuilder
             allNamespaces.Add(NamespaceMicrosoftExtensionsLogging);
         }
         allNamespaces.Add(NamespaceStateMachineContracts);
-        allNamespaces.Add("StateMachine.DependencyInjection");
+        allNamespaces.Add(FastFsmDependencyInjection);
         if (!string.IsNullOrEmpty(model.Namespace))
         {
             allNamespaces.Add(model.Namespace);

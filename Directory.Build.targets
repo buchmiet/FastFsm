@@ -1,0 +1,43 @@
+<Project>
+  <Import Project="eng/FastFsmReferences.props" Condition="Exists('$(MSBuildThisFileDirectory)eng/FastFsmReferences.props')" />
+
+  <Target Name="PurgeFastFsmPackageCache" BeforeTargets="Restore"
+          Condition=" '$(ClearFastFsmCache)' == 'true' ">
+    <PropertyGroup>
+      <_FastFsmNuGetPackagesRoot Condition="'$(NUGET_PACKAGES)' != ''">$(NUGET_PACKAGES)</_FastFsmNuGetPackagesRoot>
+      <_FastFsmNuGetPackagesRoot Condition="'$(_FastFsmNuGetPackagesRoot)' == '' and '$(USERPROFILE)' != ''">$(USERPROFILE)/.nuget/packages</_FastFsmNuGetPackagesRoot>
+      <_FastFsmNuGetPackagesRoot Condition="'$(_FastFsmNuGetPackagesRoot)' == '' and '$(HOME)' != ''">$(HOME)/.nuget/packages</_FastFsmNuGetPackagesRoot>
+      <FastFsmPackageCacheFolder>$(_FastFsmNuGetPackagesRoot)/fastfsm.net</FastFsmPackageCacheFolder>
+      <FastFsmLoggingPackageCacheFolder>$(_FastFsmNuGetPackagesRoot)/fastfsm.net.logging</FastFsmLoggingPackageCacheFolder>
+      <FastFsmDependencyInjectionPackageCacheFolder>$(_FastFsmNuGetPackagesRoot)/fastfsm.net.dependencyinjection</FastFsmDependencyInjectionPackageCacheFolder>
+    </PropertyGroup>
+    <Message Text="Purging local FastFsm package cache folders under $(_FastFsmNuGetPackagesRoot)..." Importance="High" />
+    <RemoveDir Directories="$(FastFsmPackageCacheFolder)" Condition="Exists('$(FastFsmPackageCacheFolder)')" />
+    <RemoveDir Directories="$(FastFsmLoggingPackageCacheFolder)" Condition="Exists('$(FastFsmLoggingPackageCacheFolder)')" />
+    <RemoveDir Directories="$(FastFsmDependencyInjectionPackageCacheFolder)" Condition="Exists('$(FastFsmDependencyInjectionPackageCacheFolder)')" />
+  </Target>
+
+  <!-- Dev-mode: include full generator dependency graph as analyzers (mirrors nupkg analyzers/dotnet/cs layout) -->
+  <Target Name="BuildFastFsmGenerators"
+          BeforeTargets="CoreCompile"
+          Condition="'$(UsePackages)' != 'true' and ('$(FastFsmReferenceCore)' == 'true' or '$(FastFsmReferenceLogging)' == 'true' or '$(FastFsmReferenceDependencyInjection)' == 'true')">
+    <MSBuild Projects="$(MSBuildThisFileDirectory)Generator/Generator.csproj"
+             Targets="Build"
+             Properties="Configuration=$(Configuration)" />
+  </Target>
+
+  <Target Name="AddFastFsmDevAnalyzers"
+          BeforeTargets="CoreCompile"
+          DependsOnTargets="BuildFastFsmGenerators"
+          Condition="'$(UsePackages)' != 'true' and ('$(FastFsmReferenceCore)' == 'true' or '$(FastFsmReferenceLogging)' == 'true' or '$(FastFsmReferenceDependencyInjection)' == 'true')">
+    <ItemGroup>
+      <Analyzer Include="$(MSBuildThisFileDirectory)Generator/bin/$(Configuration)/netstandard2.0/Abstractions.dll" />
+      <Analyzer Include="$(MSBuildThisFileDirectory)Generator/bin/$(Configuration)/netstandard2.0/Generator.dll" />
+      <Analyzer Include="$(MSBuildThisFileDirectory)Generator/bin/$(Configuration)/netstandard2.0/Generator.Model.dll" />
+      <Analyzer Include="$(MSBuildThisFileDirectory)Generator/bin/$(Configuration)/netstandard2.0/Generator.Rules.dll" />
+      <Analyzer Include="$(MSBuildThisFileDirectory)Generator/bin/$(Configuration)/netstandard2.0/Generator.Logger.dll" />
+      <Analyzer Include="$(MSBuildThisFileDirectory)Generator/bin/$(Configuration)/netstandard2.0/Generator.DependencyInjection.dll" />
+      <Analyzer Include="$(MSBuildThisFileDirectory)Generator/bin/$(Configuration)/netstandard2.0/IndentedStringBuilder.dll" />
+    </ItemGroup>
+  </Target>
+</Project>

@@ -1,10 +1,11 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using StateMachine.Contracts;
+using FastFsm.Contracts;
 using StateMachine.Tests.DI.TestMachines;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using StateMachine.DependencyInjection;
+using FastFsm.DependencyInjection;
 using Xunit;
 
 
@@ -210,6 +211,9 @@ public class ExtensionsVariantDITests : DITestBase
         {
             Events.Add($"{Name}:GuardEvaluated:{guardName}:{result}");
         }
+        public virtual void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext { }
+        public virtual void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
+        public virtual void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
     }
 
     private class OrderedTestExtension : TestExtension
@@ -249,6 +253,9 @@ public class ExtensionsVariantDITests : DITestBase
         public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext { }
         public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext { }
         public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext { }
+        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext { }
+        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
+        public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
     }
 
     private class SingletonExtension : TestExtension { }

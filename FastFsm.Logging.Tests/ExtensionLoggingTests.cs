@@ -190,9 +190,18 @@ namespace FastFsm.Logging.Tests
             afterTransitionSuccess.ShouldNotBeNull();
             afterTransitionSuccess.ShouldBe(false);
 
-            // Verify logs
-            VerifyLogMessage(LogLevel.Warning, "GuardFailed");
-            VerifyLogMessage(LogLevel.Warning, "TransitionFailed");
+            // TEMP diagnostic: dump all logged messages for inspection
+            foreach (var log in LoggedMessages)
+            {
+                Console.WriteLine($"LOG: Level={log.Level}, Id={log.EventId.Id}, Name={(log.EventId.Name ?? "<null>")}, Msg='{log.Message}'");
+            }
+
+            // Verify logs with detailed dump on failure
+            var dump = string.Join("\n", LoggedMessages.Select(l => $"Level={l.Level}, Id={l.EventId.Id}, Name={(l.EventId.Name ?? "<null>")}, Msg='{l.Message}'"));
+            var hasGuardFailed = LoggedMessages.Any(l => l.Level == LogLevel.Warning && (l.EventId.Name ?? string.Empty) == "GuardFailed");
+            hasGuardFailed.ShouldBeTrue($"Expected Warning/GuardFailed, got:\n{dump}");
+            var hasTransitionFailed = LoggedMessages.Any(l => l.Level == LogLevel.Warning && (l.EventId.Name ?? string.Empty) == "TransitionFailed");
+            hasTransitionFailed.ShouldBeTrue($"Expected Warning/TransitionFailed, got:\n{dump}");
         }
 
         [Fact]

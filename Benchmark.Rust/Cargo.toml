@@ -27,6 +27,10 @@ harness = false
 name    = "fsm_async_bench"
 harness = false
 
+[[bench]]
+name    = "fsm_hsm_bench"
+harness = false
+
 [profile.bench]
 opt-level     = 3
 lto           = "thin"

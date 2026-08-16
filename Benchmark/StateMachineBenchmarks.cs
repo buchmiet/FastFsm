@@ -75,7 +75,7 @@ public partial class FastFsmAsyncActions
 {
     private int _asyncCounter;
 
-    // Wariant "real async" (scheduler hop). Do hot-path patrz niżej w benchmarkach (metoda bez yield).
+    // "Real async" variant with scheduler hop. For hot-path see benchmarks below (method without yield).
     [Transition(State.A, Trigger.Next, State.B, Action = nameof(ProcessAsyncYield))]
     [Transition(State.B, Trigger.Next, State.C, Action = nameof(ProcessAsyncYield))]
     [Transition(State.C, Trigger.Next, State.A, Action = nameof(ProcessAsyncYield))]
@@ -87,7 +87,7 @@ public partial class FastFsmAsyncActions
         _asyncCounter++;
     }
 
-    // Dodatkowy callback do hot-path (bez przełączania kontekstu)
+    // Additional callback for hot-path (without context switching)
     private ValueTask ProcessAsyncCompleted()
     {
         _asyncCounter++;
@@ -96,15 +96,15 @@ public partial class FastFsmAsyncActions
 }
 
 // ===== Benchmarks =====
-// Uwaga: HardwareCounters wymagają Windows, uprawnień Administratora i braku Hyper-V.
-// W przeciwnym razie kolumny CPU nie pojawią się w raporcie.
-[SimpleJob(RuntimeMoniker.Net90, launchCount: 1, warmupCount: 3, iterationCount: 15)]
+// Note: HardwareCounters require Windows, Administrator privileges and no Hyper-V.
+// Otherwise CPU columns will not appear in the report.
+[SimpleJob(RuntimeMoniker.Net10_0, launchCount: 1, warmupCount: 3, iterationCount: 15)]
 [MemoryDiagnoser]
 [DisassemblyDiagnoser(maxDepth: 3)]
   
 public class StateMachineBenchmarks
 {
-    private const int Ops = 1024; // liczba operacji na jedno wywołanie benchmarku
+    private const int Ops = 1024; // number of operations per benchmark invocation
     private static int __bh;
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void BH(int v) => System.Threading.Volatile.Write(ref __bh, v);
@@ -493,11 +493,11 @@ public class StateMachineBenchmarks
         DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_appccAsyncCounter);
     }
 
-    // ===== Async (hot path: CompletedTask / brak yield) — opcjonalnie do porównania narzutu frameworku
+    // ===== Async (hot path: CompletedTask / no yield) — optionally for framework overhead comparison
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Async-HotPath")]
     public async ValueTask FastFsm_AsyncActions_HotPath()
     {
-        // Re-mapuj w generatorze akcję do FastFsmAsyncActions.ProcessAsyncCompleted, aby użyć CompletedTask
+        // Remap action in generator to FastFsmAsyncActions.ProcessAsyncCompleted to use CompletedTask
         int acc = 0;
         for (int i = 0; i < Ops; i++)
         {

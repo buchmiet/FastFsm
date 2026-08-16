@@ -36,23 +36,23 @@ internal class TypeSystemHelper
     }
 
     /// <summary>
-    /// Zwraca <c>true</c>, jeżeli symbol reprezentuje <see cref="System.Threading.CancellationToken"/>.
-    /// Robi to w sposób odporny na:
+    /// Returns <c>true</c> if symbol represents <see cref="System.Threading.CancellationToken"/>.
+    /// Does this in a way that is resistant to:
     /// • brak referencji do System.Private.CoreLib (GetTypeByMetadataName zwraca <c>null</c>)  
-    /// • „retargeting assemblies” (ten sam typ z dwóch różnych kompilacji)  
+    /// • "retargeting assemblies" (same type from two different compilations)  
     /// </summary>
     public bool IsCancellationToken(ITypeSymbol typeSymbol, Compilation compilation)
     {
         if (typeSymbol is null)
             return false;
 
-        // 1) Spróbuj porównać z canonical-symbolem z tej kompilacji
+        // 1) Try to compare with canonical-symbol from this compilation
         var ctCanonical = compilation.GetTypeByMetadataName("System.Threading.CancellationToken");
         if (ctCanonical is not null &&
             SymbolEqualityComparer.Default.Equals(typeSymbol, ctCanonical))
             return true;
 
-        // 2) Fallback: porównanie po nazwie + namespace
+        // 2) Fallback: comparison by name + namespace
         //    (potrzebne gdy ctCanonical == null lub gdy mamy retargetowany symbol)
         string ns = typeSymbol.ContainingNamespace?.ToDisplayString() ?? "";
         return typeSymbol.Name == "CancellationToken" && ns == "System.Threading";
@@ -135,11 +135,11 @@ internal class TypeSystemHelper
         new(@"(\[\s*(,\s*)*\])+$", RegexOptions.Compiled);
 
     /// <summary>
-    /// Formatuje w pełni kwalifikowaną nazwę typu do użycia w wygenerowanym kodzie:
+    /// Formats fully qualified type name for use in generated code:
     /// • stosuje aliasy (string, int, …),
-    /// • upraszcza generyki CLR oraz składnię przyjazną C#,
+    /// • simplifies CLR generics and C# friendly syntax,
     /// • zachowuje (opcjonalnie) prefiks global::,
-    /// • poprawnie obsługuje typy zagnieżdżone, tablice i nullable.
+    /// • correctly handles nested types, arrays and nullable.
     /// Metoda jest zgodna z netstandard2.0 (bez System.Range itp.).
     /// </summary>
     public string FormatTypeForUsage(string fullyQualifiedTypeName,
@@ -227,12 +227,12 @@ internal class TypeSystemHelper
 
         string typeName = RemoveGlobalPrefix(fullyQualifiedTypeName);
 
-        // obetnij część generyczną (<…> lub `n)
+        // cut off generic part (<…> or `n)
         int genericMarker = typeName.IndexOfAny(new[] { '<', '`' });
         if (genericMarker > 0)
             typeName = typeName.Substring(0, genericMarker);
 
-        // ---------- obsługa typów zagnieżdżonych -------------------------------
+        // ---------- nested types handling -------------------------------
         int plusFirst = typeName.IndexOf('+');
         if (plusFirst >= 0)
         {
@@ -246,12 +246,12 @@ internal class TypeSystemHelper
 
             if (plusCount == 1)
             {
-                // zachowaj cały namespace (jeśli jest)
+                // preserve entire namespace (if exists)
                 start = 0;
             }
             else
             {
-                // ≥2 plusy → zachowaj najwyżej ostatni segment namespace’u
+                // ≥2 plus signs → preserve at most the last namespace segment
                 if (lastDotBeforePlus >= 0)
                 {
                     int prevDot = typeName.LastIndexOf('.', lastDotBeforePlus - 1);
@@ -268,7 +268,7 @@ internal class TypeSystemHelper
             return nestedPath;
         }
 
-        // ---------- typy niezagnieżdżone ---------------------------------------
+        // ---------- non-nested types ---------------------------------------
         int lastDot = typeName.LastIndexOf('.');
         return lastDot >= 0 ? typeName.Substring(lastDot + 1) : typeName;
     }
@@ -344,26 +344,26 @@ internal class TypeSystemHelper
     }
 
     /// <summary>
-    /// Zwraca przestrzenie nazw, które należy dodać w using-ach,
-    /// aby poprawnie użyć podanego typu w generowanym kodzie.
+    /// Returns namespaces that should be added in using statements,
+    /// to correctly use the given type in generated code.
     /// </summary>
     public IEnumerable<string> GetRequiredNamespaces(string fullyQualifiedTypeName)
     {
         if (string.IsNullOrEmpty(fullyQualifiedTypeName))
             yield break;
 
-        // ----------------- 1) samodzielny typ zagnieżdżony -----------------
-        // Jeżeli nazwa zawiera '+' (zagnieżdżenie) i NIE jest generykiem,
-        // pomijamy — nie da się sensownie zaimportować takiego typu.
+        // ----------------- 1) standalone nested type -----------------
+        // If name contains '+' (nesting) and is NOT generic,
+        // skip — can't meaningfully import such type.
         if (IsNestedType(fullyQualifiedTypeName) && !IsGenericType(fullyQualifiedTypeName))
             yield break;
 
-        // ----------------- 2) namespace typu głównego ----------------------
+        // ----------------- 2) main type namespace ----------------------
         var ns = GetNamespace(fullyQualifiedTypeName);
         if (!string.IsNullOrEmpty(ns))
             yield return ns;
 
-        // ----------------- 3) namespace’y argumentów generycznych ----------
+        // ----------------- 3) generic argument namespaces ----------
         if (IsGenericType(fullyQualifiedTypeName))
         {
             foreach (var argNs in ExtractGenericArgumentNamespaces(fullyQualifiedTypeName))
@@ -377,12 +377,12 @@ internal class TypeSystemHelper
 
 
     /// <summary>
-    /// Formatuje nazwę typu do użycia w wyrażeniu typeof(…).
-    /// • Dla CLR-owych definicji generyków (List`1, Dictionary`2, …) zwraca otwartą
-    ///   definicję w postaci List&lt;&gt;, Dictionary&lt;,&gt; itp.
-    /// • Dla typów posiadających namespace („.”) lub zagnieżdżenie („+”) dodaje „global::”.
-    /// • Dla gołych nazw (bez kropki ani plusa) pozostawia nazwę bez prefiksu,
-    ///   żeby można było korzystać z typów z bieżącej przestrzeni nazw.
+    /// Formats type name for use in typeof(…) expression.
+    /// • For CLR generic definitions (List`1, Dictionary`2, …) returns open
+    ///   definition in form of List&lt;&gt;, Dictionary&lt;,&gt; etc.
+    /// • For types having namespace (".") or nesting ("+") adds "global::".
+    /// • For bare names (without dot or plus) leaves name without prefix,
+    ///   so that types from current namespace can be used.
     /// </summary>
     public string FormatForTypeof(string fullyQualifiedTypeName)
     {
@@ -391,7 +391,7 @@ internal class TypeSystemHelper
 
         string raw = RemoveGlobalPrefix(fullyQualifiedTypeName);
 
-        // ---------- 1) definicje CLR z `n (np. List`1) -----------------
+        // ---------- 1) CLR definitions with `n (e.g. List`1) -----------------
         if (IsGenericType(raw) && raw.IndexOf('`') >= 0)
         {
             var backtick = raw.IndexOf('`');
@@ -401,7 +401,7 @@ internal class TypeSystemHelper
             return $"{baseName}<{commas}>";
         }
 
-        // ---------- 2) przyjazny zapis generyka z '<' '>' --------------
+        // ---------- 2) friendly generic notation with '<' '>' --------------
         int open = raw.IndexOf('<');
         if (open >= 0)
         {
@@ -419,7 +419,7 @@ internal class TypeSystemHelper
                 catch { return raw; }
 
                 string[] formattedArgs = argList
-                    .Select(a => FormatTypeForUsage(a.Trim())) // aliasy OK
+                    .Select(a => FormatTypeForUsage(a.Trim())) // aliases OK
                     .ToArray();
 
                 string baseNorm = baseName.Replace('+', '.');
@@ -436,7 +436,7 @@ internal class TypeSystemHelper
             }
         }
 
-        // ---------- 3) typ nie-generyczny ------------------------------
+        // ---------- 3) non-generic type ------------------------------
         bool needsGlobalSimple = raw.IndexOf('.') >= 0 || raw.IndexOf('+') >= 0;
         string simple = raw.Replace('+', '.');
         return needsGlobalSimple ? Strings.GlobalNamespace + simple : simple;
@@ -468,7 +468,7 @@ internal class TypeSystemHelper
 
     /// <summary>
     /// Konwertuje zapis CLR (np. Dictionary`2[[System.String],[System.Int32]])
-    /// na przyjazny C# (Dictionary&lt;string, int&gt;), obsługując zagnieżdżone
+    /// to friendly C# (Dictionary&lt;string, int&gt;), handling nested
     /// generyki i kwalifikatory assembly.
     /// </summary>
     private string ConvertClrGenericToFriendly(string clrTypeName, bool useGlobalPrefix)
@@ -476,15 +476,15 @@ internal class TypeSystemHelper
         if (string.IsNullOrEmpty(clrTypeName))
             return "object";
 
-        // ---- nazwa bazowa (część przed `n) ------------------------------------
+        // ---- base name (part before `n) ------------------------------------
         int backtick = clrTypeName.IndexOf('`');
         if (backtick < 0)
             return FormatTypeForUsage(clrTypeName, useGlobalPrefix);
 
-        string baseRaw = clrTypeName.Substring(0, backtick); // pełna nazwa z NS
+        string baseRaw = clrTypeName.Substring(0, backtick); // full name with NS
         string baseSimple = GetSimpleTypeName(baseRaw);         // np. „Event”
 
-        // ---- budowa nazwy z prefiksem global:: (jeśli trzeba) ------------------
+        // ---- building name with global:: prefix (if needed) ------------------
         string baseNoGlobal = RemoveGlobalPrefix(baseRaw);
         string baseWithPrefix = (useGlobalPrefix && !_typeAliases.ContainsValue(baseSimple))
             ? Strings.GlobalNamespace + baseNoGlobal          // global::MyNs.Event
@@ -501,7 +501,7 @@ internal class TypeSystemHelper
 
         string argsSegment = clrTypeName.Substring(firstBracket);
 
-        // ---- rozbij na poszczególne specyfikacje typów ------------------------
+        // ---- split into individual type specifications ------------------------
         List<string> argSpecs = ExtractClrGenericArguments(argsSegment);
 
         string[] formattedArgs = argSpecs
@@ -513,7 +513,7 @@ internal class TypeSystemHelper
     }
 
 
-    /// Usuwa część ", Assembly.Name, Version=..." z CLR-owego zapisu typu.
+    /// Removes part ", Assembly.Name, Version=..." from CLR type notation.
     private static string RemoveAssemblyQualifier(string typeSpec)
     {
         int depth = 0;
@@ -535,7 +535,7 @@ internal class TypeSystemHelper
         return typeSpec.Trim();
     }
 
-    /// Ekstrahuje listę surowych argumentów z sekwencji "[[T1],[T2], ...]".
+    /// Extracts list of raw arguments from sequence "[[T1],[T2], ...]".
     private static List<string> ExtractClrGenericArguments(string segment)
     {
         var result = new List<string>();
@@ -552,7 +552,7 @@ internal class TypeSystemHelper
                 {
                     depth++;
                     if (depth == 2)
-                        argStart = i + 1;          // początek pojedynczego argumentu
+                        argStart = i + 1;          // beginning of single argument
                     break;
                 }
                 case ']':
@@ -574,12 +574,12 @@ internal class TypeSystemHelper
     /// <summary>
     /// Przetwarza przyjazny (C#) zapis generyka, np.
     ///     "Namespace.Event&lt;string, List&lt;int&gt;&gt;"
-    /// i zwraca sformatowaną nazwę gotową do wstawienia w kod.
+    /// and returns formatted name ready for insertion into code.
     /// </summary>
     private string ProcessFriendlyGenericType(string friendlyTypeName,
         bool useGlobalPrefix)
     {
-        // 1. Walidacja wstępna
+        // 1. Initial validation
         if (string.IsNullOrEmpty(friendlyTypeName))
             return "object";
 
@@ -591,7 +591,7 @@ internal class TypeSystemHelper
         if (close < 0 || close <= open + 1)         // brak '>' lub puste <>
             return friendlyTypeName;
 
-        // 2. Rozbicie na bazę + listę argumentów
+        // 2. Split into base + argument list
         string baseRaw = friendlyTypeName.Substring(0, open);
         string argsSection = friendlyTypeName.Substring(open + 1,
             close - open - 1);
@@ -601,12 +601,12 @@ internal class TypeSystemHelper
         {
             argList = SplitGenericArguments(argsSection);
         }
-        catch   // niepoprawna składnia – zwróć oryginał
+        catch   // incorrect syntax – return original
         {
             return friendlyTypeName;
         }
 
-        // 3. Rekurencyjne formatowanie argumentów
+        // 3. Recursive argument formatting
         string[] formattedArgs = argList
             .Select(a => FormatTypeForUsage(a.Trim(), useGlobalPrefix))
             .ToArray();
@@ -617,13 +617,13 @@ internal class TypeSystemHelper
 
         if (useGlobalPrefix)
         {
-            // z prefiksem „global::”, zachowujemy pełną ścieżkę
+            // with "global::" prefix, preserve full path
             baseWithPrefix = Strings.GlobalNamespace + baseNoGlobal.Replace('+', '.');
         }
         else
         {
-            baseWithPrefix = baseNoGlobal.IndexOf('+') >= 0 ? baseNoGlobal.Replace('+', '.') : // typ zagnieżdżony
-                // zwykły typ – tylko prosta nazwa
+            baseWithPrefix = baseNoGlobal.IndexOf('+') >= 0 ? baseNoGlobal.Replace('+', '.') : // nested type
+                // regular type – simple name only
                 GetSimpleTypeName(baseNoGlobal);
         }
 
@@ -702,7 +702,7 @@ internal class TypeSystemHelper
         // -------- 2) zapis CLR (Dictionary`2[[System.String, mscorlib],[...]] ) ----
         else if (genericTypeName.IndexOf('`') >= 0 && genericTypeName.Contains("[["))
         {
-            // odszukaj segment zaczynający się od pierwszego '[' po sufiksie `n
+            // find segment starting from first '[' after suffix `n
             var backtick = genericTypeName.IndexOf('`');
             var firstBracket = genericTypeName.IndexOf('[', backtick);
             if (firstBracket >= 0)
@@ -724,7 +724,7 @@ internal class TypeSystemHelper
         // ------------------- nazwa definicji generyka (List`1, Dictionary`2 …) -----
         var definition = typeSymbol.OriginalDefinition;   // otwarta definicja
 
-        // Złożenie ścieżki dla zagnieżdżonych typów: Outer+Inner`1
+        // Composing path for nested types: Outer+Inner`1
         var parts = new List<string> { definition.Name };   // nazwa z sufiksem `n
         var current = definition.ContainingType;
 
@@ -736,7 +736,7 @@ internal class TypeSystemHelper
 
         var basePath = string.Join("+", parts);
 
-        // Namespace (jeśli istnieje)
+        // Namespace (if exists)
         var ns = definition.ContainingNamespace;
         if (ns is { IsGlobalNamespace: false })
             basePath = ns.ToDisplayString() + "." + basePath;
@@ -750,7 +750,7 @@ internal class TypeSystemHelper
         var argNames = typeSymbol.TypeArguments
             .Select(arg =>
                 arg is INamedTypeSymbol nts
-                    ? BuildFullTypeName(nts)          // tu już nie ma zapętlenia
+                    ? BuildFullTypeName(nts)          // no recursion loop here
                     : arg.ToDisplayString())
             .ToArray();
 

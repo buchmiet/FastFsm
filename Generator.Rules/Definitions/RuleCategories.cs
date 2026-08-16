@@ -6,5 +6,7 @@ namespace Generator.Rules.Definitions
         public const string FSM_Generator       = "FSM.Generator";
         public const string FSM_Generator_Async = "FSM.Generator.Async";
         public const string FSM_Generator_HSM   = "FSM.Generator.HSM";
+        public const string FSM_Generator_Fluent = "FSM.Generator.Fluent";
+        // Infra categories removed (Config/AddSource/Parser/Discovery)
     }
 }

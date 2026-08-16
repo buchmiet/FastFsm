@@ -19,9 +19,9 @@ namespace Generator.DependencyInjection
             private const string ServiceProviderField = "_serviceProvider";
             private const string ActivatorUtilitiesClass = "Microsoft.Extensions.DependencyInjection.ActivatorUtilities";
             private const string ServiceCollectionExtensionsSuffix = "ServiceCollectionExtensions";
-            private const string StateMachineContractsNamespace = "StateMachine.Contracts";
+            private const string StateMachineContractsNamespace = "FastFsm.Contracts";
             private const string StateMachineFactoryInterface = "IStateMachineFactory";
-            private const string StateMachineDINamespace = "StateMachine.DependencyInjection";
+            private const string StateMachineDINamespace = "FastFsm.DependencyInjection";
             private const string InitialStateProviderInterface = "IInitialStateProvider";
             private const string DINamespace = "Microsoft.Extensions.DependencyInjection";
             #endregion
