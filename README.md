@@ -98,6 +98,7 @@ bool ok = door.TryFire(DoorTrigger.Close); // returns false when no valid transi
 | Diagnostics (FSM0100–FSM3083) | [docs/diagnostics.md](docs/diagnostics.md) |
 | Architecture | [docs/architecture.md](docs/architecture.md) |
 | Benchmarks | [docs/benchmarks.md](docs/benchmarks.md) |
+| Roadmap | [ROADMAP.md](ROADMAP.md) |
 
 ## Packages
 
