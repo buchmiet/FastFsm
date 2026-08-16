@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Abstractions.Attributes;
@@ -7,7 +7,7 @@ using FastFsm.Contracts;
 namespace FastFsm.Runtime;
 
 /// <summary>
-/// Base class providing common functionality for generated state machines
+/// Base class providing common functionality for generated state machines.
 /// </summary>
 public abstract class StateMachineBase<TState, TTrigger>(TState initialState) : IStateMachineSync<TState, TTrigger>
     where TState : unmanaged, Enum
@@ -36,7 +36,7 @@ public abstract class StateMachineBase<TState, TTrigger>(TState initialState) : 
         if (_started) return;
         _started = true;
 
-        // Alokuj bufor historii tylko wtedy, gdy faktycznie jest potrzebny
+        // Allocate history storage only when the generated machine uses history.
         if (HasHistory)
         {
             var initial = InitialChildArray;
@@ -55,22 +55,22 @@ public abstract class StateMachineBase<TState, TTrigger>(TState initialState) : 
     {
         // Override in generated code to dispatch initial OnEntry
     }
-    
+
     protected void EnsureStarted()
     {
         if (!_started)
             throw new InvalidOperationException(
                 $"{GetType().Name} is not started. Call Start() before using the state machine.");
     }
-    
+
     public virtual bool TryFire(TTrigger trigger, object? payload = null)
     {
         EnsureStarted();
         return TryFireInternal(trigger, payload);
     }
-    
+
     protected abstract bool TryFireInternal(TTrigger trigger, object? payload = null);
-    
+
     public virtual void Fire(TTrigger trigger, object? payload = null)
     {
         EnsureStarted();
@@ -80,32 +80,32 @@ public abstract class StateMachineBase<TState, TTrigger>(TState initialState) : 
                 $"No transition from state '{_currentState}' on trigger '{trigger}'");
         }
     }
-    
+
     public bool CanFire(TTrigger trigger)
     {
         EnsureStarted();
         return CanFireInternal(trigger);
     }
-    
+
     protected abstract bool CanFireInternal(TTrigger trigger);
-    
+
     public IReadOnlyList<TTrigger> GetPermittedTriggers()
     {
         EnsureStarted();
         return GetPermittedTriggersInternal();
     }
-    
+
     protected abstract IReadOnlyList<TTrigger> GetPermittedTriggersInternal();
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected bool SetState(TState newState)
     {
         _currentState = newState;
         return true;
     }
-    
+
     /// <summary>
-    /// Checks if the given state is in the active path
+    /// Checks if the given state is in the active path.
     /// </summary>
     public virtual bool IsIn(TState state)
     {
@@ -115,15 +115,15 @@ public abstract class StateMachineBase<TState, TTrigger>(TState initialState) : 
         {
             return EqualityComparer<TState>.Default.Equals(_currentState, state);
         }
-        
+
         // For hierarchical machines, walk up the parent chain
         var currentIndex = Convert.ToInt32(_currentState);
         var targetIndex = Convert.ToInt32(state);
-        
+
         // If checking current state
         if (currentIndex == targetIndex)
             return true;
-        
+
         // Walk up the parent chain from current state
         var parentIndex = parentArray[currentIndex];
         while (parentIndex >= 0)
@@ -132,12 +132,12 @@ public abstract class StateMachineBase<TState, TTrigger>(TState initialState) : 
                 return true;
             parentIndex = parentArray[parentIndex];
         }
-        
+
         return false;
     }
-    
+
     /// <summary>
-    /// Gets the active state path from root to current leaf state
+    /// Gets the active state path from root to current leaf state.
     /// </summary>
     public virtual IReadOnlyList<TState> GetActivePath()
     {
@@ -147,39 +147,39 @@ public abstract class StateMachineBase<TState, TTrigger>(TState initialState) : 
         {
             return new[] { _currentState };
         }
-        
+
         // For hierarchical machines, build the path from leaf to root, then reverse
         var path = new List<TState>();
         var currentIndex = Convert.ToInt32(_currentState);
-        
+
         // Add current state and walk up to root
         while (currentIndex >= 0)
         {
             path.Add((TState)Enum.ToObject(typeof(TState), currentIndex));
             currentIndex = parentArray[currentIndex];
         }
-        
+
         // Reverse to get root-to-leaf order
         path.Reverse();
         return path;
     }
-    
+
     /// <summary>
-    /// Updates the last active child tracking when exiting a state
+    /// Updates the last active child tracking when exiting a state.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected void UpdateLastActiveChild(int childIndex)
     {
         var parentArray = ParentArray;
         if (parentArray == null || _lastActiveChild == null) return;
-        
+
         var parentIndex = parentArray[childIndex];
         if (parentIndex >= 0)
         {
             _lastActiveChild[parentIndex] = childIndex;
         }
     }
-    
+
     /// <summary>
     /// Resolves the actual leaf to enter for a composite state, using Initial/History semantics.
     /// </summary>
@@ -188,7 +188,7 @@ public abstract class StateMachineBase<TState, TTrigger>(TState initialState) : 
         var historyArray = HistoryArray;
         var initialChildArray = InitialChildArray;
         var parentArray = ParentArray;
-        
+
         int idx = compositeIndex;
         while (true)
         {
@@ -228,7 +228,7 @@ public abstract class StateMachineBase<TState, TTrigger>(TState initialState) : 
             idx = child; // Descend
         }
     }
-    
+
     /// <summary>
     /// Records the current leaf state in all ancestor composite states that have history enabled.
     /// </summary>
@@ -237,9 +237,9 @@ public abstract class StateMachineBase<TState, TTrigger>(TState initialState) : 
     {
         var parentArray = ParentArray;
         var historyArray = HistoryArray;
-        
+
         if (_lastActiveChild == null || parentArray == null || historyArray == null) return;
-        
+
         int leafLeaf = Convert.ToInt32(_currentState); // remember the deepest active leaf
         int cursor = leafLeaf;
         int parent = (uint)cursor < (uint)parentArray.Length ? parentArray[cursor] : -1;
@@ -253,7 +253,7 @@ public abstract class StateMachineBase<TState, TTrigger>(TState initialState) : 
             parent = parentArray[cursor];
         }
     }
-    
+
     /// <summary>
     /// If CurrentState is composite, resolves and assigns the leaf according to Initial/History.
     /// </summary>
@@ -261,7 +261,7 @@ public abstract class StateMachineBase<TState, TTrigger>(TState initialState) : 
     {
         var initialChildArray = InitialChildArray;
         if (initialChildArray == null) return;
-        
+
         int currentIdx = Convert.ToInt32(_currentState);
         if ((uint)currentIdx >= (uint)initialChildArray.Length) return;
         int initialChild = initialChildArray[currentIdx];
@@ -269,29 +269,29 @@ public abstract class StateMachineBase<TState, TTrigger>(TState initialState) : 
         int resolved = GetCompositeEntryTarget(currentIdx);
         _currentState = (TState)Enum.ToObject(typeof(TState), resolved);
     }
-    
+
     /// <summary>
     /// Returns true if the current state lies in the hierarchy of the given ancestor.
     /// </summary>
-    /// <param name="ancestor">The potential ancestor state to check</param>
-    /// <returns>True if ancestor is the current state or any of its parents, false otherwise</returns>
+    /// <param name="ancestor">The potential ancestor state to check.</param>
+    /// <returns>True if ancestor is the current state or any of its parents; otherwise, false.</returns>
     public bool IsInHierarchy(TState ancestor)
     {
         const int NO_PARENT = -1;
         var parentArray = ParentArray;
-        if (parentArray == null || parentArray.Length == 0) 
+        if (parentArray == null || parentArray.Length == 0)
             return EqualityComparer<TState>.Default.Equals(_currentState, ancestor);
-            
+
         int idx = Convert.ToInt32(_currentState);
         int ancIdx = Convert.ToInt32(ancestor);
-        
+
         // Bounds check
         if ((uint)idx >= (uint)parentArray.Length) return false;
         if ((uint)ancIdx >= (uint)parentArray.Length) return false;
-        
+
         // Check if ancestor is current state
         if (idx == ancIdx) return true;
-        
+
         // Walk up parent chain
         while (true)
         {
@@ -301,40 +301,39 @@ public abstract class StateMachineBase<TState, TTrigger>(TState initialState) : 
             idx = parent;
         }
     }
-    
+
     /// <summary>
     /// Returns the active path from the root composite down to the current leaf state.
-    /// Helper to diagnose hierarchy.
     /// </summary>
     public string DumpActivePath()
     {
         const int NO_PARENT = -1;
         var parentArray = ParentArray;
-        
+
         if (parentArray == null || parentArray.Length == 0)
             return _currentState.ToString();
-        
+
         var sb = new System.Text.StringBuilder(64);
         var current = _currentState;
         int idx = Convert.ToInt32(current);
-        
+
         // Seed with leaf
         sb.Insert(0, current.ToString());
-        
+
         // Walk up to root
         while (true)
         {
             if ((uint)idx >= (uint)parentArray.Length) break;
             int parent = parentArray[idx];
             if (parent == NO_PARENT) break;
-            
+
             // Cast parent index back to enum
             current = (TState)Enum.ToObject(typeof(TState), parent);
             sb.Insert(0, " / ");
             sb.Insert(0, current.ToString());
             idx = parent;
         }
-        
+
         return sb.ToString();
     }
 }
