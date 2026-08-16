@@ -21,7 +21,7 @@
     <PackageId>FastFsm.Net</PackageId>
     <Authors>Lukasz Buchmiet</Authors>
     <Description>High-performance state machine using source generators</Description>
-    <PackageReadmeFile>readme.md</PackageReadmeFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/buchmiet/FastFsm</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -50,7 +50,7 @@
 
   
   <ItemGroup>
-    <None Include="readme.md" Pack="true" PackagePath="\" />
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   

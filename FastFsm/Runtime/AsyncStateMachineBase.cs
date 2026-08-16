@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,8 +9,7 @@ using FastFsm.Exceptions;
 namespace FastFsm.Runtime
 {
     /// <summary>
-    /// Provides the base implementation for generated asynchronous state machines,
-    /// handling thread-safety and providing a clear async-only API.
+    /// Provides the base implementation for generated asynchronous state machines and serializes transition attempts.
     /// </summary>
     public abstract class AsyncStateMachineBase<TState, TTrigger> : IStateMachineAsync<TState, TTrigger>
         where TState : unmanaged, Enum
@@ -41,8 +40,8 @@ namespace FastFsm.Runtime
         /// </summary>
         /// <param name="initialState">The initial state of the machine.</param>
         /// <param name="continueOnCapturedContext">
-        /// If true, async continuations will be posted back to the original context.
-        /// Defaults to false for better performance in server-side scenarios.
+        /// If true, asynchronous continuations capture the current synchronization context.
+        /// The default is false.
         /// </param>
         protected AsyncStateMachineBase(TState initialState, bool continueOnCapturedContext = false)
         {
@@ -51,12 +50,10 @@ namespace FastFsm.Runtime
         }
 
         /// <summary>
-        /// Current state read. For most scenarios non-blocking read is fine because
-        /// transitions are serialized; if you need stronger publication semantics,
-        /// you can switch to a volatile read strategy (requires controlling writes too).
+        /// Gets the current state. Transition attempts are serialized; this property does not add separate synchronization.
         /// </summary>
         public TState CurrentState => _currentState;
-        
+
         public bool IsStarted => _started;
 
         #region Blocked Synchronous API
@@ -65,7 +62,7 @@ namespace FastFsm.Runtime
             "State machine '{0}' is configured for async operation. Use the '{1}Async' method instead.";
 
         // Sync Start() removed - async machines only support StartAsync()
-        
+
         /// <summary>
         /// Not supported in async machines. Use <see cref="TryFireAsync"/> instead.
         /// </summary>
@@ -104,7 +101,7 @@ namespace FastFsm.Runtime
                 if (_started) return; // Double-check after acquiring lock
                 _started = true;
 
-                // Alokuj bufor historii tylko wtedy, gdy faktycznie potrzebny (HSM + jakiekolwiek composite)
+                // Allocate history storage only when the generated machine uses history.
                 if (HasHistory)
                 {
                     var initial = InitialChildArray;
@@ -130,7 +127,7 @@ namespace FastFsm.Runtime
             // Override in generated code to dispatch initial OnEntry
             return ValueTask.CompletedTask;
         }
-        
+
         protected void EnsureStarted()
         {
             if (!_started)
@@ -140,7 +137,7 @@ namespace FastFsm.Runtime
 
         /// <summary>
         /// Asynchronously tries to fire a trigger. Returns true if a transition occurred.
-        /// This operation is thread-safe (serialized).
+        /// This operation is serialized by the state-machine gate.
         /// </summary>
         public async ValueTask<bool> TryFireAsync(
             TTrigger trigger,
@@ -162,7 +159,7 @@ namespace FastFsm.Runtime
 
         /// <summary>
         /// Asynchronously fires a trigger. Throws an <see cref="InvalidOperationException"/>
-        /// if the transition is not valid. This operation is thread-safe (serialized).
+        /// if the transition is not valid. This operation is serialized by the state-machine gate.
         /// </summary>
         public async ValueTask FireAsync(
             TTrigger trigger,
@@ -187,7 +184,7 @@ namespace FastFsm.Runtime
             EnsureStarted();
             return await CanFireInternalAsync(trigger, cancellationToken).ConfigureAwait(_continueOnCapturedContext);
         }
-        
+
         protected abstract ValueTask<bool> CanFireInternalAsync(
             TTrigger trigger,
             CancellationToken cancellationToken = default);
@@ -202,7 +199,7 @@ namespace FastFsm.Runtime
             EnsureStarted();
             return await GetPermittedTriggersInternalAsync(cancellationToken).ConfigureAwait(_continueOnCapturedContext);
         }
-        
+
         protected abstract ValueTask<IReadOnlyList<TTrigger>> GetPermittedTriggersInternalAsync(
             CancellationToken cancellationToken = default);
 
@@ -215,11 +212,11 @@ namespace FastFsm.Runtime
             TTrigger trigger,
             object? payload,
             CancellationToken cancellationToken);
-            
+
         #region Hierarchical State Machine Support
-        
+
         /// <summary>
-        /// Checks if the given state is in the active path
+        /// Checks if the given state is in the active path.
         /// </summary>
         public virtual bool IsIn(TState state)
         {
@@ -229,15 +226,15 @@ namespace FastFsm.Runtime
             {
                 return EqualityComparer<TState>.Default.Equals(_currentState, state);
             }
-            
+
             // For hierarchical machines, walk up the parent chain
             var currentIndex = Convert.ToInt32(_currentState);
             var targetIndex = Convert.ToInt32(state);
-            
+
             // If checking current state
             if (currentIndex == targetIndex)
                 return true;
-            
+
             // Walk up the parent chain from current state
             var parentIndex = parentArray[currentIndex];
             while (parentIndex >= 0)
@@ -246,12 +243,12 @@ namespace FastFsm.Runtime
                     return true;
                 parentIndex = parentArray[parentIndex];
             }
-            
+
             return false;
         }
-        
+
         /// <summary>
-        /// Gets the active state path from root to current leaf state (synchronous version)
+        /// Gets the active state path from root to current leaf state.
         /// </summary>
         public virtual IReadOnlyList<TState> GetActivePath()
         {
@@ -261,48 +258,46 @@ namespace FastFsm.Runtime
             {
                 return new[] { _currentState };
             }
-            
+
             // For hierarchical machines, build the path from leaf to root, then reverse
             var path = new List<TState>();
             var currentIndex = Convert.ToInt32(_currentState);
-            
+
             // Add current state and walk up to root
             while (currentIndex >= 0)
             {
                 path.Add((TState)Enum.ToObject(typeof(TState), currentIndex));
                 currentIndex = parentArray[currentIndex];
             }
-            
+
             // Reverse to get root-to-leaf order
             path.Reverse();
             return path;
         }
-        
+
         /// <summary>
-        /// Asynchronously gets the active state path from root to current leaf state
+        /// Asynchronously gets the active state path from root to current leaf state.
         /// </summary>
         public virtual ValueTask<IReadOnlyList<TState>> GetActivePathAsync(CancellationToken cancellationToken = default)
         {
-            // For now, just return the synchronous result wrapped in a ValueTask
-            // The generator can override this if needed for thread-safety
             return new ValueTask<IReadOnlyList<TState>>(GetActivePath());
         }
-        
+
         /// <summary>
-        /// Updates the last active child tracking when exiting a state
+        /// Updates the last active child tracking when exiting a state.
         /// </summary>
         protected void UpdateLastActiveChild(int childIndex)
         {
             var parentArray = ParentArray;
             if (parentArray == null || _lastActiveChild == null) return;
-            
+
             var parentIndex = parentArray[childIndex];
             if (parentIndex >= 0)
             {
                 _lastActiveChild[parentIndex] = childIndex;
             }
         }
-        
+
         /// <summary>
         /// Resolves the actual leaf to enter for a composite state, using Initial/History semantics.
         /// </summary>
@@ -311,7 +306,7 @@ namespace FastFsm.Runtime
             var historyArray = HistoryArray;
             var initialChildArray = InitialChildArray;
             var parentArray = ParentArray;
-            
+
             int idx = compositeIndex;
             while (true)
             {
@@ -351,7 +346,7 @@ namespace FastFsm.Runtime
                 idx = child; // Descend
             }
         }
-        
+
         /// <summary>
         /// Records the current leaf state in all ancestor composite states that have history enabled.
         /// </summary>
@@ -359,9 +354,9 @@ namespace FastFsm.Runtime
         {
             var parentArray = ParentArray;
             var historyArray = HistoryArray;
-            
+
             if (_lastActiveChild == null || parentArray == null || historyArray == null) return;
-            
+
             int leafLeaf = Convert.ToInt32(_currentState); // remember the deepest active leaf
             int cursor = leafLeaf;
             int parent = (uint)cursor < (uint)parentArray.Length ? parentArray[cursor] : -1;
@@ -375,7 +370,7 @@ namespace FastFsm.Runtime
                 parent = parentArray[cursor];
             }
         }
-        
+
         /// <summary>
         /// If CurrentState is composite, resolves and assigns the leaf according to Initial/History.
         /// </summary>
@@ -383,7 +378,7 @@ namespace FastFsm.Runtime
         {
             var initialChildArray = InitialChildArray;
             if (initialChildArray == null) return;
-            
+
             int currentIdx = Convert.ToInt32(_currentState);
             if ((uint)currentIdx >= (uint)initialChildArray.Length) return;
             int initialChild = initialChildArray[currentIdx];
@@ -391,29 +386,29 @@ namespace FastFsm.Runtime
             int resolved = GetCompositeEntryTarget(currentIdx);
             _currentState = (TState)Enum.ToObject(typeof(TState), resolved);
         }
-        
+
         /// <summary>
         /// Returns true if the current state lies in the hierarchy of the given ancestor.
         /// </summary>
-        /// <param name="ancestor">The potential ancestor state to check</param>
-        /// <returns>True if ancestor is the current state or any of its parents, false otherwise</returns>
+        /// <param name="ancestor">The potential ancestor state to check.</param>
+        /// <returns>True if ancestor is the current state or any of its parents; otherwise, false.</returns>
         public bool IsInHierarchy(TState ancestor)
         {
             const int NO_PARENT = -1;
             var parentArray = ParentArray;
-            if (parentArray == null || parentArray.Length == 0) 
+            if (parentArray == null || parentArray.Length == 0)
                 return EqualityComparer<TState>.Default.Equals(_currentState, ancestor);
-                
+
             int idx = Convert.ToInt32(_currentState);
             int ancIdx = Convert.ToInt32(ancestor);
-            
+
             // Bounds check
             if ((uint)idx >= (uint)parentArray.Length) return false;
             if ((uint)ancIdx >= (uint)parentArray.Length) return false;
-            
+
             // Check if ancestor is current state
             if (idx == ancIdx) return true;
-            
+
             // Walk up parent chain
             while (true)
             {
@@ -423,43 +418,42 @@ namespace FastFsm.Runtime
                 idx = parent;
             }
         }
-        
+
         /// <summary>
         /// Returns the active path from the root composite down to the current leaf state.
-        /// Helper to diagnose hierarchy.
         /// </summary>
         public string DumpActivePath()
         {
             const int NO_PARENT = -1;
             var parentArray = ParentArray;
-            
+
             if (parentArray == null || parentArray.Length == 0)
                 return _currentState.ToString();
-            
+
             var sb = new System.Text.StringBuilder(64);
             var current = _currentState;
             int idx = Convert.ToInt32(current);
-            
+
             // Seed with leaf
             sb.Insert(0, current.ToString());
-            
+
             // Walk up to root
             while (true)
             {
                 if ((uint)idx >= (uint)parentArray.Length) break;
                 int parent = parentArray[idx];
                 if (parent == NO_PARENT) break;
-                
+
                 // Cast parent index back to enum
                 current = (TState)Enum.ToObject(typeof(TState), parent);
                 sb.Insert(0, " / ");
                 sb.Insert(0, current.ToString());
                 idx = parent;
             }
-            
+
             return sb.ToString();
         }
-        
+
         #endregion
     }
 }

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Generator.Rules.Definitions;
 using Generator.Rules.Rules;
 
@@ -11,8 +11,7 @@ public class MixedModeRule : IValidationRule<MixedModeValidationContext>
 {
     public IEnumerable<ValidationResult> Validate(MixedModeValidationContext context)
     {
-        // Ta reguła jest prosta, bo cała logika wykrywania konfliktu
-        // jest w parserze. Reguła tylko formatuje komunikat.
+        // Conflict detection is performed by the parser; this rule formats the diagnostic result.
         if (context.CallbackMode != context.MachineMode)
         {
             string message = string.Format(
