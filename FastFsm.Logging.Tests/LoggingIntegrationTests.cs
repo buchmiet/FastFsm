@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Shouldly;
 using Xunit;
+using OrderState = Machines.Tests.Machines.OrderState;
 
 namespace FastFsm.Logging.Tests
 {
@@ -57,9 +58,9 @@ namespace FastFsm.Logging.Tests
             LoggedMessages.Clear(); // Clear any previous logs
 
             // Act - OnEntry for initial state should be called in constructor
-            var machine = new InitialOnEntryStateMachineActions(
+            var machine = new InitialOnEntryStateMachineActionsFluent(
                 TestInitialState.Ready,
-                GetLogger < InitialOnEntryStateMachineActions >());
+                GetLogger<InitialOnEntryStateMachineActionsFluent>());
             machine.Start();
             // Assert - OnEntry is called first (in OnInitialEntry), then MachineStarted
             VerifyLogCount(2);
@@ -76,10 +77,10 @@ namespace FastFsm.Logging.Tests
             LoggedMessages.Clear();
 
             // Act
-            var machine = new FullMultiPayloadMachine(
-                OrderStatePayload.New,
+            var machine = new LoggingFullMultiPayloadMachine(
+                OrderState.New,
                 null,
-                GetLogger<FullMultiPayloadMachine>());
+                GetLogger<LoggingFullMultiPayloadMachine>());
             machine.Start();
             // Assert - OnEntry is called first (in OnInitialEntry), then MachineStarted
             VerifyLogCount(2);

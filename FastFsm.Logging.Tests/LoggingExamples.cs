@@ -30,13 +30,13 @@ namespace FastFsm.Logging.Tests
         {
             // Arrange
             var logger = _loggerFactory.CreateLogger<ExampleStateMachine>();
-            var machine = new ExampleStateMachine(OrderState.New, logger);
+            var machine = new ExampleStateMachine(DemoOrderState.New, logger);
             machine.Start();
             // Act
             _output.WriteLine("=== Starting state machine test ===");
             _output.WriteLine($"Initial state: {machine.CurrentState}");
 
-            var result = machine.TryFire(OrderTrigger.Submit);
+            var result = machine.TryFire(DemoOrderTrigger.Submit);
 
             // Assert
             _output.WriteLine($"Transition result: {result}");
@@ -124,13 +124,13 @@ namespace FastFsm.Logging.Tests
     }
 
     // Example state machines for demonstration
-    public enum OrderState { New, Submitted, Shipped }
-    public enum OrderTrigger { Submit, Ship }
+    public enum DemoOrderState { New, Submitted, Shipped }
+    public enum DemoOrderTrigger { Submit, Ship }
 
-    [StateMachine(typeof(OrderState), typeof(OrderTrigger))]
+    [StateMachine(typeof(DemoOrderState), typeof(DemoOrderTrigger))]
     public partial class ExampleStateMachine
     {
-        [Transition(OrderState.New, OrderTrigger.Submit, OrderState.Submitted)]
+        [Transition(DemoOrderState.New, DemoOrderTrigger.Submit, DemoOrderState.Submitted)]
         private void Configure() { }
     }
 

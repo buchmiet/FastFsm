@@ -1,4 +1,5 @@
 ﻿using FastFsm.Contracts;
+using Xunit.Abstractions;
 
 namespace Machines.Tests.Extensions;
 
