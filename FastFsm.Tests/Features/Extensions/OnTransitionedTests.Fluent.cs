@@ -44,7 +44,7 @@ public class OnTransitionedTestsFluent
 [StateMachine(typeof(Tr2State), typeof(Tr2Trigger), GenerateExtensibleVersion = true)]
 public partial class TransitionedMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(Tr2State.A)
             .On(Tr2Trigger.Go).GoTo(Tr2State.B)
         .State(Tr2State.B);

@@ -32,6 +32,24 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
     // Hook variable names
     protected const string HookVarContext = "smCtx";
     protected const string EndOfTryFireLabel = "END_TRY_FIRE";
+    protected bool UsesEndTryFireLabel { get; private set; }
+
+    protected void ResetEndTryFireLabel() => UsesEndTryFireLabel = false;
+
+    protected void EmitGotoEndTryFire()
+    {
+        UsesEndTryFireLabel = true;
+        Sb.AppendLine($"goto {EndOfTryFireLabel};");
+    }
+
+    protected void EmitEndTryFireLabelIfNeeded()
+    {
+        if (UsesEndTryFireLabel)
+            Sb.AppendLine($"{EndOfTryFireLabel}:;");
+    }
+
+    protected static string ExceptionCatchClause(bool captureVariable) =>
+        captureVariable ? "catch (System.Exception ex)" : "catch (System.Exception)";
     #endregion
 
     #region Public entry
@@ -535,7 +553,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                     WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
                     Sb.AppendLine("return false;");
                 }
-                using (Sb.Block("catch (System.Exception ex)"))
+                using (Sb.Block(ExceptionCatchClause(Model.ExceptionHandler == null && ShouldGenerateLogging)))
                 {
                     if (Model.ExceptionHandler != null)
                     {
@@ -582,7 +600,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                     WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
                     Sb.AppendLine("return false;");
                 }
-                using (Sb.Block("catch (System.Exception ex)"))
+                using (Sb.Block(ExceptionCatchClause(Model.ExceptionHandler == null && ShouldGenerateLogging)))
                 {
                     if (Model.ExceptionHandler != null)
                     {
@@ -702,7 +720,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                     WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
                     Sb.AppendLine("return false;");
                 }
-                using (Sb.Block("catch (System.Exception ex)"))
+                using (Sb.Block(ExceptionCatchClause(IsAsyncMachine && transition.ActionIsAsync)))
                 {
                     // Log async action failure if async
                     if (IsAsyncMachine && transition.ActionIsAsync)
@@ -861,7 +879,10 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         if (IsAsyncMachine)
         {
             Sb.AppendLine("ActionId bestActionId = ActionId.None;");
-            Sb.AppendLine("AsyncActionId bestAsyncActionId = AsyncActionId.None;");
+            if (HasAsyncActions())
+            {
+                Sb.AppendLine("AsyncActionId bestAsyncActionId = AsyncActionId.None;");
+            }
         }
         else
         {
@@ -1268,7 +1289,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                 var actionId = GetActionIdName(transition);
                 
                 // Check if this is an async action and we're in an async machine
-                if (IsAsyncMachine && transition.ActionIsAsync)
+                if (IsAsyncMachine && transition.ActionIsAsync && HasAsyncActions())
                 {
                     Sb.AppendLine($"bestAsyncActionId = AsyncActionId.{actionId};");
                 }
@@ -1285,7 +1306,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             }
             else
             {
-                if (IsAsyncMachine)
+                if (IsAsyncMachine && HasAsyncActions())
                 {
                     Sb.AppendLine("bestAsyncActionId = AsyncActionId.None;");
                 }
@@ -1406,7 +1427,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                 // Hook: After failed transition
                 WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
 
-                Sb.AppendLine($"goto {EndOfTryFireLabel};");
+                EmitGotoEndTryFire();
             }
         }
         using (Sb.Block("catch (Exception ex) when (ex is not System.OperationCanceledException)"))
@@ -1423,7 +1444,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
 
             // Jump to end of method
-            Sb.AppendLine($"goto {EndOfTryFireLabel};");
+            EmitGotoEndTryFire();
         }
     }
 
@@ -2098,7 +2119,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             {
                 Sb.AppendLine("return false;");
             }
-            using (Sb.Block("catch (System.Exception ex)"))
+            using (Sb.Block(ExceptionCatchClause(IsAsyncMachine && transition.ActionIsAsync)))
             {
                 // Log async action failure if async
                 if (IsAsyncMachine && transition.ActionIsAsync)
@@ -2214,7 +2235,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             {
                 Sb.AppendLine("return false;");
             }
-            using (Sb.Block("catch (System.Exception ex)"))
+            using (Sb.Block(ExceptionCatchClause(ShouldGenerateLogging)))
             {
                 if (ShouldGenerateLogging)
                 {
@@ -2326,7 +2347,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
             {
                 Sb.AppendLine("return false;");
             }
-            using (Sb.Block("catch (System.Exception ex)"))
+            using (Sb.Block(ExceptionCatchClause(IsAsyncMachine && transition.ActionIsAsync)))
             {
                 // Log async action failure if async
                 if (IsAsyncMachine && transition.ActionIsAsync)

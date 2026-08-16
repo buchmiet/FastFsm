@@ -13,6 +13,7 @@
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<PackageOutputPath>../nuget</PackageOutputPath>
 		<IncludeBuildOutput>false</IncludeBuildOutput>
+		<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
 
 		
 		<FsmGenerateDI>true</FsmGenerateDI>

@@ -37,13 +37,6 @@
 
   
   <ItemGroup>
-    <ProjectReference Include="..\IndentedStringBuilder\IndentedStringBuilder.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
-    <ProjectReference Include="..\Generator.Logger\Generator.Logger.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
-    <ProjectReference Include="..\Generator.DependencyInjection\Generator.DependencyInjection.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
-  </ItemGroup>
-
-  
-  <ItemGroup>
     <None Include="build\*.props" Pack="true" PackagePath="build" />
     <None Include="buildTransitive\*.props" Pack="true" PackagePath="buildTransitive" />
   </ItemGroup>
@@ -94,6 +87,13 @@
     <None Include="..\Abstractions\bin\$(Configuration)\netstandard2.0\Abstractions.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Condition="Exists('..\Abstractions\bin\$(Configuration)\netstandard2.0\Abstractions.dll')" />
   </ItemGroup>
 
+
+  <Target Name="EnsureGeneratorBuiltForPack" BeforeTargets="GenerateNuspec"
+          Condition="'$(GeneratePackageOnBuild)' == 'true'">
+    <MSBuild Projects="$(MSBuildThisFileDirectory)..\Generator\Generator.csproj"
+             Targets="Build"
+             Properties="Configuration=$(Configuration)" />
+  </Target>
 
   <Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
     <PropertyGroup>

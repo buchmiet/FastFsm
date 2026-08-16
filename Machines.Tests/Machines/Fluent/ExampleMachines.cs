@@ -10,6 +10,6 @@ namespace Machines.Tests.Machines.Fluent;
 [StateMachine(typeof(WorkflowState), typeof(WorkflowTrigger), GenerateExtensibleVersion = true)]
 public partial class ExtensibleMachine
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(WorkflowState.Draft).On(WorkflowTrigger.Submit).GoTo(WorkflowState.Submitted);
 }

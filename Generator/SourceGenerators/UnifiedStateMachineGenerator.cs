@@ -111,6 +111,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         var baseClass = GetBaseClassName(stateType, triggerType);
         using (Sb.Block($"public partial class {className} : {baseClass}, I{className}"))
     {
+            Sb.AppendLine("#pragma warning disable CS8618 // User partial may declare properties initialized at runtime");
             // Write class content
             WriteFields(className);
             // Emit optional action-exception hook (no-op if not implemented by user)
@@ -134,6 +135,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             {
                 WriteGuardHelperMethods(stateType, triggerType);
             }
+            Sb.AppendLine("#pragma warning restore CS8618");
         }
     }
 
@@ -242,7 +244,8 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         if (IsHierarchical)
     {
             GenerateActionIdEnum(); // Generate ActionId enum for zero-allocation dispatch
-            GenerateAsyncActionIdEnum(); // Generate AsyncActionId enum for async actions
+            if (HasAsyncActions())
+                GenerateAsyncActionIdEnum(); // Generate AsyncActionId enum for async actions
             WriteHierarchyArrays(GetTypeNameForUsage(Model.StateType), GetTypeNameForUsage(Model.TriggerType));
             WriteHierarchyRuntimeFieldsAndHelpers(GetTypeNameForUsage(Model.StateType));
         }
@@ -850,6 +853,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
     {
         Sb.AppendLine("cancellationToken.ThrowIfCancellationRequested();");
         Sb.AppendLine();
+        ResetEndTryFireLabel();
 
         if (!Model.Transitions.Any())
     {
@@ -869,54 +873,77 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             Sb.AppendLine();
         }
 
-        Sb.AppendLine($"var {OriginalStateVar} = {CurrentStateField};");
-        Sb.AppendLine($"bool {SuccessVar} = false;");
-        Sb.AppendLine();
-
-        // Use payload-aware or core transition logic based on feature flags
-        if (HasPayload)
+        if (IsHierarchical && !ExtensionsOn)
     {
-            WriteTryFireStructureDispatcher(stateType, triggerType, (transition, stateType, triggerType) =>
+            // Hierarchical winner-selection returns directly; no success variable or trailing return.
+            if (HasPayload)
         {
-                _smCtxCreated = false;  // Reset flag for each transition
-                WriteTransitionLogicPayloadAsync(transition, stateType, triggerType);
-            });
+                WriteTryFireStructureDispatcher(stateType, triggerType, (transition, stateType, triggerType) =>
+            {
+                    _smCtxCreated = false;  // Reset flag for each transition
+                    WriteTransitionLogicPayloadAsync(transition, stateType, triggerType);
+                });
+            }
+            else
+        {
+                WriteTryFireStructureDispatcher(stateType, triggerType, (transition, stateType, triggerType) =>
+            {
+                    _smCtxCreated = false;  // Reset flag for each transition
+                    WriteTransitionLogic(transition, stateType, triggerType);
+                });
+            }
         }
         else
     {
-            WriteTryFireStructureDispatcher(stateType, triggerType, (transition, stateType, triggerType) =>
-        {
-                _smCtxCreated = false;  // Reset flag for each transition
-                WriteTransitionLogic(transition, stateType, triggerType);
-            });
-        }
+            Sb.AppendLine($"var {OriginalStateVar} = {CurrentStateField};");
+            Sb.AppendLine($"bool {SuccessVar} = false;");
+            Sb.AppendLine();
 
-        Sb.AppendLine($"{EndOfTryFireLabel}:;");
-        Sb.AppendLine();
+            // Use payload-aware or core transition logic based on feature flags
+            if (HasPayload)
+        {
+                WriteTryFireStructureDispatcher(stateType, triggerType, (transition, stateType, triggerType) =>
+            {
+                    _smCtxCreated = false;  // Reset flag for each transition
+                    WriteTransitionLogicPayloadAsync(transition, stateType, triggerType);
+                });
+            }
+            else
+        {
+                WriteTryFireStructureDispatcher(stateType, triggerType, (transition, stateType, triggerType) =>
+            {
+                    _smCtxCreated = false;  // Reset flag for each transition
+                    WriteTransitionLogic(transition, stateType, triggerType);
+                });
+            }
 
-        // Log failure if needed
-        if (ShouldGenerateLogging)
-    {
-            Sb.AppendLine($"if (!{SuccessVar})");
-            using (Sb.Block(""))
+            EmitEndTryFireLabelIfNeeded();
+            Sb.AppendLine();
+
+            // Log failure if needed
+            if (ShouldGenerateLogging)
         {
-            WriteLogStatement("Warning", $"TransitionFailed(_logger, _instanceId, {OriginalStateVar}.ToString(), trigger.ToString());");
-            // Extensions failure hook
-            if (ExtensionsOn)
-        {
-                Sb.AppendLine($"var failCtx = new StateMachineContext<{stateType}, {triggerType}>(");
-                Sb.AppendLine("    Guid.NewGuid().ToString(),");
-                Sb.AppendLine($"    {OriginalStateVar},");
-                Sb.AppendLine("    trigger,");
-                Sb.AppendLine($"    {OriginalStateVar},");
-                Sb.AppendLine("    payload);");
-                Sb.AppendLine("_extensionRunner.RunAfterTransition(_extensions, failCtx, false);");
+                Sb.AppendLine($"if (!{SuccessVar})");
+                using (Sb.Block(""))
+            {
+                    WriteLogStatement("Warning", $"TransitionFailed(_logger, _instanceId, {OriginalStateVar}.ToString(), trigger.ToString());");
+                    // Extensions failure hook
+                    if (ExtensionsOn)
+                {
+                        Sb.AppendLine($"var failCtx = new StateMachineContext<{stateType}, {triggerType}>(");
+                        Sb.AppendLine("    Guid.NewGuid().ToString(),");
+                        Sb.AppendLine($"    {OriginalStateVar},");
+                        Sb.AppendLine("    trigger,");
+                        Sb.AppendLine($"    {OriginalStateVar},");
+                        Sb.AppendLine("    payload);");
+                        Sb.AppendLine("_extensionRunner.RunAfterTransition(_extensions, failCtx, false);");
+                    }
                 }
             }
-            }
 
-        // TODO(EXT): emit OnTransitionCompleted at end of async attempt with the last known context
-        Sb.AppendLine($"return {SuccessVar};");
+            // TODO(EXT): emit OnTransitionCompleted at end of async attempt with the last known context
+            Sb.AppendLine($"return {SuccessVar};");
+        }
         }
         Sb.AppendLine();
 }
@@ -2231,7 +2258,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                     Sb.AppendLine("    {");
                     Sb.AppendLine($"        {SuccessVar} = false;");
                     // Note: Hook emission is handled elsewhere - don't emit inline here
-                    Sb.AppendLine($"        goto {EndOfTryFireLabel};");
+                    EmitGotoEndTryFire();
                     Sb.AppendLine("    }");
                     Sb.AppendLine("    // Continue directive - transition proceeds");
                 }
@@ -2240,7 +2267,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                     Sb.AppendLine("    // No exception handler configured - fail the transition");
                     Sb.AppendLine($"    {SuccessVar} = false;");
                     // Note: Hook emission is handled elsewhere - don't emit inline here
-                    Sb.AppendLine($"    goto {EndOfTryFireLabel};");
+                    EmitGotoEndTryFire();
                 }
                 Sb.AppendLine("}");
             }
@@ -2251,7 +2278,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 WriteOnExitCall(fromStateDef, null);
                 WriteLogStatement("Debug",
                     $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
-                Sb.AppendLine("} catch (System.OperationCanceledException) { return false; } catch (System.Exception ex) { if (Model.ExceptionHandler != null) { /* handled below */ } else { return false; } }");
+                Sb.AppendLine("} catch (System.OperationCanceledException) { return false; } catch (System.Exception) { if (Model.ExceptionHandler != null) { /* handled below */ } else { return false; } }");
                 Sb.AppendLine("#else");
                 WriteOnExitCall(fromStateDef, null);
                 WriteLogStatement("Debug",
@@ -2303,7 +2330,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         // Hook: After successful transition
         WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
 
-        Sb.AppendLine($"goto {EndOfTryFireLabel};");
+        EmitGotoEndTryFire();
 }
 
     // Extension hooks (emitted only when HasExtensions)
@@ -2415,7 +2442,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 $"TransitionFailed(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\");");
             Sb.AppendLine($"{SuccessVar} = false;");
             WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);
-            Sb.AppendLine($"goto {EndOfTryFireLabel};");
+            EmitGotoEndTryFire();
             Sb.AppendLine("}");
         }
 
@@ -2453,7 +2480,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             Sb.AppendLine("    {");
             Sb.AppendLine($"        {SuccessVar} = false;");
             Sb.AppendLine($"        WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);");
-            Sb.AppendLine($"        goto {EndOfTryFireLabel};");
+            EmitGotoEndTryFire();
             Sb.AppendLine("    }");
             Sb.AppendLine("}");
         }
@@ -2510,7 +2537,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         // Hook: After successful transition
         WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: true);
 
-        Sb.AppendLine($"goto {EndOfTryFireLabel};");
+        EmitGotoEndTryFire();
 }
 
     // Sync direct-return transition logic with payload
@@ -2889,7 +2916,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 $"TransitionFailed(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\");");
             Sb.AppendLine($"{SuccessVar} = false;");
             WriteAfterTransitionHook(transition, GetTypeNameForUsage(Model.StateType), GetTypeNameForUsage(Model.TriggerType), success: false);
-            Sb.AppendLine($"goto {EndOfTryFireLabel};");
+            EmitGotoEndTryFire();
             Sb.AppendLine("}");
         }
         else
@@ -3180,7 +3207,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
     protected new string GetTypeNameForUsage(string fullyQualifiedName) =>
         TypeHelper.FormatTypeForUsage(fullyQualifiedName, useGlobalPrefix: false);
 
-    protected string GetConfigureAwait() => 
+    protected new string GetConfigureAwait() => 
         AsyncGenerationHelper.GetConfigureAwait(IsAsyncMachine, Model.ContinueOnCapturedContext);
 
     // Helper to mirror MakeSafeMemberSuffix - keeping for compatibility

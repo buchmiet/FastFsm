@@ -236,29 +236,29 @@ public class TypeSystemHelperEdgeCaseTests(ITestOutputHelper output)
     public void AllMethods_NullInput_ReturnExpectedDefaults()
     {
         // FormatTypeForUsage
-        _helper.FormatTypeForUsage(null).ShouldBe("object");
-        _helper.FormatTypeForUsage(null, true).ShouldBe("object");
+        _helper.FormatTypeForUsage(null!).ShouldBe("object");
+        _helper.FormatTypeForUsage(null!, true).ShouldBe("object");
 
         // GetNamespace
-        _helper.GetNamespace(null).ShouldBeNull();
+        _helper.GetNamespace(null!).ShouldBeNull();
 
         // GetSimpleTypeName
-        _helper.GetSimpleTypeName(null).ShouldBe("object");
+        _helper.GetSimpleTypeName(null!).ShouldBe("object");
 
         // IsNestedType
-        _helper.IsNestedType(null).ShouldBe(false);
+        _helper.IsNestedType(null!).ShouldBe(false);
 
         // IsGenericType
-        _helper.IsGenericType(null).ShouldBe(false);
+        _helper.IsGenericType(null!).ShouldBe(false);
 
         // EscapeIdentifier
-        _helper.EscapeIdentifier(null).ShouldBeNull();
+        _helper.EscapeIdentifier(null!).ShouldBeNull();
 
         // GetRequiredNamespaces
-        _helper.GetRequiredNamespaces(null).Count().ShouldBe(0);
+        _helper.GetRequiredNamespaces(null!).Count().ShouldBe(0);
 
         // FormatForTypeof
-        _helper.FormatForTypeof(null).ShouldBe("object");
+        _helper.FormatForTypeof(null!).ShouldBe("object");
     }
 
     [Fact]

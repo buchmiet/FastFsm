@@ -8,7 +8,7 @@ namespace Machines.Tests.Machines.Legacy;
 [PayloadType(typeof(NotificationData))]
 public partial class NotificationMachine
 {
-    public string LastSentMessage { get; private set; }
+    public string LastSentMessage { get; private set; } = null!;
     public int RecipientCount { get; private set; }
 
     [Transition(NotificationState.Ready, NotificationTrigger.Send, NotificationState.Sent,

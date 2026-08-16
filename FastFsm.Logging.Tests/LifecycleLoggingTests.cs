@@ -325,7 +325,7 @@ namespace FastFsm.Logging.Tests
     [StateMachine(typeof(FluentState), typeof(FluentTrigger))]
     public partial class FluentEntryThrowMachine
     {
-        private static void Configure() => FSM
+        private void Configure() => FSM
             .State(FluentState.S2)
                 .OnEntry(nameof(ThrowEntry))
             .State(FluentState.S1)

@@ -67,7 +67,7 @@ namespace FastFsm.Logging.Tests
 
             // Act
             machine.Start();
-            var result = machine.TryFire(TestTrigger.Start, payload: null);
+            var result = machine.TryFire(TestTrigger.Start, payload: null!);
 
             // Assert
             result.ShouldBeTrue(); // Should succeed with parameterless overload

@@ -7,6 +7,10 @@
     <FsmGenerateLogging Condition="'$(FsmGenerateLogging)' == ''">false</FsmGenerateLogging>
     <FsmGenerateDI      Condition="'$(FsmGenerateDI)' == ''">false</FsmGenerateDI>
   </PropertyGroup>
+
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+    <NoWarn>$(NoWarn);FSM0400</NoWarn>
+  </PropertyGroup>
   
   <ItemGroup>
     <CompilerVisibleProperty Include="FsmGenerateLogging" />

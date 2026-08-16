@@ -2,5 +2,5 @@
 
 public class WrongPayload
 {
-    public string Wrong { get; set; }
+    public string Wrong { get; set; } = null!;
 }

@@ -9,7 +9,7 @@ namespace Machines.Tests.Machines.Legacy;
 public partial class ExitCallbackMachine
 {
     public bool OnExitCalled { get; private set; }
-    public string OnExitPayloadData { get; private set; }
+    public string OnExitPayloadData { get; private set; } = null!;
 
     [State(ExitState.A, OnExit = nameof(OnExitA))]
     private void ConfigureStates() { }

@@ -3,7 +3,6 @@ using Machines.Tests.Machines;
 using Machines.Tests.Machines.Legacy;
 using Xunit;
 using Xunit.Abstractions;
-using Machines.Tests.Machines.Legacy;
 
 namespace FastFsm.Tests.Core;
 

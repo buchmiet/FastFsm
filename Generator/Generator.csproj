@@ -10,7 +10,9 @@
 		<IsRoslynComponent>true</IsRoslynComponent>
 		<IncludeBuildOutput>false</IncludeBuildOutput>
 		<DevelopmentDependency>true</DevelopmentDependency>
-		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+		<EnforceExtendedAnalyzerRules>false</EnforceExtendedAnalyzerRules>
+		<!-- Roslyn API nullability is noisy in generator internals; generated user code is validated separately -->
+		<NoWarn>$(NoWarn);CS8600;CS8601;CS8602;CS8603;CS8604;CS8321</NoWarn>
 		<!-- skopiuj zależności do bin/, ALE NIE Microsoft.CodeAnalysis (dla hot-reload) -->
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 

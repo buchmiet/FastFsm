@@ -6,7 +6,7 @@ namespace Machines.Tests.Machines.Fluent;
 [StateMachine(typeof(LifecycleState), typeof(LifecycleTrigger))]
 public partial class LifecycleMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(LifecycleState.Failed)
             .OnEntry(nameof(ThrowingEntry))
         .State(LifecycleState.Initial)

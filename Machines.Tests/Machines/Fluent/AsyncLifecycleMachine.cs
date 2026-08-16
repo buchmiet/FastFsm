@@ -9,7 +9,7 @@ namespace Machines.Tests.Machines.Fluent;
 [StateMachine(typeof(AsyncLifecycleState), typeof(AsyncLifecycleTrigger))]
 public partial class AsyncLifecycleMachine
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(AsyncLifecycleState.Initial)
             .On(AsyncLifecycleTrigger.StartAsync)
                 .Action(nameof(StartProcessingAsync))

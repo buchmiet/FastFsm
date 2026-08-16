@@ -305,7 +305,7 @@ public class ExceptionDirectiveTests
 [OnException(nameof(HandleException))]
 public partial class ExceptionContextCaptureMachine
 {
-    private readonly Func<ExceptionContext<ExceptionTestStates, ExceptionTestTriggers>, ExceptionDirective> _handler;
+    private readonly Func<ExceptionContext<ExceptionTestStates, ExceptionTestTriggers>, ExceptionDirective> _handler = null!;
     
     public ExceptionContextCaptureMachine(
         ExceptionTestStates initialState, 
@@ -441,7 +441,7 @@ public partial class AsyncHandlerMachineFluentFsm
 [StateMachine(typeof(ExceptionTestStates), typeof(ExceptionTestTriggers))]
 public partial class ExceptionContextCaptureMachineFluentFsm
 {
-    private readonly Func<ExceptionContext<ExceptionTestStates, ExceptionTestTriggers>, ExceptionDirective> _handler;
+    private readonly Func<ExceptionContext<ExceptionTestStates, ExceptionTestTriggers>, ExceptionDirective> _handler = null!;
     public ExceptionContextCaptureMachineFluentFsm(ExceptionTestStates initialState, Func<ExceptionContext<ExceptionTestStates, ExceptionTestTriggers>, ExceptionDirective> handler) : this(initialState) { _handler = handler; }
 
     private void Configure() => FSM

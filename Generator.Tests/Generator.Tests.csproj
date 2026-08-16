@@ -4,6 +4,7 @@
 		<TargetFramework>net10.0</TargetFramework>
 		<IsPackable>false</IsPackable>
 		<Nullable>enable</Nullable>
+		<NoWarn>$(NoWarn);CS9107;CS8765;CS8604;xUnit1031;xUnit1026</NoWarn>
 	</PropertyGroup>
 
 	<!-- Exclude archived tests in old_tests from compilation -->

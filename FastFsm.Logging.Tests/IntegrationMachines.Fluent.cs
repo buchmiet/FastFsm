@@ -7,7 +7,7 @@ namespace FastFsm.Logging.Tests;
 [StateMachine(typeof(TestInitialState), typeof(TestInitialTrigger))]
 public partial class InitialOnEntryStateMachineActionsFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(TestInitialState.Ready)
             .OnEntry(nameof(OnReadyEntry));
 
@@ -21,7 +21,7 @@ public partial class InitialOnEntryStateMachineActionsFluent
 [PayloadType(OrderTriggerPayload.Ship, typeof(ShippingPayload))]
 public partial class FullMultiPayloadMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(OrderStatePayload.New)
             .OnEntry(nameof(OnNewEntry))
             .On(OrderTriggerPayload.Process)

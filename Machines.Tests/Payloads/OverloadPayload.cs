@@ -2,5 +2,5 @@
 
 public class OverloadPayload
 {
-    public string Data { get; set; }
+    public string Data { get; set; } = null!;
 }

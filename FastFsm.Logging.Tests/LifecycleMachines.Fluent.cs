@@ -8,7 +8,7 @@ namespace FastFsm.Logging.Tests;
 [StateMachine(typeof(LifecycleState), typeof(LifecycleTrigger))]
 public partial class LifecycleMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(LifecycleState.Failed)
             .OnEntry(nameof(ThrowingEntry))
         .State(LifecycleState.Initial)
@@ -27,7 +27,7 @@ public partial class LifecycleMachineFluent
 [StateMachine(typeof(AsyncLifecycleState), typeof(AsyncLifecycleTrigger))]
 public partial class AsyncLifecycleMachineFluent
 {
-    private static void Configure() => FSM
+    private void Configure() => FSM
         .State(AsyncLifecycleState.Initial)
             .On(AsyncLifecycleTrigger.StartAsync)
                 .Action(nameof(StartProcessingAsync))

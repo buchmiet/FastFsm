@@ -449,7 +449,7 @@ public class StateMachineGenerator : IIncrementalGenerator
                 }
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             {
             }
@@ -493,8 +493,6 @@ public class StateMachineGenerator : IIncrementalGenerator
             
             // Declaration plan suppressed
      
-            var accessibility = "public"; // We generate public partial classes
-            
             // Generate primary state machine source
             string generatedSource;
             try
@@ -541,7 +539,7 @@ public class StateMachineGenerator : IIncrementalGenerator
                 // Success diagnostic suppressed
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             {
                 // Suppressed infra diagnostic
@@ -593,7 +591,7 @@ public class StateMachineGenerator : IIncrementalGenerator
         {
             context.AddSource(hintName, SourceText.From(content, Encoding.UTF8));
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             // Suppress infra diagnostic on failure; rethrow
             throw;
@@ -812,7 +810,7 @@ public class StateMachineGenerator : IIncrementalGenerator
                     // Log internal-only status for debugging
                     // Discovery trace suppressed
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     // Suppress infra diagnostic
                     continue;
@@ -850,7 +848,7 @@ public class StateMachineGenerator : IIncrementalGenerator
                     {
                         source = generator.Generate();
                     }
-                    catch (Exception genEx)
+                    catch (Exception)
                     {
                     {
                         // Suppressed infra diagnostic
@@ -884,7 +882,7 @@ public class StateMachineGenerator : IIncrementalGenerator
                             // Suppressed success diagnostic
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         {
                             // Suppressed infra diagnostic
@@ -947,7 +945,7 @@ public class StateMachineGenerator : IIncrementalGenerator
                                 // Suppressed success diagnostic
                             }
                         }
-                        catch (Exception ex)
+                        catch (Exception)
                         {
                             {
                                 // Suppressed infra diagnostic
@@ -955,7 +953,7 @@ public class StateMachineGenerator : IIncrementalGenerator
                         }
                     }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     // Report the exception as a diagnostic
                     // Suppress infra diagnostic

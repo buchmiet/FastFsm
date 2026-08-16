@@ -5,7 +5,7 @@ namespace Machines.Tests.Machines.Legacy;
 
 public class OverloadedMachinePayload
 {
-    public string Data { get; set; }
+    public string Data { get; set; } = null!;
 }
 
 [StateMachine(typeof(OverloadState), typeof(OverloadTrigger))]

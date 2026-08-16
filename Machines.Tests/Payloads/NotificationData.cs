@@ -2,6 +2,6 @@
 
 public class NotificationData
 {
-    public string Message { get; set; }
-    public string[] Recipients { get; set; }
+    public string Message { get; set; } = null!;
+    public string[] Recipients { get; set; } = null!;
 }
