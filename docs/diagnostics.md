@@ -2,7 +2,7 @@
 
 FastFsm reports compile-time diagnostics from the Roslyn source generator. Rule IDs are defined in `Generator.Rules/Definitions/RuleIdentifiers.cs` and described in `Generator.Rules/Definitions/RuleDefinition.cs` (`DefinedRules`).
 
-**This document reflects the 0.9.x catalog (35 rules).** Legacy IDs such as FSM001 or FSM100 appear only in comments mapping to the new scheme.
+**This document is the 0.9.x diagnostic catalog.** Legacy IDs such as FSM001 or FSM100 appear only in code comments mapping to the new scheme.
 
 ## Summary
 
@@ -80,9 +80,7 @@ The following are **not** part of the 0.9 catalog:
 - FSM007, FSM008, FSM105 — removed unused rules
 - FSM203–FSM206 — removed unused Fluent rules
 - FSM9000–FSM9013 — generator infrastructure diagnostics removed
-- **FSM3084** — mentioned in old docs only; not defined in `RuleIdentifiers`
-
-Deferred-events diagnostics from historical proposals ([archive/proposals/deferred-events.md](archive/proposals/deferred-events.md)) are not applicable to 0.9.
+- **FSM3084** — not defined in `RuleIdentifiers`
 
 ## Source of truth in code
 

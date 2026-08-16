@@ -1,14 +1,6 @@
 # Benchmarks
 
-FastFsm includes a BenchmarkDotNet project at `Benchmark/`. **The repository does not currently ship a verified .NET 10 benchmark report suitable for marketing claims.**
-
-## Committed historical run
-
-Raw output from August 2025 on **.NET 9.0.5** is archived at:
-
-[archive/benchmarks/net9-2025/benchresult.txt](archive/benchmarks/net9-2025/benchresult.txt)
-
-That file was produced on a Windows host (see header in the file). Do not cite its numbers as .NET 10 results.
+FastFsm includes a BenchmarkDotNet project at `Benchmark/`. **The repository does not ship verified benchmark numbers for 0.9 / .NET 10.** Do not cite latency figures in user-facing docs until you have run benchmarks locally and recorded the environment.
 
 ## Running benchmarks locally
 
@@ -34,8 +26,8 @@ Before quoting latency in README or release notes:
 
 1. Run BenchmarkDotNet on the **target** framework (.NET 10).
 2. Record hardware, SDK version, commit SHA, and configuration (Release, server GC, etc.).
-3. Store the raw `.txt` / `.md` artifact under `docs/archive/benchmarks/<label>/` or attach to the release.
-4. Describe methodology (warmup, iteration count, what “hot path” means) in the same document.
+3. Summarize methodology and headline results in this document.
+4. Attach raw BenchmarkDotNet output to a **GitHub Release** or CI artifact — not as a committed log in the repo.
 
 Avoid absolute claims (“sub-nanosecond guarantees”, “near hardware-level”, “100% AOT”) unless each claim maps to a reproducible measurement or a specific technical guarantee (e.g. “generated code uses enum switches without reflection”).
 
