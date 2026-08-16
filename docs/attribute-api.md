@@ -26,29 +26,29 @@ public partial class TrafficLight
 
 | Attribute | Purpose |
 |-----------|---------|
-| `[StateMachine(stateType, triggerType, …)]` | Marks the class; required |
-| `[Transition(from, trigger, to, Guard = …, Action = …)]` | External transition |
-| `[State(state, OnEntry = …, OnExit = …, Parent = …, IsInitial = …, History = …)]` | State metadata / HSM |
-| `[InternalTransition(stateOrAncestor, trigger, Action = …)]` | Internal transition |
-| `[PayloadType(trigger, payloadType)]` | Typed payload for a trigger |
+| `[StateMachine(stateType, triggerType, …)]` | Declares the state-machine class |
+| `[Transition(from, trigger, to, Guard = …, Action = …)]` | Declares an external transition |
+| `[State(state, OnEntry = …, OnExit = …, Parent = …, IsInitial = …, History = …)]` | Declares state metadata and HSM relationships |
+| `[InternalTransition(stateOrAncestor, trigger, Action = …)]` | Declares an internal transition |
+| `[PayloadType(trigger, payloadType)]` | Associates a payload type with a trigger |
 
 ## `StateMachineAttribute` options
 
 | Property | Default | Description |
 |----------|---------|-------------|
-| `GenerateExtensibleVersion` | **`true`** | Emit extensible variant with `IStateMachineExtension` support |
-| `GenerateStructuralApi` | `false` | Extra introspection helpers (`HasTransition`, etc.) |
-| `EnableHierarchy` | `false` | HSM features (auto-enabled when HSM attributes are present) |
-| `DefaultPayloadType` | unset | Default payload type for payload-enabled machines |
-| `ContinueOnCapturedContext` | `false` | Async: capture synchronization context |
+| `GenerateExtensibleVersion` | `true` | Generates the variant with `IStateMachineExtension` support |
+| `GenerateStructuralApi` | `false` | Generates structural query methods such as `HasTransition` |
+| `EnableHierarchy` | `false` | Enables HSM support; HSM metadata can also cause hierarchy support to be enabled by the generator |
+| `DefaultPayloadType` | unset | Sets the default payload type for payload-enabled machines |
+| `ContinueOnCapturedContext` | `false` | Controls synchronization-context capture on asynchronous paths |
 
-When `GenerateExtensibleVersion` is `true` (the default), constructors accept optional `IEnumerable<IStateMachineExtension>` and an optional `ILogger<T>` when logging is enabled.
+When `GenerateExtensibleVersion` is `true`, generated constructors accept optional `IEnumerable<IStateMachineExtension>` parameters. Logging-enabled variants can also accept `ILogger<T>` where applicable.
 
-Set `GenerateExtensibleVersion = false` only when you explicitly want the non-extensible generated type.
+Set `GenerateExtensibleVersion = false` to generate the non-extensible variant.
 
 ## Guards and actions
 
-Reference methods by name:
+Reference callback methods by name:
 
 ```csharp
 [Transition(S.Idle, T.Start, S.Running, Guard = nameof(CanStart), Action = nameof(OnStart))]
@@ -58,7 +58,7 @@ private bool CanStart() => _enabled;
 private void OnStart() { _enabled = false; }
 ```
 
-Payload machines accept guard/action overloads that take the payload type. See [payloads.md](payloads.md).
+Payload-enabled machines support callback signatures that accept the configured payload type. See [payloads.md](payloads.md).
 
 ## HSM with attributes
 
@@ -84,15 +84,15 @@ public partial class HsmMachine
 
 See [hsm.md](hsm.md) for hierarchy semantics.
 
-## Fluent vs attributes
+## Relation to the Fluent API
 
-Both APIs compile to the same generator backend. Choose based on team preference:
+Both configuration APIs are processed by the same generator backend.
 
-- **Fluent** — readable linear configuration, strong DSL validation ([fluent-api.md](fluent-api.md))
-- **Attributes** — familiar declarative style, easy to scan in code review
+- The **Attribute API** stores machine configuration in attributes attached to members.
+- The **Fluent API** stores machine configuration in a `Configure()` method using the `FSM` builder.
 
-You can mix projects: some machines Fluent, some attribute-based.
+A project can contain machines configured with either API. See [fluent-api.md](fluent-api.md) for the Fluent form.
 
 ## Diagnostics
 
-Invalid signatures, duplicate transitions, and HSM misconfiguration are reported at compile time. See [diagnostics.md](diagnostics.md).
+Invalid callback signatures, duplicate transitions, and HSM configuration errors are reported during compilation. See [diagnostics.md](diagnostics.md).
