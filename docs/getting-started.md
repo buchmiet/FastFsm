@@ -23,7 +23,7 @@ dotnet add package FastFsm.Net.Logging
 dotnet add package FastFsm.Net.DependencyInjection
 ```
 
-## Minimal attribute-based machine
+## Minimal Attribute API machine
 
 ```csharp
 using Abstractions.Attributes;
@@ -49,41 +49,64 @@ light.Start();
 light.Fire(LightTrigger.Toggle);
 ```
 
-## Minimal Fluent machine
+See [attribute-api.md](attribute-api.md) for the Attribute API.
 
-See the [Fluent API guide](fluent-api.md) or the [README](../README.md) quick example.
+## Minimal Fluent API machine
+
+```csharp
+using Abstractions.Attributes;
+using Abstractions.Fluent;
+
+public enum LightState { Off, On }
+public enum LightTrigger { Toggle }
+
+[StateMachine(typeof(LightState), typeof(LightTrigger))]
+public partial class LightSwitch
+{
+    private void Configure() => FSM
+        .State(LightState.Off)
+            .On(LightTrigger.Toggle).GoTo(LightState.On)
+        .State(LightState.On)
+            .On(LightTrigger.Toggle).GoTo(LightState.Off);
+}
+
+var light = new LightSwitch(LightState.Off);
+light.Start();
+light.Fire(LightTrigger.Toggle);
+```
+
+See [fluent-api.md](fluent-api.md) for the Fluent API.
 
 ## Lifecycle: `Start`, `Fire`, `TryFire`
 
 | Method | Behavior |
 |--------|----------|
-| `Start()` | Activates the machine and runs `OnEntry` for the initial state. Must be called before transitions. |
-| `CanFire(trigger)` | Returns whether a transition is defined for the current state and trigger (guards may still fail at fire time). |
-| `TryFire(trigger[, payload])` | Attempts a transition; returns `false` if no transition applies or a guard fails. |
-| `Fire(trigger[, payload])` | Same as `TryFire`, but throws `InvalidOperationException` when the transition cannot be taken. |
+| `Start()` | Activates the machine and runs `OnEntry` for the initial state. Must be called before transition operations. |
+| `CanFire(trigger)` | Evaluates whether the trigger can be taken from the current state, including applicable guards. |
+| `TryFire(trigger[, payload])` | Attempts a transition; returns `false` if no transition applies or a guard rejects it. |
+| `Fire(trigger[, payload])` | Attempts the same transition and throws `InvalidOperationException` if it cannot be taken. |
 
-**Unhandled triggers are not silently ignored.** Use `TryFire` when failure is expected; use `Fire` when an invalid trigger should fail fast.
+Use `TryFire` when the caller handles an unavailable transition as a boolean result. Use `Fire` when the caller requires an exception for an unavailable transition.
 
-Async machines expose `StartAsync`, `TryFireAsync`, and `FireAsync` with the same semantics (`FireAsync` throws on failure). Sync `Fire`/`TryFire` on async machines throw `SyncCallOnAsyncMachineException` — use the async API instead.
+Asynchronous machines expose `StartAsync`, `TryFireAsync`, and `FireAsync`. Synchronous `Fire` and `TryFire` calls on asynchronous machines throw `SyncCallOnAsyncMachineException`.
 
-## `GenerateExtensibleVersion` default
+## `GenerateExtensibleVersion`
 
-`[StateMachine(..., GenerateExtensibleVersion = …)]` defaults to **`true`** in `StateMachineAttribute`. When enabled, the generator emits an extensible variant that accepts `IStateMachineExtension` instances (see [extensions.md](extensions.md)). Set it to `false` if you do not need extension hooks and want the leanest generated surface.
+`[StateMachine(..., GenerateExtensibleVersion = …)]` defaults to `true`. When enabled, the generated machine accepts `IStateMachineExtension` instances. See [extensions.md](extensions.md).
+
+Set `GenerateExtensibleVersion = false` to generate the non-extensible variant.
 
 ## Optional logging
 
-Install `FastFsm.Net.Logging` and pass an `ILogger<TMachine>` to the machine constructor when logging codegen is enabled (`FsmGenerateLogging`). See [logging.md](logging.md).
+Install `FastFsm.Net.Logging` to enable logging code generation. See [logging.md](logging.md) for the package configuration and generated constructor behavior.
 
 ## Optional dependency injection
 
-Install `FastFsm.Net.DependencyInjection`, define `FSM_DI_ENABLED` (the package props do this automatically), and register machines via `AddStateMachine<TInterface, TImplementation, TState, TTrigger>`. See [dependency-injection.md](dependency-injection.md).
+Install `FastFsm.Net.DependencyInjection` and register machines with `AddStateMachine<TInterface, TImplementation, TState, TTrigger>`. The package configures the required build properties. See [dependency-injection.md](dependency-injection.md).
 
 ## Building this repository
 
-Contributors typically build with **project references**, not pre-published NuGet packages:
-
-- `Directory.Build.props` sets `UsePackages=false` by default.
-- Test projects reference `FastFsm` and `Generator` analyzers directly.
+`Directory.Build.props` sets `UsePackages=false` by default, so repository projects use project references and direct analyzer wiring instead of resolving FastFsm from NuGet.
 
 ```bash
 dotnet build Generator/Generator.csproj
