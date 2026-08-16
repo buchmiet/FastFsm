@@ -1,8 +1,8 @@
 # Extensions
 
-Implement `IStateMachineExtension` to observe transitions without modifying generated transition tables.
+Implement `IStateMachineExtension` to observe transition processing without modifying generated transition tables.
 
-Enable extension support with `GenerateExtensibleVersion = true` on `[StateMachine]` (this is the **default**). Pass extensions to the machine constructor:
+Extension support is controlled by `GenerateExtensibleVersion` on `[StateMachine]`; the default is `true`. Pass extension instances to the generated machine constructor:
 
 ```csharp
 var machine = new MyMachine(
@@ -26,31 +26,31 @@ public interface IStateMachineExtension
 }
 ```
 
-## Call order (successful external transition)
+## Call order for a successful external transition
 
-For a successful transition with state change:
+For a successful transition that changes state:
 
 1. `OnBeforeTransition`
-2. `OnGuardEvaluation` / `OnGuardEvaluated` (per guard)
-3. State exit / action / entry (generated code)
-4. **`OnTransitioned`** — after effects, before after-transition notification
+2. `OnGuardEvaluation` / `OnGuardEvaluated` for each evaluated guard
+3. Generated exit, action, and entry processing
+4. `OnTransitioned`
 5. `OnAfterTransition(context, success: true)`
 
-For internal transitions (no state change), `OnInternalTransition` is also invoked from the after-transition path when `FromState` equals `ToState`.
+Internal-transition processing also invokes `OnInternalTransition` through the generated extension path.
 
-Failed transitions call `OnAfterTransition(context, success: false)` and may call `OnUnhandledTrigger` when no handler exists.
+A failed transition invokes `OnAfterTransition(context, success: false)`. `OnUnhandledTrigger` is invoked when no applicable handler is found.
 
-## Error isolation
+## Extension exceptions
 
-`ExtensionRunner` catches exceptions from extension hooks so a faulty extension does not break the state machine. When `FastFsm.Net.Logging` is enabled, extension errors are logged at Error level.
+`ExtensionRunner` catches exceptions thrown by extension hooks so they do not propagate through the state-machine transition call. When `FastFsm.Net.Logging` is enabled, extension exceptions are logged at Error level.
 
-## Disable extensions
+## Disabling extension support
 
-Set `GenerateExtensibleVersion = false` if you do not need hooks and want the simpler generated constructor.
+Set `GenerateExtensibleVersion = false` to generate the non-extensible variant.
 
-## Examples
+## Tests
 
-- `Machines.Tests/Extensions/` — test extensions (`TestExtension`, `AuditExtension`, …)
+- `Machines.Tests/Extensions/` — extension implementations used by tests
 - `FastFsm.Tests/Features/Extensions/OnTransitionedTests.*` — `OnTransitioned` ordering tests
 
-Register extensions globally via DI: [dependency-injection.md](dependency-injection.md).
+For DI registration of extensions, see [dependency-injection.md](dependency-injection.md).
