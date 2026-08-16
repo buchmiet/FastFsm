@@ -70,8 +70,11 @@ Analyzers are packed under `analyzers/dotnet/cs` in the NuGet package.
 | `FastFsm.Async.Tests` | Asynchronous API and HSM |
 | `FastFsm.Logging.Tests` | Logging and Attribute/Fluent parity matrix |
 | `FastFsm.DependencyInjection.Tests` | DI registration |
+| `FastFsm.Instance.Tests` | Instance-configure / startup |
 | `Generator.Tests` | Generator rules and emission tests |
 | `Machines.Tests` | Machine definitions referenced by other test projects |
+
+Pack + consumer smoke: `scripts/pack-and-smoke.ps1` / `scripts/pack-and-smoke.sh`. CI: `.github/workflows/ci.yml`.
 
 ## Maintenance docs
 

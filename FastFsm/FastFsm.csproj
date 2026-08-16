@@ -15,6 +15,7 @@
     
     <Deterministic>true</Deterministic>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <IsPackable>true</IsPackable>
     <PackageOutputPath>../nuget</PackageOutputPath>
 
     
@@ -27,6 +28,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/buchmiet/FastFsm</PackageProjectUrl>
     <PackageTags>fsm;state machine;source generator;roslyn;dotnet</PackageTags>
+    <PackageReleaseNotes>.NET 10. Extension generation is opt-in. Warning-free generated code for typical machines. See CHANGELOG.md.</PackageReleaseNotes>
   </PropertyGroup>
 
   
@@ -54,11 +56,11 @@
 
     
     <Compile Remove="DependencyInjection\FsmServiceCollectionExtensions.cs" />
-    <None Include="DependencyInjection\FsmServiceCollectionExtensions.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
+    <None Include="DependencyInjection\FsmServiceCollectionExtensions.cs" Pack="false" />
 
     
     <Compile Remove="DependencyInjection\StateMachineFactory.cs" />
-    <None Include="DependencyInjection\StateMachineFactory.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
+    <None Include="DependencyInjection\StateMachineFactory.cs" Pack="false" />
 
     
     <Compile Remove="Runtime\GlobalUsings.FastFsm.cs" />

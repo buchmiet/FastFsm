@@ -2,15 +2,9 @@
 
 This file records intended areas of work. It is not a release schedule or a compatibility commitment.
 
-## 0.9 release hardening
+## 0.9.0
 
-The current repository package version is `0.9.0`. Before publishing it:
-
-- run the complete .NET 10 test suite on a clean checkout;
-- build all NuGet packages and run clean-consumer package smoke tests for Core, Logging, and Dependency Injection;
-- rerun the benchmark suite on .NET 10 and publish only verified results;
-- finish API/documentation consistency checks;
-- keep optional generated features opt-in where they add runtime or generated-code surface.
+Repository package version is `0.9.0`. Product docs, opt-in extensions, warning-free generated code, local pack+smoke scripts, and self-hosted CI (Windows/Linux/macOS) are in tree. Publish by pushing packages to NuGet and tagging `v0.9.0`.
 
 ## Next feature candidate: deferred events
 

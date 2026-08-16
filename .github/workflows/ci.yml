@@ -1,0 +1,58 @@
+name: CI
+
+# Self-hosted — Windows: Cray (cray). Linux/macOS: homelab runners (homelab label).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  SLNX: FastFsm.slnx
+  CONFIGURATION: Release
+
+jobs:
+  build-test-smoke:
+    name: build-test-smoke (${{ matrix.leg }})
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - leg: windows-cray
+            runs-on: [self-hosted, Windows, cray]
+          - leg: linux-homelab
+            runs-on: [self-hosted, Linux, homelab]
+          - leg: macos-homelab
+            runs-on: [self-hosted, macOS, homelab]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore ${{ env.SLNX }}
+
+      - name: Build
+        run: dotnet build ${{ env.SLNX }} -c ${{ env.CONFIGURATION }} --no-restore -warnaserror
+
+      - name: Test
+        run: dotnet test ${{ env.SLNX }} -c ${{ env.CONFIGURATION }} --no-build --verbosity minimal
+
+      - name: Pack and consumer smoke (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/pack-and-smoke.ps1
+
+      - name: Pack and consumer smoke (Unix)
+        if: runner.os != 'Windows'
+        run: bash ./scripts/pack-and-smoke.sh
