@@ -90,11 +90,13 @@ Use `TryFire` when the caller handles an unavailable transition as a boolean res
 
 Asynchronous machines expose `StartAsync`, `TryFireAsync`, and `FireAsync`. Synchronous `Fire` and `TryFire` calls on asynchronous machines throw `SyncCallOnAsyncMachineException`.
 
-## `GenerateExtensibleVersion`
+## Extension generation
 
-`[StateMachine(..., GenerateExtensibleVersion = …)]` defaults to `true`. When enabled, the generated machine accepts `IStateMachineExtension` instances. See [extensions.md](extensions.md).
+`GenerateExtensibleVersion` selects whether the generated machine includes `IStateMachineExtension` support. In the current 0.9 codebase, set it explicitly because the attribute property's initializer and the generator's handling of an omitted named argument are inconsistent. See [attribute-api.md](attribute-api.md) and [extensions.md](extensions.md).
 
-Set `GenerateExtensibleVersion = false` to generate the non-extensible variant.
+```csharp
+[StateMachine(typeof(State), typeof(Trigger), GenerateExtensibleVersion = true)]
+```
 
 ## Optional logging
 
