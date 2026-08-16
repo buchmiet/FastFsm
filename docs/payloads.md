@@ -69,4 +69,4 @@ When Fluent `.Payload()` is called more than once for one transition, the genera
 
 ## Extensions
 
-Payload configuration does not change the `GenerateExtensibleVersion` setting. Extension support defaults to enabled and can be disabled by setting `GenerateExtensibleVersion = false`.
+Payload configuration is independent of `GenerateExtensibleVersion`. When extension support is required, set `GenerateExtensibleVersion = true` explicitly; see [extensions.md](extensions.md).
