@@ -546,7 +546,7 @@ Benchmarks were conducted on two different architectures to demonstrate FastFSM'
 |-----------|------------------|
 | **CPU** | AMD Ryzen 5 9600X (6C/12T, Zen 5 @ 3.9--5.4 GHz, AVX-512 enabled) |
 | **Memory** | 32 GB DDR5, Windows 11 Pro 24H2 (High Performance power profile) |
-| **.NET Runtime** | .NET 9.0.5 (RyuJIT with AVX-512, Server GC) |
+| **.NET Runtime** | .NET 10.0 (RyuJIT with AVX-512, Server GC) |
 | **JVM** | OpenJDK 21.0.8+9 (Temurin, Server VM, G1 GC) |
 | **C++ Compiler** | MSVC 19.44 (Visual C++ 2022, /O2 /GL, AVX512) + Google Benchmark 1.8.4 |
 | **Rust** | rustc 1.80.0 + Statig 0.4 (LTO, codegen-units=1, criterion 0.5.1) |
@@ -557,7 +557,7 @@ Benchmarks were conducted on two different architectures to demonstrate FastFSM'
 |-----------|------------------|
 | **CPU** | Rockchip RK3588 (4x Cortex-A76 @ 2.3GHz + 4x Cortex-A55 @ 1.8GHz) |
 | **Memory** | 8 GB LPDDR4, Ubuntu Linux |
-| **.NET Runtime** | .NET 9.0.8 (RyuJIT with AdvSIMD, Server GC) |
+| **.NET Runtime** | .NET 10.0 (RyuJIT with AdvSIMD, Server GC) |
 | **Architecture** | AArch64, Little Endian |
 | **CPU Features** | AdvSIMD, AES, CRC32, SHA1, SHA256, Atomics |
 

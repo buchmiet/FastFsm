@@ -1,6 +1,7 @@
 <Project>
   <PropertyGroup>
     <UsePackages>false</UsePackages>
+    <FastFsmTargetFramework>net10.0</FastFsmTargetFramework>
 
     <FsmGenerateLogging Condition="'$(FsmGenerateLogging)' == ''">false</FsmGenerateLogging>
     <FsmGenerateDI      Condition="'$(FsmGenerateDI)' == ''">false</FsmGenerateDI>

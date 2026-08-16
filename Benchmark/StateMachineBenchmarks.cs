@@ -98,7 +98,7 @@ public partial class FastFsmAsyncActions
 // ===== Benchmarks =====
 // Note: HardwareCounters require Windows, Administrator privileges and no Hyper-V.
 // Otherwise CPU columns will not appear in the report.
-[SimpleJob(RuntimeMoniker.Net90, launchCount: 1, warmupCount: 3, iterationCount: 15)]
+[SimpleJob(RuntimeMoniker.Net10_0, launchCount: 1, warmupCount: 3, iterationCount: 15)]
 [MemoryDiagnoser]
 [DisassemblyDiagnoser(maxDepth: 3)]
   

@@ -3,7 +3,7 @@
 
   
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
 
@@ -74,7 +74,7 @@
 
   
   <ItemGroup>
-    <None Include="..\Abstractions\bin\$(Configuration)\netstandard2.0\Abstractions.dll" Pack="true" PackagePath="lib/net9.0/" Condition="Exists('..\Abstractions\bin\$(Configuration)\netstandard2.0\Abstractions.dll')" />
+    <None Include="..\Abstractions\bin\$(Configuration)\netstandard2.0\Abstractions.dll" Pack="true" PackagePath="lib/net10.0/" Condition="Exists('..\Abstractions\bin\$(Configuration)\netstandard2.0\Abstractions.dll')" />
   </ItemGroup>
 
   
