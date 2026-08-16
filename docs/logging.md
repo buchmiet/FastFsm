@@ -6,11 +6,11 @@ Install the logging package:
 dotnet add package FastFsm.Net.Logging
 ```
 
-The package sets `FsmGenerateLogging=true` and defines `FSM_LOGGING_ENABLED` so generated machines accept an optional `ILogger<TMachine>` constructor parameter and emit structured lifecycle events.
+The package sets `FsmGenerateLogging=true` and defines `FSM_LOGGING_ENABLED`. Generated machines then include the logging-specific constructor parameter and lifecycle logging code.
 
-## Enable in your project
+## Project-reference configuration
 
-When consuming via project reference (this repository), set in your `.csproj`:
+When using project references inside this repository, enable logging generation with:
 
 ```xml
 <PropertyGroup>
@@ -18,7 +18,7 @@ When consuming via project reference (this repository), set in your `.csproj`:
 </PropertyGroup>
 ```
 
-The `FastFsm.Net.Logging` package props do this automatically for package consumers.
+The `FastFsm.Net.Logging` package props set this property for package consumers.
 
 ## Constructor injection
 
@@ -31,26 +31,26 @@ door.Fire(DoorTrigger.Open);
 
 ## Event categories
 
-Generated machines log transition lifecycle events when the logger is enabled, including:
+Generated logging includes events for:
 
-- Machine started / stopped
-- Transition started / succeeded / failed
-- Guard evaluation
-- OnEntry / OnExit / action execution
-- Unhandled triggers
-- HSM-specific events (composite entry, history restore, hierarchical transition summary) when hierarchy is enabled
+- machine start and stop
+- transition start, success, and failure
+- guard evaluation
+- `OnEntry`, `OnExit`, and action execution
+- unhandled triggers
+- hierarchy-specific processing when HSM support is enabled
 
-Exact event IDs and templates are defined in the logging source generator (`Generator.Logger`).
+Event IDs and templates are defined by the logging source generator in `Generator.Logger`.
 
 ## Extensions and logging
 
-Extension exceptions are logged via `ExtensionRunner` when `FSM_LOGGING_ENABLED` is active. Extension hooks themselves remain in your `IStateMachineExtension` implementations.
+When `FSM_LOGGING_ENABLED` is active, exceptions caught while invoking extension hooks can be reported through the generated logging path. Extension behavior is defined by `IStateMachineExtension` implementations.
 
 ## Tests
 
-`FastFsm.Logging.Tests` contains integration tests and the Legacy ↔ Fluent parity matrix (`DualApiMatrixTests`).
+`FastFsm.Logging.Tests` contains logging integration tests and the Attribute/Fluent parity matrix (`DualApiMatrixTests`).
 
 ## Related
 
-- [extensions.md](extensions.md) — extension hooks (orthogonal to `ILogger`)
+- [extensions.md](extensions.md) — extension hooks
 - [getting-started.md](getting-started.md) — package installation
