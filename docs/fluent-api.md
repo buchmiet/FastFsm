@@ -93,13 +93,14 @@ public partial class HsmExample
 {
     private void Configure() => FSM
         .State(HState.Composite)
-            .Parent(HState.Root)           // substate relationship
-            .IsInitial()                   // default child when entering parent
             .WithHistory(HistoryMode.Shallow)
-        .State(HState.Leaf)
+        .State(HState.ChildA)
             .Parent(HState.Composite)
-        .State(HState.Root)
-            .On(HTrigger.Next).GoTo(HState.Composite);
+            .IsInitial()
+        .State(HState.ChildB)
+            .Parent(HState.Composite)
+        .State(HState.Composite)
+            .On(HTrigger.Next).GoTo(HState.ChildB);
 }
 ```
 

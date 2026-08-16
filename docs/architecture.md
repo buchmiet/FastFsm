@@ -75,14 +75,10 @@ Analyzers are packed under `analyzers/dotnet/cs` in the NuGet package.
 
 Repository recovery and branch notes: [maintenance/repository-archeology-2026-08.md](maintenance/repository-archeology-2026-08.md).
 
-Historical architecture drafts: [archive/architecture/](archive/architecture/).
+## Current product (0.9)
 
-## What changed since 0.7 / 0.8
-
-- Single unified generator path (see [archive/specs/0.8-generator-refactor.md](archive/specs/0.8-generator-refactor.md))
+- Single unified generator for Fluent and attribute APIs
 - Fluent DSL is a first-class configuration style alongside attributes
-- DI and logging are **separate packages**, not monolithic core
-- Diagnostic IDs reorganized into FSM01xx / FSM11xx / FSM20xx / FSM30xx ranges
-- `OnTransitioned` extension hook restored in 0.9 recovery line
-
-Features **not** in 0.9: deferred events ([archive/proposals/deferred-events.md](archive/proposals/deferred-events.md)), StringEnum payloads ([archive/proposals/string-enum.md](archive/proposals/string-enum.md)).
+- DI and logging are separate NuGet packages
+- Diagnostic IDs use FSM01xx / FSM11xx / FSM20xx / FSM30xx ranges
+- `OnTransitioned` extension hook is part of `IStateMachineExtension`

@@ -77,8 +77,6 @@ Prefer attributes? See [docs/attribute-api.md](docs/attribute-api.md).
 | Architecture (contributors) | [docs/architecture.md](docs/architecture.md) |
 | Benchmarks | [docs/benchmarks.md](docs/benchmarks.md) |
 
-Historical specs and proposals live under [docs/archive/](docs/archive/).
-
 ## Packages
 
 | Package | Purpose |
@@ -109,4 +107,4 @@ See [docs/architecture.md](docs/architecture.md) for generator layout.
 
 ## License
 
-MIT — see `PackageLicenseExpression` in `FastFsm/FastFsm.csproj` and the GitHub repository license metadata.
+MIT — see [LICENSE](LICENSE).

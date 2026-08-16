@@ -96,7 +96,3 @@ dotnet test FastFsm.Tests/FastFsm.Tests.csproj
 - [Attribute API](attribute-api.md)
 - [Hierarchical state machines](hsm.md)
 - [Diagnostics](diagnostics.md)
-
-## Historical install guide
-
-The former root-level `installation.md` (0.6.9.13 / .NET 9 mixed content) has been retired. Use this document and the [README](../README.md) instead.
