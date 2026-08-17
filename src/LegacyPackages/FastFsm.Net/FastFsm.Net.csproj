@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Legacy NuGet ID: forwards to FastFsm.Sharp. See docs/architecture.md#public-api-compatibility-091 -->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <PackageOutputPath>../../../nuget</PackageOutputPath>
+
+    <PackageId>FastFsm.Net</PackageId>
+    <Title>FastFsm.Net (legacy metapackage)</Title>
+    <Description>Legacy package ID. Depends on FastFsm.Sharp, which contains the runtime, Abstractions, and Roslyn analyzers. New projects should reference FastFsm.Sharp directly.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FastFsm.Sharp" Version="$(FastFsmPackageVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

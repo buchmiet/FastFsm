@@ -2,19 +2,32 @@
 # Work directory is under TEMP so repo Directory.Build.props does not apply.
 $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent $PSScriptRoot
-$version = "0.9.0"
+$version = "0.9.1"
 $feed = Join-Path $repo "nuget"
 
 Write-Host "Packing product projects -> $feed"
 foreach ($proj in @(
-    "FastFsm\FastFsm.csproj",
-    "FastFsm.Logging\FastFsm.Logging.csproj",
-    "FastFsm.DependencyInjection\FastFsm.DependencyInjection.csproj")) {
+    "src/Fsm/Fsm.Core/Fsm.Core.csproj",
+    "src/Fsm/Fsm.Logging/Fsm.Logging.csproj",
+    "src/Fsm/Fsm.DependencyInjection/Fsm.DependencyInjection.csproj")) {
     dotnet pack (Join-Path $repo $proj) -c Release
     if ($LASTEXITCODE -ne 0) { throw "dotnet pack failed: $proj" }
 }
 
+Write-Host "Packing legacy metapackages (FastFsm.Net* -> FastFsm.*.Sharp) -> $feed"
+foreach ($proj in @(
+    "src/LegacyPackages/FastFsm.Net/FastFsm.Net.csproj",
+    "src/LegacyPackages/FastFsm.Net.Logging/FastFsm.Net.Logging.csproj",
+    "src/LegacyPackages/FastFsm.Net.DependencyInjection/FastFsm.Net.DependencyInjection.csproj")) {
+    dotnet pack (Join-Path $repo $proj) -c Release `
+        -p:RestoreSources="$feed;https://api.nuget.org/v3/index.json"
+    if ($LASTEXITCODE -ne 0) { throw "dotnet pack failed: $proj" }
+}
+
 foreach ($name in @(
+    "FastFsm.Sharp.$version.nupkg",
+    "FastFsm.Logging.Sharp.$version.nupkg",
+    "FastFsm.DependencyInjection.Sharp.$version.nupkg",
     "FastFsm.Net.$version.nupkg",
     "FastFsm.Net.Logging.$version.nupkg",
     "FastFsm.Net.DependencyInjection.$version.nupkg")) {
@@ -59,12 +72,12 @@ function Assert-NupkgDependsOn {
     Write-Host "OK deps $($Ids -join ', ') in $(Split-Path $Nupkg -Leaf)"
 }
 
-Assert-NupkgDependsOn (Join-Path $feed "FastFsm.Net.Logging.$version.nupkg") @(
-    "FastFsm.Net", "Microsoft.Extensions.Logging.Abstractions")
-Assert-NupkgDependsOn (Join-Path $feed "FastFsm.Net.DependencyInjection.$version.nupkg") @(
-    "FastFsm.Net", "Microsoft.Extensions.DependencyInjection", "Microsoft.Extensions.Logging.Abstractions")
+Assert-NupkgDependsOn (Join-Path $feed "FastFsm.Logging.Sharp.$version.nupkg") @(
+    "FastFsm.Sharp", "Microsoft.Extensions.Logging.Abstractions")
+Assert-NupkgDependsOn (Join-Path $feed "FastFsm.DependencyInjection.Sharp.$version.nupkg") @(
+    "FastFsm.Sharp", "Microsoft.Extensions.DependencyInjection", "Microsoft.Extensions.Logging.Abstractions")
 
-$coreNupkg = Join-Path $feed "FastFsm.Net.$version.nupkg"
+$coreNupkg = Join-Path $feed "FastFsm.Sharp.$version.nupkg"
 $dllTmp = Join-Path ([IO.Path]::GetTempPath()) ("FastFsm-asmcheck-" + [guid]::NewGuid().ToString("n") + ".dll")
 $z = [IO.Compression.ZipFile]::OpenRead((Resolve-Path $coreNupkg))
 try {
@@ -76,14 +89,14 @@ try {
 finally { $z.Dispose() }
 $asmVersion = [Reflection.AssemblyName]::GetAssemblyName($dllTmp).Version
 Remove-Item $dllTmp -Force
-if ($asmVersion -ne [Version]"0.9.0.0") {
-    throw "FastFsm.dll AssemblyVersion is $asmVersion, expected 0.9.0.0"
+if ($asmVersion -ne [Version]"0.9.1.0") {
+    throw "FastFsm.dll AssemblyVersion is $asmVersion, expected 0.9.1.0"
 }
 Write-Host "OK FastFsm.dll AssemblyVersion $asmVersion"
 
 
 $nugetRoot = if ($env:NUGET_PACKAGES) { $env:NUGET_PACKAGES } else { Join-Path $env:USERPROFILE ".nuget\packages" }
-foreach ($id in @("fastfsm.net", "fastfsm.net.logging", "fastfsm.net.dependencyinjection")) {
+foreach ($id in @("fastfsm.sharp", "fastfsm.logging.sharp", "fastfsm.dependencyinjection.sharp")) {
     $cached = Join-Path $nugetRoot $id
     if (Test-Path $cached) { Remove-Item -Recurse -Force $cached }
 }
@@ -134,7 +147,7 @@ try {
         }
     }
 
-    Invoke-Smoke "core" @("FastFsm.Net") @'
+    Invoke-Smoke "core" @("FastFsm.Sharp") @'
 using Abstractions.Attributes;
 
 public enum S { Off, On }
@@ -162,7 +175,7 @@ static class App
 }
 '@
 
-    Invoke-Smoke "logging" @("FastFsm.Net.Logging") @'
+    Invoke-Smoke "logging" @("FastFsm.Logging.Sharp") @'
 using Abstractions.Attributes;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -191,7 +204,35 @@ static class App
 }
 '@
 
-    Invoke-Smoke "di" @("FastFsm.Net.DependencyInjection") @'
+    Invoke-Smoke "legacy-core" @("FastFsm.Net") @'
+using Abstractions.Attributes;
+
+public enum S { Off, On }
+public enum T { Toggle }
+
+[StateMachine(typeof(S), typeof(T))]
+public partial class Light
+{
+    [Transition(S.Off, T.Toggle, S.On)]
+    [Transition(S.On, T.Toggle, S.Off)]
+    private void Configure() { }
+}
+
+static class App
+{
+    public static int Run()
+    {
+        var m = new Light(S.Off);
+        m.Start();
+        if (!m.TryFire(T.Toggle) || m.CurrentState != S.On)
+            throw new System.Exception("legacy-core transition failed");
+        System.Console.WriteLine("legacy-core-ok");
+        return 0;
+    }
+}
+'@
+
+    Invoke-Smoke "di" @("FastFsm.DependencyInjection.Sharp") @'
 using Abstractions.Attributes;
 using FastFsm.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;

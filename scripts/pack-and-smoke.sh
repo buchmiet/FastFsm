@@ -4,17 +4,28 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-VERSION="0.9.0"
+VERSION="0.9.1"
 FEED="$REPO/nuget"
 
 echo "Packing product projects -> $FEED"
 # Pack only the three nupkgs. Do not pass GeneratePackageOnBuild=true on the
 # solution — that overrides Generator.csproj and trips a Pack cycle on SDK 10.
-dotnet pack "$REPO/FastFsm/FastFsm.csproj" -c Release
-dotnet pack "$REPO/FastFsm.Logging/FastFsm.Logging.csproj" -c Release
-dotnet pack "$REPO/FastFsm.DependencyInjection/FastFsm.DependencyInjection.csproj" -c Release
+dotnet pack "$REPO/src/Fsm/Fsm.Core/Fsm.Core.csproj" -c Release
+dotnet pack "$REPO/src/Fsm/Fsm.Logging/Fsm.Logging.csproj" -c Release
+dotnet pack "$REPO/src/Fsm/Fsm.DependencyInjection/Fsm.DependencyInjection.csproj" -c Release
+
+echo "Packing legacy metapackages (FastFsm.Net* -> FastFsm.*.Sharp) -> $FEED"
+dotnet pack "$REPO/src/LegacyPackages/FastFsm.Net/FastFsm.Net.csproj" -c Release \
+  -p:RestoreSources="$FEED;https://api.nuget.org/v3/index.json"
+dotnet pack "$REPO/src/LegacyPackages/FastFsm.Net.Logging/FastFsm.Net.Logging.csproj" -c Release \
+  -p:RestoreSources="$FEED;https://api.nuget.org/v3/index.json"
+dotnet pack "$REPO/src/LegacyPackages/FastFsm.Net.DependencyInjection/FastFsm.Net.DependencyInjection.csproj" -c Release \
+  -p:RestoreSources="$FEED;https://api.nuget.org/v3/index.json"
 
 for pkg in \
+  "FastFsm.Sharp.$VERSION.nupkg" \
+  "FastFsm.Logging.Sharp.$VERSION.nupkg" \
+  "FastFsm.DependencyInjection.Sharp.$VERSION.nupkg" \
   "FastFsm.Net.$VERSION.nupkg" \
   "FastFsm.Net.Logging.$VERSION.nupkg" \
   "FastFsm.Net.DependencyInjection.$VERSION.nupkg"
@@ -49,24 +60,24 @@ def require(nupkg, ids):
         raise SystemExit(f"{nupkg.name} must not depend on Abstractions")
     print(f"OK deps {', '.join(ids)} in {nupkg.name}")
 
-require(feed / f"FastFsm.Net.Logging.{version}.nupkg",
-        ["FastFsm.Net", "Microsoft.Extensions.Logging.Abstractions"])
-require(feed / f"FastFsm.Net.DependencyInjection.{version}.nupkg",
-        ["FastFsm.Net", "Microsoft.Extensions.DependencyInjection",
+require(feed / f"FastFsm.Logging.Sharp.{version}.nupkg",
+        ["FastFsm.Sharp", "Microsoft.Extensions.Logging.Abstractions"])
+require(feed / f"FastFsm.DependencyInjection.Sharp.{version}.nupkg",
+        ["FastFsm.Sharp", "Microsoft.Extensions.DependencyInjection",
          "Microsoft.Extensions.Logging.Abstractions"])
 
-core = feed / f"FastFsm.Net.{version}.nupkg"
+core = feed / f"FastFsm.Sharp.{version}.nupkg"
 with zipfile.ZipFile(core) as z:
     data = z.read("lib/net10.0/FastFsm.dll")
-if b"1.0.0.0" in data and b"0.9.0" not in data and "0.9.0".encode("utf-16le") not in data:
+if b"1.0.0.0" in data and b"0.9.1" not in data and "0.9.1".encode("utf-16le") not in data:
     raise SystemExit("FastFsm.dll still looks like 1.0.0.0")
-if b"0.9.0" not in data and "0.9.0".encode("utf-16le") not in data:
-    raise SystemExit("FastFsm.dll does not contain 0.9.0")
-print("OK FastFsm.dll embeds 0.9.0")
+if b"0.9.1" not in data and "0.9.1".encode("utf-16le") not in data:
+    raise SystemExit("FastFsm.dll does not contain 0.9.1")
+print("OK FastFsm.dll embeds 0.9.1")
 PY
 
 NUGET_ROOT="${NUGET_PACKAGES:-$HOME/.nuget/packages}"
-rm -rf "$NUGET_ROOT/fastfsm.net" "$NUGET_ROOT/fastfsm.net.logging" "$NUGET_ROOT/fastfsm.net.dependencyinjection"
+rm -rf "$NUGET_ROOT/fastfsm.sharp" "$NUGET_ROOT/fastfsm.logging.sharp" "$NUGET_ROOT/fastfsm.dependencyinjection.sharp"
 
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/fastfsm-smoke.XXXXXX")"
 cleanup() { rm -rf "$WORK"; }
@@ -191,8 +202,9 @@ static class App
     }
 }'
 
-write_and_run core "$CORE_PROG" FastFsm.Net
-write_and_run logging "$LOG_PROG" FastFsm.Net.Logging
-write_and_run di "$DI_PROG" FastFsm.Net.DependencyInjection
+write_and_run core "$CORE_PROG" FastFsm.Sharp
+write_and_run logging "$LOG_PROG" FastFsm.Logging.Sharp
+write_and_run legacy-core "$CORE_PROG" FastFsm.Net
+write_and_run di "$DI_PROG" FastFsm.DependencyInjection.Sharp
 
 echo "All consumer smokes passed."

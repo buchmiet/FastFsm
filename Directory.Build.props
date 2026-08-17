@@ -2,7 +2,7 @@
   <PropertyGroup>
     <UsePackages>false</UsePackages>
     <FastFsmTargetFramework>net10.0</FastFsmTargetFramework>
-    <FastFsmPackageVersion>0.9.0</FastFsmPackageVersion>
+    <FastFsmPackageVersion>0.9.1</FastFsmPackageVersion>
     <!-- Set before compile so nupkg Version and assembly File/InformationalVersion match. -->
     <Version>$(FastFsmPackageVersion)</Version>
     <Authors>Lukasz Buchmiet</Authors>
@@ -17,7 +17,7 @@
     <FsmGenerateDI      Condition="'$(FsmGenerateDI)' == ''">false</FsmGenerateDI>
   </PropertyGroup>
 
-  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
     <NoWarn>$(NoWarn);FSM0400</NoWarn>
   </PropertyGroup>
   
