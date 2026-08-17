@@ -1,9 +1,9 @@
-# 1. Usuń stare bin/obj (składnia dla PS, nie CMD)
-Remove-Item -Recurse -Force .\bin, .\obj
+# Packaged-mode benchmarks (consumer-like): requires FastFsm.Sharp in ./nuget.
+# CI and solution builds use the default UsePackages=false (project references).
 
-# 2. Przywróć pakiety DLA PROJEKTU benchmarków (upewnij się, że nazwa jest dobra)
-dotnet restore .\Benchmark.csproj
+Remove-Item -Recurse -Force .\bin, .\obj -ErrorAction SilentlyContinue
 
-# 3. Uruchom benchmarki dla net10.0 
-dotnet run -c Release -f net10.0 --project .\Benchmark.csproj
+dotnet pack ..\Fsm\Fsm.Core\Fsm.Core.csproj -c Release
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+dotnet run -c Release -f net10.0 -p:UsePackages=true --project .\Benchmark.csproj

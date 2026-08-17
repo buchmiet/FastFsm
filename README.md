@@ -4,7 +4,7 @@ Source-generated finite and hierarchical state machines for .NET 10.
 
 FastFsm generates `switch`-based state-machine code at build time. Machines can be configured with either the **Fluent API** or the **Attribute API**. The generator validates transitions, guards, callbacks, and hierarchy during compilation.
 
-**Repository package version:** `0.9.1` (defined in `Directory.Build.props`). See [CHANGELOG.md](CHANGELOG.md). NuGet still has `0.9.0` under the `FastFsm.Net*` package IDs; `0.9.1` will ship as `FastFsm.Sharp*` when published.
+**Repository package version:** `0.9.0` (defined in `Directory.Build.props`). See [CHANGELOG.md](CHANGELOG.md). The last published line on NuGet.org is **FastFsm.Net 0.6.9.x**; **0.9.0** (canonical `FastFsm.Sharp*` package IDs) is not on NuGet yet.
 
 ## Install
 
@@ -109,7 +109,7 @@ bool ok = door.TryFire(DoorTrigger.Close); // returns false when no valid transi
 | `FastFsm.Sharp.Logging` | `ILogger` integration for generated machines |
 | `FastFsm.Sharp.DependencyInjection` | `Microsoft.Extensions.DependencyInjection` registration helpers |
 
-**Migrating from 0.9.0:** new projects use `FastFsm.Sharp*`. Existing `FastFsm.Net*` references can stay — 0.9.1 ships legacy metapackages that forward to `FastFsm.Sharp*` (see [CHANGELOG.md](CHANGELOG.md)). Your machine code (`Abstractions.*`, `FastFsm.*`) stays the same. Details: [docs/architecture.md](docs/architecture.md#public-api-compatibility-091).
+**Migrating from FastFsm.Net 0.6.9.x:** new projects use `FastFsm.Sharp*`. Existing `FastFsm.Net*` references can stay — 0.9.0 ships legacy metapackages that forward to `FastFsm.Sharp*` (see [CHANGELOG.md](CHANGELOG.md)). Your machine code (`Abstractions.*`, `FastFsm.*`) stays the same. Details: [docs/architecture.md](docs/architecture.md#public-api-compatibility-090).
 
 ## Repository layout
 

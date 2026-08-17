@@ -2,13 +2,9 @@
 
 This file records intended areas of work. It is not a release schedule or a compatibility commitment.
 
-## 0.9.1 (in progress)
+## 0.9.0 (in progress)
 
-Repository package version is `0.9.1`. Rebrands NuGet package IDs to `FastFsm.Sharp*`. Not yet published to NuGet (`0.9.0` / `FastFsm.Net*` remains the latest release). Further changes may land before publish and tag `v0.9.1`.
-
-## 0.9.0 (released)
-
-Shipped on NuGet as `FastFsm.Net`, `FastFsm.Net.Logging`, and `FastFsm.Net.DependencyInjection`. Tagged `v0.9.0`.
+Repository package version is `0.9.0`. First .NET 10 release with canonical `FastFsm.Sharp*` package IDs and legacy `FastFsm.Net*` metapackages. Not yet published to NuGet — the last published line on NuGet.org is **FastFsm.Net 0.6.9.x**. Git tag `v0.9.0` marks the release gate; NuGet publish is pending.
 
 ## Next feature candidate: deferred events
 

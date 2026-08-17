@@ -4,7 +4,7 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-VERSION="0.9.1"
+VERSION="0.9.0"
 FEED="$REPO/nuget"
 
 echo "Packing product projects -> $FEED"
@@ -69,15 +69,15 @@ require(feed / f"FastFsm.Sharp.DependencyInjection.{version}.nupkg",
 core = feed / f"FastFsm.Sharp.{version}.nupkg"
 with zipfile.ZipFile(core) as z:
     data = z.read("lib/net10.0/FastFsm.dll")
-if b"1.0.0.0" in data and b"0.9.1" not in data and "0.9.1".encode("utf-16le") not in data:
+if b"1.0.0.0" in data and b"0.9.0" not in data and "0.9.0".encode("utf-16le") not in data:
     raise SystemExit("FastFsm.dll still looks like 1.0.0.0")
-if b"0.9.1" not in data and "0.9.1".encode("utf-16le") not in data:
-    raise SystemExit("FastFsm.dll does not contain 0.9.1")
-print("OK FastFsm.dll embeds 0.9.1")
+if b"0.9.0" not in data and "0.9.0".encode("utf-16le") not in data:
+    raise SystemExit("FastFsm.dll does not contain 0.9.0")
+print("OK FastFsm.dll embeds 0.9.0")
 PY
 
 NUGET_ROOT="${NUGET_PACKAGES:-$HOME/.nuget/packages}"
-rm -rf "$NUGET_ROOT/fastfsm.sharp" "$NUGET_ROOT/fastfsm.logging.sharp" "$NUGET_ROOT/fastfsm.dependencyinjection.sharp"
+rm -rf "$NUGET_ROOT/fastfsm.sharp" "$NUGET_ROOT/fastfsm.sharp.logging" "$NUGET_ROOT/fastfsm.sharp.dependencyinjection"
 
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/fastfsm-smoke.XXXXXX")"
 cleanup() { rm -rf "$WORK"; }

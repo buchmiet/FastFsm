@@ -7,12 +7,16 @@ FastFsm includes a BenchmarkDotNet project at `src/Benchmark/`. Verified results
 Prerequisites:
 
 1. .NET 10 SDK (`global.json` pins 10.0.400).
-2. A built `FastFsm.Sharp` package in `./nuget` (the benchmark project uses `UsePackages=true`).
+2. For **packaged-mode** runs (consumer-like): a built `FastFsm.Sharp` package in `./nuget` (see `nuget.config`).
+
+The benchmark project inherits `UsePackages=false` from `Directory.Build.props`, so `dotnet build` / CI use project references like the test projects. Pass `-p:UsePackages=true` only when measuring against a local nupkg.
 
 ```bash
-dotnet build src/Fsm/Fsm.Core/Fsm.Core.csproj -c Release
-dotnet run -c Release --project src/Benchmark/Benchmark.csproj
+dotnet pack src/Fsm/Fsm.Core/Fsm.Core.csproj -c Release
+dotnet run -c Release -p:UsePackages=true --project src/Benchmark/Benchmark.csproj
 ```
+
+Or on Windows: `src/Benchmark/run.ps1` (packs core, then runs with `UsePackages=true`).
 
 On Linux/macOS, `BenchmarkDotNet.Diagnostics.Windows` is excluded automatically.
 
@@ -30,14 +34,14 @@ The benchmark sources include:
 
 Host labels (`win-x64-amd-9600x`, `linux-arm64`, …) describe **CPU architecture and OS only** — never machine names or hostnames. See [benchmarks/results/README.md](benchmarks/results/README.md).
 
-### `win-x64-intel-14600k` + `wsl-x64-intel-14600k` (2026-08-17, `FastFsm.Sharp` 0.9.1)
+### `win-x64-intel-14600k` + `wsl-x64-intel-14600k` (2026-08-17, `FastFsm.Sharp` 0.9.0)
 
 Intel Core i5-14600K, measured at commit `b6ed370` on **native Windows** and **WSL2** for a dual-OS view.
 
 | Snapshot | OS | Package | Wall time |
 |----------|----|---------|-----------|
-| [win-x64-intel-14600k-2026-08-17.md](benchmarks/results/win-x64-intel-14600k-2026-08-17.md) | Windows 11 | 0.9.1 | ~8 min |
-| [wsl-x64-intel-14600k-2026-08-17.md](benchmarks/results/wsl-x64-intel-14600k-2026-08-17.md) | WSL2 Ubuntu 24.04 | 0.9.1 | ~7.5 min |
+| [win-x64-intel-14600k-2026-08-17.md](benchmarks/results/win-x64-intel-14600k-2026-08-17.md) | Windows 11 | 0.9.0 | ~8 min |
+| [wsl-x64-intel-14600k-2026-08-17.md](benchmarks/results/wsl-x64-intel-14600k-2026-08-17.md) | WSL2 Ubuntu 24.04 | 0.9.0 | ~7.5 min |
 
 **Flat FSM (selected, Mean):**
 
@@ -60,7 +64,7 @@ Intel Core i5-14600K, measured at commit `b6ed370` on **native Windows** and **W
 
 - Generated FastFsm sync paths stay **sub-2 ns** on every x64 host; differences between Windows and WSL on the same CPU are noise-level for `FastFsm_Basic` / `CanFire`.
 - Third-party libraries (Stateless, Appccelerate) show **much larger WSL vs Windows gaps** on the i5-14600K pair (e.g. `Stateless_Basic` 293 ns → 445 ns), consistent with WSL2 + DrvFS overhead and different reported core topology.
-- `win-x64-amd-9600x` remains the reference **0.9.0 release-gate** snapshot; the Intel/WSL pair uses **0.9.1** with the same benchmark harness and comparison package versions — runtime performance is expected to match (rebrand-only delta).
+- `win-x64-amd-9600x` remains the reference **0.9.0 release-gate** snapshot at commit `93ab811`; the Intel/WSL pair at `b6ed370` uses the same benchmark harness and comparison package versions — runtime performance is expected to match.
 
 ### `win-x64-amd-9600x` (2026-08-17, `v0.9.0` release gate)
 

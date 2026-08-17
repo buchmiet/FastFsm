@@ -8,8 +8,8 @@
       <_FastFsmNuGetPackagesRoot Condition="'$(_FastFsmNuGetPackagesRoot)' == '' and '$(USERPROFILE)' != ''">$(USERPROFILE)/.nuget/packages</_FastFsmNuGetPackagesRoot>
       <_FastFsmNuGetPackagesRoot Condition="'$(_FastFsmNuGetPackagesRoot)' == '' and '$(HOME)' != ''">$(HOME)/.nuget/packages</_FastFsmNuGetPackagesRoot>
       <FastFsmPackageCacheFolder>$(_FastFsmNuGetPackagesRoot)/fastfsm.sharp</FastFsmPackageCacheFolder>
-      <FastFsmLoggingPackageCacheFolder>$(_FastFsmNuGetPackagesRoot)/fastfsm.logging.sharp</FastFsmLoggingPackageCacheFolder>
-      <FastFsmDependencyInjectionPackageCacheFolder>$(_FastFsmNuGetPackagesRoot)/fastfsm.dependencyinjection.sharp</FastFsmDependencyInjectionPackageCacheFolder>
+      <FastFsmLoggingPackageCacheFolder>$(_FastFsmNuGetPackagesRoot)/fastfsm.sharp.logging</FastFsmLoggingPackageCacheFolder>
+      <FastFsmDependencyInjectionPackageCacheFolder>$(_FastFsmNuGetPackagesRoot)/fastfsm.sharp.dependencyinjection</FastFsmDependencyInjectionPackageCacheFolder>
     </PropertyGroup>
     <Message Text="Purging local FastFsm package cache folders under $(_FastFsmNuGetPackagesRoot)..." Importance="High" />
     <RemoveDir Directories="$(FastFsmPackageCacheFolder)" Condition="Exists('$(FastFsmPackageCacheFolder)')" />

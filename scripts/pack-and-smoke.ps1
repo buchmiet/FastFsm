@@ -2,7 +2,7 @@
 # Work directory is under TEMP so repo Directory.Build.props does not apply.
 $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent $PSScriptRoot
-$version = "0.9.1"
+$version = "0.9.0"
 $feed = Join-Path $repo "nuget"
 
 Write-Host "Packing product projects -> $feed"
@@ -89,14 +89,14 @@ try {
 finally { $z.Dispose() }
 $asmVersion = [Reflection.AssemblyName]::GetAssemblyName($dllTmp).Version
 Remove-Item $dllTmp -Force
-if ($asmVersion -ne [Version]"0.9.1.0") {
-    throw "FastFsm.dll AssemblyVersion is $asmVersion, expected 0.9.1.0"
+if ($asmVersion -ne [Version]"0.9.0.0") {
+    throw "FastFsm.dll AssemblyVersion is $asmVersion, expected 0.9.0.0"
 }
 Write-Host "OK FastFsm.dll AssemblyVersion $asmVersion"
 
 
 $nugetRoot = if ($env:NUGET_PACKAGES) { $env:NUGET_PACKAGES } else { Join-Path $env:USERPROFILE ".nuget\packages" }
-foreach ($id in @("fastfsm.sharp", "fastfsm.logging.sharp", "fastfsm.dependencyinjection.sharp")) {
+foreach ($id in @("fastfsm.sharp", "fastfsm.sharp.logging", "fastfsm.sharp.dependencyinjection")) {
     $cached = Join-Path $nugetRoot $id
     if (Test-Path $cached) { Remove-Item -Recurse -Force $cached }
 }

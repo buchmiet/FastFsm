@@ -54,17 +54,17 @@ Both configuration APIs converge on the same internal model before emission.
 ## Packages and build
 
 - Target framework: `net10.0` (`Directory.Build.props`)
-- Repository package version: `FastFsmPackageVersion` (`0.9.1`)
+- Repository package version: `FastFsmPackageVersion` (`0.9.0`)
 - `UsePackages=false` — repository projects use project references and analyzer wiring from `eng/FastFsmReferences.props` / `Directory.Build.targets`
 - `UsePackages=true` — package references resolve the configured FastFsm package version from the configured NuGet sources
 
-NuGet still lists `0.9.0` under `FastFsm.Net*`. Repository `0.9.1` ships as `FastFsm.Sharp*` when published.
+The last published line on NuGet.org is **FastFsm.Net 0.6.9.x**. Repository **0.9.0** ships as `FastFsm.Sharp*` (and legacy `FastFsm.Net*` metapackages) when published.
 
 Analyzers are packed under `analyzers/dotnet/cs` in the NuGet package.
 
-## Public API compatibility (0.9.1)
+## Public API compatibility (0.9.0)
 
-0.9.1 rebrands **NuGet marketing IDs** and **repository layout**, but keeps the **consumer C# and binary surface** aligned with 0.9.0.
+0.9.0 rebrands **NuGet marketing IDs** and **repository layout** for the .NET 10 product line, but keeps the **consumer C# and binary surface** aligned with pre-rebrand development snapshots.
 
 ### Naming model (idiomatic split)
 
@@ -97,14 +97,14 @@ Repository-only renames (`Fsm.Core.csproj`, folder `src/Fsm/…`, test namespace
 | Change | Migration |
 |--------|-----------|
 | Canonical package IDs are now `FastFsm.Sharp*` | New projects: `dotnet add package FastFsm.Sharp` (etc.) |
-| Old IDs `FastFsm.Net*` | **Optional:** keep `<PackageReference Include="FastFsm.Net" />` — 0.9.1+ ships **legacy metapackages** under `src/LegacyPackages/` that depend on the `FastFsm.Sharp*` packages with no duplicate binaries |
+| Old IDs `FastFsm.Net*` | **Optional:** keep `<PackageReference Include="FastFsm.Net" />` — 0.9.0 ships **legacy metapackages** under `src/LegacyPackages/` that depend on the `FastFsm.Sharp*` packages with no duplicate binaries |
 | Props paths in `.csproj` if you referenced them manually | `FastFsm.Net.props` → `FastFsm.Sharp.props`, etc. |
 
-On NuGet.org, deprecate `FastFsm.Net*` 0.9.0 listings with alternative package `FastFsm.Sharp*` when you publish 0.9.1 (manual step in package management UI).
+On NuGet.org, deprecate `FastFsm.Net*` 0.6.9.x listings with alternative package `FastFsm.Sharp*` when you publish 0.9.0 (manual step in package management UI).
 
 Typical consumer code (`[StateMachine]`, `FSM.State(…)`, `Fire`/`TryFire`, `AddStateMachine<…>`) needs **no edits** whether you migrate references or keep legacy metapackage IDs. `scripts/pack-and-smoke.ps1` verifies both paths.
 
-### What we intentionally did *not* rename in 0.9.1
+### What we intentionally did *not* rename in 0.9.0
 
 - Product **namespaces** (`FastFsm.*`, `Abstractions.*`, `Generator.*`) — a mass rename would break every consumer and every generated partial.
 - **Analyzer assembly names** — generator pipeline and packed nupkg layout depend on stable DLL names.
