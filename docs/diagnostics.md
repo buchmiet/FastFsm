@@ -1,6 +1,6 @@
 # Diagnostics
 
-FastFsm reports compile-time diagnostics from the Roslyn source generator. Rule IDs are defined in `Generator.Rules/Definitions/RuleIdentifiers.cs` and described in `Generator.Rules/Definitions/RuleDefinition.cs` (`DefinedRules`).
+FastFsm reports compile-time diagnostics from the Roslyn source generator. Rule IDs are defined in `src/Generator/Generator.Rules/Definitions/RuleIdentifiers.cs` and described in `src/Generator/Generator.Rules/Definitions/RuleDefinition.cs` (`DefinedRules`).
 
 **This document is the 0.9.x diagnostic catalog.** Legacy IDs such as FSM001 or FSM100 appear only in code comments mapping to the new scheme.
 
@@ -86,9 +86,9 @@ The following are **not** part of the 0.9 catalog:
 
 When this document and the generator disagree, trust:
 
-1. `Generator.Rules/Definitions/RuleIdentifiers.cs`
-2. `Generator.Rules/Definitions/RuleDefinition.cs` → `DefinedRules.All`
-3. `Generator.Rules/Definitions/RuleCatalog.cs`
+1. `src/Generator/Generator.Rules/Definitions/RuleIdentifiers.cs`
+2. `src/Generator/Generator.Rules/Definitions/RuleDefinition.cs` → `DefinedRules.All`
+3. `src/Generator/Generator.Rules/Definitions/RuleCatalog.cs`
 
 ## Suppressing warnings
 

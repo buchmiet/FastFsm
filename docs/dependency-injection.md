@@ -3,7 +3,7 @@
 Install the DI package:
 
 ```bash
-dotnet add package FastFsm.Net.DependencyInjection
+dotnet add package FastFsm.DependencyInjection.Sharp
 ```
 
 The package defines `FSM_DI_ENABLED` and `FSM_LOGGING_ENABLED` and compiles `FsmServiceCollectionExtensions` into the consuming project.
@@ -45,7 +45,7 @@ Registration also exposes `IStateMachineFactory<TInterface, TState, TTrigger>` f
 
 ## Related types
 
-Defined in `FastFsm/DependencyInjection/`:
+Defined in `src/Fsm/Fsm.Core/DependencyInjection/`:
 
 - `FsmServiceCollectionExtensions`
 - `StateMachineFactory<TInterface, TImplementation, TState, TTrigger>`
@@ -53,4 +53,4 @@ Defined in `FastFsm/DependencyInjection/`:
 
 ## Tests
 
-See `FastFsm.DependencyInjection.Tests` for registration and factory coverage.
+See `Tests.DependencyInjection` (`src/Fsm/Fsm.Tests/Tests.DependencyInjection/`) for registration and factory coverage.

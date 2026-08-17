@@ -1,22 +1,22 @@
 # Benchmarks
 
-FastFsm includes a BenchmarkDotNet project at `Benchmark/`. Verified results for the **0.9 / .NET 10** line are recorded below.
+FastFsm includes a BenchmarkDotNet project at `src/Benchmark/`. Verified results for the **0.9 / .NET 10** line are recorded below.
 
 ## Running benchmarks locally
 
 Prerequisites:
 
 1. .NET 10 SDK (`global.json` pins 10.0.400).
-2. A built `FastFsm.Net` package in `./nuget` (the benchmark project uses `UsePackages=true`).
+2. A built `FastFsm.Sharp` package in `./nuget` (the benchmark project uses `UsePackages=true`).
 
 ```bash
-dotnet build FastFsm/FastFsm.csproj -c Release
-dotnet run -c Release --project Benchmark/Benchmark.csproj
+dotnet build src/Fsm/Fsm.Core/Fsm.Core.csproj -c Release
+dotnet run -c Release --project src/Benchmark/Benchmark.csproj
 ```
 
 On Linux/macOS, `BenchmarkDotNet.Diagnostics.Windows` is excluded automatically.
 
-BenchmarkDotNet writes results under `BenchmarkDotNet.Artifacts/results/` (repository root when run from `Benchmark/`).
+BenchmarkDotNet writes results under `BenchmarkDotNet.Artifacts/results/` (under `src/Benchmark/` when run from that project directory).
 
 ## Benchmark coverage
 
@@ -30,7 +30,7 @@ The benchmark sources include:
 
 Measured at commit `93ab811` on the Windows x64 workstation (AMD Ryzen 5 9600X) (Windows 11, AMD Ryzen 5 9600X x64).
 
-**Package:** FastFsm.Net 0.9.0  
+**Package:** FastFsm.Sharp 0.9.0  
 **BenchmarkDotNet:** 0.15.8 — `IterationCount=15`, `WarmupCount=3`, `Runtime=.NET 10.0`  
 **Comparison libraries:** Stateless 5.17.0, LiquidState 8.2.0, Appccelerate.StateMachine 6.0.0
 
@@ -78,10 +78,10 @@ Earlier ARM64 snapshot at `548ea01` (pre-release): [linux-arm64-2026-08-16.md](b
 
 ```bash
 export PATH="$HOME/.dotnet:$PATH"
-export NUGET_PACKAGES="$HOME/source/repos/FastFsm/.packages"
-cd ~/source/repos/FastFsm
-dotnet build Benchmark/Benchmark.csproj -c Release
-dotnet run -c Release --project Benchmark/Benchmark.csproj --no-build
+export NUGET_PACKAGES="$HOME/source/repos/FastFsm.Sharp/.packages"
+cd ~/source/repos/FastFsm.Sharp
+dotnet build src/Benchmark/Benchmark.csproj -c Release
+dotnet run -c Release --project src/Benchmark/Benchmark.csproj --no-build
 ```
 
 ## Publishing benchmark results

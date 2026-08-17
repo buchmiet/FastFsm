@@ -17,7 +17,7 @@ Recorded at recovery start. Do not delete branches based on this snapshot alone.
 
 ## Reconciliation decisions
 
-- **`error_order`**: ported (cherry-picked). Contains Machines.Tests extraction and logging test simplification.
+- **`error_order`**: ported (cherry-picked). Contains extraction of shared machine fixtures (now `src/Fsm/Fsm.Tests/Tests.Machines/`, formerly `Machines.Tests`) and logging test simplification.
 - **`fluentapi` / `fluentapiv2`**: release-number commits only plus early exploratory work reimplemented later.
 - **`develop`**: release-only version stamps (`v0.6.2.27-develop` … `v0.6.2.29-develop`).
 - **`feature/fluent-hsm-parser-v0.7.5`**: `IStateMachineExtension.OnTransitioned<TContext>()` hook and hook-order tests (`Before → GuardEval → GuardEvaluated → Transitioned → After:Success`). Was incorrectly marked as already present on recovery head; restored during PR #8 review fixes.

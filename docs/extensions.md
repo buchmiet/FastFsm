@@ -48,7 +48,7 @@ A failed transition invokes `OnAfterTransition(context, success: false)`. `OnUnh
 
 ## Extension exceptions
 
-`ExtensionRunner` catches exceptions thrown by extension hooks so they do not propagate through the state-machine transition call. When `FastFsm.Net.Logging` is enabled, extension exceptions are logged at Error level.
+`ExtensionRunner` catches exceptions thrown by extension hooks so they do not propagate through the state-machine transition call. When `FastFsm.Logging.Sharp` is enabled, extension exceptions are logged at Error level.
 
 ## Disabling extension support
 
@@ -56,7 +56,7 @@ Set `GenerateExtensibleVersion = false` explicitly to generate the non-extensibl
 
 ## Tests
 
-- `Machines.Tests/Extensions/` — extension implementations used by tests
-- `FastFsm.Tests/Features/Extensions/OnTransitionedTests.*` — `OnTransitioned` ordering tests
+- `src/Fsm/Fsm.Tests/Tests.Machines/Extensions/` — extension implementations used by tests
+- `src/Fsm/Fsm.Tests/Tests.Fsm/Features/Extensions/OnTransitionedTests.*` — `OnTransitioned` ordering tests
 
 For DI registration of extensions, see [dependency-injection.md](dependency-injection.md).

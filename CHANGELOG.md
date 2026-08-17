@@ -5,6 +5,35 @@ All notable changes to FastFsm are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Repository package version is `FastFsmPackageVersion` / `Version` in `Directory.Build.props`.
 
+## [Unreleased]
+
+## [0.9.1] - 2026-08-17
+
+Not yet published to NuGet. NuGet `0.9.0` remains the latest release under the `FastFsm.Net*` package IDs.
+
+### Breaking
+
+- **Canonical** NuGet IDs are `FastFsm.*.Sharp`. New projects should use these IDs.
+- Packed MSBuild props filenames: `FastFsm.Net.props` → `FastFsm.Sharp.props` (and matching Logging/DI props). Only affects projects that import props by path manually.
+
+### Added
+
+- Legacy **metapackages** `FastFsm.Net`, `FastFsm.Net.Logging`, `FastFsm.Net.DependencyInjection` (`src/LegacyPackages/`): same version, dependency-only forward to the matching `.Sharp` package so existing `<PackageReference>` lines keep working without duplicating assemblies or analyzers.
+
+### Changed
+
+- NuGet package IDs rebranded from `FastFsm.Net*` to `FastFsm.*.Sharp` (`FastFsm.Sharp`, `FastFsm.Logging.Sharp`, `FastFsm.DependencyInjection.Sharp`). Build props filenames follow the new package IDs.
+- Source projects moved under `src/` with Leith-style solution folder nodes; runtime projects live under `src/Fsm/`, generator under `src/Generator/`.
+- Core package assembly name restored to `FastFsm` (`lib/net10.0/FastFsm.dll`); generator entry project renamed to `Generator.Core.csproj` with `AssemblyName` `Generator`.
+- Test and product `.csproj` filenames aligned with folder names; `FastFsm.slnx` uses grouped solution folders (`/Fsm/`, `/Fsm/Fsm.Tests/`, `/Generator/`). Test code namespaces unified to `Tests.*` (e.g. `Tests.Fsm`, `Tests.Machines`, `Tests.SourceGenerators`).
+
+### Preserved (consumer API)
+
+- Public C# namespaces unchanged: `Abstractions.*`, `FastFsm.*` (runtime, contracts, DI, exceptions, builder).
+- Core package still ships `lib/net10.0/FastFsm.dll` (`AssemblyName=FastFsm`).
+- Analyzer DLL names unchanged (`Generator.dll`, `Generator.Rules.dll`, …).
+- Attribute/Fluent configuration API, generated machine surface, and diagnostic IDs unchanged vs 0.9.0.
+
 ## [0.9.0] - 2026-08-17
 
 First public-facing 0.9 line on .NET 10. Packages: `FastFsm.Net`, `FastFsm.Net.Logging`, `FastFsm.Net.DependencyInjection`.
@@ -42,4 +71,5 @@ First public-facing 0.9 line on .NET 10. Packages: `FastFsm.Net`, `FastFsm.Net.L
 - Historical scratch trees from the git working set (old tests, multi-language bench experiments, local feed data, `Generator.Tests/old_tests`, tracked BenchmarkDotNet .NET 9 artifacts, local NuGet.config pointing at localhost). A local `archive.zip` may hold a copy; it is not part of the repository.
 - Hardcoded parser debug hooks for `AsyncOceOnEntryMachine` / `ContinueOnActionMachine`.
 
+[0.9.1]: https://github.com/buchmiet/FastFsm/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/buchmiet/FastFsm/releases/tag/v0.9.0

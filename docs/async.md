@@ -57,4 +57,4 @@ await machine.FireAsync(T.Start);
 
 ## Tests
 
-`FastFsm.Async.Tests` contains asynchronous API, extension-ordering, and HSM scenarios for Attribute and Fluent configurations.
+`Tests.Async` (`src/Fsm/Fsm.Tests/Tests.Async/`) contains asynchronous API, extension-ordering, and HSM scenarios for Attribute and Fluent configurations.

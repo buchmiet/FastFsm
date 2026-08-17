@@ -13,14 +13,14 @@ dotnet --version   # 10.0.x
 ```bash
 dotnet new console -n MyFsm -f net10.0
 cd MyFsm
-dotnet add package FastFsm.Net
+dotnet add package FastFsm.Sharp
 ```
 
 Optional packages:
 
 ```bash
-dotnet add package FastFsm.Net.Logging
-dotnet add package FastFsm.Net.DependencyInjection
+dotnet add package FastFsm.Logging.Sharp
+dotnet add package FastFsm.DependencyInjection.Sharp
 ```
 
 ## Minimal Attribute API machine
@@ -100,19 +100,19 @@ Asynchronous machines expose `StartAsync`, `TryFireAsync`, and `FireAsync`. Sync
 
 ## Optional logging
 
-Install `FastFsm.Net.Logging` to enable logging code generation. See [logging.md](logging.md) for the package configuration and generated constructor behavior.
+Install `FastFsm.Logging.Sharp` to enable logging code generation. See [logging.md](logging.md) for the package configuration and generated constructor behavior.
 
 ## Optional dependency injection
 
-Install `FastFsm.Net.DependencyInjection` and register machines with `AddStateMachine<TInterface, TImplementation, TState, TTrigger>`. The package configures the required build properties. See [dependency-injection.md](dependency-injection.md).
+Install `FastFsm.DependencyInjection.Sharp` and register machines with `AddStateMachine<TInterface, TImplementation, TState, TTrigger>`. The package configures the required build properties. See [dependency-injection.md](dependency-injection.md).
 
 ## Building this repository
 
 `Directory.Build.props` sets `UsePackages=false` by default, so repository projects use project references and direct analyzer wiring instead of resolving FastFsm from NuGet.
 
 ```bash
-dotnet build Generator/Generator.csproj
-dotnet test FastFsm.Tests/FastFsm.Tests.csproj
+dotnet build src/Generator/Generator.Core/Generator.Core.csproj
+dotnet test src/Fsm/Fsm.Tests/Tests.Fsm/Tests.Fsm.csproj
 ```
 
 ## Next steps

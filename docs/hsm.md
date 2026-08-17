@@ -63,7 +63,7 @@ When multiple transitions match, use `.Priority(literal)` in Fluent API or resol
 
 ## Active path and introspection
 
-Generated HSM machines track the active leaf state in `CurrentState` while traversing composite entry. Logging integration emits hierarchical transition details when `FastFsm.Net.Logging` is enabled.
+Generated HSM machines track the active leaf state in `CurrentState` while traversing composite entry. Logging integration emits hierarchical transition details when `FastFsm.Logging.Sharp` is enabled.
 
 ## Validation
 
@@ -71,6 +71,6 @@ HSM-specific diagnostics (FSM2000–FSM2040) cover circular hierarchies, orphan 
 
 ## Examples in the repository
 
-- `Machines.Tests/Machines/Legacy/HsmMachine.cs` — attribute HSM
-- `FastFsm.Tests/Hsm/` — compile-time and runtime HSM tests
-- `Benchmark/HsmBenchmarks.cs` — performance harness (see [benchmarks.md](benchmarks.md))
+- `src/Fsm/Fsm.Tests/Tests.Machines/Machines/Legacy/HsmMachine.cs` — attribute HSM
+- `src/Fsm/Fsm.Tests/Tests.Fsm/Hsm/` — compile-time and runtime HSM tests
+- `src/Benchmark/HsmBenchmarks.cs` — performance harness (see [benchmarks.md](benchmarks.md))

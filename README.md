@@ -4,15 +4,15 @@ Source-generated finite and hierarchical state machines for .NET 10.
 
 FastFsm generates `switch`-based state-machine code at build time. Machines can be configured with either the **Fluent API** or the **Attribute API**. The generator validates transitions, guards, callbacks, and hierarchy during compilation.
 
-**Repository package version:** `0.9.0` (defined in `Directory.Build.props`). See [CHANGELOG.md](CHANGELOG.md).
+**Repository package version:** `0.9.1` (defined in `Directory.Build.props`). See [CHANGELOG.md](CHANGELOG.md). NuGet still has `0.9.0` under the `FastFsm.Net*` package IDs; `0.9.1` will ship as `FastFsm.Sharp*` when published.
 
 ## Install
 
 ```bash
-dotnet add package FastFsm.Net
+dotnet add package FastFsm.Sharp
 # optional
-dotnet add package FastFsm.Net.Logging
-dotnet add package FastFsm.Net.DependencyInjection
+dotnet add package FastFsm.Logging.Sharp
+dotnet add package FastFsm.DependencyInjection.Sharp
 ```
 
 Requires **.NET SDK 10.0** (see `global.json`).
@@ -78,8 +78,8 @@ bool ok = door.TryFire(DoorTrigger.Close); // returns false when no valid transi
 - Hierarchical states, shallow and deep history, internal transitions, and transition priority
 - Typed payloads per trigger
 - `IStateMachineExtension` transition hooks
-- Optional logging through `FastFsm.Net.Logging`
-- Optional dependency-injection integration through `FastFsm.Net.DependencyInjection`
+- Optional logging through `FastFsm.Logging.Sharp`
+- Optional dependency-injection integration through `FastFsm.DependencyInjection.Sharp`
 - Generated code paths compatible with trimming and Native AOT
 
 ## Documentation
@@ -105,27 +105,31 @@ bool ok = door.TryFire(DoorTrigger.Close); // returns false when no valid transi
 
 | Package | Purpose |
 |---------|---------|
-| `FastFsm.Net` | Runtime and source generator |
-| `FastFsm.Net.Logging` | `ILogger` integration for generated machines |
-| `FastFsm.Net.DependencyInjection` | `Microsoft.Extensions.DependencyInjection` registration helpers |
+| `FastFsm.Sharp` | Runtime and source generator |
+| `FastFsm.Logging.Sharp` | `ILogger` integration for generated machines |
+| `FastFsm.DependencyInjection.Sharp` | `Microsoft.Extensions.DependencyInjection` registration helpers |
+
+**Migrating from 0.9.0:** new projects use `FastFsm.*.Sharp`. Existing `FastFsm.Net*` references can stay — 0.9.1 ships legacy metapackages that forward to `.Sharp` (see [CHANGELOG.md](CHANGELOG.md)). Your machine code (`Abstractions.*`, `FastFsm.*`) stays the same. Details: [docs/architecture.md](docs/architecture.md#public-api-compatibility-091).
 
 ## Repository layout
 
-- `FastFsm/` — runtime packaged as `FastFsm.Net`
-- `Abstractions/` — attributes and Fluent API definitions
-- `Generator/` — Roslyn source generator
-- `Generator.Rules/` — diagnostic rule definitions (`RuleIdentifiers`, `DefinedRules`)
-- `Machines.Tests/` — shared machine definitions used across test projects
+- `src/Fsm/Fsm.Core/` — runtime packaged as `FastFsm.Sharp`
+- `src/Abstractions/` — attributes and Fluent API definitions
+- `src/Generator/` — Roslyn source generator (`Generator.Core`, `Generator.Model`, `Generator.Rules`, …)
+- `src/Generator/Generator.Rules/` — diagnostic rule definitions (`RuleIdentifiers`, `DefinedRules`)
+- `src/Fsm/Fsm.Tests/Tests.Machines/` — shared machine definitions used by `Tests.Fsm` and `Tests.Logging`
+- `src/Fsm/Fsm.Tests/Tests.*/` — FSM test runners (`Tests.Fsm`, `Tests.Async`, `Tests.Logging`, …)
+- `src/Generator/Generator.Tests/Tests.SourceGenerators/` — generator rule and emission tests
 
 ## Contributing
 
-Build and test from a clean tree. With `UsePackages=false`, test projects use project references rather than a pre-built `0.9.0` package.
+Build and test from a clean tree. With `UsePackages=false`, test projects use project references rather than a pre-built package from `./nuget`.
 
 ```bash
 dotnet test FastFsm.slnx -c Release
 ```
 
-That runs `FastFsm.Tests`, `FastFsm.Async.Tests`, `FastFsm.Logging.Tests`, `FastFsm.DependencyInjection.Tests`, `FastFsm.Instance.Tests`, and `Generator.Tests`. `Machines.Tests` is a shared machine library, not a test runner.
+That runs `Tests.Fsm`, `Tests.Async`, `Tests.Logging`, `Tests.DependencyInjection`, `Tests.Instance`, and `Tests.SourceGenerators`. `Tests.Machines` is a shared machine library, not a test runner.
 
 Pack the three NuGet packages and compile clean consumer consoles against `./nuget`:
 
