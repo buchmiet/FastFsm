@@ -366,7 +366,7 @@ Benchmark.Java/target/
 Benchmark.Rust/target/
 Benchmark.Rust/Cargo.lock
 
-# Ignorowanie folderów i artefaktów Claude AI
+# Local AI assistant artifacts
 .claude/
 .config/
 .lock
