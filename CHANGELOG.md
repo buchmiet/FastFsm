@@ -13,6 +13,7 @@ Repository package version is `FastFsmPackageVersion` / `Version` in `Directory.
 - `pack-and-smoke` covers `net10.0-windows` consumers for Core, Logging, and DI.
 - CI `-warnaserror` no longer fails on intentional `FSM0400` duplicate-transition test fixtures.
 - `FastFsm.Sharp` nuspec always includes `Abstractions.dll` and analyzer satellites on clean builds (pack inputs added after dependency build).
+- Benchmark project no longer pulls vulnerable `Microsoft.NETCore.Jit` 1.0.2 (replaced `LiquidState` 8.2.0 with `LiquidState.Unofficial` 1.0.6 for comparison benchmarks).
 
 ## [0.9.0] - 2026-08-17
 

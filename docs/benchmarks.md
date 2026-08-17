@@ -72,7 +72,7 @@ Measured at commit `93ab811` on Windows 11 x64 (AMD Ryzen 5 9600X).
 
 **Package:** FastFsm.Sharp 0.9.0  
 **BenchmarkDotNet:** 0.15.8 — `IterationCount=15`, `WarmupCount=3`, `Runtime=.NET 10.0`  
-**Comparison libraries:** Stateless 5.17.0, LiquidState 8.2.0, Appccelerate.StateMachine 6.0.0
+**Comparison libraries:** Stateless 5.17.0, LiquidState.Unofficial 1.0.6 (API-compatible fork without legacy `Microsoft.NETCore.Jit` transitives), Appccelerate.StateMachine 6.0.0
 
 Full tables: [docs/benchmarks/results/win-x64-amd-9600x-2026-08-17.md](benchmarks/results/win-x64-amd-9600x-2026-08-17.md)
 
