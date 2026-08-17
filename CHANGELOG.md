@@ -12,6 +12,7 @@ Repository package version is `FastFsmPackageVersion` / `Version` in `Directory.
 - `FastFsm.Sharp.props` adds `Abstractions.dll` for all .NET 10+ TFMs (including `net10.0-windows`), not only `net10.0`.
 - `pack-and-smoke` covers `net10.0-windows` consumers for Core, Logging, and DI.
 - CI `-warnaserror` no longer fails on intentional `FSM0400` duplicate-transition test fixtures.
+- `FastFsm.Sharp` nuspec always includes `Abstractions.dll` and analyzer satellites on clean builds (pack inputs added after dependency build).
 
 ## [0.9.0] - 2026-08-17
 
