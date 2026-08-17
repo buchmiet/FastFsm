@@ -20,6 +20,11 @@
   <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
     <NoWarn>$(NoWarn);FSM0400</NoWarn>
   </PropertyGroup>
+
+  <!-- FSM0400 is Warning; duplicate-transition fixtures are intentional in tests. -->
+  <PropertyGroup>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);FSM0400</WarningsNotAsErrors>
+  </PropertyGroup>
   
   <ItemGroup>
     <CompilerVisibleProperty Include="FsmGenerateLogging" />

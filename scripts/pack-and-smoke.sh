@@ -97,12 +97,28 @@ EOF
 write_and_run() {
   local name="$1"
   local program="$2"
-  shift 2
-  local dir="$WORK/$name/$name"
-  mkdir -p "$WORK/$name"
-  pushd "$WORK/$name" >/dev/null
-  dotnet new console -n "$name" -f net10.0 --force
-  cd "$name"
+  local tfm="${3:-net10.0}"
+  shift 3
+  local dir="$WORK/$name"
+  mkdir -p "$dir"
+  pushd "$dir" >/dev/null
+  if [[ "$tfm" == "net10.0" ]]; then
+    dotnet new console -n "$name" -f net10.0 --force
+    cd "$name"
+  else
+    mkdir -p "$name"
+    cd "$name"
+    cat > "$name.csproj" <<EOF
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>$tfm</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>
+EOF
+  fi
   cp "$WORK/nuget.config" .
   for p in "$@"; do
     dotnet add package "$p" --version "$VERSION"
@@ -114,7 +130,7 @@ write_and_run() {
   out="$(dotnet run -c Release --no-build)"
   echo "$out"
   echo "$out" | grep -q "${name}-ok"
-  echo "SMOKE PASS $name"
+  echo "SMOKE PASS $name ($tfm)"
   popd >/dev/null
 }
 
@@ -202,9 +218,17 @@ static class App
     }
 }'
 
-write_and_run core "$CORE_PROG" FastFsm.Sharp
-write_and_run logging "$LOG_PROG" FastFsm.Sharp.Logging
-write_and_run legacy-core "$CORE_PROG" FastFsm.Net
-write_and_run di "$DI_PROG" FastFsm.Sharp.DependencyInjection
+LEGACY_CORE_PROG="${CORE_PROG/core-ok/legacy-core-ok}"
+write_and_run core "$CORE_PROG" net10.0 FastFsm.Sharp
+write_and_run logging "$LOG_PROG" net10.0 FastFsm.Sharp.Logging
+write_and_run legacy-core "$LEGACY_CORE_PROG" net10.0 FastFsm.Net
+write_and_run di "$DI_PROG" net10.0 FastFsm.Sharp.DependencyInjection
+
+CORE_WIN_PROG="${CORE_PROG/core-ok/core-win-ok}"
+LOG_WIN_PROG="${LOG_PROG/logging-ok/logging-win-ok}"
+DI_WIN_PROG="${DI_PROG/di-ok/di-win-ok}"
+write_and_run core-win "$CORE_WIN_PROG" net10.0-windows FastFsm.Sharp
+write_and_run logging-win "$LOG_WIN_PROG" net10.0-windows FastFsm.Sharp.Logging
+write_and_run di-win "$DI_WIN_PROG" net10.0-windows FastFsm.Sharp.DependencyInjection
 
 echo "All consumer smokes passed."
