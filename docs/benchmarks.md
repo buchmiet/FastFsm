@@ -26,7 +26,9 @@ The benchmark sources include:
 - hierarchical-state-machine scenarios (`HsmBenchmarks`)
 - comparisons with Stateless, LiquidState, and Appccelerate as referenced by `Benchmark.csproj`
 
-## Verified results (2026-08-16)
+## Verified results (2026-08-16, pre-release snapshot)
+
+These numbers were taken at `548ea01` plus a BenchmarkDotNet harness fix, **not** the 0.9.0 release tag. Re-run `Benchmark/` on the release commit before treating them as published 0.9.0 figures.
 
 **Package:** FastFsm.Net 0.9.0  
 **BenchmarkDotNet:** 0.15.8 — `IterationCount=15`, `WarmupCount=3`, `Runtime=.NET 10.0`  

@@ -1,69 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
 
-	
 	<PropertyGroup>
 		<TargetFramework>net10.0</TargetFramework>
 		<FastFsmReferenceCore>true</FastFsmReferenceCore>
+		<LangVersion>latest</LangVersion>
+		<Nullable>enable</Nullable>
+		<Deterministic>true</Deterministic>
 
 		<PackageId>FastFsm.Net.Logging</PackageId>
-		<Authors>Lukasz Buchmiet</Authors>
-		<Description>Enables logging for FastFsm.Net state machines</Description>
+		<Description>Logging support for FastFsm.Net state machines (ILogger).</Description>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageReleaseNotes>.NET 10 logging package for FastFsm.Net. Depends on FastFsm.Net. See CHANGELOG.md.</PackageReleaseNotes>
 
-		<Deterministic>true</Deterministic>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<IsPackable>true</IsPackable>
 		<PackageOutputPath>../nuget</PackageOutputPath>
-		
 		<IncludeBuildOutput>false</IncludeBuildOutput>
-		<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+		<!-- Content-only package still declares dependencies; NU5128 is expected without lib/. -->
+		<NoWarn>$(NoWarn);NU5128</NoWarn>
 
-		
 		<FsmGenerateLogging>true</FsmGenerateLogging>
 		<DefineConstants>$(DefineConstants);FSM_LOGGING_ENABLED</DefineConstants>
-
-		<LangVersion>latest</LangVersion>
-		<Nullable>enable</Nullable>
-
-
-		
-		<PackageId>FastFsm.Net.Logging</PackageId>
-		<Authors>Lukasz Buchmiet</Authors>
-		<Description>High-performance state machine using source generators with support for ILogger</Description>
-		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<RepositoryUrl>https://github.com/buchmiet/FastFsm</RepositoryUrl>
-		<RepositoryType>git</RepositoryType>
-		<PackageProjectUrl>https://github.com/buchmiet/FastFsm</PackageProjectUrl>
-		<PackageTags>fsm;state machine;source generator;roslyn;dotnet</PackageTags>
-		<PackageReleaseNotes>.NET 10 logging package for FastFsm.Net. See CHANGELOG.md.</PackageReleaseNotes>
-		<PackageReadmeFile>README.md</PackageReadmeFile>
 	</PropertyGroup>
 
-	
-		<ItemGroup>
-			<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
-		</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+	</ItemGroup>
 
-	
 	<ItemGroup>
 		<None Include="build\FastFsm.Net.Logging.props" Pack="true" PackagePath="build" />
 		<None Include="build\FastFsm.Net.Logging.props" Pack="true" PackagePath="buildTransitive" />
 		<None Include="..\docs\logging.md" Pack="true" PackagePath="README.md" />
 	</ItemGroup>
 
-	
-		<ItemGroup>
-		  <None Include="shared/Compatibility.FastFsm.Extensions.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
-		  <None Include="shared/Compatibility.FastFsm.Extensions.cs" Pack="true" PackagePath="build" BuildAction="Compile" Visible="false" />
-		  <Folder Include="shared\" />
-		</ItemGroup>
-
-		<Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
-			<PropertyGroup>
-				<Version>$(FastFsmPackageVersion)</Version>
-				<PackageVersion>$(Version)</PackageVersion>
-			</PropertyGroup>
-		</Target>
-
+	<ItemGroup>
+		<None Include="shared/Compatibility.FastFsm.Extensions.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
+		<None Include="shared/Compatibility.FastFsm.Extensions.cs" Pack="true" PackagePath="build" BuildAction="Compile" Visible="false" />
+	</ItemGroup>
 
 </Project>

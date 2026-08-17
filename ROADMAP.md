@@ -4,7 +4,7 @@ This file records intended areas of work. It is not a release schedule or a comp
 
 ## 0.9.0
 
-Repository package version is `0.9.0`. Product docs, opt-in extensions, warning-free generated code, local pack+smoke scripts, and self-hosted CI (Windows/Linux/macOS) are in tree. Publish by pushing packages to NuGet and tagging `v0.9.0`.
+Repository package version is `0.9.0`. Product docs, opt-in extensions, warning-free generated code, and pack+smoke scripts are in tree. Pull-request CI is GitHub-hosted; self-hosted runners run only on `push` to `main` / `workflow_dispatch`. Publish by pushing packages to NuGet and tagging `v0.9.0`.
 
 ## Next feature candidate: deferred events
 
