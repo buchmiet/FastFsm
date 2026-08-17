@@ -255,6 +255,8 @@ public partial class CancellationMachine
     private async Task OnProcessingEntryAsync(System.Threading.CancellationToken cancellationToken)
     {
         ExecutionLog.Add("OnEntry:Begin");
+        await Task.Yield();
+        ExecutionLog.Add("OnEntry:InDelay");
         await Task.Delay(DelayMs, cancellationToken);
         ExecutionLog.Add("OnEntry:End");
     }
@@ -453,7 +455,7 @@ public partial class CancellationMachineFluentFsm
     private async Task ProcessAsync() { ExecutionLog.Add("Process:Begin-NoToken"); await Task.Delay(DelayMs); ExecutionLog.Add("Process:End-NoToken"); }
     private async Task ProcessAsync(System.Threading.CancellationToken cancellationToken) { ExecutionLog.Add("Process:Begin"); await Task.Delay(DelayMs, cancellationToken); ExecutionLog.Add("Process:End"); }
     private async Task OnProcessingEntryAsync() { ExecutionLog.Add("OnEntry:Begin-NoToken"); await Task.Delay(DelayMs); ExecutionLog.Add("OnEntry:End-NoToken"); }
-    private async Task OnProcessingEntryAsync(System.Threading.CancellationToken cancellationToken) { ExecutionLog.Add("OnEntry:Begin"); await Task.Delay(DelayMs, cancellationToken); ExecutionLog.Add("OnEntry:End"); }
+    private async Task OnProcessingEntryAsync(System.Threading.CancellationToken cancellationToken) { ExecutionLog.Add("OnEntry:Begin"); await Task.Yield(); ExecutionLog.Add("OnEntry:InDelay"); await Task.Delay(DelayMs, cancellationToken); ExecutionLog.Add("OnEntry:End"); }
     private async ValueTask OnProcessingExitAsync() { ExecutionLog.Add("OnExit:Begin-NoToken"); await Task.Delay(DelayMs); ExecutionLog.Add("OnExit:End-NoToken"); }
     private async ValueTask OnProcessingExitAsync(System.Threading.CancellationToken cancellationToken) { ExecutionLog.Add("OnExit:Begin"); await Task.Delay(DelayMs, cancellationToken); ExecutionLog.Add("OnExit:End"); }
 }
@@ -659,32 +661,39 @@ public class CancellationTokenCoreTests
 
         using var cts = new CancellationTokenSource();
 
-        // Start transition; ValueTask → Task for Shouldly
         var fireTask = machine
             .FireAsync(TokenTestTrigger.Start, null, cts.Token)
             .AsTask();
 
-        // Wait for OnEntry to actually start using helper
-        await TestSynchronization.WaitForLogEntryAsync(
-            machine.ExecutionLog, 
-            "OnEntry:Begin",
-            timeoutMs: 2000);
+        // Wait until OnEntry is inside Task.Delay (not merely past "OnEntry:Begin")
+        var timeout = DateTime.UtcNow.AddSeconds(5);
+        while (!machine.ExecutionLog.Contains("OnEntry:InDelay"))
+        {
+            if (DateTime.UtcNow > timeout)
+            {
+                var currentLog = string.Join(", ", machine.ExecutionLog);
+                throw new TimeoutException($"OnEntry:InDelay not reached in 5s. Log: {currentLog}");
+            }
 
-        // Add small delay to ensure we're inside the async operation
-        await Task.Delay(20);
+            if (machine.ExecutionLog.Contains("OnEntry:End") ||
+                machine.ExecutionLog.Contains("Action:Begin"))
+            {
+                var currentLog = string.Join(", ", machine.ExecutionLog);
+                throw new TimeoutException($"OnEntry completed before cancellation point. Log: {currentLog}");
+            }
 
-        // Cancel while in OnEntry (inside Task.Delay)
+            await Task.Delay(10);
+        }
+
         cts.Cancel();
 
-        // Assert - TaskCanceledException should propagate
         var exception = await Should.ThrowAsync<TaskCanceledException>(fireTask);
         exception.ShouldNotBeNull();
 
-        // State should be Processing (transition happened before OnEntry)
         machine.CurrentState.ShouldBe(TokenTestState.Processing);
 
-        // Verify log state
         machine.ExecutionLog.ShouldContain("OnEntry:Begin");
+        machine.ExecutionLog.ShouldContain("OnEntry:InDelay");
         machine.ExecutionLog.ShouldNotContain("OnEntry:End");
         machine.ExecutionLog.ShouldNotContain("Action:Begin");
     }
