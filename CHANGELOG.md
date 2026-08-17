@@ -32,6 +32,8 @@ First public-facing 0.9 line on .NET 10. Packages: `FastFsm.Net`, `FastFsm.Net.L
 - Clean `dotnet pack` of `FastFsm.Net` builds `Generator.dll` before `GenerateNuspec` (NU5019).
 - Stale analyzer `ProjectReference` edges removed from `FastFsm.csproj`.
 - `FastFsm.Net` nupkg ships only `ExtensionRunner` and global usings as contentFiles (no duplicate DI types, no double-compile via `.props`).
+- `scripts/pack-and-smoke.sh` packs the three product projects only (does not force `GeneratePackageOnBuild` on the generator, which cycles Pack on SDK 10).
+- Generator type-format cache timing test no longer uses coarse millisecond ratios on sub-10ms samples.
 
 ### Removed
 
