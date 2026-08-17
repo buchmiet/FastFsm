@@ -4,7 +4,7 @@ Source-generated finite and hierarchical state machines for .NET 10.
 
 FastFsm generates `switch`-based state-machine code at build time. Machines can be configured with either the **Fluent API** or the **Attribute API**. The generator validates transitions, guards, callbacks, and hierarchy during compilation.
 
-**Repository package version:** `0.9.0` (defined in `Directory.Build.props`). See [CHANGELOG.md](CHANGELOG.md). **0.9.0** is on [NuGet.org](https://www.nuget.org/packages/FastFsm.Sharp) as `FastFsm.Sharp*`, with legacy `FastFsm.Net*` metapackages forwarding to the same bits.
+**Repository package version:** `0.9.1` (defined in `Directory.Build.props`). See [CHANGELOG.md](CHANGELOG.md). **0.9.1** is on [NuGet.org](https://www.nuget.org/packages/FastFsm.Sharp) as `FastFsm.Sharp*`, with legacy `FastFsm.Net*` metapackages forwarding to the same bits.
 
 ## Install
 

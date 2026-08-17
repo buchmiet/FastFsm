@@ -7,6 +7,10 @@ Repository package version is `FastFsmPackageVersion` / `Version` in `Directory.
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-08-17
+
+Published on [NuGet.org](https://www.nuget.org/packages/FastFsm.Sharp). Patch release: packaging, props, CI, and test hygiene after 0.9.0.
+
 ### Fixed
 
 - `FastFsm.Sharp.props` adds `Abstractions.dll` for all .NET 10+ TFMs (including `net10.0-windows`), not only `net10.0`.
@@ -14,6 +18,7 @@ Repository package version is `FastFsmPackageVersion` / `Version` in `Directory.
 - CI `-warnaserror` no longer fails on intentional `FSM0400` duplicate-transition test fixtures.
 - `FastFsm.Sharp` nuspec always includes `Abstractions.dll` and analyzer satellites on clean builds (pack inputs added after dependency build).
 - Benchmark project no longer pulls vulnerable `Microsoft.NETCore.Jit` 1.0.2 (replaced `LiquidState` 8.2.0 with `LiquidState.Unofficial` 1.0.6 for comparison benchmarks).
+- Async cancellation tests use `OnEntry:InDelay` / `Action:InDelay` synchronization markers instead of fixed delays (stable on macOS CI).
 
 ## [0.9.0] - 2026-08-17
 
@@ -69,4 +74,5 @@ Published on [NuGet.org](https://www.nuget.org/packages/FastFsm.Sharp). Targets 
 - Historical scratch trees from the git working set (old tests, multi-language bench experiments, local feed data, `Generator.Tests/old_tests`, tracked BenchmarkDotNet .NET 9 artifacts, local NuGet.config pointing at localhost). A local `archive.zip` may hold a copy; it is not part of the repository.
 - Hardcoded parser debug hooks for `AsyncOceOnEntryMachine` / `ContinueOnActionMachine`.
 
+[0.9.1]: https://github.com/buchmiet/FastFsm/releases/tag/v0.9.1
 [0.9.0]: https://github.com/buchmiet/FastFsm/releases/tag/v0.9.0

@@ -69,11 +69,13 @@ require(feed / f"FastFsm.Sharp.DependencyInjection.{version}.nupkg",
 core = feed / f"FastFsm.Sharp.{version}.nupkg"
 with zipfile.ZipFile(core) as z:
     data = z.read("lib/net10.0/FastFsm.dll")
-if b"1.0.0.0" in data and b"0.9.0" not in data and "0.9.0".encode("utf-16le") not in data:
+version_ascii = version.encode("ascii")
+version_utf16 = version.encode("utf-16le")
+if b"1.0.0.0" in data and version_ascii not in data and version_utf16 not in data:
     raise SystemExit("FastFsm.dll still looks like 1.0.0.0")
-if b"0.9.0" not in data and "0.9.0".encode("utf-16le") not in data:
-    raise SystemExit("FastFsm.dll does not contain 0.9.0")
-print("OK FastFsm.dll embeds 0.9.0")
+if version_ascii not in data and version_utf16 not in data:
+    raise SystemExit(f"FastFsm.dll does not contain {version}")
+print(f"OK FastFsm.dll embeds {version}")
 PY
 
 NUGET_ROOT="${NUGET_PACKAGES:-$HOME/.nuget/packages}"

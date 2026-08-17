@@ -2,6 +2,10 @@
 
 This file records intended areas of work. It is not a release schedule or a compatibility commitment.
 
+## 0.9.1 (released)
+
+Repository package version is `0.9.1`. Patch release after 0.9.0: `net10.0-windows` props, clean-build packaging, CI hygiene, and stable async cancellation tests. Published on NuGet.org; git tag `v0.9.1` marks the release.
+
 ## 0.9.0 (released)
 
 Repository package version is `0.9.0`. First .NET 10 release with canonical `FastFsm.Sharp*` package IDs and legacy `FastFsm.Net*` metapackages. Published on NuGet.org; git tag `v0.9.0` marks the release.

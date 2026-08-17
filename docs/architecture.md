@@ -54,11 +54,11 @@ Both configuration APIs converge on the same internal model before emission.
 ## Packages and build
 
 - Target framework: `net10.0` (`Directory.Build.props`)
-- Repository package version: `FastFsmPackageVersion` (`0.9.0`)
+- Repository package version: `FastFsmPackageVersion` (`0.9.1`)
 - `UsePackages=false` — repository projects use project references and analyzer wiring from `eng/FastFsmReferences.props` / `Directory.Build.targets`
 - `UsePackages=true` — package references resolve the configured FastFsm package version from the configured NuGet sources
 
-The last published line on NuGet.org is **FastFsm.Net 0.6.9.x**. Repository **0.9.0** ships as `FastFsm.Sharp*` (and legacy `FastFsm.Net*` metapackages) when published.
+**FastFsm.Sharp*** (and legacy **FastFsm.Net*** metapackages) **0.9.0+** are published on [NuGet.org](https://www.nuget.org/packages/FastFsm.Sharp). The last legacy-only line on NuGet.org before the .NET 10 rebrand was **FastFsm.Net 0.6.9.x**.
 
 Analyzers are packed under `analyzers/dotnet/cs` in the NuGet package.
 

@@ -92,8 +92,9 @@ try {
 finally { $z.Dispose() }
 $asmVersion = [Reflection.AssemblyName]::GetAssemblyName($dllTmp).Version
 Remove-Item $dllTmp -Force
-if ($asmVersion -ne [Version]"0.9.0.0") {
-    throw "FastFsm.dll AssemblyVersion is $asmVersion, expected 0.9.0.0"
+$expectedAsm = [Version]"$version.0"
+if ($asmVersion -ne $expectedAsm) {
+    throw "FastFsm.dll AssemblyVersion is $asmVersion, expected $expectedAsm"
 }
 Write-Host "OK FastFsm.dll AssemblyVersion $asmVersion"
 
