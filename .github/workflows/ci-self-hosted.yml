@@ -2,6 +2,11 @@ name: CI (self-hosted)
 
 # Trusted tree only — never pull_request. Fork PR code must not run on self-hosted runners.
 # https://docs.github.com/en/actions/reference/security/secure-use
+#
+# Runner labels (configure on each self-hosted runner):
+#   Windows: self-hosted, Windows, win-x64-amd
+#   Linux:   self-hosted, Linux, linux-arm64
+#   macOS:   self-hosted, macOS, macos-arm64
 
 on:
   push:
@@ -31,7 +36,7 @@ jobs:
           - leg: linux-arm64
             runs-on: [self-hosted, Linux, linux-arm64]
           - leg: macos-arm64
-            runs-on: [self-hosted, macOS, linux-arm64]
+            runs-on: [self-hosted, macOS, macos-arm64]
     steps:
       - uses: actions/checkout@v4
 
