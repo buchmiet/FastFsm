@@ -10,13 +10,13 @@
 
     <PackageId>FastFsm.Net.DependencyInjection</PackageId>
     <Title>FastFsm.Net.DependencyInjection (legacy metapackage)</Title>
-    <Description>Legacy package ID. Depends on FastFsm.DependencyInjection.Sharp. New projects should reference FastFsm.DependencyInjection.Sharp directly.</Description>
+    <Description>Legacy package ID. Depends on FastFsm.Sharp.DependencyInjection. New projects should reference FastFsm.Sharp.DependencyInjection directly.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <NoWarn>$(NoWarn);NU5128</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FastFsm.DependencyInjection.Sharp" Version="$(FastFsmPackageVersion)" />
+    <PackageReference Include="FastFsm.Sharp.DependencyInjection" Version="$(FastFsmPackageVersion)" />
   </ItemGroup>
 
   <ItemGroup>

@@ -8,7 +8,7 @@
 		<Nullable>enable</Nullable>
 		<Deterministic>true</Deterministic>
 
-		<PackageId>FastFsm.Logging.Sharp</PackageId>
+		<PackageId>FastFsm.Sharp.Logging</PackageId>
 		<Description>Logging support for FastFsm.Sharp state machines (ILogger).</Description>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageReleaseNotes>.NET 10 logging package for FastFsm.Sharp. Depends on FastFsm.Sharp. See CHANGELOG.md.</PackageReleaseNotes>
@@ -29,8 +29,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Include="build\FastFsm.Logging.Sharp.props" Pack="true" PackagePath="build" />
-		<None Include="build\FastFsm.Logging.Sharp.props" Pack="true" PackagePath="buildTransitive" />
+		<None Include="build\FastFsm.Sharp.Logging.props" Pack="true" PackagePath="build" />
+		<None Include="build\FastFsm.Sharp.Logging.props" Pack="true" PackagePath="buildTransitive" />
 		<None Include="..\..\..\docs\logging.md" Pack="true" PackagePath="README.md" />
 	</ItemGroup>
 

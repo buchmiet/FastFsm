@@ -14,7 +14,7 @@ dotnet pack "$REPO/src/Fsm/Fsm.Core/Fsm.Core.csproj" -c Release
 dotnet pack "$REPO/src/Fsm/Fsm.Logging/Fsm.Logging.csproj" -c Release
 dotnet pack "$REPO/src/Fsm/Fsm.DependencyInjection/Fsm.DependencyInjection.csproj" -c Release
 
-echo "Packing legacy metapackages (FastFsm.Net* -> FastFsm.*.Sharp) -> $FEED"
+echo "Packing legacy metapackages (FastFsm.Net* -> FastFsm.Sharp*) -> $FEED"
 dotnet pack "$REPO/src/LegacyPackages/FastFsm.Net/FastFsm.Net.csproj" -c Release \
   -p:RestoreSources="$FEED;https://api.nuget.org/v3/index.json"
 dotnet pack "$REPO/src/LegacyPackages/FastFsm.Net.Logging/FastFsm.Net.Logging.csproj" -c Release \
@@ -24,8 +24,8 @@ dotnet pack "$REPO/src/LegacyPackages/FastFsm.Net.DependencyInjection/FastFsm.Ne
 
 for pkg in \
   "FastFsm.Sharp.$VERSION.nupkg" \
-  "FastFsm.Logging.Sharp.$VERSION.nupkg" \
-  "FastFsm.DependencyInjection.Sharp.$VERSION.nupkg" \
+  "FastFsm.Sharp.Logging.$VERSION.nupkg" \
+  "FastFsm.Sharp.DependencyInjection.$VERSION.nupkg" \
   "FastFsm.Net.$VERSION.nupkg" \
   "FastFsm.Net.Logging.$VERSION.nupkg" \
   "FastFsm.Net.DependencyInjection.$VERSION.nupkg"
@@ -60,9 +60,9 @@ def require(nupkg, ids):
         raise SystemExit(f"{nupkg.name} must not depend on Abstractions")
     print(f"OK deps {', '.join(ids)} in {nupkg.name}")
 
-require(feed / f"FastFsm.Logging.Sharp.{version}.nupkg",
+require(feed / f"FastFsm.Sharp.Logging.{version}.nupkg",
         ["FastFsm.Sharp", "Microsoft.Extensions.Logging.Abstractions"])
-require(feed / f"FastFsm.DependencyInjection.Sharp.{version}.nupkg",
+require(feed / f"FastFsm.Sharp.DependencyInjection.{version}.nupkg",
         ["FastFsm.Sharp", "Microsoft.Extensions.DependencyInjection",
          "Microsoft.Extensions.Logging.Abstractions"])
 
@@ -203,8 +203,8 @@ static class App
 }'
 
 write_and_run core "$CORE_PROG" FastFsm.Sharp
-write_and_run logging "$LOG_PROG" FastFsm.Logging.Sharp
+write_and_run logging "$LOG_PROG" FastFsm.Sharp.Logging
 write_and_run legacy-core "$CORE_PROG" FastFsm.Net
-write_and_run di "$DI_PROG" FastFsm.DependencyInjection.Sharp
+write_and_run di "$DI_PROG" FastFsm.Sharp.DependencyInjection
 
 echo "All consumer smokes passed."

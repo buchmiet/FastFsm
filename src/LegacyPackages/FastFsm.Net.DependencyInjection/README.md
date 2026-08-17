@@ -1,3 +1,3 @@
 # FastFsm.Net.DependencyInjection (legacy metapackage)
 
-Forwards to **FastFsm.DependencyInjection.Sharp** at the same version. Use `FastFsm.DependencyInjection.Sharp` in new projects.
+Forwards to **FastFsm.Sharp.DependencyInjection** at the same version. Use `FastFsm.Sharp.DependencyInjection` in new projects.

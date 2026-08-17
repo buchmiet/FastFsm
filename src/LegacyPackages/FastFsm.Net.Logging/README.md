@@ -1,3 +1,3 @@
 # FastFsm.Net.Logging (legacy metapackage)
 
-Forwards to **FastFsm.Logging.Sharp** at the same version. Use `FastFsm.Logging.Sharp` in new projects.
+Forwards to **FastFsm.Sharp.Logging** at the same version. Use `FastFsm.Sharp.Logging` in new projects.

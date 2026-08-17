@@ -10,13 +10,13 @@
 
     <PackageId>FastFsm.Net.Logging</PackageId>
     <Title>FastFsm.Net.Logging (legacy metapackage)</Title>
-    <Description>Legacy package ID. Depends on FastFsm.Logging.Sharp. New projects should reference FastFsm.Logging.Sharp directly.</Description>
+    <Description>Legacy package ID. Depends on FastFsm.Sharp.Logging. New projects should reference FastFsm.Sharp.Logging directly.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <NoWarn>$(NoWarn);NU5128</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FastFsm.Logging.Sharp" Version="$(FastFsmPackageVersion)" />
+    <PackageReference Include="FastFsm.Sharp.Logging" Version="$(FastFsmPackageVersion)" />
   </ItemGroup>
 
   <ItemGroup>

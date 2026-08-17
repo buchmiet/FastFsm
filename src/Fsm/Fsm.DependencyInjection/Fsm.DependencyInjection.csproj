@@ -7,7 +7,7 @@
 		<Nullable>enable</Nullable>
 		<Deterministic>true</Deterministic>
 
-		<PackageId>FastFsm.DependencyInjection.Sharp</PackageId>
+		<PackageId>FastFsm.Sharp.DependencyInjection</PackageId>
 		<Description>Dependency injection support for FastFsm.Sharp state machines. Enables logging generation.</Description>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageReleaseNotes>.NET 10 DI package for FastFsm.Sharp. Depends on FastFsm.Sharp. Extension generation remains opt-in. See CHANGELOG.md.</PackageReleaseNotes>
@@ -30,7 +30,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Include="build\FastFsm.DependencyInjection.Sharp.props" Pack="true" PackagePath="buildTransitive" />
+		<None Include="build\FastFsm.Sharp.DependencyInjection.props" Pack="true" PackagePath="buildTransitive" />
 		<None Include="..\..\..\docs\dependency-injection.md" Pack="true" PackagePath="README.md" />
 	</ItemGroup>
 

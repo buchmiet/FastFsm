@@ -14,7 +14,7 @@ foreach ($proj in @(
     if ($LASTEXITCODE -ne 0) { throw "dotnet pack failed: $proj" }
 }
 
-Write-Host "Packing legacy metapackages (FastFsm.Net* -> FastFsm.*.Sharp) -> $feed"
+Write-Host "Packing legacy metapackages (FastFsm.Net* -> FastFsm.Sharp*) -> $feed"
 foreach ($proj in @(
     "src/LegacyPackages/FastFsm.Net/FastFsm.Net.csproj",
     "src/LegacyPackages/FastFsm.Net.Logging/FastFsm.Net.Logging.csproj",
@@ -26,8 +26,8 @@ foreach ($proj in @(
 
 foreach ($name in @(
     "FastFsm.Sharp.$version.nupkg",
-    "FastFsm.Logging.Sharp.$version.nupkg",
-    "FastFsm.DependencyInjection.Sharp.$version.nupkg",
+    "FastFsm.Sharp.Logging.$version.nupkg",
+    "FastFsm.Sharp.DependencyInjection.$version.nupkg",
     "FastFsm.Net.$version.nupkg",
     "FastFsm.Net.Logging.$version.nupkg",
     "FastFsm.Net.DependencyInjection.$version.nupkg")) {
@@ -72,9 +72,9 @@ function Assert-NupkgDependsOn {
     Write-Host "OK deps $($Ids -join ', ') in $(Split-Path $Nupkg -Leaf)"
 }
 
-Assert-NupkgDependsOn (Join-Path $feed "FastFsm.Logging.Sharp.$version.nupkg") @(
+Assert-NupkgDependsOn (Join-Path $feed "FastFsm.Sharp.Logging.$version.nupkg") @(
     "FastFsm.Sharp", "Microsoft.Extensions.Logging.Abstractions")
-Assert-NupkgDependsOn (Join-Path $feed "FastFsm.DependencyInjection.Sharp.$version.nupkg") @(
+Assert-NupkgDependsOn (Join-Path $feed "FastFsm.Sharp.DependencyInjection.$version.nupkg") @(
     "FastFsm.Sharp", "Microsoft.Extensions.DependencyInjection", "Microsoft.Extensions.Logging.Abstractions")
 
 $coreNupkg = Join-Path $feed "FastFsm.Sharp.$version.nupkg"
@@ -175,7 +175,7 @@ static class App
 }
 '@
 
-    Invoke-Smoke "logging" @("FastFsm.Logging.Sharp") @'
+    Invoke-Smoke "logging" @("FastFsm.Sharp.Logging") @'
 using Abstractions.Attributes;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -232,7 +232,7 @@ static class App
 }
 '@
 
-    Invoke-Smoke "di" @("FastFsm.DependencyInjection.Sharp") @'
+    Invoke-Smoke "di" @("FastFsm.Sharp.DependencyInjection") @'
 using Abstractions.Attributes;
 using FastFsm.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
