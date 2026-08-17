@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<FastFsmReferenceCore>true</FastFsmReferenceCore>
+		<LangVersion>latest</LangVersion>
+		<Nullable>enable</Nullable>
+		<Deterministic>true</Deterministic>
+
+		<PackageId>FastFsm.Logging.Sharp</PackageId>
+		<Description>Logging support for FastFsm.Sharp state machines (ILogger).</Description>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageReleaseNotes>.NET 10 logging package for FastFsm.Sharp. Depends on FastFsm.Sharp. See CHANGELOG.md.</PackageReleaseNotes>
+
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<IsPackable>true</IsPackable>
+		<PackageOutputPath>../../../nuget</PackageOutputPath>
+		<IncludeBuildOutput>false</IncludeBuildOutput>
+		<!-- Content-only package still declares dependencies; NU5128 is expected without lib/. -->
+		<NoWarn>$(NoWarn);NU5128</NoWarn>
+
+		<FsmGenerateLogging>true</FsmGenerateLogging>
+		<DefineConstants>$(DefineConstants);FSM_LOGGING_ENABLED</DefineConstants>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="build\FastFsm.Logging.Sharp.props" Pack="true" PackagePath="build" />
+		<None Include="build\FastFsm.Logging.Sharp.props" Pack="true" PackagePath="buildTransitive" />
+		<None Include="..\..\..\docs\logging.md" Pack="true" PackagePath="README.md" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="shared/Compatibility.FastFsm.Extensions.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
+		<None Include="shared/Compatibility.FastFsm.Extensions.cs" Pack="true" PackagePath="build" BuildAction="Compile" Visible="false" />
+	</ItemGroup>
+
+</Project>

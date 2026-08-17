@@ -1,0 +1,76 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+
+    <IsAotCompatible>true</IsAotCompatible>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <IsTrimmable>true</IsTrimmable>
+
+    <Deterministic>true</Deterministic>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <IsPackable>true</IsPackable>
+    <PackageOutputPath>../../../nuget</PackageOutputPath>
+
+    <PackageId>FastFsm.Sharp</PackageId>
+    <AssemblyName>FastFsm</AssemblyName>
+    <Description>High-performance state machine using source generators</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>.NET 10. Extension generation is opt-in. Warning-free generated code for typical machines. See CHANGELOG.md.</PackageReleaseNotes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Abstractions\Abstractions.csproj" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="build\*.props" Pack="true" PackagePath="build" />
+    <None Include="buildTransitive\*.props" Pack="true" PackagePath="buildTransitive" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Runtime\Extensions\ExtensionRunner.cs" />
+    <None Include="Runtime\Extensions\ExtensionRunner.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
+
+    <Compile Remove="DependencyInjection\FsmServiceCollectionExtensions.cs" />
+    <None Include="DependencyInjection\FsmServiceCollectionExtensions.cs" Pack="false" />
+
+    <Compile Remove="DependencyInjection\StateMachineFactory.cs" />
+    <None Include="DependencyInjection\StateMachineFactory.cs" Pack="false" />
+
+    <Compile Remove="Runtime\GlobalUsings.FastFsm.cs" />
+    <None Include="Runtime\GlobalUsings.FastFsm.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\Abstractions\bin\$(Configuration)\netstandard2.0\Abstractions.dll" Pack="true" PackagePath="lib/net10.0/" Condition="Exists('..\..\Abstractions\bin\$(Configuration)\netstandard2.0\Abstractions.dll')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\Generator\Generator.Core\bin\$(Configuration)\netstandard2.0\Generator.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Condition="Exists('..\..\Generator\Generator.Core\bin\$(Configuration)\netstandard2.0\Generator.dll')" />
+    <None Include="..\..\Generator\Generator.Core\bin\$(Configuration)\netstandard2.0\Generator.xml" Pack="true" PackagePath="analyzers/dotnet/cs" Condition="Exists('..\..\Generator\Generator.Core\bin\$(Configuration)\netstandard2.0\Generator.xml')" />
+
+    <None Include="..\..\IndentedStringBuilder\bin\$(Configuration)\netstandard2.0\IndentedStringBuilder.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Condition="Exists('..\..\IndentedStringBuilder\bin\$(Configuration)\netstandard2.0\IndentedStringBuilder.dll')" />
+    <None Include="..\..\Generator\Generator.Logger\bin\$(Configuration)\netstandard2.0\Generator.Logger.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Condition="Exists('..\..\Generator\Generator.Logger\bin\$(Configuration)\netstandard2.0\Generator.Logger.dll')" />
+    <None Include="..\..\Generator\Generator.Model\bin\$(Configuration)\netstandard2.0\Generator.Model.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Condition="Exists('..\..\Generator\Generator.Model\bin\$(Configuration)\netstandard2.0\Generator.Model.dll')" />
+    <None Include="..\..\Generator\Generator.Rules\bin\$(Configuration)\netstandard2.0\Generator.Rules.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Condition="Exists('..\..\Generator\Generator.Rules\bin\$(Configuration)\netstandard2.0\Generator.Rules.dll')" />
+    <None Include="..\..\Generator\Generator.DependencyInjection\bin\$(Configuration)\netstandard2.0\Generator.DependencyInjection.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Condition="Exists('..\..\Generator\Generator.DependencyInjection\bin\$(Configuration)\netstandard2.0\Generator.DependencyInjection.dll')" />
+
+    <None Include="..\..\Abstractions\bin\$(Configuration)\netstandard2.0\Abstractions.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Condition="Exists('..\..\Abstractions\bin\$(Configuration)\netstandard2.0\Abstractions.dll')" />
+  </ItemGroup>
+
+  <Target Name="EnsureGeneratorBuiltForPack" BeforeTargets="GenerateNuspec"
+          Condition="'$(GeneratePackageOnBuild)' == 'true'">
+    <MSBuild Projects="$(MSBuildThisFileDirectory)..\..\Generator\Generator.Core\Generator.Core.csproj"
+             Targets="Build"
+             Properties="Configuration=$(Configuration)" />
+  </Target>
+
+</Project>

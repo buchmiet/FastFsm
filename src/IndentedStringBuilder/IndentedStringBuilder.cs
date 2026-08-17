@@ -1,0 +1,112 @@
+﻿using System.Text;
+
+namespace IndentedStringBuilder;
+
+/// <summary>
+///  Lekki wrapper nad <see cref="StringBuilder"/> zapewniający kontrolę wcięć.
+/// </summary>
+public sealed class IndentedStringBuilder(string indentUnit = "    ")
+{
+    private readonly StringBuilder _sb = new();
+    private int _level;
+
+
+    /*---------- public API ----------*/
+
+    public IDisposable Indent()
+    {
+        _level++;
+        return new PopIndent(this);
+    }
+
+    public IndentedStringBuilder AppendLine(string? text = null)
+    {
+        if (!string.IsNullOrEmpty(text))
+        {
+            for (int i = 0; i < _level; i++)
+                _sb.Append(indentUnit);
+
+            _sb.Append(text);
+        }
+
+        _sb.AppendLine();
+        return this;
+    }
+
+    // ▼ 2. bez rzutowania – zwracamy po prostu this
+    public IndentedStringBuilder Append(string text)
+    {
+        _sb.Append(text);
+        return this;
+    }
+
+    public IDisposable Block(string header)
+    {
+        if (!string.IsNullOrEmpty(header))
+        {
+            // For headers like "try", "catch", etc., put the brace on the same line
+            AppendLine($"{header} {{");
+        }
+        else
+        {
+            // For empty headers, just add the opening brace
+            AppendLine("{");
+        }
+        var indent = Indent();
+        return new DisposableAction(() =>
+        {
+            indent.Dispose();
+            AppendLine("}");
+        });
+    }
+    
+    /// <summary>
+    /// Creates a block with the header and opening brace on the same line
+    /// Example: "try {" instead of "try" on one line and "{" on the next
+    /// </summary>
+    public IDisposable InlineBlock(string header)
+    {
+        AppendLine($"{header} {{");
+        var indent = Indent();
+        return new DisposableAction(() =>
+        {
+            indent.Dispose();
+            AppendLine("}");
+        });
+    }
+
+    /// <summary>
+    /// Writes an XML documentation summary comment
+    /// </summary>
+    public void WriteSummary(string summary)
+    {
+        AppendLine("/// <summary>");
+        AppendLine($"/// {summary}");
+        AppendLine("/// </summary>");
+    }
+    public void WriteParam(string paramName, string description)
+    {
+        AppendLine($"/// <param name=\"{paramName}\">{description}</param>");
+    }
+
+    public void WriteReturns( string description)
+    {
+        AppendLine($"/// <returns>{description}</returns>");
+    }
+    public void AddProperty(string typeAndName, string? value = null)
+    {
+        AppendLine($"{typeAndName}{(value is not null ? $"={value}" : string.Empty)};");
+    }
+
+
+    public override string ToString() => _sb.ToString();
+
+    /*---------- implementation ----------*/
+
+    private void Pop() => _level--;
+
+    private sealed class PopIndent(IndentedStringBuilder parent) : IDisposable
+    {
+        public void Dispose() => parent.Pop();
+    }
+}

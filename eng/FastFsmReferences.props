@@ -4,26 +4,26 @@
   </PropertyGroup>
 
   <ItemGroup Condition="'$(FastFsmReferenceCore)' == 'true' and '$(UsePackages)' == 'true'">
-    <PackageReference Include="FastFsm.Net" Version="$(FastFsmPackageVersion)" />
+    <PackageReference Include="FastFsm.Sharp" Version="$(FastFsmPackageVersion)" />
   </ItemGroup>
   <ItemGroup Condition="'$(FastFsmReferenceCore)' == 'true' and '$(UsePackages)' != 'true'">
-    <ProjectReference Include="$(_FastFsmRepoRoot)/FastFsm/FastFsm.csproj" />
+    <ProjectReference Include="$(_FastFsmRepoRoot)/src/Fsm/Fsm.Core/Fsm.Core.csproj" />
     <!-- Abstractions is not a published package; do not emit it as a nupkg dependency. -->
-    <ProjectReference Include="$(_FastFsmRepoRoot)/Abstractions/Abstractions.csproj" PrivateAssets="all" />
+    <ProjectReference Include="$(_FastFsmRepoRoot)/src/Abstractions/Abstractions.csproj" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(FastFsmReferenceLogging)' == 'true' and '$(UsePackages)' == 'true'">
-    <PackageReference Include="FastFsm.Net.Logging" Version="$(FastFsmPackageVersion)" />
+    <PackageReference Include="FastFsm.Logging.Sharp" Version="$(FastFsmPackageVersion)" />
   </ItemGroup>
   <ItemGroup Condition="'$(FastFsmReferenceLogging)' == 'true' and '$(UsePackages)' != 'true'">
-    <ProjectReference Include="$(_FastFsmRepoRoot)/FastFsm.Logging/FastFsm.Logging.csproj" />
+    <ProjectReference Include="$(_FastFsmRepoRoot)/src/Fsm/Fsm.Logging/Fsm.Logging.csproj" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(FastFsmReferenceDependencyInjection)' == 'true' and '$(UsePackages)' == 'true'">
-    <PackageReference Include="FastFsm.Net.DependencyInjection" Version="$(FastFsmPackageVersion)" />
+    <PackageReference Include="FastFsm.DependencyInjection.Sharp" Version="$(FastFsmPackageVersion)" />
   </ItemGroup>
   <ItemGroup Condition="'$(FastFsmReferenceDependencyInjection)' == 'true' and '$(UsePackages)' != 'true'">
-    <ProjectReference Include="$(_FastFsmRepoRoot)/FastFsm.DependencyInjection/FastFsm.DependencyInjection.csproj" />
+    <ProjectReference Include="$(_FastFsmRepoRoot)/src/Fsm/Fsm.DependencyInjection/Fsm.DependencyInjection.csproj" />
   </ItemGroup>
 
   <!-- Dev-mode: wire source generators directly (nupkg normally ships them as analyzers) -->
@@ -31,14 +31,14 @@
 
   <!-- Dev-mode: compile package content files directly instead of requiring a pre-built nupkg -->
   <ItemGroup Condition="'$(UsePackages)' != 'true' and ('$(FastFsmReferenceCore)' == 'true' or '$(FastFsmReferenceLogging)' == 'true' or '$(FastFsmReferenceDependencyInjection)' == 'true')">
-    <Compile Include="$(_FastFsmRepoRoot)/FastFsm/Runtime/Extensions/ExtensionRunner.cs" Link="FastFsm/ExtensionRunner.cs" />
-    <Compile Include="$(_FastFsmRepoRoot)/FastFsm/Runtime/GlobalUsings.FastFsm.cs" Link="FastFsm/GlobalUsings.FastFsm.cs" />
+    <Compile Include="$(_FastFsmRepoRoot)/src/Fsm/Fsm.Core/Runtime/Extensions/ExtensionRunner.cs" Link="FastFsm/ExtensionRunner.cs" />
+    <Compile Include="$(_FastFsmRepoRoot)/src/Fsm/Fsm.Core/Runtime/GlobalUsings.FastFsm.cs" Link="FastFsm/GlobalUsings.FastFsm.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(UsePackages)' != 'true' and '$(FastFsmReferenceDependencyInjection)' == 'true'">
-    <Compile Include="$(_FastFsmRepoRoot)/FastFsm/DependencyInjection/FsmServiceCollectionExtensions.cs" Link="FastFsm/FsmServiceCollectionExtensions.cs" />
-    <Compile Include="$(_FastFsmRepoRoot)/FastFsm/DependencyInjection/StateMachineFactory.cs" Link="FastFsm/StateMachineFactory.cs" />
+    <Compile Include="$(_FastFsmRepoRoot)/src/Fsm/Fsm.Core/DependencyInjection/FsmServiceCollectionExtensions.cs" Link="FastFsm/FsmServiceCollectionExtensions.cs" />
+    <Compile Include="$(_FastFsmRepoRoot)/src/Fsm/Fsm.Core/DependencyInjection/StateMachineFactory.cs" Link="FastFsm/StateMachineFactory.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(UsePackages)' != 'true' and '$(FastFsmReferenceLogging)' == 'true'">
-    <Compile Include="$(_FastFsmRepoRoot)/FastFsm.Logging/shared/Compatibility.FastFsm.Extensions.cs" Link="FastFsm.Logging/Compatibility.FastFsm.Extensions.cs" />
+    <Compile Include="$(_FastFsmRepoRoot)/src/Fsm/Fsm.Logging/shared/Compatibility.FastFsm.Extensions.cs" Link="FastFsm.Logging/Compatibility.FastFsm.Extensions.cs" />
   </ItemGroup>
 </Project>
