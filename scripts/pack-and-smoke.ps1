@@ -4,11 +4,15 @@ $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent $PSScriptRoot
 $version = "0.9.0"
 $feed = Join-Path $repo "nuget"
-$slnx = Join-Path $repo "FastFsm.slnx"
 
-Write-Host "Packing $slnx -> $feed"
-dotnet pack $slnx -c Release
-if ($LASTEXITCODE -ne 0) { throw "dotnet pack failed" }
+Write-Host "Packing product projects -> $feed"
+foreach ($proj in @(
+    "FastFsm\FastFsm.csproj",
+    "FastFsm.Logging\FastFsm.Logging.csproj",
+    "FastFsm.DependencyInjection\FastFsm.DependencyInjection.csproj")) {
+    dotnet pack (Join-Path $repo $proj) -c Release
+    if ($LASTEXITCODE -ne 0) { throw "dotnet pack failed: $proj" }
+}
 
 foreach ($name in @(
     "FastFsm.Net.$version.nupkg",

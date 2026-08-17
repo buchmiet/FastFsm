@@ -6,10 +6,13 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="0.9.0"
 FEED="$REPO/nuget"
-SLNX="$REPO/FastFsm.slnx"
 
-echo "Packing $SLNX -> $FEED"
-dotnet pack "$SLNX" -c Release -p:GeneratePackageOnBuild=true
+echo "Packing product projects -> $FEED"
+# Pack only the three nupkgs. Do not pass GeneratePackageOnBuild=true on the
+# solution — that overrides Generator.csproj and trips a Pack cycle on SDK 10.
+dotnet pack "$REPO/FastFsm/FastFsm.csproj" -c Release
+dotnet pack "$REPO/FastFsm.Logging/FastFsm.Logging.csproj" -c Release
+dotnet pack "$REPO/FastFsm.DependencyInjection/FastFsm.DependencyInjection.csproj" -c Release
 
 for pkg in \
   "FastFsm.Net.$VERSION.nupkg" \
