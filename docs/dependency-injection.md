@@ -3,7 +3,7 @@
 Install the DI package:
 
 ```bash
-dotnet add package FastFsm.DependencyInjection.Sharp
+dotnet add package FastFsm.Sharp.DependencyInjection
 ```
 
 The package defines `FSM_DI_ENABLED` and `FSM_LOGGING_ENABLED` and compiles `FsmServiceCollectionExtensions` into the consuming project.

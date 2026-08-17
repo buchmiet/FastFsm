@@ -3,7 +3,7 @@
 Install the logging package:
 
 ```bash
-dotnet add package FastFsm.Logging.Sharp
+dotnet add package FastFsm.Sharp.Logging
 ```
 
 The package sets `FsmGenerateLogging=true` and defines `FSM_LOGGING_ENABLED`. Generated machines then include the logging-specific constructor parameter and lifecycle logging code.
@@ -18,7 +18,7 @@ When using project references inside this repository, enable logging generation 
 </PropertyGroup>
 ```
 
-The `FastFsm.Logging.Sharp` package props set this property for package consumers.
+The `FastFsm.Sharp.Logging` package props set this property for package consumers.
 
 ## Constructor injection
 

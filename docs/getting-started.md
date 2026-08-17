@@ -19,8 +19,8 @@ dotnet add package FastFsm.Sharp
 Optional packages:
 
 ```bash
-dotnet add package FastFsm.Logging.Sharp
-dotnet add package FastFsm.DependencyInjection.Sharp
+dotnet add package FastFsm.Sharp.Logging
+dotnet add package FastFsm.Sharp.DependencyInjection
 ```
 
 ## Minimal Attribute API machine
@@ -100,11 +100,11 @@ Asynchronous machines expose `StartAsync`, `TryFireAsync`, and `FireAsync`. Sync
 
 ## Optional logging
 
-Install `FastFsm.Logging.Sharp` to enable logging code generation. See [logging.md](logging.md) for the package configuration and generated constructor behavior.
+Install `FastFsm.Sharp.Logging` to enable logging code generation. See [logging.md](logging.md) for the package configuration and generated constructor behavior.
 
 ## Optional dependency injection
 
-Install `FastFsm.DependencyInjection.Sharp` and register machines with `AddStateMachine<TInterface, TImplementation, TState, TTrigger>`. The package configures the required build properties. See [dependency-injection.md](dependency-injection.md).
+Install `FastFsm.Sharp.DependencyInjection` and register machines with `AddStateMachine<TInterface, TImplementation, TState, TTrigger>`. The package configures the required build properties. See [dependency-injection.md](dependency-injection.md).
 
 ## Building this repository
 

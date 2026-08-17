@@ -48,7 +48,7 @@ A failed transition invokes `OnAfterTransition(context, success: false)`. `OnUnh
 
 ## Extension exceptions
 
-`ExtensionRunner` catches exceptions thrown by extension hooks so they do not propagate through the state-machine transition call. When `FastFsm.Logging.Sharp` is enabled, extension exceptions are logged at Error level.
+`ExtensionRunner` catches exceptions thrown by extension hooks so they do not propagate through the state-machine transition call. When `FastFsm.Sharp.Logging` is enabled, extension exceptions are logged at Error level.
 
 ## Disabling extension support
 

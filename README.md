@@ -11,8 +11,8 @@ FastFsm generates `switch`-based state-machine code at build time. Machines can 
 ```bash
 dotnet add package FastFsm.Sharp
 # optional
-dotnet add package FastFsm.Logging.Sharp
-dotnet add package FastFsm.DependencyInjection.Sharp
+dotnet add package FastFsm.Sharp.Logging
+dotnet add package FastFsm.Sharp.DependencyInjection
 ```
 
 Requires **.NET SDK 10.0** (see `global.json`).
@@ -78,8 +78,8 @@ bool ok = door.TryFire(DoorTrigger.Close); // returns false when no valid transi
 - Hierarchical states, shallow and deep history, internal transitions, and transition priority
 - Typed payloads per trigger
 - `IStateMachineExtension` transition hooks
-- Optional logging through `FastFsm.Logging.Sharp`
-- Optional dependency-injection integration through `FastFsm.DependencyInjection.Sharp`
+- Optional logging through `FastFsm.Sharp.Logging`
+- Optional dependency-injection integration through `FastFsm.Sharp.DependencyInjection`
 - Generated code paths compatible with trimming and Native AOT
 
 ## Documentation
@@ -106,10 +106,10 @@ bool ok = door.TryFire(DoorTrigger.Close); // returns false when no valid transi
 | Package | Purpose |
 |---------|---------|
 | `FastFsm.Sharp` | Runtime and source generator |
-| `FastFsm.Logging.Sharp` | `ILogger` integration for generated machines |
-| `FastFsm.DependencyInjection.Sharp` | `Microsoft.Extensions.DependencyInjection` registration helpers |
+| `FastFsm.Sharp.Logging` | `ILogger` integration for generated machines |
+| `FastFsm.Sharp.DependencyInjection` | `Microsoft.Extensions.DependencyInjection` registration helpers |
 
-**Migrating from 0.9.0:** new projects use `FastFsm.*.Sharp`. Existing `FastFsm.Net*` references can stay — 0.9.1 ships legacy metapackages that forward to `.Sharp` (see [CHANGELOG.md](CHANGELOG.md)). Your machine code (`Abstractions.*`, `FastFsm.*`) stays the same. Details: [docs/architecture.md](docs/architecture.md#public-api-compatibility-091).
+**Migrating from 0.9.0:** new projects use `FastFsm.Sharp*`. Existing `FastFsm.Net*` references can stay — 0.9.1 ships legacy metapackages that forward to `FastFsm.Sharp*` (see [CHANGELOG.md](CHANGELOG.md)). Your machine code (`Abstractions.*`, `FastFsm.*`) stays the same. Details: [docs/architecture.md](docs/architecture.md#public-api-compatibility-091).
 
 ## Repository layout
 

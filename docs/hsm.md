@@ -63,7 +63,7 @@ When multiple transitions match, use `.Priority(literal)` in Fluent API or resol
 
 ## Active path and introspection
 
-Generated HSM machines track the active leaf state in `CurrentState` while traversing composite entry. Logging integration emits hierarchical transition details when `FastFsm.Logging.Sharp` is enabled.
+Generated HSM machines track the active leaf state in `CurrentState` while traversing composite entry. Logging integration emits hierarchical transition details when `FastFsm.Sharp.Logging` is enabled.
 
 ## Validation
 

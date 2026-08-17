@@ -13,16 +13,16 @@ Not yet published to NuGet. NuGet `0.9.0` remains the latest release under the `
 
 ### Breaking
 
-- **Canonical** NuGet IDs are `FastFsm.*.Sharp`. New projects should use these IDs.
-- Packed MSBuild props filenames: `FastFsm.Net.props` → `FastFsm.Sharp.props` (and matching Logging/DI props). Only affects projects that import props by path manually.
+- **Canonical** NuGet IDs are `FastFsm.Sharp`, `FastFsm.Sharp.Logging`, and `FastFsm.Sharp.DependencyInjection`. New projects should use these IDs.
+- Packed MSBuild props filenames: `FastFsm.Net.props` → `FastFsm.Sharp.props`, `FastFsm.Net.Logging.props` → `FastFsm.Sharp.Logging.props`, `FastFsm.Net.DependencyInjection.props` → `FastFsm.Sharp.DependencyInjection.props`. Only affects projects that import props by path manually.
 
 ### Added
 
-- Legacy **metapackages** `FastFsm.Net`, `FastFsm.Net.Logging`, `FastFsm.Net.DependencyInjection` (`src/LegacyPackages/`): same version, dependency-only forward to the matching `.Sharp` package so existing `<PackageReference>` lines keep working without duplicating assemblies or analyzers.
+- Legacy **metapackages** `FastFsm.Net`, `FastFsm.Net.Logging`, `FastFsm.Net.DependencyInjection` (`src/LegacyPackages/`): same version, dependency-only forward to the matching `FastFsm.Sharp*` package so existing `<PackageReference>` lines keep working without duplicating assemblies or analyzers.
 
 ### Changed
 
-- NuGet package IDs rebranded from `FastFsm.Net*` to `FastFsm.*.Sharp` (`FastFsm.Sharp`, `FastFsm.Logging.Sharp`, `FastFsm.DependencyInjection.Sharp`). Build props filenames follow the new package IDs.
+- NuGet package IDs rebranded from `FastFsm.Net*` to `FastFsm.Sharp*` (`FastFsm.Sharp`, `FastFsm.Sharp.Logging`, `FastFsm.Sharp.DependencyInjection`). Build props filenames follow the new package IDs.
 - Source projects moved under `src/` with Leith-style solution folder nodes; runtime projects live under `src/Fsm/`, generator under `src/Generator/`.
 - Core package assembly name restored to `FastFsm` (`lib/net10.0/FastFsm.dll`); generator entry project renamed to `Generator.Core.csproj` with `AssemblyName` `Generator`.
 - Test and product `.csproj` filenames aligned with folder names; `FastFsm.slnx` uses grouped solution folders (`/Fsm/`, `/Fsm/Fsm.Tests/`, `/Generator/`). Test code namespaces unified to `Tests.*` (e.g. `Tests.Fsm`, `Tests.Machines`, `Tests.SourceGenerators`).
@@ -43,8 +43,8 @@ First public-facing 0.9 line on .NET 10. Packages: `FastFsm.Net`, `FastFsm.Net.L
 - Target **.NET 10** (`net10.0`, SDK pin in `global.json`).
 - Canonical product docs under `docs/` (Fluent and Attribute APIs, HSM, async, payloads, extensions, logging, DI, diagnostics, architecture, benchmarks).
 - `ROADMAP.md` and deferred-events design proposal.
-- .NET 10 benchmark snapshots under `docs/benchmarks/results/` (release gate on win-x64-amd-9600x at `93ab811`; linux-arm64 pre-release retained for comparison).
-- GitHub-hosted CI for pull requests; self-hosted Windows runners / Linux / macOS only on `push` to `main` and `workflow_dispatch`.
+- .NET 10 benchmark snapshots under `docs/benchmarks/results/` (release gate on `win-x64-amd-9600x` at `93ab811`; `linux-arm64` pre-release retained for comparison).
+- GitHub-hosted CI for pull requests; self-hosted Windows / Linux / macOS runners only on `push` to `main` and `workflow_dispatch`.
 - `scripts/pack-and-smoke` — pack the three NuGet packages, assert satellite nuspec dependencies and `FastFsm.dll` assembly version, and compile clean consumer consoles that install **only** the package under test.
 
 ### Changed

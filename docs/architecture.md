@@ -32,8 +32,8 @@ Your partial class + [StateMachine] / Fluent Configure()
 | `Generator.Logger` | Logging code generation |
 | `Generator.DependencyInjection` | DI-related code-generation hooks |
 | `FastFsm` | Runtime bases and contracts; packaged as `FastFsm.Sharp` |
-| `Fsm.Logging` | Logging package (`FastFsm.Logging.Sharp`) |
-| `Fsm.DependencyInjection` | DI package (`FastFsm.DependencyInjection.Sharp`) |
+| `Fsm.Logging` | Logging package (`FastFsm.Sharp.Logging`) |
+| `Fsm.DependencyInjection` | DI package (`FastFsm.Sharp.DependencyInjection`) |
 | `Tests.Machines` | Shared machine definitions at `src/Fsm/Fsm.Tests/Tests.Machines/`; used by `Tests.Fsm` and `Tests.Logging` |
 
 ## Generator entry points
@@ -96,8 +96,8 @@ Repository-only renames (`Fsm.Core.csproj`, folder `src/Fsm/…`, test namespace
 
 | Change | Migration |
 |--------|-----------|
-| Canonical package IDs are now `FastFsm.*.Sharp` | New projects: `dotnet add package FastFsm.Sharp` (etc.) |
-| Old IDs `FastFsm.Net*` | **Optional:** keep `<PackageReference Include="FastFsm.Net" />` — 0.9.1+ ships **legacy metapackages** under `src/LegacyPackages/` that depend on the `.Sharp` packages with no duplicate binaries |
+| Canonical package IDs are now `FastFsm.Sharp*` | New projects: `dotnet add package FastFsm.Sharp` (etc.) |
+| Old IDs `FastFsm.Net*` | **Optional:** keep `<PackageReference Include="FastFsm.Net" />` — 0.9.1+ ships **legacy metapackages** under `src/LegacyPackages/` that depend on the `FastFsm.Sharp*` packages with no duplicate binaries |
 | Props paths in `.csproj` if you referenced them manually | `FastFsm.Net.props` → `FastFsm.Sharp.props`, etc. |
 
 On NuGet.org, deprecate `FastFsm.Net*` 0.9.0 listings with alternative package `FastFsm.Sharp*` when you publish 0.9.1 (manual step in package management UI).
