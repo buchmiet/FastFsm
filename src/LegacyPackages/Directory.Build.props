@@ -1,0 +1,11 @@
+<Project>
+  <Import Project="$(MSBuildThisFileDirectory)..\..\Directory.Build.props"
+          Condition="Exists('$(MSBuildThisFileDirectory)..\..\Directory.Build.props')" />
+
+  <!-- Metapackages only declare NuGet dependencies; do not compile FastFsm.Sharp contentFiles. -->
+  <Target Name="StripFastFsmSharpCompileItems" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <Compile Remove="@(Compile)" Condition="$([System.String]::Copy('%(FullPath)').Contains('fastfsm.sharp'))" />
+    </ItemGroup>
+  </Target>
+</Project>
