@@ -14,7 +14,7 @@ First public-facing 0.9 line on .NET 10. Packages: `FastFsm.Net`, `FastFsm.Net.L
 - Target **.NET 10** (`net10.0`, SDK pin in `global.json`).
 - Canonical product docs under `docs/` (Fluent and Attribute APIs, HSM, async, payloads, extensions, logging, DI, diagnostics, architecture, benchmarks).
 - `ROADMAP.md` and deferred-events design proposal.
-- Homelab .NET 10 benchmark snapshot (`docs/benchmarks/results/`; pre-release commit, not the release tag).
+- .NET 10 benchmark snapshots under `docs/benchmarks/results/` (release gate on win-x64-amd-9600x at `93ab811`; linux-arm64 pre-release retained for comparison).
 - GitHub-hosted CI for pull requests; self-hosted Windows runners / Linux / macOS only on `push` to `main` and `workflow_dispatch`.
 - `scripts/pack-and-smoke` — pack the three NuGet packages, assert satellite nuspec dependencies and `FastFsm.dll` assembly version, and compile clean consumer consoles that install **only** the package under test.
 
