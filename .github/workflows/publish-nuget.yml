@@ -1,0 +1,117 @@
+name: Publish NuGet
+
+# Publish when a version tag is pushed (for example v0.9.0 on a commit already on main).
+# Trusted publisher: NuGet.org ↔ buchmiet/FastFsm ↔ this workflow file.
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Package version to publish (emergency override; normally use a tag)
+        required: true
+        type: string
+
+concurrency:
+  group: publish-nuget-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  SLNX: FastFsm.slnx
+  CONFIGURATION: Release
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine version from tag
+        shell: pwsh
+        run: |
+          $version = if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') {
+            '${{ inputs.version }}'
+          } else {
+            $env:GITHUB_REF_NAME -replace '^v', ''
+          }
+          if ($version -notmatch '^\d+\.\d+\.\d+') {
+            throw "Invalid version '$version'. Expected semver like 0.9.0."
+          }
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Verify Directory.Build.props version matches tag
+        shell: pwsh
+        run: |
+          $match = Select-String -Path Directory.Build.props -Pattern '<FastFsmPackageVersion>([^<]+)</FastFsmPackageVersion>'
+          if (-not $match) { throw 'FastFsmPackageVersion not found in Directory.Build.props' }
+          $propsVersion = $match.Matches[0].Groups[1].Value
+          if ($propsVersion -ne $env:VERSION) {
+            throw "Tag version ($env:VERSION) does not match Directory.Build.props ($propsVersion)"
+          }
+
+      - name: Verify CHANGELOG.md has an entry for this version
+        shell: pwsh
+        run: |
+          if (-not (Select-String -Path CHANGELOG.md -Pattern "^## \[$env:VERSION\]" -Quiet)) {
+            throw "CHANGELOG.md has no entry for version $env:VERSION"
+          }
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Test
+        run: dotnet test ${{ env.SLNX }} -c ${{ env.CONFIGURATION }} --verbosity minimal
+
+      - name: Pack and consumer smoke
+        shell: pwsh
+        run: ./scripts/pack-and-smoke.ps1
+
+      - name: NuGet login
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: buchmiet
+
+      - name: Push to NuGet.org
+        shell: pwsh
+        run: |
+          $packages = @(Get-ChildItem -Path ./nuget -Filter "*.$env:VERSION.nupkg")
+          if ($packages.Count -eq 0) {
+            throw "No NuGet packages found in ./nuget for version $env:VERSION"
+          }
+
+          foreach ($package in $packages) {
+            Write-Host "Pushing $($package.Name)..."
+            dotnet nuget push $package.FullName `
+              --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" `
+              --source "https://api.nuget.org/v3/index.json" `
+              --skip-duplicate
+            if ($LASTEXITCODE -ne 0) {
+              throw "Failed to push $($package.Name)."
+            }
+          }
+
+      - name: Upload packages to GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $releaseTag = "v$env:VERSION"
+          gh release view $releaseTag 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $releaseTag --title "FastFsm.Sharp $env:VERSION" --generate-notes
+          }
+          $packages = @(Get-ChildItem -Path ./nuget -Filter "*.$env:VERSION.nupkg" | ForEach-Object { $_.FullName })
+          gh release upload $releaseTag $packages --clobber

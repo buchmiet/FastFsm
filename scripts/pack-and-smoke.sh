@@ -4,23 +4,23 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-VERSION="0.9.0"
+VERSION="$(sed -n 's:.*<FastFsmPackageVersion>\([^<]*\)</FastFsmPackageVersion>.*:\1:p' "$REPO/Directory.Build.props" | head -n 1)"
+if [[ -z "$VERSION" ]]; then
+  echo "FastFsmPackageVersion not found in Directory.Build.props" >&2
+  exit 1
+fi
 FEED="$REPO/nuget"
 
 echo "Packing product projects -> $FEED"
-# Pack only the three nupkgs. Do not pass GeneratePackageOnBuild=true on the
-# solution — that overrides Generator.csproj and trips a Pack cycle on SDK 10.
-dotnet pack "$REPO/src/Fsm/Fsm.Core/Fsm.Core.csproj" -c Release
-dotnet pack "$REPO/src/Fsm/Fsm.Logging/Fsm.Logging.csproj" -c Release
-dotnet pack "$REPO/src/Fsm/Fsm.DependencyInjection/Fsm.DependencyInjection.csproj" -c Release
+# GeneratePackageOnBuild on product projects; dotnet pack alone can ship stale assemblies.
+dotnet build "$REPO/src/Fsm/Fsm.Core/Fsm.Core.csproj" -c Release
+dotnet build "$REPO/src/Fsm/Fsm.Logging/Fsm.Logging.csproj" -c Release
+dotnet build "$REPO/src/Fsm/Fsm.DependencyInjection/Fsm.DependencyInjection.csproj" -c Release
 
 echo "Packing legacy metapackages (FastFsm.Net* -> FastFsm.Sharp*) -> $FEED"
-dotnet pack "$REPO/src/LegacyPackages/FastFsm.Net/FastFsm.Net.csproj" -c Release \
-  -p:RestoreSources="$FEED;https://api.nuget.org/v3/index.json"
-dotnet pack "$REPO/src/LegacyPackages/FastFsm.Net.Logging/FastFsm.Net.Logging.csproj" -c Release \
-  -p:RestoreSources="$FEED;https://api.nuget.org/v3/index.json"
-dotnet pack "$REPO/src/LegacyPackages/FastFsm.Net.DependencyInjection/FastFsm.Net.DependencyInjection.csproj" -c Release \
-  -p:RestoreSources="$FEED;https://api.nuget.org/v3/index.json"
+dotnet pack "$REPO/src/LegacyPackages/FastFsm.Net/FastFsm.Net.csproj" -c Release --configfile "$REPO/nuget.config"
+dotnet pack "$REPO/src/LegacyPackages/FastFsm.Net.Logging/FastFsm.Net.Logging.csproj" -c Release --configfile "$REPO/nuget.config"
+dotnet pack "$REPO/src/LegacyPackages/FastFsm.Net.DependencyInjection/FastFsm.Net.DependencyInjection.csproj" -c Release --configfile "$REPO/nuget.config"
 
 for pkg in \
   "FastFsm.Sharp.$VERSION.nupkg" \

@@ -2,7 +2,10 @@
 # Work directory is under TEMP so repo Directory.Build.props does not apply.
 $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent $PSScriptRoot
-$version = "0.9.0"
+$propsPath = Join-Path $repo "Directory.Build.props"
+$versionMatch = Select-String -Path $propsPath -Pattern '<FastFsmPackageVersion>([^<]+)</FastFsmPackageVersion>'
+if (-not $versionMatch) { throw "FastFsmPackageVersion not found in Directory.Build.props" }
+$version = $versionMatch.Matches[0].Groups[1].Value
 $feed = Join-Path $repo "nuget"
 
 Write-Host "Packing product projects -> $feed"
