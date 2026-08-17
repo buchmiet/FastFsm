@@ -26,45 +26,51 @@ The benchmark sources include:
 - hierarchical-state-machine scenarios (`HsmBenchmarks`)
 - comparisons with Stateless, LiquidState, and Appccelerate as referenced by `Benchmark.csproj`
 
-## Verified results (2026-08-16)
+## Verified results (2026-08-17, `v0.9.0` release gate)
+
+Measured at commit `93ab811` on the Windows x64 workstation (AMD Ryzen 5 9600X) (Windows 11, AMD Ryzen 5 9600X x64).
 
 **Package:** FastFsm.Net 0.9.0  
 **BenchmarkDotNet:** 0.15.8 — `IterationCount=15`, `WarmupCount=3`, `Runtime=.NET 10.0`  
 **Comparison libraries:** Stateless 5.17.0, LiquidState 8.2.0, Appccelerate.StateMachine 6.0.0
 
-Full tables: [docs/benchmarks/results/](benchmarks/results/README.md)
+Full tables: [docs/benchmarks/results/win-x64-amd-9600x-2026-08-17.md](benchmarks/results/win-x64-amd-9600x-2026-08-17.md)
 
-### linux-arm64 ()
+### win-x64-amd-9600x
 
 | Field | Value |
 |-------|-------|
-| OS | Ubuntu 26.04 LTS, aarch64 |
-| CPU | 4 vCPU (Apple / ARM64) |
+| OS | Windows 11 (10.0.26200) |
+| CPU | AMD Ryzen 5 9600X, 6 physical cores |
 | .NET | SDK 10.0.400, runtime 10.0.11 |
-| Wall time | ~7 min total (23 + 7 benchmarks) |
+| Wall time | ~9.5 min total (23 + 7 benchmarks) |
 
 **Flat FSM (selected, vs Stateless baseline = 1.00 where shown):**
 
 | Method | Mean | Ratio vs Stateless |
 |--------|-----:|-------------------:|
-| FastFsm_Basic | 1.24 ns | 0.003 |
-| Stateless_Basic | 436.9 ns | 1.000 |
-| LiquidState_Basic | 25.4 ns | 0.058 |
-| FastFsm_GuardsActions | 1.32 ns | 0.003 |
-| FastFsm_CanFire | 0.54 ns | 0.001 |
-| FastFsm_Payload | 2.09 ns | 0.005 |
+| FastFsm_Basic | 0.91 ns | 0.004 |
+| Stateless_Basic | 234.0 ns | 1.000 |
+| LiquidState_Basic | 21.2 ns | 0.091 |
+| FastFsm_GuardsActions | 0.87 ns | 0.004 |
+| FastFsm_CanFire | 0.35 ns | 0.001 |
+| FastFsm_Payload | 1.04 ns | 0.004 |
 
 **HSM (selected):**
 
 | Method | Mean |
 |--------|-----:|
-| FastFSM_Hsm_Basic_EnterLeave | 4.05 ns |
-| Stateless_Hsm_Basic_EnterLeave | 1,007.6 ns |
-| FastFSM_Hsm_Internal | 1.62 ns |
-| Stateless_Hsm_Internal | 446.1 ns |
-| FastFSM_Hsm_History_Shallow | 64.2 ns |
+| FastFSM_Hsm_Basic_EnterLeave | 3.19 ns |
+| Stateless_Hsm_Basic_EnterLeave | 711.6 ns |
+| FastFSM_Hsm_Internal | 1.17 ns |
+| Stateless_Hsm_Internal | 290.0 ns |
+| FastFSM_Hsm_History_Shallow | 35.0 ns |
 
-On this ARM64 Linux host, generated `switch`-based dispatch is fastest on simple transition paths; LiquidState is competitive on several async scenarios. Interpret ratios only together with allocation columns in the full report.
+On this x64 Windows host, generated `switch`-based dispatch is fastest on simple transition paths; LiquidState is competitive on several async scenarios. Interpret ratios only together with allocation columns in the full report.
+
+### linux-arm64 (, pre-release)
+
+Earlier ARM64 snapshot at `548ea01` (pre-release): [linux-arm64-2026-08-16.md](benchmarks/results/linux-arm64-2026-08-16.md).
 
 ### macOS (Apple Silicon Mac)
 

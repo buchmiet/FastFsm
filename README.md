@@ -136,7 +136,7 @@ Pack the three NuGet packages and compile clean consumer consoles against `./nug
 bash ./scripts/pack-and-smoke.sh
 ```
 
-CI (self-hosted Windows, Linux, macOS) is `.github/workflows/ci.yml`.
+CI for pull requests runs on GitHub-hosted runners (`.github/workflows/ci.yml`). Self-hosted Windows/Linux/macOS jobs run only on `push` to `main` and `workflow_dispatch` (`.github/workflows/ci-self-hosted.yml`).
 
 See [docs/architecture.md](docs/architecture.md) for the generator layout.
 

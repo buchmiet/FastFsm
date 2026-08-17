@@ -160,12 +160,12 @@ namespace Generator.Rules.Definitions
             messageFormat: "State '{0}' references parent '{1}' which does not exist. Fix: Either define the parent state with [State({1})], or correct the Parent parameter to reference an existing state.",
             category: RuleCategories.FSM_Generator_HSM,
             defaultSeverity: RuleSeverity.Error,
-            description: "All parent states referenced by substates must be defined in the. Check for typos in the parent state name.");
+            description: "All parent states referenced by substates must be defined in the state enum. Check for typos in the parent state name.");
 
         public static readonly RuleDefinition InvalidHierarchyConfiguration = new(
             id: RuleIdentifiers.InvalidHierarchyConfiguration,  // FSM102
             title: "Composite without initial state",
-            messageFormat: "Composite state '{0}' has no initial substate defined. Fix: Add [InitialSubstate({0}, YourInitialChild)] attribute, or set History = HistoryMode.Shallow/Deep on the composite state.",
+            messageFormat: "Composite state '{0}' has no initial substate defined. Fix: mark one child with [State(..., Parent = {0}, IsInitial = true)] or .IsInitial(), or set History = HistoryMode.Shallow/Deep on the composite state.",
             category: RuleCategories.FSM_Generator_HSM,
             defaultSeverity: RuleSeverity.Warning,
             description: "Composite states must have an initial substate to determine which child state to enter. Either define an initial substate or use history mode to remember the last active child.");
@@ -173,10 +173,10 @@ namespace Generator.Rules.Definitions
         public static readonly RuleDefinition MultipleInitialSubstates = new(
             id: RuleIdentifiers.MultipleInitialSubstates,  // FSM103
             title: "Multiple initial children",
-            messageFormat: "Composite state '{0}' has multiple initial substates: '{1}' and '{2}'. Fix: Keep only one [InitialSubstate({0}, ...)] attribute.",
+            messageFormat: "Composite state '{0}' has multiple initial substates: '{1}' and '{2}'. Fix: keep only one child marked IsInitial (attribute [State(..., IsInitial = true)] or fluent .IsInitial()).",
             category: RuleCategories.FSM_Generator_HSM,
             defaultSeverity: RuleSeverity.Error,
-            description: "A composite state can only have one initial substate. Remove duplicate InitialSubstate attributes.");
+            description: "A composite state can only have one initial substate. Remove duplicate IsInitial markers.");
 
         public static readonly RuleDefinition InvalidHistoryConfiguration = new(
             id: RuleIdentifiers.InvalidHistoryConfiguration,  // FSM104
