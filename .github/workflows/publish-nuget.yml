@@ -76,7 +76,9 @@ jobs:
 
       - name: Pack and consumer smoke
         shell: pwsh
-        run: ./scripts/pack-and-smoke.ps1
+        run: |
+          Remove-Item -Force ./nuget/*.nupkg -ErrorAction SilentlyContinue
+          ./scripts/pack-and-smoke.ps1
 
       - name: NuGet login
         uses: NuGet/login@v1
