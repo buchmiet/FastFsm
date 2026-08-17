@@ -74,7 +74,7 @@ Analyzers are packed under `analyzers/dotnet/cs` in the NuGet package.
 | `Generator.Tests` | Generator rules and emission tests |
 | `Machines.Tests` | Machine definitions referenced by other test projects |
 
-Pack + consumer smoke: `scripts/pack-and-smoke.ps1` / `scripts/pack-and-smoke.sh`. CI: `.github/workflows/ci.yml`.
+Pack + consumer smoke: `scripts/pack-and-smoke.ps1` / `scripts/pack-and-smoke.sh` (installs only the package under test; satellites must pull Core and Microsoft.Extensions.* transitively). PR CI: GitHub-hosted `.github/workflows/ci.yml`. Trusted self-hosted: `.github/workflows/ci-self-hosted.yml`.
 
 ## Maintenance docs
 

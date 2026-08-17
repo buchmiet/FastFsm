@@ -20,14 +20,8 @@
 
     
     <PackageId>FastFsm.Net</PackageId>
-    <Authors>Lukasz Buchmiet</Authors>
     <Description>High-performance state machine using source generators</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <RepositoryUrl>https://github.com/buchmiet/FastFsm</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <PackageProjectUrl>https://github.com/buchmiet/FastFsm</PackageProjectUrl>
-    <PackageTags>fsm;state machine;source generator;roslyn;dotnet</PackageTags>
     <PackageReleaseNotes>.NET 10. Extension generation is opt-in. Warning-free generated code for typical machines. See CHANGELOG.md.</PackageReleaseNotes>
   </PropertyGroup>
 
@@ -95,13 +89,6 @@
     <MSBuild Projects="$(MSBuildThisFileDirectory)..\Generator\Generator.csproj"
              Targets="Build"
              Properties="Configuration=$(Configuration)" />
-  </Target>
-
-  <Target Name="StampVersionForNupkg" BeforeTargets="GenerateNuspec">
-    <PropertyGroup>
-      <Version>$(FastFsmPackageVersion)</Version>
-      <PackageVersion>$(Version)</PackageVersion>
-    </PropertyGroup>
   </Target>
 
 </Project>

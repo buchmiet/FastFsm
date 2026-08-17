@@ -7,12 +7,6 @@
 		<NoWarn>$(NoWarn);CS9107;CS8765;CS8604;xUnit1031;xUnit1026</NoWarn>
 	</PropertyGroup>
 
-	<!-- Exclude archived tests in old_tests from compilation -->
-	<ItemGroup>
-	  <Compile Remove="old_tests/**/*.cs" />
-	  <None Include="old_tests/**/*.cs" />
-	</ItemGroup>
-
 	<!-- TypeSystemHelper tests are enabled (Generator internals exposed) -->
 
 	<ItemGroup>

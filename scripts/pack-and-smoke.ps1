@@ -23,6 +23,65 @@ foreach ($name in @(
     Write-Host "OK $name"
 }
 
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+function Get-NuspecXml {
+    param([string]$Nupkg)
+    $z = [IO.Compression.ZipFile]::OpenRead((Resolve-Path $Nupkg))
+    try {
+        $e = $z.Entries | Where-Object { $_.FullName -like '*.nuspec' } | Select-Object -First 1
+        if (-not $e) { throw "No nuspec in $Nupkg" }
+        $sr = New-Object IO.StreamReader($e.Open())
+        try { return [xml]$sr.ReadToEnd() } finally { $sr.Dispose() }
+    }
+    finally { $z.Dispose() }
+}
+
+function Get-NuspecDependencyIds {
+    param([xml]$Nuspec)
+    $ns = New-Object Xml.XmlNamespaceManager($Nuspec.NameTable)
+    $ns.AddNamespace("n", $Nuspec.DocumentElement.NamespaceURI)
+    @($Nuspec.SelectNodes("//n:dependency", $ns) | ForEach-Object { $_.GetAttribute("id") })
+}
+
+function Assert-NupkgDependsOn {
+    param([string]$Nupkg, [string[]]$Ids)
+    $xml = Get-NuspecXml $Nupkg
+    $have = Get-NuspecDependencyIds $xml
+    foreach ($id in $Ids) {
+        if ($have -notcontains $id) {
+            throw "$Nupkg missing NuGet dependency '$id'. Have: $($have -join ', ')"
+        }
+    }
+    if ($have -contains "Abstractions") {
+        throw "$Nupkg must not depend on unpublished Abstractions"
+    }
+    Write-Host "OK deps $($Ids -join ', ') in $(Split-Path $Nupkg -Leaf)"
+}
+
+Assert-NupkgDependsOn (Join-Path $feed "FastFsm.Net.Logging.$version.nupkg") @(
+    "FastFsm.Net", "Microsoft.Extensions.Logging.Abstractions")
+Assert-NupkgDependsOn (Join-Path $feed "FastFsm.Net.DependencyInjection.$version.nupkg") @(
+    "FastFsm.Net", "Microsoft.Extensions.DependencyInjection", "Microsoft.Extensions.Logging.Abstractions")
+
+$coreNupkg = Join-Path $feed "FastFsm.Net.$version.nupkg"
+$dllTmp = Join-Path ([IO.Path]::GetTempPath()) ("FastFsm-asmcheck-" + [guid]::NewGuid().ToString("n") + ".dll")
+$z = [IO.Compression.ZipFile]::OpenRead((Resolve-Path $coreNupkg))
+try {
+    $e = $z.Entries | Where-Object { $_.FullName -replace '\\','/' -eq 'lib/net10.0/FastFsm.dll' } | Select-Object -First 1
+    if (-not $e) { throw "FastFsm.dll missing from $coreNupkg" }
+    $fs = [IO.File]::Create($dllTmp)
+    try { $e.Open().CopyTo($fs) } finally { $fs.Dispose() }
+}
+finally { $z.Dispose() }
+$asmVersion = [Reflection.AssemblyName]::GetAssemblyName($dllTmp).Version
+Remove-Item $dllTmp -Force
+if ($asmVersion -ne [Version]"0.9.0.0") {
+    throw "FastFsm.dll AssemblyVersion is $asmVersion, expected 0.9.0.0"
+}
+Write-Host "OK FastFsm.dll AssemblyVersion $asmVersion"
+
+
 $nugetRoot = if ($env:NUGET_PACKAGES) { $env:NUGET_PACKAGES } else { Join-Path $env:USERPROFILE ".nuget\packages" }
 foreach ($id in @("fastfsm.net", "fastfsm.net.logging", "fastfsm.net.dependencyinjection")) {
     $cached = Join-Path $nugetRoot $id
@@ -58,8 +117,7 @@ try {
             Set-Location (Join-Path $dir $Name)
             Copy-Item (Join-Path $work "nuget.config") .
             foreach ($p in $Packages) {
-                $pkgVersion = if ($p.StartsWith("Microsoft.")) { "10.0.11" } else { $version }
-                dotnet add package $p --version $pkgVersion
+                dotnet add package $p --version $version
                 if ($LASTEXITCODE -ne 0) { throw "dotnet add package $p failed" }
             }
             Set-Content -Path "Machine.cs" -Value $Program -Encoding utf8
@@ -104,7 +162,7 @@ static class App
 }
 '@
 
-    Invoke-Smoke "logging" @("FastFsm.Net", "FastFsm.Net.Logging", "Microsoft.Extensions.Logging.Abstractions") @'
+    Invoke-Smoke "logging" @("FastFsm.Net.Logging") @'
 using Abstractions.Attributes;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -133,12 +191,7 @@ static class App
 }
 '@
 
-    Invoke-Smoke "di" @(
-        "FastFsm.Net",
-        "FastFsm.Net.Logging",
-        "FastFsm.Net.DependencyInjection",
-        "Microsoft.Extensions.DependencyInjection",
-        "Microsoft.Extensions.Logging.Abstractions") @'
+    Invoke-Smoke "di" @("FastFsm.Net.DependencyInjection") @'
 using Abstractions.Attributes;
 using FastFsm.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;

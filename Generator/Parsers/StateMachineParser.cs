@@ -225,12 +225,8 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
 
         report?.Invoke("=== START TryParse ===");
         report?.Invoke($"Parsing class: {classDeclaration.Identifier.Text}");
-        
-        bool isAsyncOce = classDeclaration.Identifier.Text.Contains("AsyncOceOnEntryMachine");
-        if (isAsyncOce)
-            report?.Invoke("[DEBUG AOE] Starting parse of AsyncOceOnEntryMachine");
 
-        // === SEKCJA 1: Pobieranie semantic model i class symbol ===
+        // Semantic model and class symbol
         report?.Invoke("Section 1: Getting semantic model and class symbol");
         var semanticModel = compilation.GetSemanticModel(classDeclaration.SyntaxTree);
         if (ModelExtensions.GetDeclaredSymbol(semanticModel, classDeclaration) is not INamedTypeSymbol classSymbol)
@@ -239,8 +235,6 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             return false;
         }
         report?.Invoke($"Class symbol obtained: {classSymbol.Name}");
-        if (isAsyncOce)
-            report?.Invoke("[DEBUG AOE] Got class symbol");
 
         // === SECTION 2: Creating initial model ===
         report?.Invoke("Section 2: Creating initial model");
@@ -262,20 +256,18 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         }
         report?.Invoke($"Model created - Namespace: {currentModel.Namespace}, ClassName: {currentModel.ClassName}");
 
-        // === SEKCJA 3: Pobieranie atrybutu StateMachine ===
+        // StateMachine attribute
         report?.Invoke("Section 3: Getting StateMachine attribute");
         var fsmAttribute = classSymbol.GetAttributes()
             .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == StateMachineAttributeFullName);
         report?.Invoke($"StateMachine attribute found: {fsmAttribute != null}");
-        if (isAsyncOce)
-            report?.Invoke($"[DEBUG AOE] StateMachine attribute found: {fsmAttribute != null}");
 
         // === SECTION 4: Reading arguments from [StateMachine] attribute ===
         if (fsmAttribute is not null)
         {
             report?.Invoke("Section 4: Reading StateMachine attribute arguments");
 
-            // Odczyt DefaultPayloadType
+            // DefaultPayloadType
             var defaultPayloadArg = fsmAttribute.NamedArguments
                 .FirstOrDefault(na => na.Key == nameof(StateMachineAttribute.DefaultPayloadType));
             if (defaultPayloadArg.Key is not null && defaultPayloadArg.Value.Value is INamedTypeSymbol payloadSym)
@@ -285,7 +277,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
                 report?.Invoke($"DefaultPayloadType set: {currentModel.DefaultPayloadType}");
             }
 
-            // Odczyt GenerateStructuralApi
+            // GenerateStructuralApi
             var structuralApiArg = fsmAttribute.NamedArguments
                 .FirstOrDefault(kv => kv.Key == "GenerateStructuralApi");
             if (structuralApiArg.Key is not null && structuralApiArg.Value.Value is bool flag)
@@ -294,7 +286,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
                 report?.Invoke($"GenerateStructuralApi set: {flag}");
             }
 
-            // Odczyt ContinueOnCapturedContext
+            // ContinueOnCapturedContext
             var continueContextArg = fsmAttribute.NamedArguments
                 .FirstOrDefault(na => na.Key == "ContinueOnCapturedContext");
             if (continueContextArg.Key is not null && continueContextArg.Value.Value is bool continueOnContext)
@@ -303,7 +295,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
                 report?.Invoke($"ContinueOnCapturedContext set: {continueOnContext}");
             }
 
-            // Odczyt EnableHierarchy (HSM)
+            // EnableHierarchy (HSM)
             var enableHierarchyArg = fsmAttribute.NamedArguments
                 .FirstOrDefault(na => na.Key == "EnableHierarchy");
             if (enableHierarchyArg.Key is not null && enableHierarchyArg.Value.Value is bool enableHierarchy)
@@ -313,7 +305,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             }
         }
 
-        // === SEKCJA 5: Podstawowa walidacja atrybutu i klasy ===
+        // Basic attribute and class validation
         report?.Invoke("Section 5: Basic attribute and class validation");
         
         // Aggregate all partial declarations for this symbol (not just current declaration)
@@ -585,7 +577,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             report?.Invoke("[Lenient Mode] Proceeding without fully resolved enum types");
         }
 
-        // === SEKCJA 7: Budowanie podstawowego modelu ===
+        // Build the basic model
         report?.Invoke("Section 7: Building basic model");
         
         // Use resolved types if available, otherwise use names from syntax (lenient mode)
@@ -690,15 +682,11 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         // === SECTION 8: Parsing attributes from class members ===
         report?.Invoke("Section 8: Parsing member attributes");
         report?.Invoke("Calling ParseMemberAttributes");
-        if (isAsyncOce)
-            report?.Invoke("[DEBUG AOE] Before ParseMemberAttributes");
         // Always call ParseMemberAttributes, but pass null symbols in lenient mode
         ParseMemberAttributes(classSymbol, currentModel, stateTypeArg, triggerTypeArg, ref criticalErrorOccurred, ref isMachineAsyncMode, report, isLenientMode);
         report?.Invoke($"ParseMemberAttributes completed. Critical error: {criticalErrorOccurred}, IsAsync: {isMachineAsyncMode}");
-        if (isAsyncOce)
-            report?.Invoke($"[DEBUG AOE] After ParseMemberAttributes - criticalError: {criticalErrorOccurred}, isAsync: {isMachineAsyncMode}");
 
-        // === SEKCJA 8.4: Enum-only fallback ===
+        // Enum-only fallback
         // If no [State] attributes were found, ensure all enum members are in the model
         bool hasStateAttributes = currentModel.States.Values.Any(s => 
             !string.IsNullOrEmpty(s.OnEntryMethod) || 
@@ -736,7 +724,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             // Suppressed FSM9003 diagnostic
         }
 
-        // === SEKCJA 8.5: Build HSM hierarchy if needed ===
+        // Build HSM hierarchy if needed
         report?.Invoke("Section 8.5: Building HSM hierarchy");
         BuildHierarchy(currentModel, ref criticalErrorOccurred, report);
         report?.Invoke($"Hierarchy built. HierarchyEnabled: {currentModel.HierarchyEnabled}");
@@ -880,7 +868,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             report?.Invoke($"Critical error after reachability validation: {criticalErrorOccurred}");
         }
 
-        // === SEKCJA 12: Finalizacja ===
+        // Finalization
         report?.Invoke("Section 12: Finalization");
         if (criticalErrorOccurred && !isLenientMode)
         {
@@ -896,9 +884,6 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
 
         currentModel.GenerationConfig.IsAsync = isMachineAsyncMode ?? false;
         report?.Invoke($"Final IsAsync: {currentModel.GenerationConfig.IsAsync}");
-        
-        if (isAsyncOce)
-            report?.Invoke($"[DEBUG AOE] Final state - IsAsync: {currentModel.GenerationConfig.IsAsync}, ExceptionHandler: {currentModel.ExceptionHandler != null}");
 
         // HSM flag tracking suppressed
         
@@ -1306,12 +1291,8 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
       ref bool? isMachineAsyncMode,
       bool isLenientMode = false)
     {
-        bool isAsyncOce = classSymbolContainingMethods.Name.Contains("AsyncOceOnEntryMachine");
-            
-        // Potrzebne tylko do walidacji (brak zmian)
         var voidType = compilation.GetSpecialType(SpecialType.System_Void);
 
-        // Przechodzimy po wszystkich metodach klasy
         foreach (var methodSymbol in classSymbolContainingMethods.GetMembers()
                                                                  .OfType<IMethodSymbol>())
         {
@@ -1953,64 +1934,24 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         Action<string>? report = null,
         bool isLenientMode = false)
     {
-        bool isAsyncOce = classSymbol.Name.Contains("AsyncOceOnEntryMachine");
-        bool isContinueMachine = classSymbol.Name.Contains("ContinueOnActionMachine");
-        if (isAsyncOce)
-            report?.Invoke("[DEBUG AOE] ParseOnExceptionAttribute started");
-            
-        // Debug: Log all attributes for ContinueOnActionMachine
-        if (isContinueMachine)
-        {
-            report?.Invoke($"[DEBUG] Attributes for ContinueOnActionMachine:");
-            foreach (var attr in classSymbol.GetAttributes())
-            {
-                report?.Invoke($"[DEBUG]   - {attr.AttributeClass?.ToDisplayString()}");
-            }
-            report?.Invoke($"[DEBUG] Looking for: {OnExceptionAttributeFullName}");
-        }
-            
-        // Find [OnException] attribute on class - use TypeSystemHelper for robust matching
         var onExceptionAttr = classSymbol.GetAttributes()
             .FirstOrDefault(a =>
             {
                 var cls = a.AttributeClass;
                 if (cls is null) return false;
-                
-                // Get the simple name using TypeSystemHelper
+
                 var fullName = _typeHelper.BuildFullTypeName(cls);
                 var simpleName = _typeHelper.GetSimpleTypeName(fullName);
-                
-                // Check for both with and without "Attribute" suffix
+
                 if (simpleName == "OnExceptionAttribute" || simpleName == "OnException")
-                {
-                    if (isContinueMachine)
-                        report?.Invoke($"[DEBUG] Matched by simple name: {simpleName}");
                     return true;
-                }
-                
-                // Fallback: check if full name ends with the expected pattern
-                if (fullName.EndsWith(".OnExceptionAttribute", StringComparison.Ordinal) ||
-                    fullName.EndsWith("+OnExceptionAttribute", StringComparison.Ordinal))
-                {
-                    if (isContinueMachine)
-                        report?.Invoke($"[DEBUG] Matched by full name suffix: {fullName}");
-                    return true;
-                }
-                
-                return false;
+
+                return fullName.EndsWith(".OnExceptionAttribute", StringComparison.Ordinal) ||
+                       fullName.EndsWith("+OnExceptionAttribute", StringComparison.Ordinal);
             });
 
         if (onExceptionAttr == null)
-        {
-            if (isAsyncOce)
-                report?.Invoke("[DEBUG AOE] No OnException attribute found");
-            if (isContinueMachine)
-                report?.Invoke("[DEBUG] No OnException attribute found for ContinueOnActionMachine");
             return;
-        }
-        
-        if (isAsyncOce)
-            report?.Invoke("[DEBUG AOE] OnException attribute found");
 
         Location attrLocation = onExceptionAttr.ApplicationSyntaxReference?
             .GetSyntax(context.CancellationToken)
@@ -2045,14 +1986,9 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
         var exceptionContextOpen = compilation.GetTypeByMetadataName(ExceptionContextFullNameOpen);
         if (exceptionContextOpen == null)
         {
-            if (isAsyncOce)
-                report?.Invoke($"[DEBUG AOE] ERROR: Could not find ExceptionContext type: {ExceptionContextFullNameOpen}");
             criticalErrorOccurred = true;
             return;
         }
-        
-        if (isAsyncOce)
-            report?.Invoke("[DEBUG AOE] Found ExceptionContext type");
 
         var exceptionContextClosed = exceptionContextOpen.Construct(stateTypeSymbol, triggerTypeSymbol);
         var exceptionDirectiveType = compilation.GetTypeByMetadataName(ExceptionDirectiveFullName);
@@ -2064,71 +2000,32 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             return;
         }
 
-        // Find best overload
-        IMethodSymbol? selectedMethod = null;
-        
-        if (isAsyncOce)
-        {
-            report?.Invoke($"[DEBUG AOE] Looking for overload. Found {overloads.Count} overloads");
-            foreach (var m in overloads)
-            {
-                var paramStr = string.Join(", ", m.Parameters.Select(p => $"{p.Type.ToDisplayString()} {p.Name}"));
-                report?.Invoke($"[DEBUG AOE] Overload: {m.ReturnType.ToDisplayString()} {m.Name}({paramStr})");
-            }
-            report?.Invoke($"[DEBUG AOE] Expected ExceptionContext type: {exceptionContextClosed.ToDisplayString()}");
-        }
-        
-        // Priority 1: (ExceptionContext<TState,TTrigger>, CancellationToken)
-        selectedMethod = overloads.FirstOrDefault(m =>
+        IMethodSymbol? selectedMethod = overloads.FirstOrDefault(m =>
             m.Parameters.Length == 2 &&
             SymbolEqualityComparer.Default.Equals(m.Parameters[0].Type, exceptionContextClosed) &&
             SymbolEqualityComparer.Default.Equals(m.Parameters[1].Type, cancellationTokenType));
 
-        // Priority 2: (ExceptionContext<TState,TTrigger>)
         if (selectedMethod == null)
         {
             selectedMethod = overloads.FirstOrDefault(m =>
                 m.Parameters.Length == 1 &&
                 SymbolEqualityComparer.Default.Equals(m.Parameters[0].Type, exceptionContextClosed));
         }
-        
-        if (isAsyncOce)
-            report?.Invoke($"[DEBUG AOE] Selected method: {selectedMethod?.Name ?? "NULL"}");
 
         if (selectedMethod == null)
         {
-            // Invalid signature - report error with proper expected signature
             var expectedReturn = "ExceptionDirective or ValueTask<ExceptionDirective>";
             var expectedSig = $"{expectedReturn} {methodName}(ExceptionContext<{stateTypeSymbol.Name}, {triggerTypeSymbol.Name}> context) or {methodName}(ExceptionContext<{stateTypeSymbol.Name}, {triggerTypeSymbol.Name}> context, CancellationToken ct)";
-            
-            // Create custom error message since we need specific parameter expectations
             var message = $"Method '{methodName}' used as OnException has an invalid signature. Expected: '{expectedSig}'.";
             EmitLegacy(context, "FSM003", "Invalid method signature",
                 message, "FastFSM", RuleSeverity.Error, attrLocation);
-            
+
             criticalErrorOccurred = true;
             return;
         }
 
-        // Validate return type
         bool isAsync = false;
         bool validReturnType = false;
-
-        if (isAsyncOce)
-        {
-            report?.Invoke($"[DEBUG AOE] Validating return type: {selectedMethod.ReturnType.ToDisplayString()}");
-            if (selectedMethod.ReturnType is INamedTypeSymbol nrt)
-            {
-                report?.Invoke($"[DEBUG AOE] Is generic: {nrt.IsGenericType}");
-                if (nrt.IsGenericType)
-                {
-                    report?.Invoke($"[DEBUG AOE] ConstructedFrom: {nrt.ConstructedFrom.ToDisplayString()}");
-                    report?.Invoke($"[DEBUG AOE] Type args count: {nrt.TypeArguments.Length}");
-                    if (nrt.TypeArguments.Length > 0)
-                        report?.Invoke($"[DEBUG AOE] First type arg: {nrt.TypeArguments[0].ToDisplayString()}");
-                }
-            }
-        }
 
         if (SymbolEqualityComparer.Default.Equals(selectedMethod.ReturnType, exceptionDirectiveType))
         {
@@ -2147,43 +2044,33 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
 
         if (!validReturnType)
         {
-            // Invalid return type
             var expectedReturn = "ExceptionDirective or ValueTask<ExceptionDirective>";
             var actualReturn = selectedMethod.ReturnType.ToDisplayString();
-            
             var message = $"Method '{methodName}' used as OnException has an invalid return type. Expected: '{expectedReturn}', but found: '{actualReturn}'.";
             EmitLegacy(context, "FSM003", "Invalid method signature",
                 message, "FastFSM", RuleSeverity.Error, attrLocation);
-                
+
             criticalErrorOccurred = true;
             return;
         }
 
-        // Check parameter count
         if (selectedMethod.Parameters.Length > 2)
         {
             var message = $"Method '{methodName}' used as OnException has too many parameters. Expected: 0-2 parameters, but found: {selectedMethod.Parameters.Length}.";
             EmitLegacy(context, "FSM003", "Invalid method signature",
                 message, "FastFSM", RuleSeverity.Error, attrLocation);
-                
+
             criticalErrorOccurred = true;
             return;
         }
 
-        // FSM011: Check mixed mode
-        if (isAsyncOce)
-            report?.Invoke($"[DEBUG AOE] Mixed mode check - isMachineAsyncMode: {isMachineAsyncMode}, handler isAsync: {isAsync}");
-            
         if (isMachineAsyncMode == false && isAsync)
         {
-            if (isAsyncOce)
-                report?.Invoke("[DEBUG AOE] ERROR: Mixed mode detected - async handler in sync machine");
             var mixedModeCtx = new MixedModeValidationContext(methodName, "asynchronous", "synchronous");
             ProcessRuleResults(_mixedModeRule.Validate(mixedModeCtx), attrLocation, ref criticalErrorOccurred);
             return;
         }
 
-        // Success - create model
         var stateUsage = _typeHelper.FormatTypeForUsage(model.StateType!, useGlobalPrefix: true);
         var triggerUsage = _typeHelper.FormatTypeForUsage(model.TriggerType!, useGlobalPrefix: true);
         model.ExceptionHandler = new ExceptionHandlerModel
@@ -2193,15 +2080,6 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
             AcceptsCancellationToken = selectedMethod.Parameters.Length == 2,
             ExceptionContextClosedType = $"global::FastFsm.Exceptions.ExceptionContext<{stateUsage}, {triggerUsage}>"
         };
-        
-        if (isContinueMachine)
-        {
-            report?.Invoke($"[DEBUG] ExceptionHandler set for ContinueOnActionMachine:");
-            report?.Invoke($"[DEBUG]   MethodName: {model.ExceptionHandler.MethodName}");
-            report?.Invoke($"[DEBUG]   IsAsync: {model.ExceptionHandler.IsAsync}");
-            report?.Invoke($"[DEBUG]   AcceptsCancellationToken: {model.ExceptionHandler.AcceptsCancellationToken}");
-            report?.Invoke($"[DEBUG]   ExceptionContextClosedType: {model.ExceptionHandler.ExceptionContextClosedType}");
-        }
     }
 
     private void BuildHierarchy(StateMachineModel model, ref bool criticalErrorOccurred, Action<string>? report)

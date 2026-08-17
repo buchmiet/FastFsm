@@ -26,6 +26,45 @@ do
   echo "OK $pkg"
 done
 
+python3 - "$FEED" "$VERSION" <<'PY'
+import sys, zipfile, xml.etree.ElementTree as ET
+from pathlib import Path
+
+feed, version = Path(sys.argv[1]), sys.argv[2]
+
+def nuspec_ids(nupkg):
+    with zipfile.ZipFile(nupkg) as z:
+        name = next(n for n in z.namelist() if n.endswith(".nuspec"))
+        root = ET.fromstring(z.read(name))
+    ns = {"n": root.tag.split("}")[0].strip("{")} if root.tag.startswith("{") else {}
+    path = ".//n:dependency" if ns else ".//dependency"
+    return [el.get("id") for el in root.findall(path, ns)]
+
+def require(nupkg, ids):
+    have = nuspec_ids(nupkg)
+    missing = [i for i in ids if i not in have]
+    if missing:
+        raise SystemExit(f"{nupkg.name} missing {missing}; have {have}")
+    if "Abstractions" in have:
+        raise SystemExit(f"{nupkg.name} must not depend on Abstractions")
+    print(f"OK deps {', '.join(ids)} in {nupkg.name}")
+
+require(feed / f"FastFsm.Net.Logging.{version}.nupkg",
+        ["FastFsm.Net", "Microsoft.Extensions.Logging.Abstractions"])
+require(feed / f"FastFsm.Net.DependencyInjection.{version}.nupkg",
+        ["FastFsm.Net", "Microsoft.Extensions.DependencyInjection",
+         "Microsoft.Extensions.Logging.Abstractions"])
+
+core = feed / f"FastFsm.Net.{version}.nupkg"
+with zipfile.ZipFile(core) as z:
+    data = z.read("lib/net10.0/FastFsm.dll")
+if b"1.0.0.0" in data and b"0.9.0" not in data and "0.9.0".encode("utf-16le") not in data:
+    raise SystemExit("FastFsm.dll still looks like 1.0.0.0")
+if b"0.9.0" not in data and "0.9.0".encode("utf-16le") not in data:
+    raise SystemExit("FastFsm.dll does not contain 0.9.0")
+print("OK FastFsm.dll embeds 0.9.0")
+PY
+
 NUGET_ROOT="${NUGET_PACKAGES:-$HOME/.nuget/packages}"
 rm -rf "$NUGET_ROOT/fastfsm.net" "$NUGET_ROOT/fastfsm.net.logging" "$NUGET_ROOT/fastfsm.net.dependencyinjection"
 
@@ -55,11 +94,7 @@ write_and_run() {
   cd "$name"
   cp "$WORK/nuget.config" .
   for p in "$@"; do
-    if [[ "$p" == Microsoft.* ]]; then
-      dotnet add package "$p" --version 10.0.11
-    else
-      dotnet add package "$p" --version "$VERSION"
-    fi
+    dotnet add package "$p" --version "$VERSION"
   done
   printf '%s\n' "$program" > Machine.cs
   printf '%s\n' 'return App.Run();' > Program.cs
@@ -157,7 +192,7 @@ static class App
 }'
 
 write_and_run core "$CORE_PROG" FastFsm.Net
-write_and_run logging "$LOG_PROG" FastFsm.Net FastFsm.Net.Logging Microsoft.Extensions.Logging.Abstractions
-write_and_run di "$DI_PROG" FastFsm.Net FastFsm.Net.Logging FastFsm.Net.DependencyInjection Microsoft.Extensions.DependencyInjection Microsoft.Extensions.Logging.Abstractions
+write_and_run logging "$LOG_PROG" FastFsm.Net.Logging
+write_and_run di "$DI_PROG" FastFsm.Net.DependencyInjection
 
 echo "All consumer smokes passed."

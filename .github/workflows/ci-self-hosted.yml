@@ -1,16 +1,15 @@
-name: CI
+name: CI (self-hosted)
 
-# Public-repo gate: GitHub-hosted runners only.
-# Self-hosted jobs live in ci-self-hosted.yml (push to main / workflow_dispatch).
+# Trusted tree only — never pull_request. Fork PR code must not run on self-hosted runners.
+# https://docs.github.com/en/actions/reference/security/secure-use
 
 on:
   push:
     branches: [main]
-  pull_request:
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-self-hosted-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -21,12 +20,18 @@ env:
 
 jobs:
   build-test-smoke:
-    name: build-test-smoke (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    name: build-test-smoke (${{ matrix.leg }})
+    runs-on: ${{ matrix.runs-on }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - leg: windows-amd
+            runs-on: [self-hosted, Windows, win-x64-amd]
+          - leg: linux-arm64
+            runs-on: [self-hosted, Linux, linux-arm64]
+          - leg: macos-arm64
+            runs-on: [self-hosted, macOS, linux-arm64]
     steps:
       - uses: actions/checkout@v4
 

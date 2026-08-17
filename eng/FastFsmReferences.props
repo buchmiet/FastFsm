@@ -8,7 +8,8 @@
   </ItemGroup>
   <ItemGroup Condition="'$(FastFsmReferenceCore)' == 'true' and '$(UsePackages)' != 'true'">
     <ProjectReference Include="$(_FastFsmRepoRoot)/FastFsm/FastFsm.csproj" />
-    <ProjectReference Include="$(_FastFsmRepoRoot)/Abstractions/Abstractions.csproj" />
+    <!-- Abstractions is not a published package; do not emit it as a nupkg dependency. -->
+    <ProjectReference Include="$(_FastFsmRepoRoot)/Abstractions/Abstractions.csproj" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(FastFsmReferenceLogging)' == 'true' and '$(UsePackages)' == 'true'">
