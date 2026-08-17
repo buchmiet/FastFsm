@@ -1,0 +1,40 @@
+using Tests.Machines.Payloads;
+using Abstractions.Attributes;
+
+namespace Tests.Machines.Machines.Legacy;
+
+
+
+[StateMachine(typeof(MultiState), typeof(MultiTrigger))]
+[PayloadType(MultiTrigger.Configure, typeof(ConfigPayload))]
+[PayloadType(MultiTrigger.Process, typeof(DataPayload))]
+[PayloadType(MultiTrigger.Error, typeof(ErrorPayload))]
+public partial class MultiPayloadMachine
+{
+    public string CurrentSetting { get; private set; } = null!;
+    public int ProcessedValue { get; private set; }
+    public string LastErrorCode { get; private set; } = null!;
+
+    [Transition(MultiState.Initial, MultiTrigger.Configure, MultiState.Configured,
+        Action = nameof(ApplyConfiguration))]
+    [Transition(MultiState.Configured, MultiTrigger.Process, MultiState.Processing,
+        Action = nameof(ProcessData))]
+    [Transition(MultiState.Processing, MultiTrigger.Error, MultiState.Failed,
+        Action = nameof(HandleError))]
+    private void Configure() { }
+
+    private void ApplyConfiguration(ConfigPayload config)
+    {
+        CurrentSetting = config.Setting;
+    }
+
+    private void ProcessData(DataPayload data)
+    {
+        ProcessedValue = data.Value;
+    }
+
+    private void HandleError(ErrorPayload error)
+    {
+        LastErrorCode = error.Code;
+    }
+}

@@ -1,0 +1,17 @@
+using Tests.Machines.Payloads;
+using Abstractions.Attributes;
+
+namespace Tests.Machines.Machines.Legacy;
+
+
+
+[StateMachine(typeof(ConditionalState), typeof(ConditionalTrigger))]
+[PayloadType(typeof(ConditionalPayload))]
+public partial class ConditionalPayloadMachine
+{
+    [Transition(ConditionalState.Ready, ConditionalTrigger.Execute, ConditionalState.Done,
+        Guard = nameof(IsValid))]
+    private void Configure() { }
+
+    private bool IsValid(ConditionalPayload payload) => payload.IsValid;
+}
