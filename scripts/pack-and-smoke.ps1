@@ -10,17 +10,17 @@ foreach ($proj in @(
     "src/Fsm/Fsm.Core/Fsm.Core.csproj",
     "src/Fsm/Fsm.Logging/Fsm.Logging.csproj",
     "src/Fsm/Fsm.DependencyInjection/Fsm.DependencyInjection.csproj")) {
-    dotnet pack (Join-Path $repo $proj) -c Release
-    if ($LASTEXITCODE -ne 0) { throw "dotnet pack failed: $proj" }
+    dotnet build (Join-Path $repo $proj) -c Release
+    if ($LASTEXITCODE -ne 0) { throw "dotnet build failed: $proj" }
 }
 
 Write-Host "Packing legacy metapackages (FastFsm.Net* -> FastFsm.Sharp*) -> $feed"
+$nugetConfig = Join-Path $repo "nuget.config"
 foreach ($proj in @(
     "src/LegacyPackages/FastFsm.Net/FastFsm.Net.csproj",
     "src/LegacyPackages/FastFsm.Net.Logging/FastFsm.Net.Logging.csproj",
     "src/LegacyPackages/FastFsm.Net.DependencyInjection/FastFsm.Net.DependencyInjection.csproj")) {
-    dotnet pack (Join-Path $repo $proj) -c Release `
-        -p:RestoreSources="$feed;https://api.nuget.org/v3/index.json"
+    dotnet pack (Join-Path $repo $proj) -c Release --configfile $nugetConfig
     if ($LASTEXITCODE -ne 0) { throw "dotnet pack failed: $proj" }
 }
 
