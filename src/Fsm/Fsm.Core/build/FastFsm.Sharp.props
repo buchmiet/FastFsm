@@ -1,6 +1,6 @@
 <Project>
   <!-- ExtensionRunner.cs is packed as contentFiles (BuildAction=Compile). Do not Compile-include it here. -->
-  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp' and $([MSBuild]::VersionGreaterThanOrEquals($([MSBuild]::GetTargetFrameworkVersion('$(TargetFramework)')), 10.0))">
     <Reference Include="Abstractions">
       <HintPath>$(MSBuildThisFileDirectory)../lib/net10.0/Abstractions.dll</HintPath>
     </Reference>

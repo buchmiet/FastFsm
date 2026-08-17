@@ -7,9 +7,15 @@ Repository package version is `FastFsmPackageVersion` / `Version` in `Directory.
 
 ## [Unreleased]
 
+### Fixed
+
+- `FastFsm.Sharp.props` adds `Abstractions.dll` for all .NET 10+ TFMs (including `net10.0-windows`), not only `net10.0`.
+- `pack-and-smoke` covers `net10.0-windows` consumers for Core, Logging, and DI.
+- CI `-warnaserror` no longer fails on intentional `FSM0400` duplicate-transition test fixtures.
+
 ## [0.9.0] - 2026-08-17
 
-Not yet published to NuGet. The last published line on NuGet.org is **FastFsm.Net 0.6.9.x**. This release targets **.NET 10**, introduces canonical **FastFsm.Sharp*** package IDs, and ships legacy **FastFsm.Net*** metapackages that forward to them.
+Published on [NuGet.org](https://www.nuget.org/packages/FastFsm.Sharp). Targets **.NET 10**, introduces canonical **FastFsm.Sharp*** package IDs, and ships legacy **FastFsm.Net*** metapackages that forward to them.
 
 ### Breaking
 

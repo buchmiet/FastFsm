@@ -122,15 +122,31 @@ try {
         param(
             [string]$Name,
             [string[]]$Packages,
-            [string]$Program
+            [string]$Program,
+            [string]$TargetFramework = 'net10.0'
         )
         $dir = Join-Path $work $Name
-        New-Item -ItemType Directory -Path $dir | Out-Null
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
         Push-Location $dir
         try {
-            dotnet new console -n $Name -f net10.0 --force
-            if ($LASTEXITCODE -ne 0) { throw "dotnet new $Name failed" }
-            Set-Location (Join-Path $dir $Name)
+            if ($TargetFramework -eq 'net10.0') {
+                dotnet new console -n $Name -f net10.0 --force
+                if ($LASTEXITCODE -ne 0) { throw "dotnet new $Name failed" }
+                Set-Location (Join-Path $dir $Name)
+            } else {
+                New-Item -ItemType Directory -Path $Name -Force | Out-Null
+                Set-Location (Join-Path $dir $Name)
+                @"
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>$TargetFramework</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>
+"@ | Set-Content -Path "$Name.csproj" -Encoding utf8
+            }
             Copy-Item (Join-Path $work "nuget.config") .
             foreach ($p in $Packages) {
                 dotnet add package $p --version $version
@@ -143,14 +159,14 @@ try {
             $out = & dotnet run -c Release --no-build | Out-String
             if ($LASTEXITCODE -ne 0) { throw "$Name run failed" }
             if ($out -notmatch [regex]::Escape("$Name-ok")) { throw "$Name unexpected output: $out" }
-            Write-Host "SMOKE PASS $Name"
+            Write-Host "SMOKE PASS $Name ($TargetFramework)"
         }
         finally {
             Pop-Location
         }
     }
 
-    Invoke-Smoke "core" @("FastFsm.Sharp") @'
+    $coreProg = @'
 using Abstractions.Attributes;
 
 public enum S { Off, On }
@@ -178,7 +194,7 @@ static class App
 }
 '@
 
-    Invoke-Smoke "logging" @("FastFsm.Sharp.Logging") @'
+    $loggingProg = @'
 using Abstractions.Attributes;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -207,35 +223,7 @@ static class App
 }
 '@
 
-    Invoke-Smoke "legacy-core" @("FastFsm.Net") @'
-using Abstractions.Attributes;
-
-public enum S { Off, On }
-public enum T { Toggle }
-
-[StateMachine(typeof(S), typeof(T))]
-public partial class Light
-{
-    [Transition(S.Off, T.Toggle, S.On)]
-    [Transition(S.On, T.Toggle, S.Off)]
-    private void Configure() { }
-}
-
-static class App
-{
-    public static int Run()
-    {
-        var m = new Light(S.Off);
-        m.Start();
-        if (!m.TryFire(T.Toggle) || m.CurrentState != S.On)
-            throw new System.Exception("legacy-core transition failed");
-        System.Console.WriteLine("legacy-core-ok");
-        return 0;
-    }
-}
-'@
-
-    Invoke-Smoke "di" @("FastFsm.Sharp.DependencyInjection") @'
+    $diProg = @'
 using Abstractions.Attributes;
 using FastFsm.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
@@ -267,6 +255,15 @@ static class App
     }
 }
 '@
+
+    Invoke-Smoke "core" @("FastFsm.Sharp") $coreProg
+    Invoke-Smoke "logging" @("FastFsm.Sharp.Logging") $loggingProg
+    Invoke-Smoke "legacy-core" @("FastFsm.Net") ($coreProg.Replace("core-ok", "legacy-core-ok"))
+    Invoke-Smoke "di" @("FastFsm.Sharp.DependencyInjection") $diProg
+
+    Invoke-Smoke "core-win" @("FastFsm.Sharp") ($coreProg.Replace("core-ok", "core-win-ok")) -TargetFramework 'net10.0-windows'
+    Invoke-Smoke "logging-win" @("FastFsm.Sharp.Logging") ($loggingProg.Replace("logging-ok", "logging-win-ok")) -TargetFramework 'net10.0-windows'
+    Invoke-Smoke "di-win" @("FastFsm.Sharp.DependencyInjection") ($diProg.Replace("di-ok", "di-win-ok")) -TargetFramework 'net10.0-windows'
 
     Write-Host "All consumer smokes passed."
 }

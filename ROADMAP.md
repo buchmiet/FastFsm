@@ -2,9 +2,9 @@
 
 This file records intended areas of work. It is not a release schedule or a compatibility commitment.
 
-## 0.9.0 (in progress)
+## 0.9.0 (released)
 
-Repository package version is `0.9.0`. First .NET 10 release with canonical `FastFsm.Sharp*` package IDs and legacy `FastFsm.Net*` metapackages. Not yet published to NuGet — the last published line on NuGet.org is **FastFsm.Net 0.6.9.x**. Git tag `v0.9.0` marks the release gate; NuGet publish is pending.
+Repository package version is `0.9.0`. First .NET 10 release with canonical `FastFsm.Sharp*` package IDs and legacy `FastFsm.Net*` metapackages. Published on NuGet.org; git tag `v0.9.0` marks the release.
 
 ## Next feature candidate: deferred events
 
