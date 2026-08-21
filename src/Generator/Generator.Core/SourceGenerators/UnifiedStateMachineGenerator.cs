@@ -912,7 +912,9 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         string stateType,
         string outcome,
         string resolvedTarget,
-        string matchedTransition)
+        string matchedTransition,
+        string stage = "(global::FastFsm.Exceptions.TransitionStage?)null",
+        string exception = "null")
     {
         if (!ExtensionsOn) return;
 
@@ -921,7 +923,9 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         Sb.AppendLine($"    TransitionOutcome.{outcome},");
         Sb.AppendLine($"    {CurrentStateField},");
         Sb.AppendLine($"    {resolvedTarget},");
-        Sb.AppendLine($"    {matchedTransition});");
+        Sb.AppendLine($"    {matchedTransition},");
+        Sb.AppendLine($"    {stage},");
+        Sb.AppendLine($"    {exception});");
         Sb.AppendLine($"_extensionRunner.RunAttemptCompleted(extensionSet, in attempt, in {resultVariable});");
     }
 
@@ -1311,18 +1315,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         using (Sb.Block($"public override bool TryFire({triggerType} trigger, object? payload = null)"))
     {
         Sb.AppendLine("EnsureStarted();");
-        if (ExtensionsOn)
-    {
-            // For ExtensionsOn, transitions already handle all extension calls including failure cases
-            // The catch block in WriteTransitionLogicSyncWithExtensions already calls RunAfterTransition with false
-            // So no additional failure hook is needed here - just pass through
-            Sb.AppendLine("return TryFireInternal(trigger, payload);");
-        }
-        else
-    {
-            // For non-extension variants, simple pass-through
-            Sb.AppendLine("return TryFireInternal(trigger, payload);");
-        }
+        Sb.AppendLine("return TryFireInternal(trigger, payload);");
         Sb.AppendLine();
 }
 }
@@ -1334,9 +1327,14 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         if (ExtensionsOn)
     {
             Sb.AppendLine("#if DEBUG || FASTFSM_DEBUG_GENERATED_COMMENTS");
-            Sb.AppendLine($"// DEBUG: Using WriteTransitionLogicSyncWithExtensions for {Model.ClassName}");
+            Sb.AppendLine($"// DEBUG: Using WriteTransitionLogicWithExtensions for {Model.ClassName}");
             Sb.AppendLine("#endif");
-            WriteTransitionLogicSyncWithExtensions(transition, stateTypeForUsage, triggerTypeForUsage);
+            WriteTransitionLogicWithExtensions(
+                transition,
+                stateTypeForUsage,
+                triggerTypeForUsage,
+                hasPayload: false,
+                useAsyncFlow: false);
         }
         else
     {
@@ -1347,216 +1345,318 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         }
 }
 
-    // Special sync transition logic for WithExtensions variant
-    // Wraps entire transition in try-catch to handle exceptions properly
-    private void WriteTransitionLogicSyncWithExtensions(TransitionModel transition, string stateTypeForUsage, string triggerTypeForUsage)
+    private void WriteTransitionLogicWithExtensions(
+        TransitionModel transition,
+        string stateTypeForUsage,
+        string triggerTypeForUsage,
+        bool hasPayload,
+        bool useAsyncFlow)
     {
         var hasOnEntryExit = ShouldGenerateOnEntryExit();
 
+        Sb.AppendLine("{");
         WriteTransitionMatched(transition, stateTypeForUsage);
-        Sb.AppendLine();
+        _smCtxCreated = true;
+        Sb.AppendLine($"{stateTypeForUsage}? __resolvedTarget = null;");
+        Sb.AppendLine("global::FastFsm.Exceptions.TransitionStage? __transitionStage = null;");
 
-        // Log transition started
-        WriteLogStatement("Debug",
-            $"TransitionStarted(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\", \"{transition.ToState}\");");
-
-
-        // Comment about exception handling
-        Sb.AppendLine("#if DEBUG || FASTFSM_DEBUG_GENERATED_COMMENTS");
-        Sb.AppendLine($"// FSM_DEBUG: No handler for {Model.ClassName}, action={transition.ActionMethod}");
-        Sb.AppendLine("#endif");
-
-        // All transition logic in try-catch
-        Sb.AppendLine("try {");
-
-        // Guard check (if present)
-        if (!string.IsNullOrEmpty(transition.GuardMethod))
+        using (Sb.Block("try"))
         {
-            // Notify extensions about guard evaluation
-            Sb.AppendLine($"    _extensionRunner.RunGuardEvaluating(extensionSet, in attempt, in matchedTransition, \"{transition.GuardMethod}\");");
-            Sb.AppendLine($"    var guardResult = {transition.GuardMethod}();");
-            Sb.AppendLine($"    _extensionRunner.RunGuardEvaluated(extensionSet, in attempt, in matchedTransition, \"{transition.GuardMethod}\", guardResult);");
-            Sb.AppendLine("    if (!guardResult)");
-            Sb.AppendLine("    {");
-            // Emit logging for guard failure and failed transition (parity with base path)
-            WriteLogStatement("Warning",
-                $"GuardFailed(_logger, _instanceId, \"{transition.GuardMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
-            WriteLogStatement("Warning",
-                $"TransitionFailed(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\");");
-            WriteAttemptCompleted(stateTypeForUsage, "GuardRejected", $"({stateTypeForUsage}?)null", "matchedTransition");
-            Sb.AppendLine("        return false;");
-            Sb.AppendLine("    }");
-        }
-
-        // UML-friendly order: OnExit → Action → State change → OnEntry
-        // All in try block; exceptions surface as failed transition
-
-        // OnExit (if applicable)
-        if (!transition.IsInternal && hasOnEntryExit &&
-            Model.States.TryGetValue(transition.FromState, out var fromStateDef) &&
-            !string.IsNullOrEmpty(fromStateDef.OnExitMethod))
-        {
-            Sb.AppendLine($"    {fromStateDef.OnExitMethod}();");
             WriteLogStatement("Debug",
-                $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
+                $"TransitionStarted(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\", \"{transition.ToState}\");");
+
+            if (!string.IsNullOrEmpty(transition.GuardMethod))
+            {
+                Sb.AppendLine("__transitionStage = global::FastFsm.Exceptions.TransitionStage.Guard;");
+                WriteGuardEvaluationHook(transition, stateTypeForUsage, triggerTypeForUsage);
+                GuardGenerationHelper.EmitGuardCheck(
+                    Sb,
+                    transition,
+                    GuardResultVar,
+                    hasPayload ? PayloadVar : "null",
+                    IsAsyncMachine,
+                    wrapInTryCatch: false,
+                    Model.ContinueOnCapturedContext,
+                    handleResultAfterTry: true,
+                    cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+                    treatCancellationAsFailure: false);
+                WriteAfterGuardEvaluatedHook(
+                    transition,
+                    GuardResultVar,
+                    stateTypeForUsage,
+                    triggerTypeForUsage);
+                Sb.AppendLine("__transitionStage = null;");
+
+                using (Sb.Block($"if (!{GuardResultVar})"))
+                {
+                    WriteLogStatement("Warning",
+                        $"GuardFailed(_logger, _instanceId, \"{transition.GuardMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+                    WriteLogStatement("Warning",
+                        $"TransitionFailed(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\");");
+                    WriteAttemptCompleted(
+                        stateTypeForUsage,
+                        "GuardRejected",
+                        "__resolvedTarget",
+                        "matchedTransition");
+                    WriteExtensionTransitionExit(useAsyncFlow, success: false);
+                }
+            }
+
+            if (!transition.IsInternal && hasOnEntryExit &&
+                Model.States.TryGetValue(transition.FromState, out var fromStateDef) &&
+                !string.IsNullOrEmpty(fromStateDef.OnExitMethod))
+            {
+                WriteExtensionCallback(
+                    transition,
+                    stateTypeForUsage,
+                    "global::FastFsm.Exceptions.TransitionStage.OnExit",
+                    fromStateDef.OnExitMethod!,
+                    stateAlreadyChanged: false,
+                    () =>
+                    {
+                        if (hasPayload)
+                        {
+                            CallbackGenerationHelper.EmitOnExitCall(
+                                Sb,
+                                fromStateDef,
+                                transition.ExpectedPayloadType,
+                                Model.DefaultPayloadType,
+                                PayloadVar,
+                                IsAsyncMachine,
+                                wrapInTryCatch: false,
+                                Model.ContinueOnCapturedContext,
+                                isSinglePayload: !HasMultiPayload,
+                                isMultiPayload: HasMultiPayload,
+                                cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+                                treatCancellationAsFailure: false);
+                        }
+                        else
+                        {
+                            WriteOnExitCall(fromStateDef, null);
+                        }
+
+                        WriteLogStatement("Debug",
+                            $"OnExitExecuted(_logger, _instanceId, \"{fromStateDef.OnExitMethod}\", \"{transition.FromState}\");");
+                    });
+            }
+
+            if (!transition.IsInternal)
+            {
+                if (Model.HierarchyEnabled)
+                {
+                    Sb.AppendLine("RecordHistoryForCurrentPath();");
+                    WriteStateChangeWithCompositeHandling(transition.ToState, stateTypeForUsage);
+                }
+                else
+                {
+                    Sb.AppendLine($"{CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+                }
+
+                Sb.AppendLine($"__resolvedTarget = {CurrentStateField};");
+            }
+
+            if (!transition.IsInternal && hasOnEntryExit &&
+                Model.States.TryGetValue(transition.ToState, out var toStateDef) &&
+                !string.IsNullOrEmpty(toStateDef.OnEntryMethod))
+            {
+                WriteExtensionCallback(
+                    transition,
+                    stateTypeForUsage,
+                    "global::FastFsm.Exceptions.TransitionStage.OnEntry",
+                    toStateDef.OnEntryMethod!,
+                    stateAlreadyChanged: true,
+                    () =>
+                    {
+                        if (hasPayload)
+                        {
+                            CallbackGenerationHelper.EmitOnEntryCall(
+                                Sb,
+                                toStateDef,
+                                transition.ExpectedPayloadType,
+                                Model.DefaultPayloadType,
+                                PayloadVar,
+                                IsAsyncMachine,
+                                wrapInTryCatch: false,
+                                Model.ContinueOnCapturedContext,
+                                isSinglePayload: !HasMultiPayload,
+                                isMultiPayload: HasMultiPayload,
+                                cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+                                treatCancellationAsFailure: false);
+                        }
+                        else
+                        {
+                            WriteOnEntryCall(toStateDef, null);
+                        }
+
+                        WriteLogStatement("Debug",
+                            $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
+                    });
+            }
+
+            if (!string.IsNullOrEmpty(transition.ActionMethod))
+            {
+                WriteExtensionCallback(
+                    transition,
+                    stateTypeForUsage,
+                    "global::FastFsm.Exceptions.TransitionStage.Action",
+                    transition.ActionMethod!,
+                    stateAlreadyChanged: !transition.IsInternal,
+                    () =>
+                    {
+                        if (hasPayload)
+                        {
+                            CallbackGenerationHelper.EmitActionCall(
+                                Sb,
+                                transition,
+                                PayloadVar,
+                                IsAsyncMachine,
+                                wrapInTryCatch: false,
+                                Model.ContinueOnCapturedContext,
+                                cancellationTokenVar: IsAsyncMachine ? "cancellationToken" : null,
+                                treatCancellationAsFailure: false);
+                        }
+                        else
+                        {
+                            WriteActionCall(transition);
+                        }
+
+                        WriteLogStatement("Debug",
+                            $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+                    });
+            }
+
+            WriteLogStatement("Information",
+                $"TransitionSucceeded(_logger, _instanceId, \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+            WriteAttemptCompleted(
+                stateTypeForUsage,
+                "Succeeded",
+                "__resolvedTarget",
+                "matchedTransition");
+            WriteExtensionTransitionExit(useAsyncFlow, success: true);
         }
 
-        // Action (if present) - BEFORE OnEntry (Extensions order)
-        if (!string.IsNullOrEmpty(transition.ActionMethod))
+        using (Sb.Block("catch (System.OperationCanceledException ex)"))
         {
-            // For async actions, generate async-specific logging
-            if (IsAsyncMachine && transition.ActionIsAsync)
+            WriteAttemptCompleted(
+                stateTypeForUsage,
+                "Canceled",
+                "__resolvedTarget",
+                "matchedTransition",
+                "__transitionStage",
+                "ex");
+            if (useAsyncFlow)
             {
-                if (ShouldGenerateLogging)
+                using (Sb.Block("if (__transitionStage == global::FastFsm.Exceptions.TransitionStage.Guard)"))
                 {
-                    WriteLogStatement("Debug",
-                        $"AsyncActionStarted(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {transition.FromState} -> {transition.ToState}\");");
-                    Sb.AppendLine("    var actionStart = System.Diagnostics.Stopwatch.GetTimestamp();");
+                    WriteExtensionTransitionExit(useAsyncFlow: true, success: false);
                 }
-                
-                Sb.AppendLine($"    await {transition.ActionMethod}().ConfigureAwait({Model.ContinueOnCapturedContext.ToString().ToLowerInvariant()});");
-                
-                if (ShouldGenerateLogging)
+            }
+            Sb.AppendLine("throw;");
+        }
+
+        using (Sb.Block("catch (System.Exception ex)"))
+        {
+            WriteAttemptCompleted(
+                stateTypeForUsage,
+                "Faulted",
+                "__resolvedTarget",
+                "matchedTransition",
+                "__transitionStage",
+                "ex");
+            if (useAsyncFlow)
+            {
+                using (Sb.Block(
+                           "if (__transitionStage == global::FastFsm.Exceptions.TransitionStage.Guard || " +
+                           "__transitionStage == global::FastFsm.Exceptions.TransitionStage.OnExit)"))
                 {
-                    Sb.AppendLine("    var elapsedMs = System.Diagnostics.Stopwatch.GetElapsedTime(actionStart).TotalMilliseconds;");
-                    WriteLogStatement("Debug",
-                        $"AsyncActionCompleted(_logger, _instanceId, \"{transition.ActionMethod}\", \"transition {transition.FromState} -> {transition.ToState}\", elapsedMs);");
+                    WriteExtensionTransitionExit(useAsyncFlow: true, success: false);
                 }
+            }
+            Sb.AppendLine("throw;");
+        }
+        Sb.AppendLine("}");
+    }
+
+    private void WriteExtensionCallback(
+        TransitionModel transition,
+        string stateTypeForUsage,
+        string stage,
+        string callbackName,
+        bool stateAlreadyChanged,
+        Action writeCallback)
+    {
+        Sb.AppendLine($"__transitionStage = {stage};");
+        using (Sb.Block("try"))
+        {
+            writeCallback();
+        }
+        using (Sb.Block("catch (System.Exception ex) when (ex is not System.OperationCanceledException)"))
+        {
+            if (Model.ExceptionHandler == null)
+            {
+                Sb.AppendLine("throw;");
             }
             else
             {
-                Sb.AppendLine($"    {transition.ActionMethod}();");
-                WriteLogStatement("Debug",
-                    $"ActionExecuted(_logger, _instanceId, \"{transition.ActionMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
+                WriteExceptionHandlerDirective(transition, stage, stateAlreadyChanged);
+                using (Sb.Block("if (directive == global::FastFsm.Exceptions.ExceptionDirective.Continue)"))
+                {
+                    Sb.AppendLine($"_extensionRunner.RunCallbackFaulted(extensionSet, in attempt, {stage}, \"{callbackName}\", ex);");
+                }
+                Sb.AppendLine("else");
+                using (Sb.Block(""))
+                {
+                    Sb.AppendLine("throw;");
+                }
             }
         }
+        Sb.AppendLine("__transitionStage = null;");
+    }
 
-        // State change BEFORE OnEntry (so OnEntry runs in target state)
-        if (!transition.IsInternal)
+    private void WriteExceptionHandlerDirective(
+        TransitionModel transition,
+        string stage,
+        bool stateAlreadyChanged)
+    {
+        var handler = Model.ExceptionHandler!;
+        var stateType = GetTypeNameForUsage(Model.StateType);
+        var triggerType = GetTypeNameForUsage(Model.TriggerType);
+
+        Sb.AppendLine($"var exceptionContext = new global::FastFsm.Exceptions.ExceptionContext<{stateType}, {triggerType}>(");
+        using (Sb.Indent())
         {
-            if (IsHierarchical)
-            {
-                Sb.AppendLine("    RecordHistoryForCurrentPath();");
-                
-                // For HSM, we need to properly handle composite states and add diagnostics
-                Sb.AppendLine($"    string __transitionFromName = {CurrentStateField}.ToString();");
-                
-                // Inline the composite handling with proper indentation
-                Sb.AppendLine($"    // Set destination and resolve through GetCompositeEntryTarget");
-                
-                // SAVE COMPOSITE BEFORE ASSIGNING _currentState
-                Sb.AppendLine($"    int __targetComposite = (int){stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
-                Sb.AppendLine();
-                
-                // Check if target is composite (has initial child)
-                Sb.AppendLine("    // Check if target is composite (has initial child)");
-                Sb.AppendLine("    bool __isComposite = (uint)__targetComposite < (uint)g_initialChild.Length && g_initialChild[__targetComposite] >= 0;");
-                Sb.AppendLine();
-                
-                using (Sb.Block("    if (__isComposite)"))
-                {
-                    Sb.AppendLine("// Resolve entry into composite (Initial vs History)");
-                    Sb.AppendLine("int __resolvedIndex = GetCompositeEntryTarget(__targetComposite);");
-                    // TODO(EXT): emit OnInitialSubstateEntered(parentCtx: smCtx, child: (" + stateTypeForUsage + ")__resolvedIndex)
-                    Sb.AppendLine("var __histMode = HistoryArray[__targetComposite];");
-                    Sb.AppendLine("string __resolution = (__histMode == Abstractions.Attributes.HistoryMode.None ? \"Initial\" : \"History\");");
-                    Sb.AppendLine();
-                    
-                    if (ShouldGenerateLogging)
-                    {
-                        using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
-                        {
-                            Sb.AppendLine($"{Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
-                        }
-                        using (Sb.Block("if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)"))
-                        {
-                            Sb.AppendLine($"{Model.ClassName}Log.HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
-                            Sb.AppendLine($"// TODO(EXT): emit OnHistoryRestore(parentCtx: smCtx, mode: __histMode, restoredState: (" + stateTypeForUsage + ")__resolvedIndex)");
-                        }
-                    }
-                    
-                    Sb.AppendLine($"{CurrentStateField} = ({stateTypeForUsage})__resolvedIndex;");
-                }
-                using (Sb.Block("    else"))
-                {
-                    Sb.AppendLine($"// Target is not composite - simple assignment");
-                    Sb.AppendLine($"{CurrentStateField} = ({stateTypeForUsage})__targetComposite;");
-                }
-                Sb.AppendLine();
-                
-                // Add HierarchicalTransition and ActivePath logging
-                if (ShouldGenerateLogging)
-                {
-                    Sb.AppendLine($"    // HSM transition diagnostics");
-                Sb.AppendLine($"    int lca = FindLowestCommonAncestor((int)Enum.Parse<{stateTypeForUsage}>(__transitionFromName), (int){CurrentStateField});");
-                // TODO(EXT): compute exitedPath/enteredPath spans and emit OnAncestorPathChanged(smCtx, exitedPath, enteredPath, (" + stateTypeForUsage + ")lca)
-                    Sb.AppendLine($"    int __exitCount = 0;");
-                    Sb.AppendLine($"    for (int s = (int)Enum.Parse<{stateTypeForUsage}>(__transitionFromName); s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __exitCount++; }}");
-                    Sb.AppendLine($"    int __entryCount = 0;");
-                    Sb.AppendLine($"    for (int s = (int){CurrentStateField}; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __entryCount++; }}");
-                    
-                    using (Sb.Block("    if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
-                    {
-                        Sb.AppendLine($"HierarchicalTransition(_logger, _instanceId, __transitionFromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
-                    }
-                    using (Sb.Block("    if (_logger?.IsEnabled(LogLevel.Trace) == true)"))
-                    {
-                        Sb.AppendLine($"ActivePath(_logger, _instanceId, DumpActivePath());");
-                    }
-                }
-            }
-            else
-            {
-                Sb.AppendLine($"    {CurrentStateField} = {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
-            }
+            Sb.AppendLine($"{stateType}.{TypeHelper.EscapeIdentifier(transition.FromState)},");
+            Sb.AppendLine($"{stateType}.{TypeHelper.EscapeIdentifier(transition.ToState)},");
+            Sb.AppendLine($"{triggerType}.{TypeHelper.EscapeIdentifier(transition.Trigger)},");
+            Sb.AppendLine("ex,");
+            Sb.AppendLine($"{stage},");
+            Sb.AppendLine($"{stateAlreadyChanged.ToString().ToLowerInvariant()});");
         }
 
-        // OnEntry (if applicable) - AFTER state change
-        if (!transition.IsInternal && hasOnEntryExit &&
-            Model.States.TryGetValue(transition.ToState, out var toStateDef) &&
-            !string.IsNullOrEmpty(toStateDef.OnEntryMethod))
+        var args = handler.AcceptsCancellationToken
+            ? "exceptionContext, cancellationToken"
+            : "exceptionContext";
+        if (handler.IsAsync)
         {
-            Sb.AppendLine("    #if FASTFSM_SAFE_ACTIONS");
-            Sb.AppendLine("    try {");
-            Sb.AppendLine($"        {toStateDef.OnEntryMethod}();");
-            WriteLogStatement("Debug",
-                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
-            Sb.AppendLine("    }");
-            Sb.AppendLine("    catch (System.OperationCanceledException)");
-            Sb.AppendLine("    {");
-            WriteAttemptCompleted(stateTypeForUsage, "Canceled", CurrentStateField, "matchedTransition");
-            Sb.AppendLine("        return false;");
-            Sb.AppendLine("    }");
-            Sb.AppendLine("    catch (System.Exception ex)");
-            Sb.AppendLine("    {");
-            /**/ if (true) { /* placeholder to keep WriteLogStatement inline below */ }
-            WriteLogStatement("Warning",
-                $"CallbackException(_logger, _instanceId, \"OnEntry\", \"{toStateDef.OnEntryMethod}\", \"transition {transition.FromState} -> {transition.ToState}\", ex);");
-            WriteAttemptCompleted(stateTypeForUsage, "Faulted", CurrentStateField, "matchedTransition");
-            Sb.AppendLine("        return false;");
-            Sb.AppendLine("    }");
-            Sb.AppendLine("    #else");
-            Sb.AppendLine($"    {toStateDef.OnEntryMethod}();");
-            WriteLogStatement("Debug",
-                $"OnEntryExecuted(_logger, _instanceId, \"{toStateDef.OnEntryMethod}\", \"{transition.ToState}\");");
-            Sb.AppendLine("    #endif");
+            Sb.AppendLine($"var directive = await {handler.MethodName}({args}).ConfigureAwait({Model.ContinueOnCapturedContext.ToString().ToLowerInvariant()});");
         }
+        else
+        {
+            Sb.AppendLine($"var directive = {handler.MethodName}({args});");
+        }
+    }
 
-        Sb.AppendLine("}");
-        Sb.AppendLine("catch {");
-        WriteAttemptCompleted(stateTypeForUsage, "Faulted", $"({stateTypeForUsage}?)null", "matchedTransition");
-        Sb.AppendLine("    return false;");
-        Sb.AppendLine("}");
-
-        // Success
-        WriteAttemptCompleted(
-            stateTypeForUsage,
-            "Succeeded",
-            transition.IsInternal ? $"({stateTypeForUsage}?)null" : CurrentStateField,
-            "matchedTransition");
-        WriteLogStatement("Information",
-            $"TransitionSucceeded(_logger, _instanceId, \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
-        Sb.AppendLine("return true;");
+    private void WriteExtensionTransitionExit(bool useAsyncFlow, bool success)
+    {
+        if (useAsyncFlow)
+        {
+            Sb.AppendLine($"{SuccessVar} = {success.ToString().ToLowerInvariant()};");
+            EmitGotoEndTryFire();
+        }
+        else
+        {
+            Sb.AppendLine($"return {success.ToString().ToLowerInvariant()};");
+        }
     }
 
     private void WriteTryFireStructureDispatcher(string stateType, string triggerType, Action<TransitionModel, string, string> writeTransitionLogic)
@@ -2243,6 +2343,17 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         string stateTypeForUsage,
         string triggerTypeForUsage)
 {
+        if (ExtensionsOn)
+        {
+            WriteTransitionLogicWithExtensions(
+                transition,
+                stateTypeForUsage,
+                triggerTypeForUsage,
+                hasPayload: false,
+                useAsyncFlow: true);
+            return;
+        }
+
         // Debug to trace the call path
         Sb.AppendLine($"// DEBUG: WriteTransitionLogic called in UnifiedStateMachineGenerator for {transition.ActionMethod}");
         
@@ -2277,45 +2388,19 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 // Check if we have an exception handler configured
                 if (Model.ExceptionHandler != null)
                 {
-                    Sb.AppendLine("    // Call the exception handler");
-                    var stateType = GetTypeNameForUsage(Model.StateType);
-                    var triggerType = GetTypeNameForUsage(Model.TriggerType);
-                    
-                    // Build ExceptionContext type with proper namespace
-                    Sb.AppendLine($"    var exceptionContext = new global::FastFsm.Exceptions.ExceptionContext<{stateType}, {triggerType}>(");
-                    Sb.AppendLine($"        {stateType}.{TypeHelper.EscapeIdentifier(transition.FromState)},");
-                    Sb.AppendLine($"        {stateType}.{TypeHelper.EscapeIdentifier(transition.ToState)},");
-                    Sb.AppendLine($"        {triggerType}.{TypeHelper.EscapeIdentifier(transition.Trigger)},");
-                    Sb.AppendLine("        ex,");
-                    Sb.AppendLine("        global::FastFsm.Exceptions.TransitionStage.OnExit,");
-                    Sb.AppendLine("        stateAlreadyChanged: false);");
-                    Sb.AppendLine();
-                    
-                    // Call the handler - check if it's async
-                    if (Model.ExceptionHandler.IsAsync)
+                    WriteExceptionHandlerDirective(
+                        transition,
+                        "global::FastFsm.Exceptions.TransitionStage.OnExit",
+                        stateAlreadyChanged: false);
+                    using (Sb.Block("if (directive != global::FastFsm.Exceptions.ExceptionDirective.Continue)"))
                     {
-                        var ctParam = Model.ExceptionHandler.AcceptsCancellationToken ? ", cancellationToken" : "";
-                        Sb.AppendLine($"    var directive = await {Model.ExceptionHandler.MethodName}(exceptionContext{ctParam}).ConfigureAwait({Model.ContinueOnCapturedContext.ToString().ToLowerInvariant()});");
+                        Sb.AppendLine($"{SuccessVar} = false;");
+                        EmitGotoEndTryFire();
                     }
-                    else
-                    {
-                        var ctParam = Model.ExceptionHandler.AcceptsCancellationToken ? ", cancellationToken" : "";
-                        Sb.AppendLine($"    var directive = {Model.ExceptionHandler.MethodName}(exceptionContext{ctParam});");
-                    }
-                    
-                    Sb.AppendLine("    if (directive != global::FastFsm.Exceptions.ExceptionDirective.Continue)");
-                    Sb.AppendLine("    {");
-                    Sb.AppendLine($"        {SuccessVar} = false;");
-                    // Note: Hook emission is handled elsewhere - don't emit inline here
-                    EmitGotoEndTryFire();
-                    Sb.AppendLine("    }");
-                    Sb.AppendLine("    // Continue directive - transition proceeds");
                 }
                 else
                 {
-                    Sb.AppendLine("    // No exception handler configured - fail the transition");
-                    Sb.AppendLine($"    {SuccessVar} = false;");
-                    // Note: Hook emission is handled elsewhere - don't emit inline here
+                    Sb.AppendLine($"{SuccessVar} = false;");
                     EmitGotoEndTryFire();
                 }
                 Sb.AppendLine("}");
@@ -2443,6 +2528,17 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         string stateTypeForUsage,
         string triggerTypeForUsage)
 {
+        if (ExtensionsOn)
+        {
+            WriteTransitionLogicWithExtensions(
+                transition,
+                stateTypeForUsage,
+                triggerTypeForUsage,
+                hasPayload: true,
+                useAsyncFlow: true);
+            return;
+        }
+
         var hasOnEntryExit = ShouldGenerateOnEntryExit();
 
         // Hook: Before transition
@@ -2505,16 +2601,23 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             Sb.AppendLine("}");
             Sb.AppendLine("catch (Exception ex) when (ex is not System.OperationCanceledException)");
             Sb.AppendLine("{");
-            Sb.AppendLine("    if (Model.ExceptionHandler != null)");
-            Sb.AppendLine("    {");
-            Sb.AppendLine($"        base.EmitExceptionHandlerCall(\"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\", \"TransitionStage.OnExit\", false);");
-            Sb.AppendLine("    }");
-            Sb.AppendLine("    else");
-            Sb.AppendLine("    {");
-            Sb.AppendLine($"        {SuccessVar} = false;");
-            Sb.AppendLine($"        WriteAfterTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage, success: false);");
-            EmitGotoEndTryFire();
-            Sb.AppendLine("    }");
+            if (Model.ExceptionHandler != null)
+            {
+                WriteExceptionHandlerDirective(
+                    transition,
+                    "global::FastFsm.Exceptions.TransitionStage.OnExit",
+                    stateAlreadyChanged: false);
+                using (Sb.Block("if (directive != global::FastFsm.Exceptions.ExceptionDirective.Continue)"))
+                {
+                    Sb.AppendLine($"{SuccessVar} = false;");
+                    EmitGotoEndTryFire();
+                }
+            }
+            else
+            {
+                Sb.AppendLine($"{SuccessVar} = false;");
+                EmitGotoEndTryFire();
+            }
             Sb.AppendLine("}");
         }
 
@@ -2579,6 +2682,17 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         string stateTypeForUsage,
         string triggerTypeForUsage)
     {
+        if (ExtensionsOn)
+        {
+            WriteTransitionLogicWithExtensions(
+                transition,
+                stateTypeForUsage,
+                triggerTypeForUsage,
+                hasPayload: true,
+                useAsyncFlow: false);
+            return;
+        }
+
         // Hook: Before transition (must be before guard check)
         WriteBeforeTransitionHook(transition, stateTypeForUsage, triggerTypeForUsage);
 
@@ -2924,7 +3038,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         if (string.IsNullOrEmpty(transition.GuardMethod)) return;
 
         if (transition.GuardIsAsync && IsAsyncMachine)
-    {
+        {
             GuardGenerationHelper.EmitGuardCheck(
                 Sb,
                 transition,
@@ -2935,10 +3049,8 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 Model.ContinueOnCapturedContext,
                 handleResultAfterTry: true,
                 cancellationTokenVar: "cancellationToken",
-                treatCancellationAsFailure: Model.GenerationConfig.TreatCancellationAsFailure
-            );
+                treatCancellationAsFailure: Model.GenerationConfig.TreatCancellationAsFailure);
 
-            // Notify extensions that the guard was evaluated (even in async-aware path)
             WriteAfterGuardEvaluatedHook(transition, GuardResultVar, GetTypeNameForUsage(Model.StateType), GetTypeNameForUsage(Model.TriggerType));
 
             Sb.AppendLine($"if (!{GuardResultVar})");
@@ -2953,8 +3065,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             Sb.AppendLine("}");
         }
         else
-    {
-            // Fallback to base sync-style guard check
+        {
             WriteGuardCheck(transition, GetTypeNameForUsage(Model.StateType), GetTypeNameForUsage(Model.TriggerType));
         }
 }
