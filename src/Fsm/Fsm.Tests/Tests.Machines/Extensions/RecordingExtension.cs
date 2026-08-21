@@ -1,33 +1,39 @@
 using FastFsm.Contracts;
+using Tests.Machines.Machines;
 
 namespace Tests.Machines.Extensions
 {
     // ── mini maszyna ───────────────────────────────────────────────────────────
     // ── extension zbierający zdarzenia ────────────────────────────────────────
-    public class RecordingExtension : IStateMachineExtension
+    public class RecordingExtension : IStateMachineExtension<HookOrderState, HookOrderTrigger>
     {
         private readonly List<string> _log;
         public RecordingExtension(List<string> log) => _log = log;
 
-        public void OnBeforeTransition<T>(T ctx) where T : IStateMachineContext
+        public ExtensionHooks Hooks => ExtensionHooks.Transitions | ExtensionHooks.Guards;
+
+        public void OnAttemptStarting(in TransitionAttemptContext<HookOrderState, HookOrderTrigger> attempt)
             => _log.Add("Before");
 
-        public void OnAfterTransition<T>(T ctx, bool s) where T : IStateMachineContext
-            => _log.Add($"After:{(s ? "Success" : "Fail")}");
+        public void OnAttemptCompleted(
+            in TransitionAttemptContext<HookOrderState, HookOrderTrigger> attempt,
+            in TransitionResult<HookOrderState> result)
+        {
+            if (result.Outcome == TransitionOutcome.Succeeded) _log.Add("Transitioned");
+            _log.Add($"After:{(result.Outcome == TransitionOutcome.Succeeded ? "Success" : "Fail")}");
+        }
 
-        public void OnGuardEvaluation<T>(T ctx, string _) where T : IStateMachineContext
+        public void OnGuardEvaluating(
+            in TransitionAttemptContext<HookOrderState, HookOrderTrigger> attempt,
+            in TransitionInfo<HookOrderState> candidate,
+            string _)
             => _log.Add("GuardEval");
 
-        public void OnGuardEvaluated<T>(T ctx, string _, bool res) where T : IStateMachineContext
+        public void OnGuardEvaluated(
+            in TransitionAttemptContext<HookOrderState, HookOrderTrigger> attempt,
+            in TransitionInfo<HookOrderState> candidate,
+            string _,
+            bool res)
             => _log.Add("GuardEvaluated");
-
-        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
-            => _log.Add("InternalTransition");
-
-        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
-            => _log.Add("UnhandledTrigger");
-
-        public void OnTransitioned<T>(T ctx) where T : IStateMachineContext
-            => _log.Add("Transitioned");
     }
 }

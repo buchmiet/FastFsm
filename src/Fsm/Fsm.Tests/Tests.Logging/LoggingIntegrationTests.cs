@@ -5,6 +5,7 @@ using Moq;
 using Shouldly;
 using Xunit;
 using Abstractions.Attributes;
+using FastFsm.Contracts;
 
 namespace Tests.Logging
 {
@@ -151,11 +152,11 @@ namespace Tests.Logging
             var extensionAfterCalled = false;
             var extension = new TestExtension
             {
-                BeforeTransitionCallback = _ => extensionBeforeCalled = true,
-                AfterTransitionCallback = (_, success) =>
+                AttemptStartingCallback = _ => extensionBeforeCalled = true,
+                AttemptCompletedCallback = (_, result) =>
                 {
                     extensionAfterCalled = true;
-                    success.ShouldBeTrue();
+                    result.Outcome.ShouldBe(TransitionOutcome.Succeeded);
                 }
             };
 

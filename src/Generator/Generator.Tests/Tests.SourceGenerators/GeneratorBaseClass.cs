@@ -131,14 +131,14 @@ public abstract class GeneratorBaseClass(ITestOutputHelper output)
         var solutionDir = GetSolutionDir();
         if (solutionDir is not null)
         {
-            // ExtensionRunner.cs (shared‑source)
+            // ExtensionRunnerV2.cs (shared-source)
             var extRunner = Path.Combine(solutionDir,
-                                         "src",
-                                         "Fsm",
-                                         "Fsm.Core",
-                                         "Runtime",
-                                         "Extensions",
-                                         "ExtensionRunner.cs");
+                                          "src",
+                                          "Fsm",
+                                          "Fsm.Core",
+                                          "Runtime",
+                                          "Extensions",
+                                          "ExtensionRunnerV2.cs");
             if (File.Exists(extRunner))
                 allSourceTexts.Add(File.ReadAllText(extRunner));
 

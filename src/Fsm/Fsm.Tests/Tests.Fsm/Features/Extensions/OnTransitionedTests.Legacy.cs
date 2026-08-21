@@ -7,26 +7,27 @@ namespace Tests.Fsm.Features.Extensions;
 
 public class OnTransitionedTestsLegacy
 {
-    private sealed class TransitionedRecordingExtension : IStateMachineExtension
+    private sealed class TransitionedRecordingExtension : IStateMachineExtension<TrState, TrTrigger>
     {
         public int TransitionedCount { get; private set; }
         public int AfterTrueCount { get; private set; }
         public List<string> Log { get; } = new();
 
-        public void OnBeforeTransition<T>(T ctx) where T : IStateMachineContext => Log.Add("Before");
-        public void OnAfterTransition<T>(T ctx, bool s) where T : IStateMachineContext => Log.Add($"After:{(s ? "Success" : "Fail")}");
-        public void OnGuardEvaluation<T>(T ctx, string g) where T : IStateMachineContext => Log.Add("GuardEval");
-        public void OnGuardEvaluated<T>(T ctx, string g, bool r) where T : IStateMachineContext => Log.Add("GuardEvaluated");
-        public void OnUnhandledTrigger<T>(T ctx) where T : IStateMachineContext { }
-        public void OnInternalTransition<T>(T ctx) where T : IStateMachineContext { }
-        public void OnTransitioned<T>(T ctx) where T : IStateMachineContext { TransitionedCount++; Log.Add("Transitioned"); }
+        public void OnAttemptStarting(in TransitionAttemptContext<TrState, TrTrigger> attempt) => Log.Add("Before");
+        public void OnAttemptCompleted(
+            in TransitionAttemptContext<TrState, TrTrigger> attempt,
+            in TransitionResult<TrState> result)
+        {
+            if (result.Outcome == TransitionOutcome.Succeeded) TransitionedCount++;
+            Log.Add($"After:{(result.Outcome == TransitionOutcome.Succeeded ? "Success" : "Fail")}");
+        }
     }
 
     [Fact]
     public void Legacy_Transitioned_FiresOnce_InOrder()
     {
         var ext = new TransitionedRecordingExtension();
-        var m = new TransitionedMachineLegacy(TrState.A, new IStateMachineExtension[] { ext });
+        var m = new TransitionedMachineLegacy(TrState.A, [ext]);
         m.Start();
 
         var ok = m.TryFire(TrTrigger.Go);
@@ -36,7 +37,6 @@ public class OnTransitionedTestsLegacy
         Assert.Equal(1, ext.TransitionedCount);
         Assert.Collection(ext.Log,
             s => Assert.Equal("Before", s),
-            s => Assert.Equal("Transitioned", s),
             s => Assert.Equal("After:Success", s)
         );
     }

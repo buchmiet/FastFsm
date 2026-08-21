@@ -1718,7 +1718,7 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
                     {
                         var stateName = stateGroup.Key;
                         var escapedState = TypeHelper.EscapeIdentifier(stateName);
-                        var stateFieldSuffix = UnifiedStateMachineGenerator_MemberSuffixWrapper(stateName);
+                        var stateFieldSuffix = MakeSafeMemberSuffix(stateName);
                         Sb.AppendLine($"case {stateTypeForUsage}.{escapedState}:");
                         using (Sb.Block(""))
                         {
@@ -1958,8 +1958,8 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         }
     }
 
-    // Helper to mirror UnifiedStateMachineGenerator.MakeSafeMemberSuffix without coupling
-    protected static string UnifiedStateMachineGenerator_MemberSuffixWrapper(string raw)
+    // Sanitizes a raw name into a safe generated-member suffix.
+    protected static string MakeSafeMemberSuffix(string raw)
     {
         if (string.IsNullOrEmpty(raw)) return "_";
         if (raw.Length > 0 && raw[0] == '@') raw = raw.Substring(1);

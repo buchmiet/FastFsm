@@ -11,7 +11,23 @@ namespace Tests.Async.Features.Extensions;
 public sealed class AsyncExtensionContractCharacterizationTests
 {
     [Fact]
-    public async Task Success_guard_rejection_and_unhandled_paths_preserve_v1_context_and_order()
+    public async Task Pre_cancelled_token_does_not_start_an_attempt()
+    {
+        var extension = new AsyncCharacterizationExtension();
+        var machine = new AsyncCharacterizationFlatMachine(AsyncCharacterizationState.A, [extension]);
+        await machine.StartAsync();
+
+        using var cts = new System.Threading.CancellationTokenSource();
+        cts.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            machine.TryFireAsync(AsyncCharacterizationTrigger.Go, cancellationToken: cts.Token).AsTask());
+
+        Assert.Empty(extension.Events);
+    }
+
+    [Fact]
+    public async Task Success_guard_rejection_and_unhandled_paths_expose_v2_context_outcome_and_order()
     {
         var extension = new AsyncCharacterizationExtension();
         var machine = new AsyncCharacterizationFlatMachine(AsyncCharacterizationState.A, [extension]);
@@ -19,32 +35,38 @@ public sealed class AsyncExtensionContractCharacterizationTests
 
         Assert.True(await machine.TryFireAsync(AsyncCharacterizationTrigger.Go));
         Assert.Equal(
-            ["Before", "GuardEvaluating:CanGoAsync", "GuardEvaluated:CanGoAsync:True", "Transitioned", "After:True"],
+            ["OnAttemptStarting", "OnTransitionMatched:External", "OnGuardEvaluating:CanGoAsync", "OnGuardEvaluated:CanGoAsync:True", "OnAttemptCompleted:Succeeded"],
             extension.Events.Select(e => e.Name));
-        Assert.All(extension.Events, e => Assert.Equal(AsyncCharacterizationState.A, e.From));
-        Assert.All(extension.Events, e => Assert.Equal(AsyncCharacterizationState.B, e.To));
+        Assert.All(extension.Events, e => Assert.Equal(AsyncCharacterizationState.A, e.SourceState));
         Assert.All(extension.Events, e => Assert.Equal(extension.Events[0].InstanceId, e.InstanceId));
-        Assert.All(extension.Events, e => Assert.Equal(extension.Events[0].Timestamp, e.Timestamp));
+        Assert.All(extension.Events, e => Assert.Equal(extension.Events[0].AttemptId, e.AttemptId));
+        Assert.All(extension.Events, e => Assert.Equal(extension.Events[0].StartTimestamp, e.StartTimestamp));
+        Assert.Equal(AsyncCharacterizationState.B, extension.Events[^1].Result?.MatchedTransition?.DeclaredTarget);
+        Assert.Equal(AsyncCharacterizationState.B, extension.Events[^1].Result?.ResolvedTarget);
+        Assert.Equal(AsyncCharacterizationState.B, extension.Events[^1].Result?.FinalState);
 
         extension.Events.Clear();
         var rejected = new AsyncCharacterizationFlatMachine(AsyncCharacterizationState.A, [extension]);
         await rejected.StartAsync();
         Assert.False(await rejected.TryFireAsync(AsyncCharacterizationTrigger.Reject));
         Assert.Equal(
-            ["Before", "GuardEvaluating:CannotGoAsync", "GuardEvaluated:CannotGoAsync:False", "After:False"],
+            ["OnAttemptStarting", "OnTransitionMatched:External", "OnGuardEvaluating:CannotGoAsync", "OnGuardEvaluated:CannotGoAsync:False", "OnAttemptCompleted:GuardRejected"],
             extension.Events.Select(e => e.Name));
-        Assert.All(extension.Events, e => Assert.Equal(AsyncCharacterizationState.B, e.To));
+        Assert.Equal(AsyncCharacterizationState.B, extension.Events[^1].Result?.MatchedTransition?.DeclaredTarget);
+        Assert.Null(extension.Events[^1].Result?.ResolvedTarget);
+        Assert.Equal(AsyncCharacterizationState.A, extension.Events[^1].Result?.FinalState);
 
         extension.Events.Clear();
         Assert.False(await rejected.TryFireAsync(AsyncCharacterizationTrigger.Missing));
-        Assert.Equal(["Unhandled", "After:False"], extension.Events.Select(e => e.Name));
-        Assert.All(extension.Events, e => Assert.Equal(AsyncCharacterizationState.A, e.To));
+        Assert.Equal(["OnAttemptStarting", "OnAttemptCompleted:UnhandledTrigger"], extension.Events.Select(e => e.Name));
+        Assert.Null(extension.Events[^1].Result?.MatchedTransition);
+        Assert.Equal(AsyncCharacterizationState.A, extension.Events[^1].Result?.FinalState);
     }
 
     [Theory]
     [InlineData(AsyncCharacterizationTrigger.Internal)]
     [InlineData(AsyncCharacterizationTrigger.Self)]
-    public async Task Internal_and_external_self_transition_are_indistinguishable(
+    public async Task Internal_and_external_self_transition_are_distinct(
         AsyncCharacterizationTrigger trigger)
     {
         var extension = new AsyncCharacterizationExtension();
@@ -53,11 +75,21 @@ public sealed class AsyncExtensionContractCharacterizationTests
 
         Assert.True(await machine.TryFireAsync(trigger));
 
-        Assert.Equal(["Before", "Internal", "Transitioned", "After:True"], extension.Events.Select(e => e.Name));
+        var expectedKind = trigger == AsyncCharacterizationTrigger.Internal
+            ? TransitionKind.Internal
+            : TransitionKind.External;
+        Assert.Equal(
+            ["OnAttemptStarting", $"OnTransitionMatched:{expectedKind}", "OnAttemptCompleted:Succeeded"],
+            extension.Events.Select(e => e.Name));
+        Assert.Equal(expectedKind, extension.Events[^1].Result?.MatchedTransition?.Kind);
+        if (expectedKind == TransitionKind.Internal)
+            Assert.Null(extension.Events[^1].Result?.ResolvedTarget);
+        else
+            Assert.Equal(AsyncCharacterizationState.A, extension.Events[^1].Result?.ResolvedTarget);
     }
 
     [Fact]
-    public async Task Payload_is_exposed_on_every_hook_and_invalid_payload_emits_no_hooks()
+    public async Task Payload_is_exposed_on_every_hook_and_invalid_payload_reports_typed_outcome()
     {
         var extension = new AsyncCharacterizationExtension();
         var machine = new AsyncCharacterizationPayloadMachine(AsyncCharacterizationState.A, [extension]);
@@ -70,13 +102,17 @@ public sealed class AsyncExtensionContractCharacterizationTests
         extension.Events.Clear();
         var invalid = new AlternateAsyncCharacterizationPayload("wrong");
         Assert.False(await machine.TryFireAsync(AsyncCharacterizationTrigger.AlternatePayload, payload));
-        Assert.Empty(extension.Events);
+        Assert.Equal(["OnAttemptStarting", "OnAttemptCompleted:InvalidPayload"], extension.Events.Select(e => e.Name));
+        Assert.All(extension.Events, e => Assert.Same(payload, e.Payload));
+        Assert.Equal(TransitionOutcome.InvalidPayload, extension.Events[^1].Result?.Outcome);
+
+        extension.Events.Clear();
         Assert.True(await machine.TryFireAsync(AsyncCharacterizationTrigger.AlternatePayload, invalid));
         Assert.All(extension.Events, e => Assert.Same(invalid, e.Payload));
     }
 
     [Fact]
-    public async Task Composite_target_and_ancestor_internal_preserve_v1_hsm_semantics()
+    public async Task Composite_target_and_ancestor_internal_expose_declared_and_resolved_v2_semantics()
     {
         var extension = new AsyncCharacterizationExtension();
         var machine = new AsyncCharacterizationHsmMachine(AsyncCharacterizationState.A, [extension]);
@@ -84,13 +120,20 @@ public sealed class AsyncExtensionContractCharacterizationTests
 
         Assert.True(await machine.TryFireAsync(AsyncCharacterizationTrigger.EnterComposite));
         Assert.Equal(AsyncCharacterizationState.Child1, machine.CurrentState);
-        Assert.All(extension.Events, e => Assert.Equal(AsyncCharacterizationState.Parent, e.To));
+        Assert.Equal(AsyncCharacterizationState.Parent, extension.Events[^1].Result?.MatchedTransition?.DeclaredTarget);
+        Assert.Equal(AsyncCharacterizationState.Child1, extension.Events[^1].Result?.ResolvedTarget);
+        Assert.Equal(AsyncCharacterizationState.Child1, extension.Events[^1].Result?.FinalState);
 
         extension.Events.Clear();
         Assert.True(await machine.TryFireAsync(AsyncCharacterizationTrigger.Internal));
-        Assert.Equal(["Before", "Transitioned", "After:True"], extension.Events.Select(e => e.Name));
-        Assert.All(extension.Events, e => Assert.Equal(AsyncCharacterizationState.Child1, e.From));
-        Assert.All(extension.Events, e => Assert.Equal(AsyncCharacterizationState.Parent, e.To));
+        Assert.Equal(
+            ["OnAttemptStarting", "OnTransitionMatched:Internal", "OnAttemptCompleted:Succeeded"],
+            extension.Events.Select(e => e.Name));
+        Assert.All(extension.Events, e => Assert.Equal(AsyncCharacterizationState.Child1, e.SourceState));
+        Assert.Equal(AsyncCharacterizationState.Parent, extension.Events[^1].Result?.MatchedTransition?.HandledAtState);
+        Assert.Null(extension.Events[^1].Result?.MatchedTransition?.DeclaredTarget);
+        Assert.Null(extension.Events[^1].Result?.ResolvedTarget);
+        Assert.Equal(AsyncCharacterizationState.Child1, extension.Events[^1].Result?.FinalState);
     }
 
     [Fact]
@@ -106,8 +149,10 @@ public sealed class AsyncExtensionContractCharacterizationTests
         Assert.True(await machine.TryFireAsync(AsyncCharacterizationTrigger.Return));
 
         Assert.Equal(AsyncCharacterizationState.Child2, machine.CurrentState);
-        Assert.All(extension.Events, e => Assert.Equal(AsyncCharacterizationState.B, e.From));
-        Assert.All(extension.Events, e => Assert.Equal(AsyncCharacterizationState.Parent, e.To));
+        Assert.All(extension.Events, e => Assert.Equal(AsyncCharacterizationState.B, e.SourceState));
+        Assert.Equal(AsyncCharacterizationState.Parent, extension.Events[^1].Result?.MatchedTransition?.DeclaredTarget);
+        Assert.Equal(AsyncCharacterizationState.Child2, extension.Events[^1].Result?.ResolvedTarget);
+        Assert.Equal(AsyncCharacterizationState.Child2, extension.Events[^1].Result?.FinalState);
     }
 }
 
@@ -181,38 +226,59 @@ public partial class AsyncCharacterizationHsmMachine
 
 public sealed record AsyncCharacterizationEvent(
     string Name,
-    string InstanceId,
-    DateTime Timestamp,
-    object From,
-    object To,
-    object Trigger,
-    object? Payload);
+    Guid InstanceId,
+    long AttemptId,
+    long StartTimestamp,
+    AsyncCharacterizationState SourceState,
+    AsyncCharacterizationTrigger Trigger,
+    object? Payload,
+    TransitionInfo<AsyncCharacterizationState>? Transition,
+    TransitionResult<AsyncCharacterizationState>? Result);
 
-public sealed class AsyncCharacterizationExtension : IStateMachineExtension
+public sealed class AsyncCharacterizationExtension : IStateMachineExtension<AsyncCharacterizationState, AsyncCharacterizationTrigger>
 {
+    public ExtensionHooks Hooks => ExtensionHooks.Transitions | ExtensionHooks.Guards;
     public List<AsyncCharacterizationEvent> Events { get; } = [];
 
-    public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext => Add("Before", context);
-    public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext => Add($"After:{success}", context);
-    public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext => Add($"GuardEvaluating:{guardName}", context);
-    public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext => Add($"GuardEvaluated:{guardName}:{result}", context);
-    public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext => Add("Unhandled", context);
-    public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext => Add("Internal", context);
-    public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext => Add("Transitioned", context);
+    public void OnAttemptStarting(in TransitionAttemptContext<AsyncCharacterizationState, AsyncCharacterizationTrigger> attempt)
+        => Add("OnAttemptStarting", in attempt);
 
-    private void Add<TContext>(string name, TContext context) where TContext : IStateMachineContext
-    {
-        var snapshot = Assert.IsAssignableFrom<IStateSnapshot>(context);
-        var payload = context is IStateMachineContext<AsyncCharacterizationState, AsyncCharacterizationTrigger> typed
-            ? typed.Payload
-            : null;
-        Events.Add(new AsyncCharacterizationEvent(
+    public void OnTransitionMatched(
+        in TransitionAttemptContext<AsyncCharacterizationState, AsyncCharacterizationTrigger> attempt,
+        in TransitionInfo<AsyncCharacterizationState> matched)
+        => Add($"OnTransitionMatched:{matched.Kind}", in attempt, matched);
+
+    public void OnAttemptCompleted(
+        in TransitionAttemptContext<AsyncCharacterizationState, AsyncCharacterizationTrigger> attempt,
+        in TransitionResult<AsyncCharacterizationState> result)
+        => Add($"OnAttemptCompleted:{result.Outcome}", in attempt, result.MatchedTransition, result);
+
+    public void OnGuardEvaluating(
+        in TransitionAttemptContext<AsyncCharacterizationState, AsyncCharacterizationTrigger> attempt,
+        in TransitionInfo<AsyncCharacterizationState> candidate,
+        string guardName)
+        => Add($"OnGuardEvaluating:{guardName}", in attempt, candidate);
+
+    public void OnGuardEvaluated(
+        in TransitionAttemptContext<AsyncCharacterizationState, AsyncCharacterizationTrigger> attempt,
+        in TransitionInfo<AsyncCharacterizationState> candidate,
+        string guardName,
+        bool result)
+        => Add($"OnGuardEvaluated:{guardName}:{result}", in attempt, candidate);
+
+    private void Add(
+        string name,
+        in TransitionAttemptContext<AsyncCharacterizationState, AsyncCharacterizationTrigger> attempt,
+        TransitionInfo<AsyncCharacterizationState>? transition = null,
+        TransitionResult<AsyncCharacterizationState>? result = null)
+        => Events.Add(new AsyncCharacterizationEvent(
             name,
-            context.InstanceId,
-            context.Timestamp,
-            snapshot.FromState,
-            snapshot.ToState,
-            snapshot.Trigger,
-            payload));
-    }
+            attempt.InstanceId,
+            attempt.AttemptId,
+            attempt.StartTimestamp,
+            attempt.SourceState,
+            attempt.Trigger,
+            attempt.Payload,
+            transition,
+            result));
 }

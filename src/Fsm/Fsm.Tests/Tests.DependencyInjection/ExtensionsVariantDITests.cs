@@ -20,8 +20,8 @@ public class ExtensionsVariantDITests : DITestBase
         var extension1 = new TestExtension("Ext1");
         var extension2 = new TestExtension("Ext2");
 
-        Services.AddSingleton<IStateMachineExtension>(extension1);
-        Services.AddSingleton<IStateMachineExtension>(extension2);
+        Services.AddSingleton<IStateMachineExtension<TestState, TestTrigger>>(extension1);
+        Services.AddSingleton<IStateMachineExtension<TestState, TestTrigger>>(extension2);
         Services.AddExtensionsTestMachine(TestState.A);
         BuildProvider();
 
@@ -47,9 +47,9 @@ public class ExtensionsVariantDITests : DITestBase
         var extension3 = new OrderedTestExtension("Ext3", sharedEvents);
 
         // Register in specific order
-        Services.AddSingleton<IStateMachineExtension>(extension1);
-        Services.AddSingleton<IStateMachineExtension>(extension2);
-        Services.AddSingleton<IStateMachineExtension>(extension3);
+        Services.AddSingleton<IStateMachineExtension<TestState, TestTrigger>>(extension1);
+        Services.AddSingleton<IStateMachineExtension<TestState, TestTrigger>>(extension2);
+        Services.AddSingleton<IStateMachineExtension<TestState, TestTrigger>>(extension3);
         Services.AddExtensionsTestMachine(TestState.A);
         BuildProvider();
 
@@ -70,14 +70,14 @@ public class ExtensionsVariantDITests : DITestBase
     public void Extensions_CanBeRegisteredUsingHelper()
     {
         // Arrange
-        Services.AddStateMachineExtension<TestExtension>();
+        Services.AddStateMachineExtension<TestState, TestTrigger, TestExtension>();
         Services.AddExtensionsTestMachine(TestState.A);
         BuildProvider();
 
         // Act
         var machine = GetService<IExtensionsTestMachine>();
         machine.Start();
-        var extensions = GetService<IEnumerable<IStateMachineExtension>>();
+        var extensions = GetService<IEnumerable<IStateMachineExtension<TestState, TestTrigger>>>();
 
         // Assert
         Assert.Single(extensions);
@@ -107,18 +107,18 @@ public class ExtensionsVariantDITests : DITestBase
     public void Extensions_WithDifferentLifetimes()
     {
         // Arrange
-        Services.AddStateMachineExtension<SingletonExtension>(ServiceLifetime.Singleton);
-        Services.AddStateMachineExtension<ScopedExtension>(ServiceLifetime.Scoped);
-        Services.AddStateMachineExtension<TransientExtension>(ServiceLifetime.Transient);
+        Services.AddStateMachineExtension<TestState, TestTrigger, SingletonExtension>(ServiceLifetime.Singleton);
+        Services.AddStateMachineExtension<TestState, TestTrigger, ScopedExtension>(ServiceLifetime.Scoped);
+        Services.AddStateMachineExtension<TestState, TestTrigger, TransientExtension>(ServiceLifetime.Transient);
         Services.AddExtensionsTestMachine(TestState.A);
         BuildProvider();
 
         // Act & Assert - Singleton
         using var scope1 = CreateScope();
-        var extensions1 = scope1.ServiceProvider.GetServices<IStateMachineExtension>().ToList();
+        var extensions1 = scope1.ServiceProvider.GetServices<IStateMachineExtension<TestState, TestTrigger>>().ToList();
 
         using var scope2 = CreateScope();
-        var extensions2 = scope2.ServiceProvider.GetServices<IStateMachineExtension>().ToList();
+        var extensions2 = scope2.ServiceProvider.GetServices<IStateMachineExtension<TestState, TestTrigger>>().ToList();
 
         var singleton1 = extensions1.OfType<SingletonExtension>().First();
         var singleton2 = extensions2.OfType<SingletonExtension>().First();
@@ -131,8 +131,8 @@ public class ExtensionsVariantDITests : DITestBase
 
         // Act & Assert - Transient
         // Dla transient, musimy wywołać GetServices dwa razy
-        var transientExtensions1 = scope1.ServiceProvider.GetServices<IStateMachineExtension>().ToList();
-        var transientExtensions2 = scope1.ServiceProvider.GetServices<IStateMachineExtension>().ToList();
+        var transientExtensions1 = scope1.ServiceProvider.GetServices<IStateMachineExtension<TestState, TestTrigger>>().ToList();
+        var transientExtensions2 = scope1.ServiceProvider.GetServices<IStateMachineExtension<TestState, TestTrigger>>().ToList();
 
         var transient1 = transientExtensions1.OfType<TransientExtension>().First();
         var transient2 = transientExtensions2.OfType<TransientExtension>().First();
@@ -144,7 +144,7 @@ public class ExtensionsVariantDITests : DITestBase
     {
         // Arrange
         var extension = new ContextCapturingExtension();
-        Services.AddSingleton<IStateMachineExtension>(extension);
+        Services.AddSingleton<IStateMachineExtension<TestState, TestTrigger>>(extension);
         Services.AddExtensionsTestMachine(TestState.A);
         BuildProvider();
 
@@ -154,12 +154,12 @@ public class ExtensionsVariantDITests : DITestBase
         machine.TryFire(TestTrigger.Next);
 
         // Assert
-        Assert.NotNull(extension.LastContext);
-        Assert.Equal(TestState.A, extension.LastContext.FromState);
-        Assert.Equal(TestState.B, extension.LastContext.ToState);
-        Assert.Equal(TestTrigger.Next, extension.LastContext.Trigger);
-        Assert.NotNull(extension.LastContext.InstanceId);
-        Assert.True(extension.LastContext.Timestamp <= DateTime.UtcNow);
+        Assert.Equal(TestState.A, extension.LastAttempt.SourceState);
+        Assert.Equal(TestState.B, extension.LastTransition.DeclaredTarget);
+        Assert.Equal(TestTrigger.Next, extension.LastAttempt.Trigger);
+        Assert.NotEqual(Guid.Empty, extension.LastAttempt.InstanceId);
+        Assert.True(extension.LastAttempt.AttemptId > 0);
+        Assert.True(extension.LastAttempt.StartTimestamp > 0);
     }
 
     [Fact]
@@ -167,7 +167,7 @@ public class ExtensionsVariantDITests : DITestBase
     {
         // Arrange
         var extension = new TestExtension("Guard");
-        Services.AddSingleton<IStateMachineExtension>(extension);
+        Services.AddSingleton<IStateMachineExtension<TestState, TestTrigger>>(extension);
         Services.AddGuardedTestMachine(TestState.A);
         BuildProvider();
 
@@ -182,8 +182,9 @@ public class ExtensionsVariantDITests : DITestBase
     }
 
     // Test Extensions
-    private class TestExtension : IStateMachineExtension
+    private class TestExtension : IStateMachineExtension<TestState, TestTrigger>
     {
+        public ExtensionHooks Hooks => ExtensionHooks.Transitions | ExtensionHooks.Guards;
         public string Name { get; }
         public List<string> Events { get; } = [];
 
@@ -192,28 +193,34 @@ public class ExtensionsVariantDITests : DITestBase
             Name = name;
         }
 
-        public virtual void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
+        public virtual void OnAttemptStarting(in TransitionAttemptContext<TestState, TestTrigger> attempt)
         {
             Events.Add($"{Name}:Before");
         }
 
-        public virtual void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext
+        public virtual void OnAttemptCompleted(
+            in TransitionAttemptContext<TestState, TestTrigger> attempt,
+            in TransitionResult<TestState> result)
         {
             Events.Add($"{Name}:After");
         }
 
-        public virtual void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext
+        public virtual void OnGuardEvaluating(
+            in TransitionAttemptContext<TestState, TestTrigger> attempt,
+            in TransitionInfo<TestState> candidate,
+            string guardName)
         {
             Events.Add($"{Name}:GuardEval:{guardName}");
         }
 
-        public virtual void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext
+        public virtual void OnGuardEvaluated(
+            in TransitionAttemptContext<TestState, TestTrigger> attempt,
+            in TransitionInfo<TestState> candidate,
+            string guardName,
+            bool result)
         {
             Events.Add($"{Name}:GuardEvaluated:{guardName}:{result}");
         }
-        public virtual void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext { }
-        public virtual void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
-        public virtual void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
     }
 
     private class OrderedTestExtension : TestExtension
@@ -225,37 +232,33 @@ public class ExtensionsVariantDITests : DITestBase
             _sharedEvents = sharedEvents;
         }
 
-        public override void OnBeforeTransition<TContext>(TContext context)
+        public override void OnAttemptStarting(in TransitionAttemptContext<TestState, TestTrigger> attempt)
         {
-            base.OnBeforeTransition(context);
+            base.OnAttemptStarting(in attempt);
             _sharedEvents.Add($"{Name}:Before");
         }
 
-        public override void OnAfterTransition<TContext>(TContext context, bool success)
+        public override void OnAttemptCompleted(
+            in TransitionAttemptContext<TestState, TestTrigger> attempt,
+            in TransitionResult<TestState> result)
         {
-            base.OnAfterTransition(context, success);
+            base.OnAttemptCompleted(in attempt, in result);
             _sharedEvents.Add($"{Name}:After");
         }
     }
 
-    private class ContextCapturingExtension : IStateMachineExtension
+    private class ContextCapturingExtension : IStateMachineExtension<TestState, TestTrigger>
     {
-        public IStateMachineContext<TestState, TestTrigger>? LastContext { get; private set; }
+        public TransitionAttemptContext<TestState, TestTrigger> LastAttempt { get; private set; }
+        public TransitionInfo<TestState> LastTransition { get; private set; }
 
-        public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
-        {
-            if (context is IStateMachineContext<TestState, TestTrigger> typedContext)
-            {
-                LastContext = typedContext;
-            }
-        }
+        public void OnAttemptStarting(in TransitionAttemptContext<TestState, TestTrigger> attempt)
+            => LastAttempt = attempt;
 
-        public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext { }
-        public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext { }
-        public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext { }
-        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext { }
-        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
-        public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
+        public void OnTransitionMatched(
+            in TransitionAttemptContext<TestState, TestTrigger> attempt,
+            in TransitionInfo<TestState> matched)
+            => LastTransition = matched;
     }
 
     private class SingletonExtension : TestExtension { }

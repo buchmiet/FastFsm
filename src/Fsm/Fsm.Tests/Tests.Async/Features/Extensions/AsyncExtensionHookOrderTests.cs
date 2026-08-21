@@ -39,16 +39,15 @@ public partial class AsyncHookOrderMachineFail
 public enum AState { A, B }
 public enum ATrigger { Next, Fail }
 
-public sealed class AsyncRecordingExtension : IStateMachineExtension
+public sealed class AsyncRecordingExtension : IStateMachineExtension<AState, ATrigger>
 {
     public readonly List<string> Log = new();
-    public void OnBeforeTransition<T>(T ctx) where T : IStateMachineContext => Log.Add("Before");
-    public void OnAfterTransition<T>(T ctx, bool s) where T : IStateMachineContext => Log.Add($"After:{(s ? "Success" : "Fail")}");
-    public void OnGuardEvaluation<T>(T ctx, string _) where T : IStateMachineContext => Log.Add("GuardEval");
-    public void OnGuardEvaluated<T>(T ctx, string _, bool res) where T : IStateMachineContext => Log.Add("GuardEvaluated");
-    public void OnUnhandledTrigger<T>(T ctx) where T : IStateMachineContext => Log.Add("Unhandled");
-    public void OnInternalTransition<T>(T ctx) where T : IStateMachineContext => Log.Add("Internal");
-    public void OnTransitioned<T>(T ctx) where T : IStateMachineContext => Log.Add("Transitioned");
+    public ExtensionHooks Hooks => ExtensionHooks.Transitions | ExtensionHooks.Guards;
+    public void OnAttemptStarting(in TransitionAttemptContext<AState, ATrigger> attempt) => Log.Add("AttemptStarting");
+    public void OnTransitionMatched(in TransitionAttemptContext<AState, ATrigger> attempt, in TransitionInfo<AState> matched) => Log.Add("TransitionMatched");
+    public void OnAttemptCompleted(in TransitionAttemptContext<AState, ATrigger> attempt, in TransitionResult<AState> result) => Log.Add($"AttemptCompleted:{result.Outcome}");
+    public void OnGuardEvaluating(in TransitionAttemptContext<AState, ATrigger> attempt, in TransitionInfo<AState> candidate, string _) => Log.Add("GuardEvaluating");
+    public void OnGuardEvaluated(in TransitionAttemptContext<AState, ATrigger> attempt, in TransitionInfo<AState> candidate, string _, bool result) => Log.Add("GuardEvaluated");
 }
 
 public class AsyncExtensionHookOrderTests
@@ -56,42 +55,48 @@ public class AsyncExtensionHookOrderTests
     [Fact]
     public async Task Hooks_AreInvoked_InExpectedOrder_OnSuccess()
     {
-        var log = new List<string>();
-        var ext = new AsyncRecordingExtension { };
-        var m = new AsyncHookOrderMachineSuccess(AState.A, new IStateMachineExtension[] { ext });
+        var ext = new AsyncRecordingExtension();
+        var m = new AsyncHookOrderMachineSuccess(AState.A, new IStateMachineExtension<AState, ATrigger>[] { ext });
         await m.StartAsync();
 
         var ok = await m.TryFireAsync(ATrigger.Next);
         ok.ShouldBeTrue();
 
-        // Expected order per f08: Before -> GuardEvaluation -> GuardEvaluated -> ... -> After:Success
-        // Check prefix order and last element
-        ext.Log.Count.ShouldBeGreaterThanOrEqualTo(4);
-        ext.Log[0].ShouldBe("Before");
-        ext.Log[1].ShouldBe("GuardEval");
-        ext.Log[2].ShouldBe("GuardEvaluated");
-        ext.Log[^1].ShouldBe("After:Success");
+        ext.Log.ShouldBe(new[]
+        {
+            "AttemptStarting",
+            "TransitionMatched",
+            "GuardEvaluating",
+            "GuardEvaluated",
+            "AttemptCompleted:Succeeded"
+        });
     }
 
     [Fact]
     public async Task Hooks_AreInvoked_InExpectedOrder_OnGuardFail()
     {
         var ext = new AsyncRecordingExtension();
-        var m = new AsyncHookOrderMachineFail(AState.A, new IStateMachineExtension[] { ext });
+        var m = new AsyncHookOrderMachineFail(AState.A, new IStateMachineExtension<AState, ATrigger>[] { ext });
         await m.StartAsync();
 
         var ok = await m.TryFireAsync(ATrigger.Fail);
         ok.ShouldBeFalse();
 
-        // On guard fail: Before -> GuardEvaluation -> GuardEvaluated -> After(Fail)
-        ext.Log.ShouldBe(new[] { "Before", "GuardEval", "GuardEvaluated", "After:Fail" });
+        ext.Log.ShouldBe(new[]
+        {
+            "AttemptStarting",
+            "TransitionMatched",
+            "GuardEvaluating",
+            "GuardEvaluated",
+            "AttemptCompleted:GuardRejected"
+        });
     }
 
     [Fact]
     public async Task GetPermittedTriggersAsync_DoesNot_Emit_Guard_Hooks()
     {
         var ext = new AsyncRecordingExtension();
-        var m = new AsyncHookOrderMachineSuccess(AState.A, new IStateMachineExtension[] { ext });
+        var m = new AsyncHookOrderMachineSuccess(AState.A, new IStateMachineExtension<AState, ATrigger>[] { ext });
         await m.StartAsync();
 
         var permitted = await m.GetPermittedTriggersAsync();

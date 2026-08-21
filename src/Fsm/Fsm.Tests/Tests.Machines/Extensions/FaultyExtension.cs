@@ -1,41 +1,12 @@
 using FastFsm.Contracts;
+using Tests.Machines.Machines;
 
 namespace Tests.Machines.Extensions
 {
 
-        public class FaultyExtension : IStateMachineExtension
+        public class FaultyExtension : IStateMachineExtension<ExtState, ExtTrigger>
         {
-            public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
-            {
-                throw new Exception("Extension error");
-            }
-
-            public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext
-            {
-                throw new Exception("Extension error");
-            }
-
-            public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext
-            {
-                throw new Exception("Extension error");
-            }
-
-            public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext
-            {
-                throw new Exception("Extension error");
-            }
-
-            public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
-            {
-                throw new Exception("Extension error");
-            }
-
-            public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
-            {
-                throw new Exception("Extension error");
-            }
-
-            public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext
+            public void OnAttemptStarting(in TransitionAttemptContext<ExtState, ExtTrigger> attempt)
             {
                 throw new Exception("Extension error");
             }

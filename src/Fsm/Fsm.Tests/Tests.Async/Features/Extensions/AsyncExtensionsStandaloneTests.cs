@@ -11,41 +11,39 @@ namespace Tests.Async.Features.Extensions;
 
 public class AsyncExtensionsStandaloneTests
 {
-    private class TestExtension : IStateMachineExtension
+    private class TestExtension : IStateMachineExtension<ExtState, ExtTrigger>
     {
+        public ExtensionHooks Hooks => ExtensionHooks.Transitions | ExtensionHooks.Guards;
         public List<string> Log { get; } = new();
 
-        public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
+        public void OnAttemptStarting(in TransitionAttemptContext<ExtState, ExtTrigger> attempt)
         {
-            Log.Add($"Before: {context.GetType().Name}");
+            Log.Add($"AttemptStarting: {attempt.SourceState}");
         }
 
-        public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext
+        public void OnAttemptCompleted(
+            in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
+            in TransitionResult<ExtState> result)
         {
-            Log.Add($"After: {context.GetType().Name} - Success: {success}");
+            Log.Add($"AttemptCompleted: {result.Outcome}");
         }
 
-        public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext
+        public void OnGuardEvaluating(
+            in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
+            in TransitionInfo<ExtState> candidate,
+            string guardName)
         {
-            Log.Add($"GuardEval: {guardName}");
+            Log.Add($"GuardEvaluating: {guardName}");
         }
 
-        public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext
+        public void OnGuardEvaluated(
+            in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
+            in TransitionInfo<ExtState> candidate,
+            string guardName,
+            bool result)
         {
-            Log.Add($"GuardResult: {guardName} = {result}");
+            Log.Add($"GuardEvaluated: {guardName} = {result}");
         }
-
-        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
-        {
-            Log.Add("Unhandled");
-        }
-
-        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
-        {
-            Log.Add("Internal");
-        }
-
-        public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
     }
 
     [Fact]
@@ -53,7 +51,7 @@ public class AsyncExtensionsStandaloneTests
     {
         var ext1 = new TestExtension();
         var ext2 = new TestExtension();
-        var machine = new AsyncExtensionsMachineFluentFsm(ExtState.Idle, new IStateMachineExtension[] { ext1 });
+        var machine = new AsyncExtensionsMachineFluentFsm(ExtState.Idle, new IStateMachineExtension<ExtState, ExtTrigger>[] { ext1 });
         await machine.StartAsync();
 
         // Initial extension active
@@ -88,8 +86,8 @@ public class AsyncExtensionsStandaloneTests
 
         await machine.TryFireAsync(ExtTrigger.Start); // Has guard
 
-        extension.Log.ShouldContain(log => log.StartsWith("GuardEval:"));
-        extension.Log.ShouldContain(log => log.StartsWith("GuardResult:"));
+        extension.Log.ShouldContain(log => log.StartsWith("GuardEvaluating:"));
+        extension.Log.ShouldContain(log => log.StartsWith("GuardEvaluated:"));
     }
 
     [Fact]
@@ -102,7 +100,7 @@ public class AsyncExtensionsStandaloneTests
         var result = await machine.TryFireAsync(ExtTrigger.Start); // Invalid from Complete
 
         result.ShouldBeFalse();
-        extension.Log.ShouldContain(log => log.Contains("Success: False"));
+        extension.Log.ShouldContain("AttemptCompleted: UnhandledTrigger");
     }
 
     [Fact]
@@ -122,7 +120,7 @@ public class AsyncExtensionsStandaloneTests
     {
         var faultyExtension = new FaultyExtension();
         var goodExtension = new TestExtension();
-        var machine = new AsyncExtensionsMachineFluentFsm(ExtState.Idle, new IStateMachineExtension[] { faultyExtension, goodExtension });
+        var machine = new AsyncExtensionsMachineFluentFsm(ExtState.Idle, new IStateMachineExtension<ExtState, ExtTrigger>[] { faultyExtension, goodExtension });
         await machine.StartAsync();
 
         var result = await machine.TryFireAsync(ExtTrigger.Start);
@@ -132,39 +130,42 @@ public class AsyncExtensionsStandaloneTests
         goodExtension.Log.ShouldNotBeEmpty(); // Good extension still executed
     }
 
-    private class FaultyExtension : IStateMachineExtension
+    private class FaultyExtension : IStateMachineExtension<ExtState, ExtTrigger>
     {
-        public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
+        public ExtensionHooks Hooks => ExtensionHooks.Transitions | ExtensionHooks.Guards;
+
+        public void OnAttemptStarting(in TransitionAttemptContext<ExtState, ExtTrigger> attempt)
         {
             throw new Exception("Extension error");
         }
 
-        public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext
+        public void OnTransitionMatched(
+            in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
+            in TransitionInfo<ExtState> matched)
         {
             throw new Exception("Extension error");
         }
 
-        public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext
+        public void OnAttemptCompleted(
+            in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
+            in TransitionResult<ExtState> result)
         {
             throw new Exception("Extension error");
         }
 
-        public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext
+        public void OnGuardEvaluating(
+            in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
+            in TransitionInfo<ExtState> candidate,
+            string guardName)
         {
             throw new Exception("Extension error");
         }
 
-        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
-        {
-            throw new Exception("Extension error");
-        }
-
-        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
-        {
-            throw new Exception("Extension error");
-        }
-
-        public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext
+        public void OnGuardEvaluated(
+            in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
+            in TransitionInfo<ExtState> candidate,
+            string guardName,
+            bool result)
         {
             throw new Exception("Extension error");
         }

@@ -8,7 +8,7 @@ using FastFsm.Contracts;
 
 namespace Tests.Machines.Extensions
 {
-    public class AuditExtension : IStateMachineExtension
+    public class AuditExtension : IStateMachineExtension<PhysicalOrderState, PhysicalOrderTrigger>
     {
         public List<AuditEntry> Entries { get; } = new();
 
@@ -23,41 +23,20 @@ namespace Tests.Machines.Extensions
             public bool Success { get; set; }
         }
 
-        public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
+        public void OnAttemptCompleted(
+            in TransitionAttemptContext<PhysicalOrderState, PhysicalOrderTrigger> attempt,
+            in TransitionResult<PhysicalOrderState> result)
         {
-            // Capture state before
-        }
-
-        public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext
-        {
-            if (context is IStateMachineContext<PhysicalOrderState, PhysicalOrderTrigger> orderContext &&
-                context is IStateSnapshot snapshot)
+            Entries.Add(new AuditEntry
             {
-                Entries.Add(new AuditEntry
-                {
-                    Timestamp = context.Timestamp,
-                    FromState = snapshot.FromState,
-                    ToState = snapshot.ToState,
-                    Trigger = snapshot.Trigger,
-                    PayloadType = orderContext.Payload?.GetType(),
-                    PayloadData = orderContext.Payload,
-                    Success = success
-                });
-            }
+                Timestamp = DateTime.UtcNow,
+                FromState = attempt.SourceState,
+                ToState = result.FinalState,
+                Trigger = attempt.Trigger,
+                PayloadType = attempt.Payload?.GetType(),
+                PayloadData = attempt.Payload,
+                Success = result.Outcome == TransitionOutcome.Succeeded
+            });
         }
-
-        public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext { }
-        public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext { }
-        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
-        {
-            throw new NotImplementedException();
-        }
-
-        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
-        {
-            throw new NotImplementedException();
-        }
-
-        public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
     }
 }

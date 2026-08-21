@@ -40,15 +40,17 @@ public static class FsmServiceCollectionExtensions
     }
     
     /// <summary>
-    /// Register extensions for all state machines
+    /// Registers an extension for state machines using the specified state and trigger types.
     /// </summary>
-    public static IServiceCollection AddStateMachineExtension<TExtension>(
+    public static IServiceCollection AddStateMachineExtension<TState, TTrigger, TExtension>(
         this IServiceCollection services,
         ServiceLifetime lifetime = ServiceLifetime.Singleton)
-        where TExtension : class, IStateMachineExtension
+        where TState : unmanaged, Enum
+        where TTrigger : unmanaged, Enum
+        where TExtension : class, IStateMachineExtension<TState, TTrigger>
     {
         services.Add(new ServiceDescriptor(
-            typeof(IStateMachineExtension),
+            typeof(IStateMachineExtension<TState, TTrigger>),
             typeof(TExtension),
             lifetime));
             
