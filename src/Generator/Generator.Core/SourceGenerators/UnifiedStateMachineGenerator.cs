@@ -868,7 +868,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         Sb.AppendLine();
     }
 
-    private void WriteTransitionMatched(TransitionModel transition, string stateType)
+    private void WritePrepareMatchedTransition(TransitionModel transition, string stateType)
     {
         if (!ExtensionsOn) return;
 
@@ -876,11 +876,17 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             ? $"({stateType}?)null"
             : $"{stateType}.{TypeHelper.EscapeIdentifier(transition.ToState)}";
         var kind = transition.IsInternal ? "TransitionKind.Internal" : "TransitionKind.External";
-        Sb.AppendLine($"var matchedTransition = new TransitionInfo<{stateType}>(");
-        Sb.AppendLine($"    {stateType}.{TypeHelper.EscapeIdentifier(transition.FromState)},");
-        Sb.AppendLine($"    {declaredTarget},");
-        Sb.AppendLine($"    {kind});");
-        Sb.AppendLine("_extensionRunner.RunTransitionMatched(extensionSet, in attempt, in matchedTransition);");
+        using (Sb.Block("if ((extensionSet.Hooks & (ExtensionHooks.Transitions | ExtensionHooks.Guards)) != 0)"))
+        {
+            Sb.AppendLine($"matchedTransition = new TransitionInfo<{stateType}>(");
+            Sb.AppendLine($"    {stateType}.{TypeHelper.EscapeIdentifier(transition.FromState)},");
+            Sb.AppendLine($"    {declaredTarget},");
+            Sb.AppendLine($"    {kind});");
+            using (Sb.Block("if ((extensionSet.Hooks & ExtensionHooks.Transitions) != 0)"))
+            {
+                Sb.AppendLine("_extensionRunner.RunTransitionMatched(extensionSet, in attempt, in matchedTransition);");
+            }
+        }
     }
 
     private void WriteAttemptCompleted(
@@ -894,14 +900,17 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         if (!ExtensionsOn) return;
 
         var resultVariable = $"attemptResult{_attemptResultIndex++}";
-        Sb.AppendLine($"var {resultVariable} = new TransitionResult<{stateType}>(");
-        Sb.AppendLine($"    TransitionOutcome.{outcome},");
-        Sb.AppendLine($"    {CurrentStateField},");
-        Sb.AppendLine($"    {resolvedTarget},");
-        Sb.AppendLine($"    {matchedTransition},");
-        Sb.AppendLine($"    {stage},");
-        Sb.AppendLine($"    {exception});");
-        Sb.AppendLine($"_extensionRunner.RunAttemptCompleted(extensionSet, in attempt, in {resultVariable});");
+        using (Sb.Block("if ((extensionSet.Hooks & ExtensionHooks.Transitions) != 0)"))
+        {
+            Sb.AppendLine($"var {resultVariable} = new TransitionResult<{stateType}>(");
+            Sb.AppendLine($"    TransitionOutcome.{outcome},");
+            Sb.AppendLine($"    {CurrentStateField},");
+            Sb.AppendLine($"    {resolvedTarget},");
+            Sb.AppendLine($"    {matchedTransition},");
+            Sb.AppendLine($"    {stage},");
+            Sb.AppendLine($"    {exception});");
+            Sb.AppendLine($"_extensionRunner.RunAttemptCompleted(extensionSet, in attempt, in {resultVariable});");
+        }
     }
 
     private void WriteTryFireMethodAsync(string stateType, string triggerType)
@@ -1329,7 +1338,8 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         var hasOnEntryExit = ShouldGenerateOnEntryExit();
 
         Sb.AppendLine("{");
-        WriteTransitionMatched(transition, stateTypeForUsage);
+        Sb.AppendLine($"TransitionInfo<{stateTypeForUsage}> matchedTransition = default;");
+        WritePrepareMatchedTransition(transition, stateTypeForUsage);
         _smCtxCreated = true;
         Sb.AppendLine($"{stateTypeForUsage}? __resolvedTarget = null;");
         Sb.AppendLine("global::FastFsm.Exceptions.TransitionStage? __transitionStage = null;");
@@ -1380,11 +1390,15 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             {
                 if (Model.HierarchyEnabled)
                 {
+                    Sb.AppendLine("int __lifecycleLca = -1;");
                     WriteHierarchicalExtensionStateExits(transition, stateTypeForUsage);
                 }
                 else
                 {
-                    Sb.AppendLine("_extensionRunner.RunStateExiting(extensionSet, in attempt, attempt.SourceState);");
+                    using (Sb.Block("if ((extensionSet.Hooks & ExtensionHooks.States) != 0)"))
+                    {
+                        Sb.AppendLine("_extensionRunner.RunStateExiting(extensionSet, in attempt, attempt.SourceState);");
+                    }
                 }
             }
 
@@ -1446,7 +1460,10 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 }
                 else
                 {
-                    Sb.AppendLine($"_extensionRunner.RunStateEntered(extensionSet, in attempt, {CurrentStateField});");
+                    using (Sb.Block("if ((extensionSet.Hooks & ExtensionHooks.States) != 0)"))
+                    {
+                        Sb.AppendLine($"_extensionRunner.RunStateEntered(extensionSet, in attempt, {CurrentStateField});");
+                    }
                 }
             }
 
@@ -1574,39 +1591,45 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
     private void WriteHierarchicalExtensionStateExits(TransitionModel transition, string stateType)
     {
-        // Lifecycle exits start at the active leaf, but the LCA is computed from the
-        // state that owns the transition. Using the active leaf as the semantic source
-        // would skip the owner on ancestor-to-descendant and ancestor self-transitions.
-        Sb.AppendLine("#if DEBUG || FASTFSM_DEBUG_GENERATED_COMMENTS");
-        Sb.AppendLine("// HSM lifecycle: LCA from handled-at state; external source is always exited/re-entered");
-        Sb.AppendLine("#endif");
-        Sb.AppendLine($"int __lifecycleSource = (int)attempt.SourceState;");
-        Sb.AppendLine($"int __handledState = (int){stateType}.{TypeHelper.EscapeIdentifier(transition.FromState)};");
-        Sb.AppendLine($"int __lifecycleTarget = (int){stateType}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
-        Sb.AppendLine("int __lifecycleLca = FindLowestCommonAncestor(__handledState, __lifecycleTarget);");
-        using (Sb.Block("if (__lifecycleLca == __handledState)"))
+        using (Sb.Block("if ((extensionSet.Hooks & ExtensionHooks.States) != 0)"))
         {
-            Sb.AppendLine("__lifecycleLca = (uint)__handledState < (uint)g_parent.Length ? g_parent[__handledState] : -1;");
-        }
+            // Lifecycle exits start at the active leaf, but the LCA is computed from the
+            // state that owns the transition. Using the active leaf as the semantic source
+            // would skip the owner on ancestor-to-descendant and ancestor self-transitions.
+            Sb.AppendLine("#if DEBUG || FASTFSM_DEBUG_GENERATED_COMMENTS");
+            Sb.AppendLine("// HSM lifecycle: LCA from handled-at state; external source is always exited/re-entered");
+            Sb.AppendLine("#endif");
+            Sb.AppendLine($"int __lifecycleSource = (int)attempt.SourceState;");
+            Sb.AppendLine($"int __handledState = (int){stateType}.{TypeHelper.EscapeIdentifier(transition.FromState)};");
+            Sb.AppendLine($"int __lifecycleTarget = (int){stateType}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+            Sb.AppendLine("__lifecycleLca = FindLowestCommonAncestor(__handledState, __lifecycleTarget);");
+            using (Sb.Block("if (__lifecycleLca == __handledState)"))
+            {
+                Sb.AppendLine("__lifecycleLca = (uint)__handledState < (uint)g_parent.Length ? g_parent[__handledState] : -1;");
+            }
 
-        using (Sb.Block("for (int __exiting = __lifecycleSource; __exiting >= 0 && __exiting != __lifecycleLca; __exiting = (uint)__exiting < (uint)g_parent.Length ? g_parent[__exiting] : -1)"))
-        {
-            Sb.AppendLine($"_extensionRunner.RunStateExiting(extensionSet, in attempt, ({stateType})__exiting);");
+            using (Sb.Block("for (int __exiting = __lifecycleSource; __exiting >= 0 && __exiting != __lifecycleLca; __exiting = (uint)__exiting < (uint)g_parent.Length ? g_parent[__exiting] : -1)"))
+            {
+                Sb.AppendLine($"_extensionRunner.RunStateExiting(extensionSet, in attempt, ({stateType})__exiting);");
+            }
         }
     }
 
     private void WriteHierarchicalExtensionStateEntries(string stateType)
     {
-        Sb.AppendLine($"int __lifecycleTargetDepth = g_depth[(int){CurrentStateField}];");
-        Sb.AppendLine("int __lifecycleLcaDepth = __lifecycleLca >= 0 ? g_depth[__lifecycleLca] : -1;");
-        using (Sb.Block("for (int __enterDepth = __lifecycleLcaDepth + 1; __enterDepth <= __lifecycleTargetDepth; __enterDepth++)"))
+        using (Sb.Block("if ((extensionSet.Hooks & ExtensionHooks.States) != 0)"))
         {
-            Sb.AppendLine($"int __entering = (int){CurrentStateField};");
-            using (Sb.Block("while (g_depth[__entering] > __enterDepth)"))
+            Sb.AppendLine($"int __lifecycleTargetDepth = g_depth[(int){CurrentStateField}];");
+            Sb.AppendLine("int __lifecycleLcaDepth = __lifecycleLca >= 0 ? g_depth[__lifecycleLca] : -1;");
+            using (Sb.Block("for (int __enterDepth = __lifecycleLcaDepth + 1; __enterDepth <= __lifecycleTargetDepth; __enterDepth++)"))
             {
-                Sb.AppendLine("__entering = g_parent[__entering];");
+                Sb.AppendLine($"int __entering = (int){CurrentStateField};");
+                using (Sb.Block("while (g_depth[__entering] > __enterDepth)"))
+                {
+                    Sb.AppendLine("__entering = g_parent[__entering];");
+                }
+                Sb.AppendLine($"_extensionRunner.RunStateEntered(extensionSet, in attempt, ({stateType})__entering);");
             }
-            Sb.AppendLine($"_extensionRunner.RunStateEntered(extensionSet, in attempt, ({stateType})__entering);");
         }
     }
 
@@ -1619,7 +1642,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         Action writeCallback)
     {
         Sb.AppendLine($"__transitionStage = {stage};");
-        Sb.AppendLine($"_extensionRunner.RunCallbackExecuting(extensionSet, in attempt, {stage}, \"{callbackName}\");");
+        using (Sb.Block("if ((extensionSet.Hooks & ExtensionHooks.Callbacks) != 0)"))
+        {
+            Sb.AppendLine($"_extensionRunner.RunCallbackExecuting(extensionSet, in attempt, {stage}, \"{callbackName}\");");
+        }
+
         using (Sb.Block("try"))
         {
             writeCallback();
@@ -1635,7 +1662,10 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 WriteExceptionHandlerDirective(transition, stage, stateAlreadyChanged);
                 using (Sb.Block("if (directive == global::FastFsm.Exceptions.ExceptionDirective.Continue)"))
                 {
-                    Sb.AppendLine($"_extensionRunner.RunCallbackFaulted(extensionSet, in attempt, {stage}, \"{callbackName}\", ex);");
+                    using (Sb.Block("if ((extensionSet.Hooks & ExtensionHooks.Callbacks) != 0)"))
+                    {
+                        Sb.AppendLine($"_extensionRunner.RunCallbackFaulted(extensionSet, in attempt, {stage}, \"{callbackName}\", ex);");
+                    }
                 }
                 Sb.AppendLine("else");
                 using (Sb.Block(""))
@@ -2504,7 +2534,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         string triggerTypeForUsage)
 {
         if (!ExtensionsOn) return;
-        WriteTransitionMatched(transition, stateTypeForUsage);
+        WritePrepareMatchedTransition(transition, stateTypeForUsage);
         Sb.AppendLine();
         _smCtxCreated = true;
 }
@@ -2519,11 +2549,15 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         // Ensure candidate information exists if a specialized path skipped the match hook.
         if (!_smCtxCreated)
     {
-            WriteTransitionMatched(transition, stateTypeForUsage);
+            WritePrepareMatchedTransition(transition, stateTypeForUsage);
             _smCtxCreated = true;
         }
 
-        Sb.AppendLine($"_extensionRunner.RunGuardEvaluating(extensionSet, in attempt, in matchedTransition, \"{transition.GuardMethod}\");");
+        using (Sb.Block("if ((extensionSet.Hooks & ExtensionHooks.Guards) != 0)"))
+        {
+            Sb.AppendLine($"_extensionRunner.RunGuardEvaluating(extensionSet, in attempt, in matchedTransition, \"{transition.GuardMethod}\");");
+        }
+
         Sb.AppendLine();
 }
 
@@ -2534,7 +2568,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         string triggerTypeForUsage)
 {
         if (!ExtensionsOn) return;
-        Sb.AppendLine($"_extensionRunner.RunGuardEvaluated(extensionSet, in attempt, in matchedTransition, \"{transition.GuardMethod}\", {guardResultVar});");
+        using (Sb.Block("if ((extensionSet.Hooks & ExtensionHooks.Guards) != 0)"))
+        {
+            Sb.AppendLine($"_extensionRunner.RunGuardEvaluated(extensionSet, in attempt, in matchedTransition, \"{transition.GuardMethod}\", {guardResultVar});");
+        }
+
         Sb.AppendLine();
 }
 

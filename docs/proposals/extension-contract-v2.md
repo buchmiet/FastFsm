@@ -1,6 +1,6 @@
 # Extension contract v2
 
-> **Status:** accepted design, not yet implemented. This document is not part of the current FastFsm API contract; it defines the contract that replaces it.
+> **Status:** implemented in FastFsm 0.10 (PR4). This document is the normative Extension Contract v2 specification; the shipped API matches it.
 >
 > **Revision 3.** See *Revision history* below.
 >
@@ -17,6 +17,8 @@ Adding hooks on top of that model would multiply the problem. The priority is th
 > first guarantee that the hooks tell the truth, then widen them.
 
 Accordingly: **`FastFsm.Sharp.Observability` is not started until Extension Contract v2 lands.**
+
+Extension Contract v2 landed in 0.10. Observability (PR5) may proceed once mask-gating and documentation follow-ups from the PR4 review are complete.
 
 ## Revision history
 

@@ -223,3 +223,108 @@ public class AsyncExtensionBenchmarks
             await _failurePaths.TryFireAsync(ExtensionBenchmarkTrigger.Internal);
     }
 }
+
+public enum HsmExtensionBenchmarkState { Outside, Parent, Child1, Child2 }
+public enum HsmExtensionBenchmarkTrigger { Enter, Leave, Toggle }
+
+[StateMachine(
+    typeof(HsmExtensionBenchmarkState),
+    typeof(HsmExtensionBenchmarkTrigger),
+    GenerateExtensibleVersion = true,
+    EnableHierarchy = true)]
+public partial class HsmExtensibleBenchmarkMachine
+{
+    [State(HsmExtensionBenchmarkState.Parent)]
+    [State(HsmExtensionBenchmarkState.Child1, Parent = HsmExtensionBenchmarkState.Parent, IsInitial = true)]
+    [State(HsmExtensionBenchmarkState.Child2, Parent = HsmExtensionBenchmarkState.Parent)]
+    private void ConfigureStates() { }
+
+    [Transition(HsmExtensionBenchmarkState.Outside, HsmExtensionBenchmarkTrigger.Enter, HsmExtensionBenchmarkState.Parent)]
+    [Transition(HsmExtensionBenchmarkState.Parent, HsmExtensionBenchmarkTrigger.Leave, HsmExtensionBenchmarkState.Outside)]
+    [Transition(HsmExtensionBenchmarkState.Child1, HsmExtensionBenchmarkTrigger.Toggle, HsmExtensionBenchmarkState.Child2)]
+    [Transition(HsmExtensionBenchmarkState.Child2, HsmExtensionBenchmarkTrigger.Toggle, HsmExtensionBenchmarkState.Child1)]
+    private void ConfigureTransitions() { }
+}
+
+public sealed class TransitionsOnlyBenchmarkExtension
+    : IStateMachineExtension<HsmExtensionBenchmarkState, HsmExtensionBenchmarkTrigger>
+{
+    public ExtensionHooks Hooks => ExtensionHooks.Transitions;
+
+    public void OnAttemptStarting(
+        in TransitionAttemptContext<HsmExtensionBenchmarkState, HsmExtensionBenchmarkTrigger> attempt) { }
+
+    public void OnTransitionMatched(
+        in TransitionAttemptContext<HsmExtensionBenchmarkState, HsmExtensionBenchmarkTrigger> attempt,
+        in TransitionInfo<HsmExtensionBenchmarkState> matched) { }
+
+    public void OnAttemptCompleted(
+        in TransitionAttemptContext<HsmExtensionBenchmarkState, HsmExtensionBenchmarkTrigger> attempt,
+        in TransitionResult<HsmExtensionBenchmarkState> result) { }
+}
+
+public sealed class StatesOnlyBenchmarkExtension
+    : IStateMachineExtension<HsmExtensionBenchmarkState, HsmExtensionBenchmarkTrigger>
+{
+    public ExtensionHooks Hooks => ExtensionHooks.States;
+
+    public void OnStateExiting(
+        in TransitionAttemptContext<HsmExtensionBenchmarkState, HsmExtensionBenchmarkTrigger> attempt,
+        HsmExtensionBenchmarkState state) { }
+
+    public void OnStateEntered(
+        in TransitionAttemptContext<HsmExtensionBenchmarkState, HsmExtensionBenchmarkTrigger> attempt,
+        HsmExtensionBenchmarkState state) { }
+}
+
+[InProcess]
+[WarmupCount(3)]
+[IterationCount(15)]
+[MemoryDiagnoser]
+[BenchmarkCategory("Extensions", "HSM")]
+public class HsmExtensionBenchmarks
+{
+    private const int Operations = 512;
+    private HsmExtensibleBenchmarkMachine _withoutExtensions = null!;
+    private HsmExtensibleBenchmarkMachine _transitionsOnly = null!;
+    private HsmExtensibleBenchmarkMachine _statesOnly = null!;
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        _withoutExtensions = new HsmExtensibleBenchmarkMachine(HsmExtensionBenchmarkState.Outside, null);
+        _transitionsOnly = new HsmExtensibleBenchmarkMachine(
+            HsmExtensionBenchmarkState.Outside,
+            [new TransitionsOnlyBenchmarkExtension()]);
+        _statesOnly = new HsmExtensibleBenchmarkMachine(
+            HsmExtensionBenchmarkState.Outside,
+            [new StatesOnlyBenchmarkExtension()]);
+
+        foreach (var machine in new[] { _withoutExtensions, _transitionsOnly, _statesOnly })
+        {
+            machine.Start();
+            machine.TryFire(HsmExtensionBenchmarkTrigger.Enter);
+        }
+    }
+
+    [Benchmark(Baseline = true, OperationsPerInvoke = Operations)]
+    public void WithoutRegisteredExtensions()
+    {
+        for (var i = 0; i < Operations; i++)
+            _withoutExtensions.TryFire(HsmExtensionBenchmarkTrigger.Toggle);
+    }
+
+    [Benchmark(OperationsPerInvoke = Operations)]
+    public void TransitionsOnlyExtension()
+    {
+        for (var i = 0; i < Operations; i++)
+            _transitionsOnly.TryFire(HsmExtensionBenchmarkTrigger.Toggle);
+    }
+
+    [Benchmark(OperationsPerInvoke = Operations)]
+    public void StatesOnlyExtension()
+    {
+        for (var i = 0; i < Operations; i++)
+            _statesOnly.TryFire(HsmExtensionBenchmarkTrigger.Toggle);
+    }
+}

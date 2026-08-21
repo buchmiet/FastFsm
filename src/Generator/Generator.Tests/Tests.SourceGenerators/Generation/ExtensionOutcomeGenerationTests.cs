@@ -110,6 +110,10 @@ public partial class Machine
         Assert.Contains(
             "extensionSet.Hooks & (ExtensionHooks.Transitions | ExtensionHooks.Guards | ExtensionHooks.States | ExtensionHooks.Callbacks)",
             generated);
+        Assert.Contains("if ((extensionSet.Hooks & ExtensionHooks.Transitions) != 0)", generated);
+        Assert.Contains("if ((extensionSet.Hooks & ExtensionHooks.States) != 0)", generated);
+        Assert.Contains("if ((extensionSet.Hooks & ExtensionHooks.Guards) != 0)", generated);
+        Assert.Contains("if ((extensionSet.Hooks & ExtensionHooks.Callbacks) != 0)", generated);
         Assert.DoesNotContain("if (extensionSet.Items.Length != 0)", generated);
         Assert.Contains("RunStateExiting", generated);
         Assert.Contains("RunStateEntered", generated);

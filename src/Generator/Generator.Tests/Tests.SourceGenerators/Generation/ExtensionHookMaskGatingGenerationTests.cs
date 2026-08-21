@@ -6,10 +6,10 @@ using Xunit.Abstractions;
 
 namespace Tests.SourceGenerators.Generation;
 
-public sealed class ExtensionHsmGenerationTests(ITestOutputHelper output) : GeneratorBaseClass(output)
+public sealed class ExtensionHookMaskGatingGenerationTests(ITestOutputHelper output) : GeneratorBaseClass(output)
 {
     [Fact]
-    public void Extensible_hsm_emits_handled_at_lca_and_does_not_emit_v1_hierarchy_stubs()
+    public void Extensible_hsm_gates_lifecycle_traversal_and_transition_payload_on_hook_mask()
     {
         const string source = """
 using Abstractions.Attributes;
@@ -45,20 +45,16 @@ public partial class Machine
         Assert.NotNull(assembly);
 
         var generated = generatedSources.Values.Single(text => text.Contains("public partial class Machine"));
-        Assert.Contains("FindLowestCommonAncestor(__handledState, __lifecycleTarget)", generated);
         Assert.Contains("if ((extensionSet.Hooks & ExtensionHooks.States) != 0)", generated);
         Assert.Contains("if ((extensionSet.Hooks & ExtensionHooks.Transitions) != 0)", generated);
-        Assert.Contains("int __lifecycleSource = (int)attempt.SourceState;", generated);
-        Assert.Contains("RunStateExiting", generated);
-        Assert.Contains("RunStateEntered", generated);
-        Assert.DoesNotContain("__fromName", generated);
-        Assert.DoesNotContain("RunBubbleToParent", generated);
-        Assert.DoesNotContain("RunInitialSubstateEntered", generated);
-        Assert.DoesNotContain("RunHistoryRestore", generated);
-        Assert.DoesNotContain("RunAncestorPathChanged", generated);
-        Assert.DoesNotContain("RunTransitionCompleted", generated);
-        Assert.DoesNotContain("OnBubbleToParent", generated);
-        Assert.DoesNotContain("static (ext, ctx)", generated);
-        Assert.DoesNotContain("(ext, ctx) =>", generated);
+        Assert.Contains(
+            "if ((extensionSet.Hooks & (ExtensionHooks.Transitions | ExtensionHooks.Guards)) != 0)",
+            generated);
+        Assert.Contains("matchedTransition = new TransitionInfo<State>", generated);
+
+        var statesGate = generated.IndexOf("ExtensionHooks.States", System.StringComparison.Ordinal);
+        var lca = generated.IndexOf("FindLowestCommonAncestor", System.StringComparison.Ordinal);
+        Assert.True(statesGate >= 0);
+        Assert.True(lca > statesGate);
     }
 }

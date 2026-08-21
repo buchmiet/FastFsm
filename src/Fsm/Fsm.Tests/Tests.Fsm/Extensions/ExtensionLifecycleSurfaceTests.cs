@@ -87,6 +87,18 @@ public sealed class ExtensionLifecycleSurfaceTests
     }
 
     [Fact]
+    public void Transitions_only_extension_skips_hsm_state_hooks()
+    {
+        var extension = new LifecycleSurfaceExtension(ExtensionHooks.Transitions);
+        var machine = new LifecycleSurfaceHsm(LifecycleSurfaceState.A, [extension]);
+        machine.Start();
+
+        Assert.True(machine.TryFire(LifecycleSurfaceTrigger.EnterParent));
+
+        Assert.Equal(["attempt", "matched", "completed:Succeeded"], extension.Events);
+    }
+
+    [Fact]
     public void Hook_mask_is_authoritative_for_each_extension()
     {
         var declared = new LifecycleSurfaceExtension(ExtensionHooks.Transitions | ExtensionHooks.Lifecycle);

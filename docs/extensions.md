@@ -65,6 +65,21 @@ OnAttemptCompleted
 
 `GuardRejected` means the guard of the **single matched** transition returned false. FastFsm does not try a second candidate.
 
+## Attempt outcomes
+
+`OnAttemptCompleted` always receives a `TransitionResult<TState>`. The outcome describes how the attempt ended; `Stage` and `Exception` add detail for failures that occurred during transition work.
+
+| Outcome | `TryFire` / `TryFireAsync` return | `MatchedTransition` | `ResolvedTarget` | `Stage` | `Exception` |
+|---|---|---|---|---|---|
+| `Succeeded` | `true` | matched transition (or `null` for internal-only paths that never materialized a candidate) | leaf entered for external transitions; `null` for internal | usually `null` | `null` |
+| `GuardRejected` | `false` | the single candidate whose guard returned false | `null` (state never changed) | `null` | `null` |
+| `UnhandledTrigger` | `false` | `null` (nothing matched) | `null` | `null` | `null` |
+| `InvalidPayload` | `false` | `null` | `null` | `null` | `null` |
+| `Canceled` | throws `OperationCanceledException` (async) or `false` when cancellation is treated as failure | candidate when one was matched before cancel | last resolved target if state changed before cancel; otherwise `null` | stage active when cancel occurred (`Guard`, `OnExit`, …) | the `OperationCanceledException` |
+| `Faulted` | rethrows after `OnAttemptCompleted` unless the machine exception handler swallows it | candidate when one was matched | last resolved target if state changed before fault; otherwise `null` | stage active when the fault occurred | the faulting exception |
+
+For async machines, a call whose `CancellationToken` is already canceled at entry **does not start an attempt**: no `OnAttemptStarting`, no increment of the attempt counter, and no other extension hooks for that call.
+
 The extension set is captured once at the beginning of an attempt and stays fixed for that attempt. An extension removed mid-attempt still receives `OnAttemptCompleted`; one added mid-attempt receives nothing for that attempt.
 
 ## Hierarchical machines

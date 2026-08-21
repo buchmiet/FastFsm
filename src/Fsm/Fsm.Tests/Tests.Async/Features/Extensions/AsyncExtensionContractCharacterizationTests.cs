@@ -11,6 +11,22 @@ namespace Tests.Async.Features.Extensions;
 public sealed class AsyncExtensionContractCharacterizationTests
 {
     [Fact]
+    public async Task Pre_cancelled_token_does_not_start_an_attempt()
+    {
+        var extension = new AsyncCharacterizationExtension();
+        var machine = new AsyncCharacterizationFlatMachine(AsyncCharacterizationState.A, [extension]);
+        await machine.StartAsync();
+
+        using var cts = new System.Threading.CancellationTokenSource();
+        cts.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            machine.TryFireAsync(AsyncCharacterizationTrigger.Go, cancellationToken: cts.Token).AsTask());
+
+        Assert.Empty(extension.Events);
+    }
+
+    [Fact]
     public async Task Success_guard_rejection_and_unhandled_paths_expose_v2_context_outcome_and_order()
     {
         var extension = new AsyncCharacterizationExtension();
