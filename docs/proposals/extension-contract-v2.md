@@ -2,27 +2,62 @@
 
 > **Status:** accepted design, not yet implemented. This document is not part of the current FastFsm API contract; it defines the contract that replaces it.
 >
+> **Revision 2.** See *Changes in revision 2* below.
+>
 > **Scope:** everything required before `IStateMachineExtension` can be treated as a public interop surface, and before `FastFsm.Sharp.Observability` can be built as an ordinary client of FastFsm rather than another special path in the generator.
 
 ## Position
 
-FastFsm 0.9.1 ships an extension mechanism that is structurally sound — opt-in generation, deterministic hook order, exception isolation, sync and async support. Its *data contract* is not sound.
+FastFsm 0.9.1 ships an extension mechanism that is structurally sound — opt-in generation, deterministic hook order, exception isolation, sync and async. Its *data contract* is not sound.
 
-The decisive finding is not that the hook surface is incomplete. It is that **the data delivered to extensions in HSM is untrue**: a trigger handled on an ancestor is reported as a state change that never occurred, and a transition into a composite state reports the composite rather than the leaf actually entered.
+The decisive finding is not that the hook surface is incomplete. It is that **the data delivered to extensions is untrue**: a trigger handled on an ancestor is reported as a state change that never occurred, a transition into a composite state reports the composite rather than the leaf actually entered, and a failed attempt reports a machine position the machine is not in.
 
 Adding hooks on top of that model would multiply the problem. The priority is therefore:
 
 > first guarantee that the hooks tell the truth, then widen them.
 
-Accordingly: **`FastFsm.Sharp.Observability` is not started until Extension Contract v2 lands.** The centre of gravity for v2 is
+Accordingly: **`FastFsm.Sharp.Observability` is not started until Extension Contract v2 lands.**
 
-> correct typed transition model + stable identity + explicit transition semantics + tested lifecycle correlation
+## Changes in revision 2
 
-and tracing, metrics and inspection are built on that, not beside it.
+Revision 1 modelled an attempt as a single `TransitionContext` carrying `HandledAtState`, `DeclaredTarget` and `Kind`, with `Kind = None` where no transition matched. That was internally inconsistent: `TState` has no absent value, and `default(TState)` is an ordinary state because enum member zero is a real state.
+
+| | rev 1 | rev 2 |
+|---|---|---|
+| attempt model | one `TransitionContext` with transition fields | `TransitionAttemptContext` + optional `TransitionInfo` (**DEC-12**) |
+| failure position | `ResolvedTarget == SourceState when not Succeeded` | `FinalState` distinct from nullable `ResolvedTarget` (**DEC-13**) |
+| snapshot scope | per dispatch | per attempt, array and mask published as one object (**DEC-14**) |
+| state vs callback | `OnStateExiting(ctx, state, callbackName)` | state lifecycle separate from callback lifecycle (**DEC-15**) |
+| machine stop | `OnMachineStopped` in PR 3 | out of scope for 0.10 (**DEC-16**) |
+| PR 1 / PR 2 split | PR 2 introduced result types | PR 1 ships final shapes, PR 2 adds semantics only |
+
+Revision 1's `TransitionKind.None` is removed: kind is a property of a transition, and where there is no transition there is no `TransitionInfo`.
+
+## Current behaviour the contract must state
+
+Two facts about 0.9.1 that the contract must describe accurately rather than assume away. Both were checked against the generator.
+
+**Single-candidate selection.** FastFsm does not try a second transition when the first one's guard returns `false`. Both emission paths select exactly one candidate per (state, trigger) at compile time and `break` — `StateMachineCodeGenerator.cs:458-463` and `UnifiedStateMachineGenerator.cs:1618-1622`; the HSM extensions path takes `.OrderByDescending(t => t.Priority).First()` at `:1562`. `Priority` orders candidates for that compile-time selection; it does not produce runtime fallthrough.
+
+Therefore `TransitionOutcome.GuardRejected` means **the guard of the single selected transition returned false**, not "every candidate was rejected". The contract must say so, or Observability will export a meaning FastFsm does not implement.
+
+Whether guard fallthrough *should* exist is a core-semantics question — UML prescribes it — and is out of scope here. It is called out because the rev 2 model makes adding it later non-breaking for extensions: candidates are already carried per guard hook rather than folded into the attempt.
+
+**State changes before entry callbacks run.** For an external transition the generator emits exit, action, **state change**, then entry (`UnifiedStateMachineGenerator.cs`, "State change BEFORE OnEntry"). If `OnEntry` throws or is cancelled, `_currentState` has already been assigned and the machine returns `false`:
+
+```
+A → B
+_currentState = B
+OnEntryB() throws
+TryFire() == false
+CurrentState == B
+```
+
+This is why rev 1's `ResolvedTarget == SourceState when not Succeeded` was itself a lie, and why `FinalState` exists.
 
 ## Decisions taken
 
-These are settled and are not revisited during implementation. Each is recorded with its reason, because each forecloses an option that will look attractive again mid-implementation.
+Settled; not revisited during implementation. Each records the alternative it forecloses.
 
 ### DEC-1 — The primary contract is generic in `TState` and `TTrigger`
 
@@ -32,18 +67,18 @@ public interface IStateMachineExtension<TState, TTrigger>
     where TTrigger : unmanaged, Enum
 ```
 
-The current design uses generic *methods* constrained to `IStateMachineContext`, which forces enum state and trigger values through `object`. This cannot be changed after publication without breaking every extension ever written. It is changed now, while the package has no dependent users.
+The current design uses generic *methods* constrained to `IStateMachineContext`, forcing enum values through `object`. This cannot be changed after publication without breaking every extension ever written. It is changed now, while the package has no dependent users.
 
 ### DEC-2 — No untyped extension interface in core
 
-A machine-agnostic extension is an **open generic type**, not an untyped interface:
+A machine-agnostic extension is an **open generic type** registered as such in DI:
 
 ```csharp
 public sealed class ObservabilityExtension<TState, TTrigger>
     : IStateMachineExtension<TState, TTrigger>
 ```
 
-registered in DI as an open generic. Where an inspector needs to aggregate events across ten different machine types, the conversion to a machine-agnostic event model happens **in the observability sink, not in core**:
+Where an inspector aggregates events across many machine types, conversion to a machine-agnostic event model happens **in the sink, not in core**:
 
 ```
 typed FastFsm hot path
@@ -55,118 +90,157 @@ machine-agnostic ObservabilityEvent
 OTel / logger / inspector / recorder
 ```
 
-not
-
-```
-FastFsm → boxing → object/object/object → extension
-```
-
-Maintaining typed and untyped extension APIs in parallel would preserve the boxed path that v2 exists to remove, and would double the surface that has to stay correct.
+Parallel typed and untyped APIs would preserve the boxed path v2 exists to remove and double the surface that has to stay correct.
 
 ### DEC-3 — Extension dispatch is synchronous and inert
 
-There is no `IStateMachineExtensionAsync`. The contract states normatively:
+No `IStateMachineExtensionAsync`. Normatively:
 
 > Extension callbacks are synchronous, short and non-blocking. They do not participate in cancellation and cannot alter the outcome of a transition.
 
-Observability records, tags, or enqueues. It does not `await exporter.SendAsync(...)` inside a transition. `CancellationToken` is therefore **not** exposed on the context: transition cancellation belongs to the machine, and observability must not be able to influence it. `TransitionOutcome.Canceled` conveys the observable fact without handing over the control.
-
-This is a deliberate restriction and is part of the value of the contract.
+`CancellationToken` is not exposed: transition cancellation belongs to the machine, and observability must not influence it. `TransitionOutcome.Canceled` conveys the fact without handing over the control.
 
 ### DEC-4 — `Guid InstanceId`, not `string`
 
-Machine identity is a `Guid` allocated once per machine instance. A string GUID allocates unconditionally; a `Guid` allocates only if and when a tracer actually formats it, which for sampled tracing is a small fraction of attempts.
+Machine identity is a `Guid` **generated once** per machine instance. `Guid.NewGuid()` is a value type and is not a managed allocation; the allocation being avoided is the `ToString()` that the current contract performs unconditionally per attempt. A `Guid` is formatted only if and when a tracer actually needs the string, which for sampled tracing is a small fraction of attempts.
 
-A caller-supplied *correlation* identifier — order id, tenant id, saga id — is **not** machine identity and does not belong on the context. An extension that needs it holds it and tags its own spans. A constructor overload accepting a `Guid` may be offered so a caller can align machine identity with an external identifier.
+A caller-supplied *correlation* identifier — order id, tenant id, saga id — is not machine identity and does not belong on the context. An extension that needs one holds it and tags its own spans.
 
 ### DEC-5 — `TransitionKind` distinguishes external from internal; self-transition is not a third kind
 
 ```csharp
-public enum TransitionKind { None, External, Internal }
+public enum TransitionKind { External, Internal }
 ```
 
-A self-transition is `External` with `SourceState == ResolvedTarget`. That is precisely what distinguishes it from a true internal transition, which runs no exit or entry callbacks. Introducing a `Self` kind would invite consumers to treat the distinction as a property of the transition rather than of its effects.
+A self-transition is `External` with `SourceState == ResolvedTarget` — which is exactly what distinguishes it from a true internal transition, which runs no exit or entry callbacks. A `Self` kind would invite consumers to treat the distinction as a property of the transition rather than of its effects.
 
-`None` is used only for `UnhandledTrigger`, where no transition matched and `HandledAtState`, `DeclaredTarget` and `Kind` have no meaningful value.
+Kind is emitted from `TransitionModel.IsInternal` at compile time. The runtime `From == To` heuristic disappears, and with it the `IStateSnapshot` boxing it required.
 
-This kind is **emitted from `TransitionModel.IsInternal` at compile time**. The runtime heuristic in `ExtensionRunner` disappears, and with it the `IStateSnapshot` boxing it required.
-
-### DEC-6 — Both declared and resolved target are retained
-
-Fixing `ToState` must not be done by discarding the declared target. Both are diagnostically useful:
+### DEC-6 — Declared, resolved and final position are three different facts
 
 ```
-Transition(X, Trigger, Composite)
-  DeclaredTarget = Composite
-  ResolvedTarget = Composite.InitialLeaf   (or the leaf recovered from history)
+DeclaredTarget  what the FSM definition names as the target
+ResolvedTarget  where composite / history resolution landed
+FinalState      where the machine actually is when the attempt ends
 ```
+
+Fixing the target must not be done by discarding the declared one; all three are diagnostically distinct, and the third is the only one that is always true.
 
 ### DEC-7 — Core exposes a monotonic start timestamp, not a computed duration
 
-The context carries `long StartTimestamp` from `Stopwatch.GetTimestamp()`. Extensions that need duration call `Stopwatch.GetElapsedTime(context.StartTimestamp)` themselves.
+The attempt context carries `long StartTimestamp` from `Stopwatch.GetTimestamp()`. Extensions needing duration call `Stopwatch.GetElapsedTime(attempt.StartTimestamp)` themselves. One monotonic read, zero allocations, no `DateTime` misused as a stopwatch, no histogram policy imposed by core.
 
-This gives one monotonic clock read per attempt, zero allocations, no `DateTime` misused as a stopwatch, and no histogram policy imposed by core. Logging, `Activity` and OTel each keep their own time policy.
+The timestamp is captured **only after the extension snapshot shows that attempt hooks are actually wanted**. Taking it unconditionally would violate the requirement that a machine with no registered extensions costs one volatile read and one branch.
 
 `DateTime Timestamp` is removed from the contract. A logging provider timestamps its own entries.
 
-### DEC-8 — Extension storage is a copy-on-write snapshot
+### DEC-8 — Extension set and hook mask are one atomically published object
 
-```csharp
-private IStateMachineExtension<TState, TTrigger>[] _extensions;
-```
+Superseded in scope by DEC-14, retained for the storage shape: a copy-on-write array read without a lock, mutated by copying under a lock.
 
-Read path takes `Volatile.Read` once per attempt and indexes the array with no lock. Mutation copies the array under a lock and publishes with `Volatile.Write`. Normative semantics:
+### DEC-9 — The zero-allocation requirements are contract preconditions
 
-> An extension added or removed during an attempt does not affect the snapshot used by a dispatch that has already begun.
-
-`Extensions`, `AddExtension` and `RemoveExtension` move onto `IExtensibleStateMachine<TState, TTrigger>`, so that a machine obtained from DI is not degraded relative to the concrete type.
-
-### DEC-9 — The zero-allocation requirements are contract preconditions, not later optimisations
-
-Once Observability is the first official extension, the extension path stops being an exotic slow path. Contract v2 must satisfy, as acceptance criteria:
-
-- no per-attempt `Guid` allocation;
-- no enum boxing in dispatch;
-- no closure or delegate allocation in guard hooks;
-- no `List` enumeration races.
-
-The typed contract is what makes these achievable; they are not achievable as a patch on the current one.
+Once Observability is the first official extension, the extension path stops being an exotic slow path. Contract v2 must satisfy, as acceptance criteria: no per-attempt `Guid` string allocation, no enum boxing in dispatch, no closure or delegate allocation in guard hooks, no `List` enumeration races. These are achievable with the typed contract and not achievable as a patch on the current one.
 
 ### DEC-10 — The descriptor is a separate track
 
-`IStateMachineDescriptor<TState, TTrigger>` describes *what a machine is*; the lifecycle stream describes *what just happened*. The descriptor has its own unresolved questions — how much metadata to emit, binary-size impact, always-on versus opt-in, callback names, payload metadata, HSM topology, trimming and AOT — and needs its own design and its own binary-size benchmarks.
-
-Tracing, metrics and logging do not depend on it. A full structural inspector does. **It appears in none of the PRs below.**
+`IStateMachineDescriptor<TState, TTrigger>` describes *what a machine is*; the lifecycle stream describes *what just happened*. It has its own unresolved questions — metadata volume, binary size, always-on versus opt-in, callback names, payload metadata, HSM topology, trimming and AOT — and its own benchmarks. Tracing, metrics and logging do not depend on it; a full structural inspector does. **It appears in none of the PRs below.**
 
 ### DEC-11 — Logging keeps its own dispatch
 
-The logging generator uses `LoggerMessage.Define` and is allocation-free on its hot path. Routing it through the extension pipeline would regress that, and it is not a precondition for Observability.
+The logging generator uses `LoggerMessage.Define` and is allocation-free on its hot path; routing it through the extension pipeline would regress that, and it is not a precondition for Observability. What converges is **vocabulary**: event names, `TransitionOutcome`, `TransitionStage`, the meaning of source / declared / resolved / final / handled-at, and tag names. Dispatch stays separate and may converge later only if a benchmark shows no regression.
 
-What converges now is **vocabulary**, not dispatch:
+### DEC-12 — An attempt and a transition are separate structures
 
-- event names;
-- `TransitionOutcome`;
-- `TransitionStage`;
-- the meaning of source, declared target, resolved target and handled-at;
-- tag names.
+The unit of correlation is the **attempt** — one `Fire` or `TryFire` call. A transition may or may not exist within it.
 
-What stays separate:
+```csharp
+public readonly struct TransitionAttemptContext<TState, TTrigger>
+    where TState : unmanaged, Enum
+    where TTrigger : unmanaged, Enum
+{
+    public Guid InstanceId { get; }
+    public long AttemptId { get; }
+    public TState SourceState { get; }
+    public TTrigger Trigger { get; }
+    public object? Payload { get; }
+    public long StartTimestamp { get; }
+}
 
+public readonly struct TransitionInfo<TState>
+    where TState : unmanaged, Enum
+{
+    public TState HandledAtState { get; }
+    public TState DeclaredTarget { get; }
+    public TransitionKind Kind { get; }
+}
 ```
-logging dispatch       → existing generated zero-alloc path
-observability dispatch → extension path
+
+This is what makes the outcomes coherent rather than contradictory:
+
+| outcome | transition exists? |
+|---|---|
+| `UnhandledTrigger` | no |
+| `InvalidPayload` | may not — payload is validated before selection |
+| `GuardRejected` | selected, then rejected |
+| `Succeeded`, `Faulted`, `Canceled` | selected |
+
+`OnTransitionStarting` is renamed `OnAttemptStarting`: an unhandled trigger is not a transition that started.
+
+### DEC-13 — `FinalState` is distinct from `ResolvedTarget`
+
+Because state assignment precedes entry callbacks (see *Current behaviour* above), a failed attempt can leave the machine in the target state. The result therefore reports where the machine *is*, separately from where target resolution *landed*, and the latter is nullable because resolution may never have happened.
+
+### DEC-14 — The extension set is snapshotted once per attempt
+
+Per-hook `Volatile.Read` is insufficient. It permits an extension to receive `OnAttemptStarting` and then be removed before `OnAttemptCompleted` — a tracer opens an `Activity` and never closes it — and equally permits an extension added mid-attempt to receive a completion for a start it never saw.
+
+Normatively:
+
+> The extension set and the hook mask are captured exactly once at the beginning of an attempt and remain fixed for that attempt.
+
+The array and the mask must also be published **together**, since two independent volatile writes let a reader observe a new array with an old mask:
+
+```csharp
+private sealed class ExtensionSet<TState, TTrigger>
+{
+    public readonly IStateMachineExtension<TState, TTrigger>[] Items;
+    public readonly ExtensionHooks Hooks;
+}
+
+private ExtensionSet<TState, TTrigger> _extensionSet;
 ```
 
-They may converge later if a benchmark shows no regression. That is not a goal of this work.
+Mutation builds a new `ExtensionSet` under a lock and publishes it with a single `Volatile.Write`. An attempt performs a single `Volatile.Read` and passes that same reference through every hook — which is also precisely the "one volatile read and one branch" the performance requirements demand.
+
+### DEC-15 — State lifecycle is separate from callback lifecycle
+
+A state can be exited or entered with no callback attached, and in HSM a single transition exits and enters several states of which only some have callbacks. An inspector must see `A exited` / `B entered` regardless of whether `OnExitA` or `OnEntryB` exists. Revision 1 conflated FSM semantics with user-callback invocation by passing `callbackName` on the state hooks.
+
+```csharp
+void OnStateExiting(in TransitionAttemptContext<TState, TTrigger> attempt, TState state);
+void OnStateEntered(in TransitionAttemptContext<TState, TTrigger> attempt, TState state);
+
+void OnCallbackExecuting(in TransitionAttemptContext<TState, TTrigger> attempt,
+                         TransitionStage stage, string callbackName);
+void OnCallbackFaulted(in TransitionAttemptContext<TState, TTrigger> attempt,
+                       TransitionStage stage, string callbackName, Exception exception);
+```
+
+The asymmetry is deliberate: exit is announced while the machine is still in the source state, entry once the target state is actually active. Actions need no dedicated hook — they are `TransitionStage.Action` on the callback hooks.
+
+### DEC-16 — `OnMachineStopped` and `Stop()` are out of scope for 0.10
+
+`Stop()` does not exist on `StateMachineBase`, and defining it pulls a new FSM feature into an observability project: whether it runs exit callbacks, whether it is idempotent, whether a machine can be restarted, how it relates to `IDisposable`, what `StopAsync` means, and what happens to a pending async transition. None of that is Extension Contract v2.
+
+0.10 ships `OnMachineStarted` only. Default interface implementations make `OnMachineStopped` addable later without a break. The dead `MachineStopped` event in the current logging generator — which nothing raises — must not dictate core semantics.
 
 ## Packaging constraints
-
-These follow from the current repository layout and constrain what the contract may contain.
 
 - `ExtensionRunner.cs` is `Compile Remove`d from `FastFsm.dll` and shipped as `contentFiles/cs/any` with `BuildAction=Compile` (`Fsm.Core.csproj`). It is compiled into each consuming assembly as an internal type. **It is an implementation detail and must never appear in the extension contract.**
 - `FastFsm.Sharp.Logging` and `FastFsm.Sharp.DependencyInjection` are content-only packages (`IncludeBuildOutput=false`); their types are likewise compiled into the consumer.
 - Therefore **every type an extension author references must be compiled into `FastFsm.dll` or `Abstractions.dll`** — the two assemblies actually shipped in `lib/net10.0`.
-- `FastFsm.Sharp.Observability` must ship as a normal `lib/net10.0` assembly, not as content files. Content-only distribution would duplicate its types in every consuming assembly and make the `System.Diagnostics.DiagnosticSource` dependency unversionable. This is a deliberate departure from the Logging and DI packaging convention.
+- `FastFsm.Sharp.Observability` must ship as a normal `lib/net10.0` assembly. Content-only distribution would duplicate its types in every consuming assembly and make the `System.Diagnostics.DiagnosticSource` dependency unversionable. This is a deliberate departure from the Logging and DI convention.
 
 ## Defects v2 must eliminate
 
@@ -174,48 +248,36 @@ Each is observable in 0.9.1 and is pinned by a test in PR 0.
 
 | id | defect | location |
 |----|--------|----------|
-| D1 | `InstanceId` is a fresh GUID per attempt, so no extension can correlate events of one machine | `UnifiedStateMachineGenerator.cs:934, 1282, 1516, 1641, 2346, 2372` |
+| D1 | `InstanceId` is a fresh GUID string per attempt, so nothing can correlate events of one machine | generator `:934, 1282, 1516, 1641, 2346, 2372` |
 | D2 | internal-transition classification is a runtime `From == To` heuristic: false positive on external self-transition, false negative on HSM ancestor-internal | `ExtensionRunner.cs:135` |
 | D3 | `ToState` is the declared target; the context is built before composite resolution | generator `:1281-1285` vs `:1389` |
 | D4 | HSM contexts describe a transition that did not occur (`FromState = leaf`, `ToState = ancestor`) | consequence of D2 + D3 |
 | D5 | `bool success` conflates guard rejection, unhandled trigger, payload mismatch, callback exception and cancellation | `IStateMachineExtension.OnAfterTransition` |
 | D6 | `AddExtension` / `RemoveExtension` exist only on the concrete class; `IExtensibleStateMachine` is an empty marker and DI hands out `TInterface` | `ExtensionsFeatureWriter.cs:25-37`, `StateMachineFactory.cs:23` |
-| D7 | `StateMachineContext<TState, TTrigger, TPayload>` is never emitted; payloads always arrive boxed as `object?` | dead code in `Runtime/StateMachineContext.cs` |
-| D8 | `DateTime.UtcNow` per context: non-monotonic, costed on every attempt, and no hook carries elapsed time | `Runtime/StateMachineContext.cs` |
-| D9 | capturing lambdas in guard hooks allocate a closure and delegate per call; `IStateSnapshot` boxes both enums on every success | `ExtensionRunner.cs` guard hooks and `:135` |
+| D7 | `StateMachineContext<TState, TTrigger, TPayload>` is never emitted; payloads always arrive boxed | dead code in `Runtime/StateMachineContext.cs` |
+| D8 | `DateTime.UtcNow` per context: non-monotonic, costed on every attempt, no hook carries elapsed time | `Runtime/StateMachineContext.cs` |
+| D9 | capturing lambdas in guard hooks allocate per call; `IStateSnapshot` boxes both enums on every success | `ExtensionRunner.cs` guard hooks and `:135` |
 | D10 | `_extensionsList` and `_extensions` are the same `List<>`; mutation during dispatch is undefined | `ExtensionsFeatureWriter.cs:9-10, 17-18` |
 | D11 | tests assert only `context.GetType().Name`; no test asserts any context value, which is why D1–D4 survived | `Tests.Fsm/Extensions/ExtensionsStandaloneTests.cs` |
+| D12 | a failed attempt reports a machine position the machine is not in, because state assignment precedes entry callbacks | generator, state change before `OnEntry` |
 
 ## Target contract
 
 All types live in `FastFsm.Contracts` inside `FastFsm.dll`.
 
-### Context and result
+### Result
 
 ```csharp
-public readonly struct TransitionContext<TState, TTrigger>
-    where TState : unmanaged, Enum
-    where TTrigger : unmanaged, Enum
-{
-    public Guid InstanceId { get; }        // stable for the machine instance lifetime
-    public long AttemptId { get; }         // one per Fire / TryFire attempt
-
-    public TState SourceState { get; }     // actual active leaf before the attempt
-    public TTrigger Trigger { get; }
-    public TState HandledAtState { get; }  // state owning the matched transition
-    public TState DeclaredTarget { get; }  // target as written in the definition
-    public TransitionKind Kind { get; }
-
-    public object? Payload { get; }        // see "Payload" below
-    public long StartTimestamp { get; }    // Stopwatch.GetTimestamp()
-}
-
 public readonly struct TransitionResult<TState>
     where TState : unmanaged, Enum
 {
     public TransitionOutcome Outcome { get; }
-    public TState ResolvedTarget { get; }  // leaf actually entered; == SourceState when not Succeeded
-    public TransitionStage? Stage { get; } // FastFsm.Exceptions.TransitionStage
+
+    public TState FinalState { get; }                    // always true
+    public TState? ResolvedTarget { get; }               // null if resolution never happened
+    public TransitionInfo<TState>? SelectedTransition { get; }
+
+    public TransitionStage? Stage { get; }
     public Exception? Exception { get; }
 }
 
@@ -230,22 +292,31 @@ public enum TransitionOutcome
 }
 ```
 
-`Stage` is nullable because it is meaningful for `Faulted` and possibly `Canceled`, and must not be filled with a placeholder on success.
+`Stage` is nullable because it is meaningful for `Faulted` and possibly `Canceled`, and must not carry a placeholder on success.
 
-The split between context and result is not cosmetic. `SourceState`, `HandledAtState`, `DeclaredTarget` and `Kind` are known when the attempt starts; `ResolvedTarget` is knowable only after composite and history resolution. Forcing them into one struct is what produced D3. The split also maps directly onto span start and span end.
-
-Worked example — `InternalTransition(A, Refresh)` with active leaf `A1` under composite `A`:
+### Hook sequence
 
 ```
-SourceState    = A1
-Trigger        = Refresh
-HandledAtState = A
-DeclaredTarget = A
-Kind           = Internal
-ResolvedTarget = A1
+Fire / TryFire
+      │
+      ▼
+TransitionAttemptContext
+ InstanceId, AttemptId, SourceState, Trigger, Payload, StartTimestamp
+      │
+      ├── OnAttemptStarting(attempt)
+      │
+      ├── OnGuardEvaluating (attempt, candidate: TransitionInfo, guardName)
+      ├── OnGuardEvaluated  (attempt, candidate, guardName, result)
+      │
+      ├── OnTransitionSelected(attempt, selected: TransitionInfo)
+      │
+      ├── OnStateExiting / OnCallbackExecuting / OnStateEntered / OnCallbackFaulted
+      │
+      ▼
+      OnAttemptCompleted(attempt, result)
 ```
 
-Today this is reported as `A1 → A`, which is fiction.
+This resolves, in one model: unhandled trigger, invalid payload, guard rejection, internal-on-ancestor, composite and history resolution, failure after the state has already changed, and trace correlation.
 
 ### Primary interface
 
@@ -256,41 +327,37 @@ public interface IStateMachineExtension<TState, TTrigger>
 {
     ExtensionHooks Hooks => ExtensionHooks.Transitions;
 
-    void OnTransitionStarting(in TransitionContext<TState, TTrigger> context) { }
+    void OnAttemptStarting(in TransitionAttemptContext<TState, TTrigger> attempt) { }
 
-    void OnTransitionCompleted(in TransitionContext<TState, TTrigger> context,
-                               in TransitionResult<TState> result) { }
+    void OnTransitionSelected(in TransitionAttemptContext<TState, TTrigger> attempt,
+                              in TransitionInfo<TState> selected) { }
 
-    void OnGuardEvaluating(in TransitionContext<TState, TTrigger> context,
-                           string guardName) { }
+    void OnAttemptCompleted(in TransitionAttemptContext<TState, TTrigger> attempt,
+                            in TransitionResult<TState> result) { }
 
-    void OnGuardEvaluated(in TransitionContext<TState, TTrigger> context,
-                          string guardName, bool result) { }
+    void OnGuardEvaluating(in TransitionAttemptContext<TState, TTrigger> attempt,
+                           in TransitionInfo<TState> candidate, string guardName) { }
 
-    void OnStateExiting(in TransitionContext<TState, TTrigger> context,
-                        TState state, string callbackName) { }
+    void OnGuardEvaluated(in TransitionAttemptContext<TState, TTrigger> attempt,
+                          in TransitionInfo<TState> candidate, string guardName, bool result) { }
 
-    void OnActionExecuting(in TransitionContext<TState, TTrigger> context,
-                           string actionName) { }
+    void OnStateExiting(in TransitionAttemptContext<TState, TTrigger> attempt, TState state) { }
 
-    void OnStateEntering(in TransitionContext<TState, TTrigger> context,
-                         TState state, string callbackName) { }
+    void OnStateEntered(in TransitionAttemptContext<TState, TTrigger> attempt, TState state) { }
 
-    void OnCallbackFaulted(in TransitionContext<TState, TTrigger> context,
-                           TransitionStage stage, string callbackName,
-                           Exception exception) { }
+    void OnCallbackExecuting(in TransitionAttemptContext<TState, TTrigger> attempt,
+                             TransitionStage stage, string callbackName) { }
+
+    void OnCallbackFaulted(in TransitionAttemptContext<TState, TTrigger> attempt,
+                           TransitionStage stage, string callbackName, Exception exception) { }
 
     void OnMachineStarted(Guid instanceId, TState initialState) { }
-
-    void OnMachineStopped(Guid instanceId, TState finalState) { }
 }
 ```
 
-Default interface implementations do two things: an extension implements only the hooks it needs, and **new hooks can be added in later versions without breaking existing extensions**. That is what makes a wide lifecycle surface affordable as a published contract.
+Default interface implementations do two things: an extension implements only the hooks it needs, and **new hooks can be added in later versions without breaking existing extensions**. That is what makes a wide surface affordable as a published contract, and what makes DEC-16 safe.
 
-Callback hooks are pre-execution only. Per-callback duration is out of scope for v2: fault attribution is already carried by `TransitionResult.Stage`, and a paired post-execution hook can be added additively if a concrete need appears.
-
-`OnCallbackFaulted` exists because of `ExceptionDirective.Continue`. When a callback throws and the directive is `Continue`, the exception is swallowed and the transition succeeds — so `OnTransitionCompleted` reports `Succeeded` and the fault would otherwise be invisible to observability. This hook is the only way a swallowed fault reaches an extension.
+`OnCallbackFaulted` exists because of `ExceptionDirective.Continue`: when a callback throws and the directive is `Continue`, the exception is swallowed and the attempt succeeds, so `OnAttemptCompleted` reports `Succeeded` and the fault would otherwise be invisible.
 
 ### Hook mask
 
@@ -299,24 +366,27 @@ Callback hooks are pre-execution only. Per-callback duration is out of scope for
 public enum ExtensionHooks
 {
     None        = 0,
-    Transitions = 1 << 0,   // starting, completed
+    Transitions = 1 << 0,   // attempt starting, selected, completed
     Guards      = 1 << 1,
-    Callbacks   = 1 << 2,   // exiting, action, entering, callback fault
-    Hierarchy   = 1 << 3,
-    Lifecycle   = 1 << 4,   // machine started, stopped
-    All         = Transitions | Guards | Callbacks | Hierarchy | Lifecycle
+    States      = 1 << 2,   // state exiting, entered
+    Callbacks   = 1 << 3,   // callback executing, faulted
+    Hierarchy   = 1 << 4,
+    Lifecycle   = 1 << 5,   // machine started
+    All         = Transitions | Guards | States | Callbacks | Hierarchy | Lifecycle
 }
 ```
 
-The machine caches the bitwise OR of all registered extensions' `Hooks`, recomputed on add and remove alongside the copy-on-write array. Every hook site is guarded:
+`States` and `Callbacks` are separate flags, following DEC-15: an inspector wanting the state stream should not have to pay for callback names.
+
+The mask lives on the `ExtensionSet` (DEC-14) and gates every hook site:
 
 ```csharp
-if ((_hookMask & ExtensionHooks.Callbacks) != 0) { /* dispatch */ }
+if ((set.Hooks & ExtensionHooks.Callbacks) != 0) { /* dispatch */ }
 ```
 
-Default interface implementations alone do not solve the cost problem: without the mask the machine still constructs and dispatches data that no registered extension consumes. The mask is what makes fine-grained callback hooks affordable for machines that do not want them. It is load-bearing, not an optimisation to defer.
+Default interface implementations alone do not solve the cost problem: without the mask the machine still constructs and dispatches data no registered extension consumes.
 
-**Footgun to document:** the mask is declarative and authoritative. An extension that overrides a hook without declaring the corresponding flag will silently not be called. This must be stated in `docs/extensions.md` and covered by a test.
+**Footgun to document:** the mask is declarative and authoritative. An extension overriding a hook without declaring its flag is silently never called. This must be stated in `docs/extensions.md` and covered by a test.
 
 ### Machine identity and management
 
@@ -342,31 +412,27 @@ public interface IExtensibleStateMachine<TState, TTrigger> : IStateMachineIdenti
 
 `IStateMachineExtension`, `IStateMachineContext`, `IStateMachineContext<TState, TTrigger>`, `IStateSnapshot`, `StateMachineContext<TState, TTrigger>`, `StateMachineContext<TState, TTrigger, TPayload>`, `IExtensibleStateMachine`.
 
-Hard break, no compatibility shim. The package has no dependent users, and a bridging layer would preserve the `object`-based contract v2 exists to remove.
+Hard break, no compatibility shim. The package has no dependent users, and a bridge would preserve the `object`-based contract v2 exists to remove.
 
 ## Open design item: payload
 
-This is the one item still to be resolved, and it must be resolved **inside PR 1**, before publication.
+The one item still to resolve, and it must be resolved **inside PR 1**, before publication.
 
 `TPayload` must not become a third parameter of the extension interface — a single machine can declare different payload types per trigger, so `IStateMachineExtension<TState, TTrigger, TPayload>` does not model the domain.
 
-Three candidates:
+1. **`object? Payload` on the attempt context.** One dispatch, simplest, but boxes value-type payloads, contradicting DEC-9 for machines with struct payloads.
+2. **Generic hook method**, `OnAttemptStarting<TPayload>(in TransitionAttemptContext<TState, TTrigger, TPayload>)`, with a `NoPayload` empty struct. No boxing, but reintroduces generic-method dispatch on an interface, grows instantiations per payload type, and complicates the default implementations.
+3. **No payload in the contract.** Extensions needing payloads use a machine-specific typed extension outside the general contract.
 
-1. **`object? Payload` on the context.** One dispatch, simplest, but boxes value-type payloads. Contradicts DEC-9 for machines with struct payloads.
-2. **Generic hook method**, `void OnTransitionStarting<TPayload>(in TransitionContext<TState, TTrigger, TPayload> context)`, with a `NoPayload` empty struct for triggers without one. No boxing, but reintroduces generic-method dispatch on an interface, grows generic instantiations per payload type, and complicates the default implementations.
-3. **No payload in the contract at all.** Extensions needing payloads use a machine-specific typed extension outside the general contract.
+Recommendation: ship (1) for v2, documented explicitly as boxing value-type payloads and unsuitable for hot-path payload inspection, and leave (2) as an additive hook if demand appears.
 
-Recommendation: ship (1) for v2, documented explicitly as boxing value-type payloads and unsuitable for hot-path payload inspection, and leave (2) as an additive hook if demand appears — default interface implementations make that non-breaking. The recommendation is contingent on the next paragraph holding.
-
-**Observability ignores payloads by default**, regardless of which option is chosen — both because of cost and because payloads routinely carry large objects, personal data and secrets that must not reach a telemetry backend by accident. Payload capture in Observability must be opt-in and explicitly scoped.
+**Observability ignores payloads by default** regardless of the choice — both because of cost and because payloads routinely carry large objects, personal data and secrets that must not reach a telemetry backend by accident. Payload capture must be opt-in and explicitly scoped.
 
 ## Architecture acceptance criterion
 
-Implementation of `FastFsm.Sharp.Observability` begins only when this statement is true and demonstrated by tests and benchmarks:
+Implementation of `FastFsm.Sharp.Observability` begins only when this holds and is demonstrated by tests and benchmarks:
 
-> For every transition attempt, FastFsm emits a zero- or near-zero-allocation, typed and semantically truthful lifecycle stream. Every event carries a stable `InstanceId` and `AttemptId`. External, self and internal transitions are distinguished explicitly. HSM reports the state where the transition was handled, the declared target, and the leaf actually reached. Extension dispatch is synchronous, does not participate in cancellation, and cannot change the outcome of a transition. Dynamic add and remove use atomic snapshots.
-
-When it holds, Observability is an ordinary client of FastFsm rather than another special path in the generator.
+> For every attempt, FastFsm emits a zero- or near-zero-allocation, typed and semantically truthful lifecycle stream. Every event carries a stable `InstanceId` and `AttemptId`. External, self and internal transitions are distinguished explicitly. Where a transition exists, HSM reports the state where it was handled, the declared target and the resolved target; where none exists, no transition is reported rather than a fabricated one. Every completed attempt reports the state the machine is actually in. Extension dispatch is synchronous, does not participate in cancellation, and cannot change the outcome. The extension set is captured once per attempt and is fixed for its duration.
 
 ## Test matrix
 
@@ -377,17 +443,22 @@ Every hook is asserted across the product of:
 - topology: flat FSM; HSM with composite target; HSM with history; HSM trigger handled on an ancestor;
 - execution: sync, async;
 - payload: none; single payload; multi-payload with valid and invalid payload type;
-- outcome: success, guard rejection, unhandled trigger, callback exception with `Propagate`, callback exception with `Continue`, cancellation;
+- outcome: success, guard rejection, unhandled trigger, invalid payload, callback exception with `Propagate`, callback exception with `Continue`, cancellation;
 - kind: external, internal on leaf, internal on ancestor, external self-transition.
 
-Assertions must cover context **content**, not merely hook invocation:
+Assertions must cover **content**, not merely invocation:
 
 - `InstanceId` identical across every hook of every attempt on one machine, and distinct between instances;
-- `AttemptId` identical across every hook of one attempt and strictly increasing across attempts, in sync and async;
-- `SourceState`, `HandledAtState`, `DeclaredTarget`, `ResolvedTarget`, `Kind` correct for every topology, including the worked example above;
+- `AttemptId` identical across every hook of one attempt, strictly increasing across attempts, in sync and async;
+- `SelectedTransition` absent for `UnhandledTrigger` and for `InvalidPayload` rejected before selection; present for `GuardRejected`;
+- `HandledAtState`, `DeclaredTarget`, `Kind` correct for every topology, including internal-on-ancestor;
+- `ResolvedTarget` null where resolution never ran; correct leaf for composite and history targets;
+- **`FinalState` equal to `CurrentState` immediately after the attempt returns, in every outcome** — including entry-callback failure, where it must equal the target and not the source;
 - `Outcome` and `Stage` correct for every failure mode;
-- `OnCallbackFaulted` raised exactly when a callback throws under `ExceptionDirective.Continue`, with `OnTransitionCompleted` still reporting `Succeeded`;
-- hook ordering, including the position of exit, action and entry relative to `OnTransitionCompleted`;
+- `OnCallbackFaulted` raised exactly when a callback throws under `ExceptionDirective.Continue`, with `OnAttemptCompleted` still reporting `Succeeded`;
+- state hooks raised for states without callbacks, and for every state in an HSM multi-level exit and entry;
+- hook ordering, including exit, callback and entry relative to `OnAttemptCompleted`;
+- an extension removed mid-attempt still receives `OnAttemptCompleted`, and one added mid-attempt receives nothing for that attempt;
 - an extension overriding a hook without declaring its flag is not called.
 
 ## Performance requirements
@@ -395,33 +466,33 @@ Assertions must cover context **content**, not merely hook invocation:
 Acceptance criteria, verified by benchmarks in `src/Benchmark`, which currently contains none for extensions.
 
 - A machine compiled without `GenerateExtensibleVersion` produces byte-identical generated code to 0.9.1. Enforced by a golden-file test.
-- A machine compiled with extensions but with none registered allocates zero bytes per attempt; its cost over a non-extensible machine is one volatile read and one branch.
+- A machine compiled with extensions but with none registered allocates zero bytes per attempt; its cost over a non-extensible machine is one volatile read and one branch. `StartTimestamp` is not taken on this path (DEC-7).
 - A machine with N registered extensions allocates zero bytes per attempt on every path, including guard evaluation and every failure path.
-- The four DEC-9 preconditions hold: no per-attempt `Guid` allocation, no enum boxing in dispatch, no closure or delegate allocation in guard hooks, no `List` enumeration races.
+- The DEC-9 preconditions hold.
+
+**Benchmarks are measurement, not CI gates.** Where a benchmark does become a CI assertion it must gate on an absolute figure — nanoseconds per transition, bytes per attempt — never on a ratio between two sub-nanosecond measurements. The existing `GuardEvaluation_PerformanceImpact_Improved` demonstrates the failure mode: it currently fails on Ubuntu at 158.6% against a 150% ratio threshold while the underlying absolute difference is 1.5 ns per transition, and it fails *after* the paired-run stabilisation already landed. PR 0 must not add more tests of that shape.
 
 ## PR plan
 
 | PR | scope | goal |
 |----|-------|------|
 | **PR 0** — characterize extension contract | full matrix flat/HSM × sync/async × payload × guards × self/internal/composite; complete assertions on context content and ordering; extension benchmarks establishing the 0.9.1 baseline | stop refactoring blind |
-| **PR 1** — Extension Contract v2 | `IStateMachineExtension<TState, TTrigger>`; stable `InstanceId` and `AttemptId`; correct `SourceState` / `HandledAtState` / `DeclaredTarget` / `ResolvedTarget`; explicit `TransitionKind`; typed management API on the interface; copy-on-write storage; removal of the `From == To` heuristic and of `IStateSnapshot`; payload decision resolved | **model correctness** |
-| **PR 2** — outcomes and failures | `TransitionOutcome`, `TransitionResult`, nullable `TransitionStage`, exception and fault semantics, `OnCallbackFaulted` for `ExceptionDirective.Continue`, cancellation semantics | end of `bool success` |
-| **PR 3** — lifecycle surface | machine start and stop; state exiting, action executing, state entering; hook mask; monotonic `StartTimestamp`; zero-closure dispatch | event stream sufficient for tracing and metrics |
+| **PR 1** — Extension Contract v2 | the complete final public shape: `TransitionAttemptContext`, `TransitionInfo`, `TransitionResult`, `TransitionOutcome`, `TransitionKind`, typed extension interface with every hook declared, `ExtensionHooks`, identity, `ExtensionSet` management. Behaviour for `Succeeded`, `GuardRejected`, `UnhandledTrigger`, `InvalidPayload`. Payload decision resolved | **model correctness** |
+| **PR 2** — outcomes and failures | no API shape change. Semantics only: `Faulted`, `Canceled`, `TransitionStage`, `Exception`, `ExceptionDirective.Continue`, raising `OnCallbackFaulted` | behaviour completion, not a second redesign |
+| **PR 3** — lifecycle surface | `OnMachineStarted`; state and callback hooks wired at every site; hook mask enforced; monotonic `StartTimestamp`; zero-closure dispatch | event stream sufficient for tracing and metrics |
 | **PR 4** — HSM observability semantics | audit and removal of the existing stubs; only well-defined HSM events survive; sync/async parity | full HSM credibility |
-| **PR 5** — `FastFsm.Sharp.Observability` | `ActivitySource`, `Meter`, optional `ILogger` bridge/sink, runtime inspection stream, as an open generic extension shipped in a real `lib/net10.0` assembly | first public extension |
+| **PR 5** — `FastFsm.Sharp.Observability` | `ActivitySource`, `Meter`, optional `ILogger` sink, runtime inspection stream, as an open generic extension in a real `lib/net10.0` assembly | first public extension |
 
-The descriptor track runs independently of PR 0–5 and blocks none of them.
+The descriptor track runs independently and blocks none of them.
 
 ### Notes on individual PRs
 
-**PR 0** must include benchmarks. `docs/extensions.md` currently documents hook *ordering* but nothing about the *meaning of the data* passed in the context; that gap is exactly what let D1–D4 survive.
+**PR 1 ships the final type shapes, including outcome members it does not yet raise.** This is deliberate: revision 1 deferred the result types to PR 2, which invited a temporary contract that PR 2 would then break again. PR 2 must be a behaviour extension, not a second redesign.
 
-**PR 1** also resolves two pieces of accumulated friction: the `GenerateExtensibleVersion` default-value inconsistency noted in `docs/extensions.md`, and the redundant `ExtensionsOn => HasExtensions || IsExtensionsVariant()`, whose two operands read the same field.
+PR 1 also clears two pieces of accumulated friction: the `GenerateExtensibleVersion` default-value inconsistency noted in `docs/extensions.md`, and the redundant `ExtensionsOn => HasExtensions || IsExtensionsVariant()`, whose operands read the same field.
 
-**PR 3** must define `Stop()`. It does not exist on `StateMachineBase` today, while the logging generator already emits a `MachineStopped` event that nothing raises. Whether `Stop` is idempotent, whether it runs exit callbacks, and how it relates to `IDisposable` are state-machine semantics decisions, not observability ones — which is why they are not folded into PR 2.
+**PR 4 starts from deletion.** The five stubs in `ExtensionRunner` — `RunTransitionCompleted`, `RunBubbleToParent`, `RunInitialSubstateEntered`, `RunHistoryRestore`, `RunAncestorPathChanged` — have no call sites anywhere in the generator, and `ReadOnlySpan<TState>` cannot be retained by an extension, which is exactly what an inspector needs to do.
 
-**PR 4** starts from deletion, not adaptation. The five stubs in `ExtensionRunner` — `RunTransitionCompleted`, `RunBubbleToParent`, `RunInitialSubstateEntered`, `RunHistoryRestore`, `RunAncestorPathChanged` — have no call sites anywhere in the generator, and `ReadOnlySpan<TState>` cannot be retained by an extension, which is precisely what an inspector needs to do. Each stub is either given a semantics from scratch or removed.
+Several may prove unnecessary. With `SourceState`, `HandledAtState`, `DeclaredTarget`, `ResolvedTarget`, `FinalState` and `Kind` in the model, and per-state `OnStateExiting` / `OnStateEntered` from DEC-15, an exit and entry path is already observable as a sequence; whole paths should not be pushed into hot-path events. Whether the LCA belongs on the attempt context — where it costs on every HSM attempt and is currently computed only under `ShouldGenerateLogging` — or only in a mask-gated hierarchy event, is decided here.
 
-Some of them may prove unnecessary once the base model is correct. If the context already carries `SourceState`, `HandledAtState`, `DeclaredTarget`, `ResolvedTarget` and `Kind`, an exited and entered path can be reconstructed afterwards from the descriptor. Whole paths should not be pushed into hot-path events. Whether the LCA belongs on the base context — where it would cost on every HSM attempt, and is currently computed only under `ShouldGenerateLogging` — or only in a mask-gated hierarchy event, is decided in this PR.
-
-**Release:** the contract is complete after PR 4 and ships as `0.10.0`, with the break recorded in `CHANGELOG.md` and `docs/extensions.md` rewritten against the delivered contract, including normative ordering, the synchronous-hook requirement, the snapshot semantics of add and remove, the hook-mask footgun, and the meaning of every `TransitionOutcome`. The existing constructor example must also be corrected: it shows a `logger:` parameter that non-logging machines do not have. Observability ships separately once PR 5 lands.
+**Release:** the contract is complete after PR 4 and ships as `0.10.0`, with the break recorded in `CHANGELOG.md` and `docs/extensions.md` rewritten against the delivered contract — normative ordering, the synchronous-hook requirement, the per-attempt snapshot semantics, the hook-mask footgun, and the meaning of every `TransitionOutcome` including that `GuardRejected` refers to the single selected transition. The existing constructor example must also be corrected: it shows a `logger:` parameter that non-logging machines do not have. Observability ships separately once PR 5 lands.
