@@ -102,7 +102,6 @@ public partial class FastFsmAsyncActions
 [WarmupCount(3)]
 [IterationCount(15)]
 [MemoryDiagnoser]
-[DisassemblyDiagnoser(maxDepth: 3)]
   
 public class StateMachineBenchmarks
 {

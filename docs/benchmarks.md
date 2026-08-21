@@ -155,9 +155,9 @@ Earlier ARM64 snapshot at `548ea01` (pre-release): [linux-arm64-2026-08-16.md](b
 
 | Host label | Platform | Status |
 |------------|----------|--------|
-| `linux-arm64` | homelab Ubuntu aarch64 | in progress |
-| `macos-arm64` | Apple Silicon | in progress |
-| `win-arm64` | Windows 11 ARM64 (Orange Pi) | in progress |
+| `win-arm64` | Windows 11 ARM64 (Orange Pi) | observability complete — [snapshot](benchmarks/results/win-arm64-2026-08-21.md); full comparison pending disassembly fix |
+| `linux-arm64` | homelab Ubuntu aarch64 | blocked: Roslyn source generator does not emit benchmark machines on Linux (investigate separately) |
+| `macos-arm64` | Apple Silicon | pending (long restore over SSH; rerun locally on Mac) |
 
 Run on each host:
 

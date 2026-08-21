@@ -30,6 +30,14 @@ Write-Host "Packing FastFsm.Sharp..." -ForegroundColor Cyan
 dotnet pack (Join-Path $repoRoot "src/Fsm/Fsm.Core/Fsm.Core.csproj") -c Release
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+Write-Host "Building generator and benchmark projects..." -ForegroundColor Cyan
+dotnet build (Join-Path $repoRoot "src/Generator/Generator.Core/Generator.Core.csproj") -c Release
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+dotnet build (Join-Path $repoRoot "src/Fsm/Fsm.Core/Fsm.Core.csproj") -c Release
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+dotnet build (Join-Path $benchDir "Benchmark.csproj") -c Release
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 Write-Host "Running benchmarks (filter: $Filter)..." -ForegroundColor Cyan
 $args = @("-c", "Release", "-p:UsePackages=true", "--project", (Join-Path $benchDir "Benchmark.csproj"), "--", "--filter", $Filter)
 dotnet run @args

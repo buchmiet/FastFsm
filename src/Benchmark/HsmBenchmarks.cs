@@ -149,7 +149,6 @@ public sealed class StatelessHsmAsync
 [WarmupCount(3)]
 [IterationCount(15)]
 [MemoryDiagnoser]
-[DisassemblyDiagnoser(maxDepth: 2)]
 public class HsmBenchmarks
 {
     private const int Ops = 1024;
