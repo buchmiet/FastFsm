@@ -154,7 +154,7 @@ Fixing the target must not be done by discarding the declared one; all three are
 
 The attempt context carries `long StartTimestamp` from `Stopwatch.GetTimestamp()`. Extensions needing duration call `Stopwatch.GetElapsedTime(attempt.StartTimestamp)` themselves. One monotonic read, zero allocations, no `DateTime` misused as a stopwatch, no histogram policy imposed by core.
 
-The timestamp is captured **only after the extension snapshot shows that attempt hooks are actually wanted**. Taking it unconditionally would violate the requirement that a machine with no registered extensions costs one volatile read and one branch.
+The timestamp is captured **only after the extension snapshot shows that attempt hooks are actually wanted**. Taking it unconditionally would violate the no-registered-extensions performance requirement: zero allocations, no attempt-context construction, and no timestamp read on that path (see *Performance requirements*).
 
 `DateTime Timestamp` is removed from the contract. A logging provider timestamps its own entries.
 
@@ -235,7 +235,7 @@ private sealed class ExtensionSet<TState, TTrigger>
 private ExtensionSet<TState, TTrigger> _extensionSet;
 ```
 
-Mutation builds a new `ExtensionSet` under a lock and publishes it with a single `Volatile.Write`. An attempt performs a single `Volatile.Read` and passes that same reference through every hook — which is also precisely the "one volatile read and one branch" the performance requirements demand.
+Mutation builds a new `ExtensionSet` under a lock and publishes it with a single `Volatile.Write`. An attempt performs a single `Volatile.Read` and passes that same reference through every emission site. When `Hooks == None`, no hook payload is constructed; only mask-gated branches run at each site (see *Performance requirements*).
 
 ### DEC-15 — State lifecycle is separate from callback lifecycle
 
@@ -442,7 +442,7 @@ The mask lives on the `ExtensionSet` (DEC-14) and gates every hook site:
 if ((set.Hooks & ExtensionHooks.Callbacks) != 0) { /* dispatch */ }
 ```
 
-Default interface implementations alone do not solve the cost problem: without the mask the machine still constructs and dispatches data no registered extension consumes.
+Default interface implementations alone do not solve the cost problem: without the mask the machine still constructs and dispatches data no registered extension consumes. The generator must gate **construction and traversal**, not only runner dispatch — e.g. HSM LCA and `attempt.SourceState` must not run when `ExtensionHooks.States` is unset.
 
 **Footgun to document:** the mask is declarative and authoritative. An extension overriding a hook without declaring its flag is silently never called. This must be stated in `docs/extensions.md` and covered by a test.
 
@@ -523,10 +523,10 @@ Assertions must cover **content**, not merely invocation:
 
 ## Performance requirements
 
-Acceptance criteria, verified by benchmarks in `src/Benchmark`, which currently contains none for extensions.
+Acceptance criteria, verified by benchmarks in `src/Benchmark` (`ExtensionBenchmarks`, `HsmExtensionBenchmarks`).
 
 - A machine compiled without `GenerateExtensibleVersion` produces byte-identical generated code to 0.9.1. Enforced by a golden-file test.
-- A machine compiled with extensions but with none registered allocates zero bytes per attempt; its cost over a non-extensible machine is one volatile read and one branch. `StartTimestamp` is not taken on this path (DEC-7).
+- A machine compiled with extensions but with **no extensions registered** (`Hooks == None`): zero allocations per attempt, one extension-set snapshot (`Volatile.Read`), no `StartTimestamp` and no `TransitionAttemptContext` construction (DEC-7), and only mask-gated branch overhead at emission sites — no `TransitionInfo`/`TransitionResult` materialization, no guard/callback dispatch, and no HSM lifecycle computation. This is not literally one branch end-to-end; it is deliberately cheap relative to the work performed when hooks are active.
 - A machine with N registered extensions allocates zero bytes per attempt on every path, including guard evaluation and every failure path.
 - The DEC-9 preconditions hold.
 
