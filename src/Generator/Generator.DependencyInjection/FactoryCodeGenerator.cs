@@ -89,7 +89,7 @@ namespace Generator.DependencyInjection
                 {
                     WriteFactoryFields();
                     WriteFactoryConstructor(className);
-                    WriteCreateMethod(className, stateTypeSimple);
+                    WriteCreateMethod(className, stateTypeSimple, triggerTypeSimple);
                     WriteCreateStartedMethod(className, stateTypeSimple);
                 }
             }
@@ -109,7 +109,7 @@ namespace Generator.DependencyInjection
                 _sb.AppendLine();
             }
 
-            private void WriteCreateMethod(string className, string stateTypeSimple)
+            private void WriteCreateMethod(string className, string stateTypeSimple, string triggerTypeSimple)
             {
                 using (_sb.Block($"public I{className} Create({stateTypeSimple} initialState)"))
                 {
@@ -125,7 +125,7 @@ namespace Generator.DependencyInjection
                     if (_model.HasExtensions)
                     {
                         _sb.AppendLine("// Get all registered extensions from DI");
-                        _sb.AppendLine($"var extensions = {ServiceProviderField}.GetServices<{StateMachineContractsNamespace}.IStateMachineExtension>();");
+                        _sb.AppendLine($"var extensions = {ServiceProviderField}.GetServices<{StateMachineContractsNamespace}.IStateMachineExtension<{stateTypeSimple}, {triggerTypeSimple}>>();");
                         _sb.AppendLine();
                         instanceParams.Insert(2, "extensions");
                     }

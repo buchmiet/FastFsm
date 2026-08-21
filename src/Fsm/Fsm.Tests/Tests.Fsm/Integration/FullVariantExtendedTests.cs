@@ -240,127 +240,52 @@ namespace Tests.Fsm.Integration
             observedOrder.OrderId.ShouldBe(456);
         }
 
-
-
-        private class ConditionalProcessingExtension : IStateMachineExtension
+        private class ConditionalProcessingExtension : IStateMachineExtension<PhysicalOrderState, PhysicalOrderTrigger>
         {
             public HashSet<int> HighValueOrders { get; } = new();
 
-            public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext
+            public void OnAttemptCompleted(
+                in TransitionAttemptContext<PhysicalOrderState, PhysicalOrderTrigger> attempt,
+                in TransitionResult<PhysicalOrderState> result)
             {
-                if (success && context is IStateMachineContext<PhysicalOrderState, PhysicalOrderTrigger> orderContext)
-                {
-                    if (orderContext.Payload is OrderPayload order && order.Amount > 1000)
-                    {
-                        HighValueOrders.Add(order.OrderId);
-                    }
-                }
+                if (result.Outcome == TransitionOutcome.Succeeded &&
+                    attempt.Payload is OrderPayload { Amount: > 1000 } order)
+                    HighValueOrders.Add(order.OrderId);
             }
-
-            public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
-            public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext { }
-            public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext { }
-            public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
-            {
-                throw new NotImplementedException();
-            }
-
-            public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
-            {
-                throw new NotImplementedException();
-            }
-
-            public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
         }
 
-        private class BehaviorModifyingExtension : IStateMachineExtension
+        private class BehaviorModifyingExtension : IStateMachineExtension<PhysicalOrderState, PhysicalOrderTrigger>
         {
             public HashSet<int> BlockedOrderIds { get; } = new();
             public Dictionary<int, DateTime> BlockedAttempts { get; } = new();
 
-            public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
+            public void OnAttemptStarting(in TransitionAttemptContext<PhysicalOrderState, PhysicalOrderTrigger> attempt)
             {
-                if (context is IStateMachineContext<PhysicalOrderState, PhysicalOrderTrigger> orderContext &&
-                    orderContext.Trigger == PhysicalOrderTrigger.Ship &&
-                    orderContext.Payload is OrderPayload order &&
+                if (attempt.Trigger == PhysicalOrderTrigger.Ship &&
+                    attempt.Payload is OrderPayload order &&
                     BlockedOrderIds.Contains(order.OrderId))
-                {
                     BlockedAttempts[order.OrderId] = DateTime.Now;
-                }
             }
-
-            public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext { }
-            public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext { }
-            public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext { }
-            public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
-            {
-                throw new NotImplementedException();
-            }
-
-            public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
-            {
-                throw new NotImplementedException();
-            }
-
-            public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
         }
 
-        private class PayloadTypeTracker : IStateMachineExtension
+        private class PayloadTypeTracker : IStateMachineExtension<PhysicalOrderState, PhysicalOrderTrigger>
         {
             public HashSet<Type> ObservedTypes { get; } = new();
 
-            public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
+            public void OnAttemptStarting(in TransitionAttemptContext<PhysicalOrderState, PhysicalOrderTrigger> attempt)
             {
-                if (context is IStateMachineContext<PhysicalOrderState, PhysicalOrderTrigger> orderContext &&
-                    orderContext.Payload != null)
-                {
-                    ObservedTypes.Add(orderContext.Payload.GetType());
-                }
+                if (attempt.Payload is not null) ObservedTypes.Add(attempt.Payload.GetType());
             }
-
-            public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext { }
-            public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext { }
-            public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext { }
-            public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
-            {
-                throw new NotImplementedException();
-            }
-
-            public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
-            {
-                throw new NotImplementedException();
-            }
-
-            public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
         }
 
-        private class PayloadObserverExtension : IStateMachineExtension
+        private class PayloadObserverExtension : IStateMachineExtension<PhysicalOrderState, PhysicalOrderTrigger>
         {
             public List<object> ObservedPayloads { get; } = new();
 
-            public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
+            public void OnAttemptStarting(in TransitionAttemptContext<PhysicalOrderState, PhysicalOrderTrigger> attempt)
             {
-                if (context is IStateMachineContext<PhysicalOrderState, PhysicalOrderTrigger> orderContext &&
-                    orderContext.Payload != null)
-                {
-                    ObservedPayloads.Add(orderContext.Payload);
-                }
+                if (attempt.Payload is not null) ObservedPayloads.Add(attempt.Payload);
             }
-
-            public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext { }
-            public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext { }
-            public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext { }
-            public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
-            {
-                throw new NotImplementedException();
-            }
-
-            public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
-            {
-                throw new NotImplementedException();
-            }
-
-            public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
         }
     }
 

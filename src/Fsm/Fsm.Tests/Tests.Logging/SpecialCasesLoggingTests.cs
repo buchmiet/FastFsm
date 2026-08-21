@@ -5,7 +5,7 @@ using Shouldly;
 using System;
 using System.Linq;
 using System.Reflection.PortableExecutable;
-using FastFsm.Runtime;
+using FastFsm.Contracts;
 using FastFsm.Runtime.Extensions;
 using Xunit;
 
@@ -83,12 +83,12 @@ namespace Tests.Logging
             // Arrange
             var extension1 = new TestExtension
             {
-                ThrowOnBeforeTransition = true,
-                ThrowOnAfterTransition = true
+                ThrowOnAttemptStarting = true,
+                ThrowOnAttemptCompleted = true
             };
             var extension2 = new TestExtension
             {
-                ThrowOnGuardEvaluation = true,
+                ThrowOnGuardEvaluating = true,
                 ThrowOnGuardEvaluated = true
             };
 
@@ -109,13 +109,13 @@ namespace Tests.Logging
             errorLogs.Count.ShouldBe(4);
 
             // Verify all extension methods were attempted
-            errorLogs.Any(l => l.Message.Contains("OnBeforeTransition")).ShouldBeTrue();
-            errorLogs.Any(l => l.Message.Contains("OnAfterTransition")).ShouldBeTrue();
-            errorLogs.Any(l => l.Message.Contains("OnGuardEvaluation")).ShouldBeTrue();
+            errorLogs.Any(l => l.Message.Contains("OnAttemptStarting")).ShouldBeTrue();
+            errorLogs.Any(l => l.Message.Contains("OnAttemptCompleted")).ShouldBeTrue();
+            errorLogs.Any(l => l.Message.Contains("OnGuardEvaluating")).ShouldBeTrue();
             errorLogs.Any(l => l.Message.Contains("OnGuardEvaluated")).ShouldBeTrue();
 
-            // Verify EventId for extension errors
-            errorLogs.All(l => l.EventId.Id == 1001 && l.EventId.Name == "ExtensionError").ShouldBeTrue();
+            // ExtensionRunner V2 uses the default EventId for extension errors
+            errorLogs.All(l => l.EventId == default).ShouldBeTrue();
         }
 
         [Fact]
@@ -161,26 +161,23 @@ namespace Tests.Logging
         }
 
         [Fact]
-        public void ExtensionRunner_NullContext_HandledGracefully()
+        public void ExtensionRunner_EmptyAttemptContext_HandledGracefully()
         {
-            // This test verifies that ExtensionRunner handles edge cases properly
-            // In practice, context should never be null, but we test defensive programming
-
             // Arrange
             var extensionRunner = new ExtensionRunner(LoggerMock.Object);
             var extension = new TestExtension();
-            var extensions = new[] { extension };
+            var extensions = ExtensionSet<TestState, TestTrigger>.Create([extension]);
 
-            // Create a minimal context implementation
-            var context = new StateMachineContext<TestState, TestTrigger>(
-                string.Empty, // Empty instance ID
+            var attempt = new TransitionAttemptContext<TestState, TestTrigger>(
+                Guid.Empty,
+                0,
                 TestState.Initial,
                 TestTrigger.Start,
-                TestState.Processing,
-                null);
+                null,
+                0);
 
             // Act & Assert - Should not throw
-            Should.NotThrow(() => extensionRunner.RunBeforeTransition(extensions, context));
+            Should.NotThrow(() => extensionRunner.RunAttemptStarting(extensions, in attempt));
         }
 
         [Fact]

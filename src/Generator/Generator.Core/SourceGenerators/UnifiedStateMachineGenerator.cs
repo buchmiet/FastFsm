@@ -18,13 +18,14 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
     // Feature detection flags
     private bool HasPayload => Model.GenerationConfig.HasPayload;
     private bool HasExtensions => Model.GenerationConfig.HasExtensions;
-    private bool ExtensionsOn => HasExtensions || IsExtensionsVariant();
+    private bool ExtensionsOn => HasExtensions;
     private bool HasOnEntryExit => Model.GenerationConfig.HasOnEntryExit;
     private bool IsHierarchical => Model.HierarchyEnabled;
     private bool HasMultiPayload => Model.TriggerPayloadTypes?.Any() == true;
 
 
     private bool _smCtxCreated = false;
+    private int _attemptResultIndex;
 
     // Extensions feature writer (used when HasExtensions)
     private readonly ExtensionsFeatureWriter _ext = new();
@@ -125,7 +126,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             WriteGetPermittedTriggersMethods(stateType, triggerType);
             if (ExtensionsOn)
         {
-                _ext.WriteManagementMethods(Sb);
+                _ext.WriteManagementMethods(Sb, stateType, triggerType);
             }
             WriteStructuralApiMethods(stateType, triggerType);
             WriteHierarchyMethods(stateType, triggerType);
@@ -219,13 +220,21 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             Sb.AppendLine();
         }
 
+        if (ExtensionsOn)
+        {
+            Sb.AppendLine("private readonly Guid _fsmInstanceId = Guid.NewGuid();");
+            Sb.AppendLine("private long _attemptCounter;");
+            Sb.AppendLine("public Guid InstanceId => _fsmInstanceId;");
+            Sb.AppendLine();
+        }
+
         // Logger field (but not the _instanceId since we handle it above)
         WriteLoggerField(className);
 
         // Extensions fields
         if (ExtensionsOn)
     {
-            _ext.WriteFields(Sb);
+            _ext.WriteFields(Sb, GetTypeNameForUsage(Model.StateType), GetTypeNameForUsage(Model.TriggerType));
         }
 
         // Multi-payload: emit trigger→payload type map for validation
@@ -353,7 +362,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         var extras = new List<string>();
         if (ExtensionsOn)
     {
-            extras.Add("IEnumerable<IStateMachineExtension>? extensions = null");
+            extras.Add($"IEnumerable<IStateMachineExtension<{GetTypeNameForUsage(Model.StateType)}, {GetTypeNameForUsage(Model.TriggerType)}>>? extensions = null");
         }
         var loggerParam = GetLoggerConstructorParameter(className);
         if (!string.IsNullOrWhiteSpace(loggerParam)) extras.Add(loggerParam);
@@ -372,7 +381,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             WriteLoggerAssignment();
             if (ExtensionsOn)
         {
-                _ext.WriteConstructorBody(Sb, ShouldGenerateLogging);
+                _ext.WriteConstructorBody(
+                    Sb,
+                    ShouldGenerateLogging,
+                    GetTypeNameForUsage(Model.StateType),
+                    GetTypeNameForUsage(Model.TriggerType));
             }
         }
         Sb.AppendLine();
@@ -385,7 +398,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         // 2. It has logging (to add MachineStarted log)
         // Note: We avoid duplicate StartAsync for async machines that have OnEntryExit
         //       by checking if OnInitialEntry is being overridden separately
-        if (IsHierarchical || ShouldGenerateLogging)
+        if (IsHierarchical || ShouldGenerateLogging || ExtensionsOn)
     {
             WriteStartMethod();
         }
@@ -418,6 +431,13 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             }
             
             Sb.AppendLine("base.Start();");
+
+            if (ExtensionsOn)
+            {
+                Sb.AppendLine();
+                Sb.AppendLine("var extensionSet = System.Threading.Volatile.Read(ref _extensionSet);");
+                Sb.AppendLine($"_extensionRunner.RunMachineStarted(extensionSet, _fsmInstanceId, {CurrentStateField});");
+            }
             
             // Log machine started
             if (ShouldGenerateLogging)
@@ -445,6 +465,13 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             }
             
             Sb.AppendLine("await base.StartAsync(cancellationToken).ConfigureAwait(false);");
+
+            if (ExtensionsOn)
+            {
+                Sb.AppendLine();
+                Sb.AppendLine("var extensionSet = System.Threading.Volatile.Read(ref _extensionSet);");
+                Sb.AppendLine($"_extensionRunner.RunMachineStarted(extensionSet, _fsmInstanceId, {CurrentStateField});");
+            }
             
             // Log machine started
             if (ShouldGenerateLogging)
@@ -846,6 +873,58 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         }
 }
 
+    private void WriteAttemptStart(string stateType, string triggerType)
+    {
+        if (!ExtensionsOn) return;
+
+        Sb.AppendLine("var extensionSet = System.Threading.Volatile.Read(ref _extensionSet);");
+        Sb.AppendLine($"var attempt = default(TransitionAttemptContext<{stateType}, {triggerType}>);");
+        using (Sb.Block("if (extensionSet.Items.Length != 0)"))
+        {
+            Sb.AppendLine($"attempt = new TransitionAttemptContext<{stateType}, {triggerType}>(");
+            Sb.AppendLine("    _fsmInstanceId,");
+            Sb.AppendLine("    System.Threading.Interlocked.Increment(ref _attemptCounter),");
+            Sb.AppendLine($"    {CurrentStateField},");
+            Sb.AppendLine("    trigger,");
+            Sb.AppendLine("    payload,");
+            Sb.AppendLine("    System.Diagnostics.Stopwatch.GetTimestamp());");
+            Sb.AppendLine("_extensionRunner.RunAttemptStarting(extensionSet, in attempt);");
+        }
+        Sb.AppendLine();
+    }
+
+    private void WriteTransitionMatched(TransitionModel transition, string stateType)
+    {
+        if (!ExtensionsOn) return;
+
+        var declaredTarget = transition.IsInternal
+            ? $"({stateType}?)null"
+            : $"{stateType}.{TypeHelper.EscapeIdentifier(transition.ToState)}";
+        var kind = transition.IsInternal ? "TransitionKind.Internal" : "TransitionKind.External";
+        Sb.AppendLine($"var matchedTransition = new TransitionInfo<{stateType}>(");
+        Sb.AppendLine($"    {stateType}.{TypeHelper.EscapeIdentifier(transition.FromState)},");
+        Sb.AppendLine($"    {declaredTarget},");
+        Sb.AppendLine($"    {kind});");
+        Sb.AppendLine("_extensionRunner.RunTransitionMatched(extensionSet, in attempt, in matchedTransition);");
+    }
+
+    private void WriteAttemptCompleted(
+        string stateType,
+        string outcome,
+        string resolvedTarget,
+        string matchedTransition)
+    {
+        if (!ExtensionsOn) return;
+
+        var resultVariable = $"attemptResult{_attemptResultIndex++}";
+        Sb.AppendLine($"var {resultVariable} = new TransitionResult<{stateType}>(");
+        Sb.AppendLine($"    TransitionOutcome.{outcome},");
+        Sb.AppendLine($"    {CurrentStateField},");
+        Sb.AppendLine($"    {resolvedTarget},");
+        Sb.AppendLine($"    {matchedTransition});");
+        Sb.AppendLine($"_extensionRunner.RunAttemptCompleted(extensionSet, in attempt, in {resultVariable});");
+    }
+
     private void WriteTryFireMethodAsync(string stateType, string triggerType)
 {
         WriteMethodAttribute();
@@ -855,8 +934,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         Sb.AppendLine();
         ResetEndTryFireLabel();
 
+        WriteAttemptStart(stateType, triggerType);
+
         if (!Model.Transitions.Any())
     {
+            WriteAttemptCompleted(stateType, "UnhandledTrigger", $"({stateType}?)null", $"(TransitionInfo<{stateType}>?)null");
             Sb.AppendLine($"return false; {NoTransitionsComment}");
             return;
         }
@@ -868,6 +950,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             Sb.AppendLine($"        if ({PayloadMapField}.TryGetValue(trigger, out var expectedType) && (payload == null || !expectedType.IsInstanceOfType(payload)))");
             Sb.AppendLine("        {");
             WriteLogStatement("Warning", $"PayloadValidationFailed(_logger, _instanceId, trigger.ToString(), expectedType?.Name ?? \"unknown\", payload?.GetType().Name ?? \"null\");");
+            WriteAttemptCompleted(stateType, "InvalidPayload", $"({stateType}?)null", $"(TransitionInfo<{stateType}>?)null");
             Sb.AppendLine("            return false; // wrong payload type");
             Sb.AppendLine("        }");
             Sb.AppendLine();
@@ -927,17 +1010,6 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 using (Sb.Block(""))
             {
                     WriteLogStatement("Warning", $"TransitionFailed(_logger, _instanceId, {OriginalStateVar}.ToString(), trigger.ToString());");
-                    // Extensions failure hook
-                    if (ExtensionsOn)
-                {
-                        Sb.AppendLine($"var failCtx = new StateMachineContext<{stateType}, {triggerType}>(");
-                        Sb.AppendLine("    Guid.NewGuid().ToString(),");
-                        Sb.AppendLine($"    {OriginalStateVar},");
-                        Sb.AppendLine("    trigger,");
-                        Sb.AppendLine($"    {OriginalStateVar},");
-                        Sb.AppendLine("    payload);");
-                        Sb.AppendLine("_extensionRunner.RunAfterTransition(_extensions, failCtx, false);");
-                    }
                 }
             }
 
@@ -1182,8 +1254,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         using (Sb.Block($"protected override bool TryFireInternal({triggerType} trigger, object? payload)"))
     {
 
+        WriteAttemptStart(stateType, triggerType);
+
         if (!Model.Transitions.Any())
     {
+            WriteAttemptCompleted(stateType, "UnhandledTrigger", $"({stateType}?)null", $"(TransitionInfo<{stateType}>?)null");
             Sb.AppendLine($"return false; {NoTransitionsComment}");
             return;
         }
@@ -1212,6 +1287,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             Sb.AppendLine($"        if ({PayloadMapField}.TryGetValue(trigger, out var expectedType) && (payload == null || !expectedType.IsInstanceOfType(payload)))");
             Sb.AppendLine("        {");
             WriteLogStatement("Warning", $"PayloadValidationFailed(_logger, _instanceId, trigger.ToString(), expectedType?.Name ?? \"unknown\", payload?.GetType().Name ?? \"null\");");
+            WriteAttemptCompleted(stateType, "InvalidPayload", $"({stateType}?)null", $"(TransitionInfo<{stateType}>?)null");
             Sb.AppendLine("            return false; // wrong payload type");
             Sb.AppendLine("        }");
             Sb.AppendLine();
@@ -1277,22 +1353,13 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
     {
         var hasOnEntryExit = ShouldGenerateOnEntryExit();
 
-        // Create context for hooks
-        Sb.AppendLine($"var smCtx = new StateMachineContext<{stateTypeForUsage}, {triggerTypeForUsage}>(");
-        Sb.AppendLine("    Guid.NewGuid().ToString(),");
-        Sb.AppendLine($"    {CurrentStateField},");
-        Sb.AppendLine("    trigger,");
-        Sb.AppendLine($"    {stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)},");
-        Sb.AppendLine("    payload);");
+        WriteTransitionMatched(transition, stateTypeForUsage);
         Sb.AppendLine();
 
         // Log transition started
         WriteLogStatement("Debug",
             $"TransitionStarted(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\", \"{transition.ToState}\");");
 
-        // Hook: Before transition
-        Sb.AppendLine("_extensionRunner.RunBeforeTransition(_extensions, smCtx);");
-        Sb.AppendLine();
 
         // Comment about exception handling
         Sb.AppendLine("#if DEBUG || FASTFSM_DEBUG_GENERATED_COMMENTS");
@@ -1306,9 +1373,9 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         if (!string.IsNullOrEmpty(transition.GuardMethod))
         {
             // Notify extensions about guard evaluation
-            Sb.AppendLine($"    _extensionRunner.RunGuardEvaluation(_extensions, smCtx, \"{transition.GuardMethod}\");");
+            Sb.AppendLine($"    _extensionRunner.RunGuardEvaluating(extensionSet, in attempt, in matchedTransition, \"{transition.GuardMethod}\");");
             Sb.AppendLine($"    var guardResult = {transition.GuardMethod}();");
-            Sb.AppendLine($"    _extensionRunner.RunGuardEvaluated(_extensions, smCtx, \"{transition.GuardMethod}\", guardResult);");
+            Sb.AppendLine($"    _extensionRunner.RunGuardEvaluated(extensionSet, in attempt, in matchedTransition, \"{transition.GuardMethod}\", guardResult);");
             Sb.AppendLine("    if (!guardResult)");
             Sb.AppendLine("    {");
             // Emit logging for guard failure and failed transition (parity with base path)
@@ -1316,7 +1383,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 $"GuardFailed(_logger, _instanceId, \"{transition.GuardMethod}\", \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
             WriteLogStatement("Warning",
                 $"TransitionFailed(_logger, _instanceId, \"{transition.FromState}\", \"{transition.Trigger}\");");
-            Sb.AppendLine("        _extensionRunner.RunAfterTransition(_extensions, smCtx, false);");
+            WriteAttemptCompleted(stateTypeForUsage, "GuardRejected", $"({stateTypeForUsage}?)null", "matchedTransition");
             Sb.AppendLine("        return false;");
             Sb.AppendLine("    }");
         }
@@ -1457,7 +1524,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             Sb.AppendLine("    }");
             Sb.AppendLine("    catch (System.OperationCanceledException)");
             Sb.AppendLine("    {");
-            Sb.AppendLine("        _extensionRunner.RunAfterTransition(_extensions, smCtx, false);");
+            WriteAttemptCompleted(stateTypeForUsage, "Canceled", CurrentStateField, "matchedTransition");
             Sb.AppendLine("        return false;");
             Sb.AppendLine("    }");
             Sb.AppendLine("    catch (System.Exception ex)");
@@ -1465,7 +1532,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             /**/ if (true) { /* placeholder to keep WriteLogStatement inline below */ }
             WriteLogStatement("Warning",
                 $"CallbackException(_logger, _instanceId, \"OnEntry\", \"{toStateDef.OnEntryMethod}\", \"transition {transition.FromState} -> {transition.ToState}\", ex);");
-            Sb.AppendLine("        _extensionRunner.RunAfterTransition(_extensions, smCtx, false);");
+            WriteAttemptCompleted(stateTypeForUsage, "Faulted", CurrentStateField, "matchedTransition");
             Sb.AppendLine("        return false;");
             Sb.AppendLine("    }");
             Sb.AppendLine("    #else");
@@ -1477,14 +1544,16 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
         Sb.AppendLine("}");
         Sb.AppendLine("catch {");
-        Sb.AppendLine("    _extensionRunner.RunAfterTransition(_extensions, smCtx, false);");
+        WriteAttemptCompleted(stateTypeForUsage, "Faulted", $"({stateTypeForUsage}?)null", "matchedTransition");
         Sb.AppendLine("    return false;");
         Sb.AppendLine("}");
 
         // Success
-        Sb.AppendLine("_extensionRunner.RunAfterTransition(_extensions, smCtx, true);");
-        // TODO(EXT): Emit OnTransitioned here once available
-        // _extensionRunner.RunTransitioned(_extensions, smCtx);
+        WriteAttemptCompleted(
+            stateTypeForUsage,
+            "Succeeded",
+            transition.IsInternal ? $"({stateTypeForUsage}?)null" : CurrentStateField,
+            "matchedTransition");
         WriteLogStatement("Information",
             $"TransitionSucceeded(_logger, _instanceId, \"{transition.FromState}\", \"{transition.ToState}\", \"{transition.Trigger}\");");
         Sb.AppendLine("return true;");
@@ -1510,17 +1579,8 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         // Custom implementation that notifies extensions even when no transition is found
         if (!Model.Transitions.Any())
     {
-            // No transitions at all - notify extensions and return false
-            Sb.AppendLine("// No transitions defined - notify extensions");
-            Sb.AppendLine($"var failCtx = new StateMachineContext<{stateType}, {triggerType}>(");
-            Sb.AppendLine("    Guid.NewGuid().ToString(),");
-            Sb.AppendLine($"    {CurrentStateField},");
-            Sb.AppendLine("    trigger,");
-            Sb.AppendLine($"    {CurrentStateField},");
-            Sb.AppendLine("    payload);");
-            // Planned hook: unhandled trigger
-            Sb.AppendLine("_extensionRunner.RunUnhandledTrigger(_extensions, failCtx);");
-            Sb.AppendLine("_extensionRunner.RunAfterTransition(_extensions, failCtx, false);");
+            Sb.AppendLine("// No transitions defined - complete the attempt as unhandled");
+            WriteAttemptCompleted(stateType, "UnhandledTrigger", $"({stateType}?)null", $"(TransitionInfo<{stateType}>?)null");
             Sb.AppendLine("return false;");
             return;
         }
@@ -1635,17 +1695,8 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             Sb.AppendLine();
         }
         
-        // No transition found - notify extensions
-        Sb.AppendLine("// No matching transition - notify extensions");
-        Sb.AppendLine($"var noTransitionCtx = new StateMachineContext<{stateType}, {triggerType}>(");
-        Sb.AppendLine("    Guid.NewGuid().ToString(),");
-        Sb.AppendLine($"    {CurrentStateField},");
-        Sb.AppendLine("    trigger,");
-        Sb.AppendLine($"    {CurrentStateField},");
-        Sb.AppendLine("    payload);");
-        // Planned hook: unhandled trigger
-        Sb.AppendLine("_extensionRunner.RunUnhandledTrigger(_extensions, noTransitionCtx);");
-        Sb.AppendLine("_extensionRunner.RunAfterTransition(_extensions, noTransitionCtx, false);");
+        Sb.AppendLine("// No matching transition - complete the attempt as unhandled");
+        WriteAttemptCompleted(stateType, "UnhandledTrigger", $"({stateType}?)null", $"(TransitionInfo<{stateType}>?)null");
         Sb.AppendLine("return false;");
 }
 
@@ -2338,19 +2389,9 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         string triggerTypeForUsage)
 {
         if (!ExtensionsOn) return;
-        Sb.AppendLine($"var {HookVarContext} = new StateMachineContext<{stateTypeForUsage}, {triggerTypeForUsage}>(");
-        using (Sb.Indent())
-    {
-            Sb.AppendLine("Guid.NewGuid().ToString(),");
-            Sb.AppendLine($"{CurrentStateField},");
-            Sb.AppendLine("trigger,");
-            Sb.AppendLine($"{stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)},");
-            Sb.AppendLine($"{PayloadVar});");
-        }
+        WriteTransitionMatched(transition, stateTypeForUsage);
         Sb.AppendLine();
-        _smCtxCreated = true;  // Mark that smCtx has been created
-        Sb.AppendLine($"_extensionRunner.RunBeforeTransition(_extensions, {HookVarContext});");
-        Sb.AppendLine();
+        _smCtxCreated = true;
 }
 
     protected override void WriteGuardEvaluationHook(
@@ -2360,24 +2401,14 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 {
         if (!ExtensionsOn) return;
 
-        // Ensure smCtx variable exists - create it if not already created by WriteBeforeTransitionHook
-        // This can happen in payload variants where guard hooks are emitted directly
+        // Ensure candidate information exists if a specialized path skipped the match hook.
         if (!_smCtxCreated)
     {
-            Sb.AppendLine($"var {HookVarContext} = new StateMachineContext<{stateTypeForUsage}, {triggerTypeForUsage}>(");
-            using (Sb.Indent())
-        {
-                Sb.AppendLine("Guid.NewGuid().ToString(),");
-                Sb.AppendLine($"{CurrentStateField},");
-                Sb.AppendLine("trigger,");
-                Sb.AppendLine($"{stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)},");
-                Sb.AppendLine($"{PayloadVar});");
-            }
-            Sb.AppendLine();
+            WriteTransitionMatched(transition, stateTypeForUsage);
             _smCtxCreated = true;
         }
 
-        Sb.AppendLine($"_extensionRunner.RunGuardEvaluation(_extensions, {HookVarContext}, \"{transition.GuardMethod}\");");
+        Sb.AppendLine($"_extensionRunner.RunGuardEvaluating(extensionSet, in attempt, in matchedTransition, \"{transition.GuardMethod}\");");
         Sb.AppendLine();
 }
 
@@ -2388,7 +2419,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         string triggerTypeForUsage)
 {
         if (!ExtensionsOn) return;
-        Sb.AppendLine($"_extensionRunner.RunGuardEvaluated(_extensions, {HookVarContext}, \"{transition.GuardMethod}\", {guardResultVar});");
+        Sb.AppendLine($"_extensionRunner.RunGuardEvaluated(extensionSet, in attempt, in matchedTransition, \"{transition.GuardMethod}\", {guardResultVar});");
         Sb.AppendLine();
 }
 
@@ -2399,7 +2430,11 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         bool success)
 {
         if (!ExtensionsOn) return;
-        Sb.AppendLine($"_extensionRunner.RunAfterTransition(_extensions, {HookVarContext}, {success.ToString().ToLowerInvariant()});");
+        WriteAttemptCompleted(
+            stateTypeForUsage,
+            success ? "Succeeded" : "GuardRejected",
+            success && !transition.IsInternal ? CurrentStateField : $"({stateTypeForUsage}?)null",
+            "matchedTransition");
 }
 
     // Payload-aware async transition logic (uses success var + END_TRY_FIRE)

@@ -52,15 +52,14 @@ public partial class ExtensibleAsyncBenchmarkMachine
     private ValueTask NoOpAsync() => ValueTask.CompletedTask;
 }
 
-public sealed class NoOpExtension : IStateMachineExtension
+public sealed class NoOpExtension : IStateMachineExtension<ExtensionBenchmarkState, ExtensionBenchmarkTrigger>
 {
-    public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
-    public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext { }
-    public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext { }
-    public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext { }
-    public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext { }
-    public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
-    public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
+    public void OnAttemptStarting(
+        in TransitionAttemptContext<ExtensionBenchmarkState, ExtensionBenchmarkTrigger> attempt) { }
+
+    public void OnAttemptCompleted(
+        in TransitionAttemptContext<ExtensionBenchmarkState, ExtensionBenchmarkTrigger> attempt,
+        in TransitionResult<ExtensionBenchmarkState> result) { }
 }
 
 [InProcess]

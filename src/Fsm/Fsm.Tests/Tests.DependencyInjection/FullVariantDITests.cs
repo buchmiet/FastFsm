@@ -34,7 +34,7 @@ public class FullVariantDiTests : DITestBase
     {
         // Arrange
         var extension = new PayloadCapturingExtension();
-        Services.AddSingleton<IStateMachineExtension>(extension);
+        Services.AddSingleton<IStateMachineExtension<TestState, TestTrigger>>(extension);
         Services.AddFullTestMachine(TestState.A);
         BuildProvider();
 
@@ -56,7 +56,7 @@ public class FullVariantDiTests : DITestBase
     {
         // Arrange
         var extension = new DetailedExtension();
-        Services.AddSingleton<IStateMachineExtension>(extension);
+        Services.AddSingleton<IStateMachineExtension<TestState, TestTrigger>>(extension);
         Services.AddFullTestMachine(TestState.A);
         BuildProvider();
 
@@ -90,9 +90,9 @@ public class FullVariantDiTests : DITestBase
         var ext2 = new PayloadCapturingExtension();
         var ext3 = new PayloadCapturingExtension();
 
-        Services.AddSingleton<IStateMachineExtension>(ext1);
-        Services.AddSingleton<IStateMachineExtension>(ext2);
-        Services.AddSingleton<IStateMachineExtension>(ext3);
+        Services.AddSingleton<IStateMachineExtension<TestState, TestTrigger>>(ext1);
+        Services.AddSingleton<IStateMachineExtension<TestState, TestTrigger>>(ext2);
+        Services.AddSingleton<IStateMachineExtension<TestState, TestTrigger>>(ext3);
         Services.AddFullTestMachine(TestState.A);
         BuildProvider();
 
@@ -136,7 +136,7 @@ public class FullVariantDiTests : DITestBase
     {
         // Arrange
         var extension = new DetailedExtension();
-        Services.AddSingleton<IStateMachineExtension>(extension);
+        Services.AddSingleton<IStateMachineExtension<TestState, TestTrigger>>(extension);
         Services.AddFullTestMachine(TestState.A);
         BuildProvider();
 
@@ -159,51 +159,48 @@ public class FullVariantDiTests : DITestBase
     }
 
     // Test Extensions
-    private class PayloadCapturingExtension : IStateMachineExtension
+    private class PayloadCapturingExtension : IStateMachineExtension<TestState, TestTrigger>
     {
         public object? LastPayload { get; private set; }
 
-        public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
-        {
-            if (context is IStateMachineContext<TestState, TestTrigger> typedContext)
-            {
-                LastPayload = typedContext.Payload;
-            }
-        }
-
-        public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext { }
-        public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext { }
-        public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext { }
-        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext { }
-        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
-        public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
+        public void OnAttemptStarting(in TransitionAttemptContext<TestState, TestTrigger> attempt)
+            => LastPayload = attempt.Payload;
     }
 
-    private class DetailedExtension : IStateMachineExtension
+    private class DetailedExtension : IStateMachineExtension<TestState, TestTrigger>
     {
+        public ExtensionHooks Hooks => ExtensionHooks.Transitions | ExtensionHooks.Guards;
         public List<string> Events { get; } = [];
 
-        public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
+        public void OnAttemptStarting(in TransitionAttemptContext<TestState, TestTrigger> attempt)
         {
             Events.Add("BeforeTransition");
         }
 
-        public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext
+        public void OnAttemptCompleted(
+            in TransitionAttemptContext<TestState, TestTrigger> attempt,
+            in TransitionResult<TestState> result)
         {
-            Events.Add(success ? "AfterTransition:Success" : "AfterTransition:Failed");
+            Events.Add(result.Outcome == TransitionOutcome.Succeeded
+                ? "AfterTransition:Success"
+                : "AfterTransition:Failed");
         }
 
-        public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext
+        public void OnGuardEvaluating(
+            in TransitionAttemptContext<TestState, TestTrigger> attempt,
+            in TransitionInfo<TestState> candidate,
+            string guardName)
         {
             Events.Add($"GuardEvaluation:{guardName}");
         }
 
-        public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext
+        public void OnGuardEvaluated(
+            in TransitionAttemptContext<TestState, TestTrigger> attempt,
+            in TransitionInfo<TestState> candidate,
+            string guardName,
+            bool result)
         {
             Events.Add($"GuardEvaluated:{guardName}:{result}");
         }
-        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext { }
-        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
-        public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
     }
 }

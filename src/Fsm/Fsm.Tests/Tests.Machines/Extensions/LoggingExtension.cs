@@ -1,9 +1,10 @@
 using FastFsm.Contracts;
+using Tests.Machines.Machines;
 using Xunit.Abstractions;
 
 namespace Tests.Machines.Extensions;
 
-public class LoggingExtension : IStateMachineExtension
+public class LoggingExtension : IStateMachineExtension<ExtState, ExtTrigger>
 {
     private readonly ITestOutputHelper _output;
 
@@ -12,38 +13,35 @@ public class LoggingExtension : IStateMachineExtension
         _output = output;
     }
 
-    public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
+    public ExtensionHooks Hooks => ExtensionHooks.All;
+
+    public void OnAttemptStarting(in TransitionAttemptContext<ExtState, ExtTrigger> attempt)
     {
-        _output.WriteLine($"Extension: Before transition at {context.Timestamp}");
+        _output.WriteLine($"Extension: Before transition attempt {attempt.AttemptId}");
     }
 
-    public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext
+    public void OnAttemptCompleted(
+        in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
+        in TransitionResult<ExtState> result)
     {
-        _output.WriteLine($"Extension: After transition, success={success}");
+        _output.WriteLine($"Extension: After transition, outcome={result.Outcome}");
     }
 
-    public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext
+    public void OnGuardEvaluating(
+        in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
+        in TransitionInfo<ExtState> candidate,
+        string guardName)
     {
         _output.WriteLine($"Extension: Evaluating guard '{guardName}'");
     }
 
-    public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext
+    public void OnGuardEvaluated(
+        in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
+        in TransitionInfo<ExtState> candidate,
+        string guardName,
+        bool result)
     {
         _output.WriteLine($"Extension: Guard '{guardName}' returned {result}");
     }
 
-    public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
-    {
-        _output.WriteLine("Extension: Unhandled trigger");
-    }
-
-    public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
-    {
-        _output.WriteLine("Extension: Internal transition");
-    }
-
-    public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext
-    {
-        _output.WriteLine("Extension: Transitioned");
-    }
 }

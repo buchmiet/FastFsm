@@ -94,7 +94,7 @@ public class FullMultiPayloadMachineFluentWrapper : IStateMachineTestWrapper
 {
     private readonly FullMultiPayloadMachineFluent _machine;
 
-    public FullMultiPayloadMachineFluentWrapper(string? initialStateName, ILogger? logger = null, IStateMachineExtension[]? extensions = null)
+    public FullMultiPayloadMachineFluentWrapper(string? initialStateName, ILogger? logger = null, IStateMachineExtension<OrderStatePayload, OrderTriggerPayload>[]? extensions = null)
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<OrderStatePayload>("FullMultiPayloadMachine", initialStateName);
         var state = (OrderStatePayload)Enum.Parse(typeof(OrderStatePayload), resolvedName);
@@ -154,7 +154,7 @@ public class FullMultiPayloadMachineLegacyWrapper : IStateMachineTestWrapper
 {
     private readonly FullMultiPayloadMachine _machine;
 
-    public FullMultiPayloadMachineLegacyWrapper(string? initialStateName, ILogger? logger = null, IStateMachineExtension[]? extensions = null)
+    public FullMultiPayloadMachineLegacyWrapper(string? initialStateName, ILogger? logger = null, IStateMachineExtension<OrderStatePayload, OrderTriggerPayload>[]? extensions = null)
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<OrderStatePayload>("FullMultiPayloadMachine", initialStateName);
         var state = (OrderStatePayload)Enum.Parse(typeof(OrderStatePayload), resolvedName);
@@ -395,11 +395,11 @@ public class ExtensibleMachineFluentWrapper : IStateMachineTestWrapper
 {
     private readonly ExtensibleMachineFluent _machine;
 
-    public ExtensibleMachineFluentWrapper(string? initialStateName, ILogger? logger = null, IStateMachineExtension[]? extensions = null)
+    public ExtensibleMachineFluentWrapper(string? initialStateName, ILogger? logger = null, IStateMachineExtension<WorkflowState, WorkflowTrigger>[]? extensions = null)
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<WorkflowState>("ExtensibleMachine", initialStateName);
         var state = (WorkflowState)Enum.Parse(typeof(WorkflowState), resolvedName);
-        _machine = new ExtensibleMachineFluent(state, extensions ?? Array.Empty<IStateMachineExtension>(), LoggerAdapter.For<ExtensibleMachineFluent>(logger));
+        _machine = new ExtensibleMachineFluent(state, extensions ?? Array.Empty<IStateMachineExtension<WorkflowState, WorkflowTrigger>>(), LoggerAdapter.For<ExtensibleMachineFluent>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -434,11 +434,11 @@ public class ExtensibleMachineLegacyWrapper : IStateMachineTestWrapper
 {
     private readonly ExtensibleMachine _machine;
 
-    public ExtensibleMachineLegacyWrapper(string? initialStateName, ILogger? logger = null, IStateMachineExtension[]? extensions = null)
+    public ExtensibleMachineLegacyWrapper(string? initialStateName, ILogger? logger = null, IStateMachineExtension<WorkflowState, WorkflowTrigger>[]? extensions = null)
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<WorkflowState>("ExtensibleMachine", initialStateName);
         var state = (WorkflowState)Enum.Parse(typeof(WorkflowState), resolvedName);
-        _machine = new ExtensibleMachine(state, extensions ?? Array.Empty<IStateMachineExtension>(), LoggerAdapter.For<ExtensibleMachine>(logger));
+        _machine = new ExtensibleMachine(state, extensions ?? Array.Empty<IStateMachineExtension<WorkflowState, WorkflowTrigger>>(), LoggerAdapter.For<ExtensibleMachine>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;

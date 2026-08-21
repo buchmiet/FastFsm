@@ -160,7 +160,7 @@ namespace Tests.Logging
         private void Configure() { }
     }
 
-    public class LoggingExtension : IStateMachineExtension
+    public class LoggingExtension : IStateMachineExtension<WorkflowState, WorkflowTrigger>
     {
         private readonly ITestOutputHelper _output;
 
@@ -169,39 +169,42 @@ namespace Tests.Logging
             _output = output;
         }
 
-        public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
+        public ExtensionHooks Hooks => ExtensionHooks.Transitions | ExtensionHooks.Guards;
+
+        public void OnAttemptStarting(in TransitionAttemptContext<WorkflowState, WorkflowTrigger> attempt)
         {
-            _output.WriteLine($"Extension: Before transition at {context.Timestamp}");
+            _output.WriteLine($"Extension: Attempt {attempt.AttemptId} started at {attempt.StartTimestamp}");
         }
 
-        public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext
+        public void OnTransitionMatched(
+            in TransitionAttemptContext<WorkflowState, WorkflowTrigger> attempt,
+            in TransitionInfo<WorkflowState> matched)
         {
-            _output.WriteLine($"Extension: After transition, success={success}");
+            _output.WriteLine($"Extension: Matched {matched.Kind} transition");
         }
 
-        public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext
+        public void OnAttemptCompleted(
+            in TransitionAttemptContext<WorkflowState, WorkflowTrigger> attempt,
+            in TransitionResult<WorkflowState> result)
+        {
+            _output.WriteLine($"Extension: Attempt completed with outcome={result.Outcome}");
+        }
+
+        public void OnGuardEvaluating(
+            in TransitionAttemptContext<WorkflowState, WorkflowTrigger> attempt,
+            in TransitionInfo<WorkflowState> candidate,
+            string guardName)
         {
             _output.WriteLine($"Extension: Evaluating guard '{guardName}'");
         }
 
-        public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext
+        public void OnGuardEvaluated(
+            in TransitionAttemptContext<WorkflowState, WorkflowTrigger> attempt,
+            in TransitionInfo<WorkflowState> candidate,
+            string guardName,
+            bool result)
         {
             _output.WriteLine($"Extension: Guard '{guardName}' returned {result}");
-        }
-
-        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
-        {
-            _output.WriteLine("Extension: Unhandled trigger");
-        }
-
-        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
-        {
-            _output.WriteLine("Extension: Internal transition");
-        }
-
-        public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext
-        {
-            _output.WriteLine("Extension: Transitioned");
         }
     }
 }

@@ -89,12 +89,12 @@ namespace Sample {{
         if (expectedExtensible)
         {
             Assert.Contains("IExtensibleStateMachineSync<", generated);
-            Assert.Contains("IEnumerable<IStateMachineExtension>? extensions = null", generated);
+            Assert.Contains("IEnumerable<IStateMachineExtension<State, Trigger>>? extensions = null", generated);
         }
         else
         {
             Assert.DoesNotContain("IExtensibleStateMachineSync<", generated);
-            Assert.DoesNotContain("IEnumerable<IStateMachineExtension>? extensions = null", generated);
+            Assert.DoesNotContain("IEnumerable<IStateMachineExtension<State, Trigger>>? extensions = null", generated);
         }
     }
 }

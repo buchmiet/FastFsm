@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Shouldly;
 using Xunit;
-using FastFsm.Runtime;
+using FastFsm.Contracts;
 using FastFsm.Runtime.Extensions;
 
 namespace Tests.Logging
@@ -15,10 +15,10 @@ namespace Tests.Logging
     public class ExtensionLoggingTests : LoggingTestBase
     {
         [Fact]
-        public void Extension_ThrowsInOnBeforeTransition_LogsError()
+        public void Extension_ThrowsInOnAttemptStarting_LogsError()
         {
             // Arrange
-            var extension = new TestExtension { ThrowOnBeforeTransition = true };
+            var extension = new TestExtension { ThrowOnAttemptStarting = true };
             var machine = new ExtensionsStateMachine(
                 TestState.Initial,
                 [extension],
@@ -33,17 +33,16 @@ namespace Tests.Logging
             // Find the extension error log
             var errorLog = LoggedMessages.FirstOrDefault(l => l.Level == LogLevel.Error);
             errorLog.ShouldNotBe(default);
-            errorLog.EventId.Name.ShouldBe("ExtensionError");
+            errorLog.EventId.ShouldBe(default);
             errorLog.Message.ShouldContain("TestExtension");
-            errorLog.Message.ShouldContain("OnBeforeTransition");
-            errorLog.Message.ShouldContain("Test exception in OnBeforeTransition");
+            errorLog.Message.ShouldContain("OnAttemptStarting");
         }
 
         [Fact]
-        public void Extension_ThrowsInOnAfterTransition_LogsError()
+        public void Extension_ThrowsInOnAttemptCompleted_LogsError()
         {
             // Arrange
-            var extension = new TestExtension { ThrowOnAfterTransition = true };
+            var extension = new TestExtension { ThrowOnAttemptCompleted = true };
             var machine = new ExtensionsStateMachine(
                 TestState.Initial,
                 [extension],
@@ -57,17 +56,16 @@ namespace Tests.Logging
 
             var errorLog = LoggedMessages.FirstOrDefault(l => l.Level == LogLevel.Error);
             errorLog.ShouldNotBe(default);
-            errorLog.EventId.Name.ShouldBe("ExtensionError");
+            errorLog.EventId.ShouldBe(default);
             errorLog.Message.ShouldContain("TestExtension");
-            errorLog.Message.ShouldContain("OnAfterTransition");
-            errorLog.Message.ShouldContain("Test exception in OnAfterTransition");
+            errorLog.Message.ShouldContain("OnAttemptCompleted");
         }
 
         [Fact]
-        public void Extension_ThrowsInOnGuardEvaluation_LogsError()
+        public void Extension_ThrowsInOnGuardEvaluating_LogsError()
         {
             // Arrange
-            var extension = new TestExtension { ThrowOnGuardEvaluation = true };
+            var extension = new TestExtension { ThrowOnGuardEvaluating = true };
             var machine = new ExtensionsStateMachine(
                 TestState.Initial,
                 [extension],
@@ -81,9 +79,9 @@ namespace Tests.Logging
 
             var errorLog = LoggedMessages.FirstOrDefault(l => l.Level == LogLevel.Error);
             errorLog.ShouldNotBe(default);
-            errorLog.EventId.Name.ShouldBe("ExtensionError");
+            errorLog.EventId.ShouldBe(default);
             errorLog.Message.ShouldContain("TestExtension");
-            errorLog.Message.ShouldContain("OnGuardEvaluation");
+            errorLog.Message.ShouldContain("OnGuardEvaluating");
         }
 
         [Fact]
@@ -105,7 +103,7 @@ namespace Tests.Logging
 
             var errorLog = LoggedMessages.FirstOrDefault(l => l.Level == LogLevel.Error);
             errorLog.ShouldNotBe(default);
-            errorLog.EventId.Name.ShouldBe("ExtensionError");
+            errorLog.EventId.ShouldBe(default);
             errorLog.Message.ShouldContain("TestExtension");
             errorLog.Message.ShouldContain("OnGuardEvaluated");
         }
@@ -115,11 +113,11 @@ namespace Tests.Logging
         {
             // Arrange
             var extensionCallCount = 0;
-            var throwingExtension = new TestExtension { ThrowOnBeforeTransition = true };
+            var throwingExtension = new TestExtension { ThrowOnAttemptStarting = true };
             var workingExtension = new TestExtension
             {
-                BeforeTransitionCallback = _ => extensionCallCount++,
-                AfterTransitionCallback = (_, __) => extensionCallCount++
+                AttemptStartingCallback = _ => extensionCallCount++,
+                AttemptCompletedCallback = (_, __) => extensionCallCount++
             };
 
             var machine = new ExtensionsStateMachine(
@@ -144,7 +142,7 @@ namespace Tests.Logging
         public void FullVariant_ExtensionThrowsWithPayload_LogsErrorWithContext()
         {
             // Arrange
-            var extension = new TestExtension { ThrowOnBeforeTransition = true };
+            var extension = new TestExtension { ThrowOnAttemptStarting = true };
             var machine = new FullStateMachine(
                 TestState.Initial,
                 [extension],
@@ -160,20 +158,20 @@ namespace Tests.Logging
 
             var errorLog = LoggedMessages.FirstOrDefault(l => l.Level == LogLevel.Error);
             errorLog.ShouldNotBe(default);
-            errorLog.EventId.Name.ShouldBe("ExtensionError");
-            errorLog.Message.ShouldContain("FromState=Initial");
+            errorLog.EventId.ShouldBe(default);
+            errorLog.Message.ShouldContain("SourceState=Initial");
             errorLog.Message.ShouldContain("Trigger=Start");
-            errorLog.Message.ShouldContain("ToState=Processing");
+            errorLog.Message.ShouldContain("FinalState=Initial");
         }
 
         [Fact]
-        public void Extension_FailedTransition_AfterTransitionReceivesFalse()
+        public void Extension_FailedTransition_AttemptCompletedReceivesGuardRejected()
         {
             // Arrange
-            bool? afterTransitionSuccess = null;
+            TransitionOutcome? outcome = null;
             var extension = new TestExtension
             {
-                AfterTransitionCallback = (_, success) => afterTransitionSuccess = success
+                AttemptCompletedCallback = (_, result) => outcome = result.Outcome
             };
 
             var machine = new ExtensionsStateMachine(
@@ -187,8 +185,7 @@ namespace Tests.Logging
 
             // Assert
             result.ShouldBeFalse();
-            afterTransitionSuccess.ShouldNotBeNull();
-            afterTransitionSuccess.ShouldBe(false);
+            outcome.ShouldBe(TransitionOutcome.GuardRejected);
 
             // TEMP diagnostic: dump all logged messages for inspection
             foreach (var log in LoggedMessages)
@@ -209,23 +206,29 @@ namespace Tests.Logging
         {
             // Arrange - Create ExtensionRunner directly with logger
             var extensionRunner = new ExtensionRunner(LoggerMock.Object);
-            var extension = new TestExtension { ThrowOnBeforeTransition = true };
-            var extensions = new[] { extension };
+            var extension = new TestExtension { ThrowOnAttemptStarting = true };
+            var extensions = ExtensionSet<TestState, TestTrigger>.Create([extension]);
 
-            var context = new StateMachineContext<TestState, TestTrigger>(
-                Guid.NewGuid().ToString(),
+            var attempt = new TransitionAttemptContext<TestState, TestTrigger>(
+                Guid.NewGuid(),
+                1,
                 TestState.Initial,
                 TestTrigger.Start,
-                TestState.Processing,
-                null);
+                null,
+                0);
 
             // Act
-            extensionRunner.RunBeforeTransition(extensions, context);
+            extensionRunner.RunAttemptStarting(extensions, in attempt);
 
             // Assert
             VerifyLogCount(1);
-            VerifyLogMessage(LogLevel.Error, "ExtensionError",
-                "TestExtension", "OnBeforeTransition", "Initial", "Start", "Processing");
+            var errorLog = LoggedMessages.Single();
+            errorLog.Level.ShouldBe(LogLevel.Error);
+            errorLog.EventId.ShouldBe(default);
+            errorLog.Message.ShouldContain("TestExtension");
+            errorLog.Message.ShouldContain("OnAttemptStarting");
+            errorLog.Message.ShouldContain("Initial");
+            errorLog.Message.ShouldContain("Start");
         }
 
         [Fact]
@@ -235,21 +238,72 @@ namespace Tests.Logging
             LoggerMock.Setup(x => x.IsEnabled(LogLevel.Error)).Returns(false);
 
             var extensionRunner = new ExtensionRunner(LoggerMock.Object);
-            var extension = new TestExtension { ThrowOnBeforeTransition = true };
-            var extensions = new[] { extension };
+            var extension = new TestExtension { ThrowOnAttemptStarting = true };
+            var extensions = ExtensionSet<TestState, TestTrigger>.Create([extension]);
 
-            var context = new StateMachineContext<TestState, TestTrigger>(
-                Guid.NewGuid().ToString(),
+            var attempt = new TransitionAttemptContext<TestState, TestTrigger>(
+                Guid.NewGuid(),
+                1,
                 TestState.Initial,
                 TestTrigger.Start,
-                TestState.Processing,
-                null);
+                null,
+                0);
 
             // Act
-            extensionRunner.RunBeforeTransition(extensions, context);
+            extensionRunner.RunAttemptStarting(extensions, in attempt);
 
             // Assert
             VerifyNoLogs(); // No logs should be recorded when log level is disabled
+        }
+    }
+
+    public sealed class TestExtension : IStateMachineExtension<TestState, TestTrigger>
+    {
+        public bool ThrowOnAttemptStarting { get; set; }
+        public bool ThrowOnAttemptCompleted { get; set; }
+        public bool ThrowOnGuardEvaluating { get; set; }
+        public bool ThrowOnGuardEvaluated { get; set; }
+
+        public Action<TransitionAttemptContext<TestState, TestTrigger>>? AttemptStartingCallback { get; set; }
+        public Action<TransitionAttemptContext<TestState, TestTrigger>, TransitionResult<TestState>>? AttemptCompletedCallback { get; set; }
+
+        public ExtensionHooks Hooks => ExtensionHooks.Transitions | ExtensionHooks.Guards;
+
+        public void OnAttemptStarting(in TransitionAttemptContext<TestState, TestTrigger> attempt)
+        {
+            if (ThrowOnAttemptStarting)
+                throw new InvalidOperationException("Test exception in OnAttemptStarting");
+
+            AttemptStartingCallback?.Invoke(attempt);
+        }
+
+        public void OnAttemptCompleted(
+            in TransitionAttemptContext<TestState, TestTrigger> attempt,
+            in TransitionResult<TestState> result)
+        {
+            if (ThrowOnAttemptCompleted)
+                throw new InvalidOperationException("Test exception in OnAttemptCompleted");
+
+            AttemptCompletedCallback?.Invoke(attempt, result);
+        }
+
+        public void OnGuardEvaluating(
+            in TransitionAttemptContext<TestState, TestTrigger> attempt,
+            in TransitionInfo<TestState> candidate,
+            string guardName)
+        {
+            if (ThrowOnGuardEvaluating)
+                throw new InvalidOperationException("Test exception in OnGuardEvaluating");
+        }
+
+        public void OnGuardEvaluated(
+            in TransitionAttemptContext<TestState, TestTrigger> attempt,
+            in TransitionInfo<TestState> candidate,
+            string guardName,
+            bool result)
+        {
+            if (ThrowOnGuardEvaluated)
+                throw new InvalidOperationException("Test exception in OnGuardEvaluated");
         }
     }
 }

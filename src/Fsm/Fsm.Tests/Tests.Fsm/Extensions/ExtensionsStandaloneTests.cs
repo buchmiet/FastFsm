@@ -11,34 +11,31 @@ namespace Tests.Fsm.Extensions
 {
     public partial class ExtensionsStandaloneTests(ITestOutputHelper output)
     {
-
-        private class TestExtension : IStateMachineExtension
+        private class TestExtension : IStateMachineExtension<ExtState, ExtTrigger>
         {
+            public ExtensionHooks Hooks => ExtensionHooks.Transitions | ExtensionHooks.Guards;
             public List<string> Log { get; } = new();
 
-            public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
-            {
-                Log.Add($"Before: {context.GetType().Name}");
-            }
+            public void OnAttemptStarting(in TransitionAttemptContext<ExtState, ExtTrigger> attempt)
+                => Log.Add($"Before: {attempt.SourceState}");
 
-            public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext
-            {
-                Log.Add($"After: {context.GetType().Name} - Success: {success}");
-            }
+            public void OnAttemptCompleted(
+                in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
+                in TransitionResult<ExtState> result)
+                => Log.Add($"After: {result.FinalState} - Success: {result.Outcome == TransitionOutcome.Succeeded}");
 
-            public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext
-            {
-                Log.Add($"GuardEval: {guardName}");
-            }
+            public void OnGuardEvaluating(
+                in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
+                in TransitionInfo<ExtState> candidate,
+                string guardName)
+                => Log.Add($"GuardEval: {guardName}");
 
-            public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext
-            {
-                Log.Add($"GuardResult: {guardName} = {result}");
-            }
-
-            public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
-            public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext { }
-            public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext { }
+            public void OnGuardEvaluated(
+                in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
+                in TransitionInfo<ExtState> candidate,
+                string guardName,
+                bool result)
+                => Log.Add($"GuardResult: {guardName} = {result}");
         }
 
         [Fact]
@@ -124,7 +121,7 @@ namespace Tests.Fsm.Extensions
             // Arrange
             var faultyExtension = new FaultyExtension();
             var goodExtension = new TestExtension();
-            var machine = new ExtensionsMachine(ExtState.Idle, new IStateMachineExtension[] { faultyExtension, goodExtension });
+            var machine = new ExtensionsMachine(ExtState.Idle, new IStateMachineExtension<ExtState, ExtTrigger>[] { faultyExtension, goodExtension });
             machine.Start();
 
             // Act

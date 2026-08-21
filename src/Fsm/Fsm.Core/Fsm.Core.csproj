@@ -37,7 +37,8 @@
 
   <ItemGroup>
     <Compile Remove="Runtime\Extensions\ExtensionRunner.cs" />
-    <None Include="Runtime\Extensions\ExtensionRunner.cs" Pack="true" PackagePath="contentFiles/cs/any" BuildAction="Compile" Visible="false" />
+    <Compile Remove="Runtime\Extensions\ExtensionRunnerV2.cs" />
+    <None Include="Runtime\Extensions\ExtensionRunnerV2.cs" Pack="true" PackagePath="contentFiles/cs/any/ExtensionRunner.cs" BuildAction="Compile" Visible="false" />
 
     <Compile Remove="DependencyInjection\FsmServiceCollectionExtensions.cs" />
     <None Include="DependencyInjection\FsmServiceCollectionExtensions.cs" Pack="false" />

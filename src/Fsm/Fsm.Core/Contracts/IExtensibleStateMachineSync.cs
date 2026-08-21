@@ -7,7 +7,7 @@ namespace FastFsm.Contracts;
 /// </summary>
 public interface IExtensibleStateMachineSync<TState, TTrigger> :
     IStateMachineSync<TState, TTrigger>,
-    IExtensibleStateMachine
+    IExtensibleStateMachine<TState, TTrigger>
     where TState : unmanaged, Enum
     where TTrigger : unmanaged, Enum
 {

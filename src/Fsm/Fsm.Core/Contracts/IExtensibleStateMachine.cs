@@ -1,9 +1,23 @@
+using System;
+using System.Collections.Generic;
+
 namespace FastFsm.Contracts;
 
-/// <summary>
-/// Marker interface for state machines that support extensions
-/// </summary>
-public interface IExtensibleStateMachine
+public interface IStateMachineIdentity
 {
-    // Marker interface, actual extension methods are in the implementation
+    Guid InstanceId { get; }
+}
+
+/// <summary>
+/// Exposes the extension set of a state machine.
+/// </summary>
+public interface IExtensibleStateMachine<TState, TTrigger> : IStateMachineIdentity
+    where TState : unmanaged, Enum
+    where TTrigger : unmanaged, Enum
+{
+    IReadOnlyList<IStateMachineExtension<TState, TTrigger>> Extensions { get; }
+
+    void AddExtension(IStateMachineExtension<TState, TTrigger> extension);
+
+    bool RemoveExtension(IStateMachineExtension<TState, TTrigger> extension);
 }

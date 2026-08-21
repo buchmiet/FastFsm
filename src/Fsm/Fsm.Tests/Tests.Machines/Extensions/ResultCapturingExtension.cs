@@ -1,21 +1,15 @@
 using FastFsm.Contracts;
+using Tests.Machines.Machines;
 
 namespace Tests.Machines.Extensions
 {
-    public class ResultCapturingExtension : IStateMachineExtension
+    public class ResultCapturingExtension : IStateMachineExtension<ThrowingActionMachine_TestState, TestTrigger>
     {
         public List<bool> Results { get; } = [];
 
-        public void OnAfterTransition<T>(T ctx, bool success) where T : IStateMachineContext
-            => Results.Add(success);
-
-        public void OnBeforeTransition<T>(T ctx) where T : IStateMachineContext { }
-        public void OnGuardEvaluation<T>(T ctx, string g) where T : IStateMachineContext { }
-        public void OnGuardEvaluated<T>(T ctx, string g, bool r) where T : IStateMachineContext { }
-
-        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext { }
-
-        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext { }
-        public void OnTransitioned<T>(T ctx) where T : IStateMachineContext { }
+        public void OnAttemptCompleted(
+            in TransitionAttemptContext<ThrowingActionMachine_TestState, TestTrigger> attempt,
+            in TransitionResult<ThrowingActionMachine_TestState> result)
+            => Results.Add(result.Outcome == TransitionOutcome.Succeeded);
     }
 }

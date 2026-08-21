@@ -1,50 +1,55 @@
+using System;
+using FastFsm.Exceptions;
+
 namespace FastFsm.Contracts;
 
 /// <summary>
-/// Extension interface for adding cross-cutting concerns to state machines
+/// Receives typed, synchronous notifications from a state machine.
 /// </summary>
-public interface IStateMachineExtension
+public interface IStateMachineExtension<TState, TTrigger>
+    where TState : unmanaged, Enum
+    where TTrigger : unmanaged, Enum
 {
     /// <summary>
-    /// Called before a transition is attempted
+    /// Declares the notifications consumed by this extension.
     /// </summary>
-    void OnBeforeTransition<TContext>(TContext context) 
-        where TContext : IStateMachineContext;
-    
-    /// <summary>
-    /// Called after a transition completes
-    /// </summary>
-    void OnAfterTransition<TContext>(TContext context, bool success) 
-        where TContext : IStateMachineContext;
-    
-    /// <summary>
-    /// Called when guard evaluation starts
-    /// </summary>
-    void OnGuardEvaluation<TContext>(TContext context, string guardName) 
-        where TContext : IStateMachineContext;
-    
-    /// <summary>
-    /// Called when guard evaluation completes
-    /// </summary>
-    void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) 
-        where TContext : IStateMachineContext;
+    ExtensionHooks Hooks => ExtensionHooks.Transitions;
 
-    /// <summary>
-    /// Called when an internal transition (no state change) is executed.
-    /// </summary>
-    void OnInternalTransition<TContext>(TContext context)
-        where TContext : IStateMachineContext;
+    void OnAttemptStarting(in TransitionAttemptContext<TState, TTrigger> attempt) { }
 
-    /// <summary>
-    /// Called when a trigger was not handled by any state (after bubbling in HSM).
-    /// </summary>
-    void OnUnhandledTrigger<TContext>(TContext context)
-        where TContext : IStateMachineContext;
+    void OnTransitionMatched(
+        in TransitionAttemptContext<TState, TTrigger> attempt,
+        in TransitionInfo<TState> matched) { }
 
-    /// <summary>
-    /// Called after a successful transition has completed all effects (exit/action/entry),
-    /// before the final AfterTransition(true) notification.
-    /// </summary>
-    void OnTransitioned<TContext>(TContext context)
-        where TContext : IStateMachineContext;
+    void OnAttemptCompleted(
+        in TransitionAttemptContext<TState, TTrigger> attempt,
+        in TransitionResult<TState> result) { }
+
+    void OnGuardEvaluating(
+        in TransitionAttemptContext<TState, TTrigger> attempt,
+        in TransitionInfo<TState> candidate,
+        string guardName) { }
+
+    void OnGuardEvaluated(
+        in TransitionAttemptContext<TState, TTrigger> attempt,
+        in TransitionInfo<TState> candidate,
+        string guardName,
+        bool result) { }
+
+    void OnStateExiting(in TransitionAttemptContext<TState, TTrigger> attempt, TState state) { }
+
+    void OnStateEntered(in TransitionAttemptContext<TState, TTrigger> attempt, TState state) { }
+
+    void OnCallbackExecuting(
+        in TransitionAttemptContext<TState, TTrigger> attempt,
+        TransitionStage stage,
+        string callbackName) { }
+
+    void OnCallbackFaulted(
+        in TransitionAttemptContext<TState, TTrigger> attempt,
+        TransitionStage stage,
+        string callbackName,
+        Exception exception) { }
+
+    void OnMachineStarted(Guid instanceId, TState initialState) { }
 }

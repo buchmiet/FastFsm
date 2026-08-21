@@ -14,11 +14,11 @@ public class ExtensionsStateMachineFluentWrapper : IStateMachineTestWrapper
 {
     private readonly ExtensionsStateMachineFluent _machine;
 
-    public ExtensionsStateMachineFluentWrapper(string? initialStateName, ILogger? logger = null, IStateMachineExtension[]? extensions = null)
+    public ExtensionsStateMachineFluentWrapper(string? initialStateName, ILogger? logger = null, IStateMachineExtension<TestState, TestTrigger>[]? extensions = null)
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<TestState>("ExtensionsStateMachine", initialStateName);
         var state = (TestState)Enum.Parse(typeof(TestState), resolvedName);
-        _machine = new ExtensionsStateMachineFluent(state, extensions ?? Array.Empty<IStateMachineExtension>(), LoggerAdapter.For<ExtensionsStateMachineFluent>(logger));
+        _machine = new ExtensionsStateMachineFluent(state, extensions ?? Array.Empty<IStateMachineExtension<TestState, TestTrigger>>(), LoggerAdapter.For<ExtensionsStateMachineFluent>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -53,11 +53,11 @@ public class ExtensionsStateMachineLegacyWrapper : IStateMachineTestWrapper
 {
     private readonly ExtensionsStateMachine _machine;
 
-    public ExtensionsStateMachineLegacyWrapper(string? initialStateName, ILogger? logger = null, IStateMachineExtension[]? extensions = null)
+    public ExtensionsStateMachineLegacyWrapper(string? initialStateName, ILogger? logger = null, IStateMachineExtension<TestState, TestTrigger>[]? extensions = null)
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<TestState>("ExtensionsStateMachine", initialStateName);
         var state = (TestState)Enum.Parse(typeof(TestState), resolvedName);
-        _machine = new ExtensionsStateMachine(state, extensions ?? Array.Empty<IStateMachineExtension>(), LoggerAdapter.For<ExtensionsStateMachine>(logger));
+        _machine = new ExtensionsStateMachine(state, extensions ?? Array.Empty<IStateMachineExtension<TestState, TestTrigger>>(), LoggerAdapter.For<ExtensionsStateMachine>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -94,11 +94,11 @@ public class FullStateMachineFluentWrapper : IStateMachineTestWrapper
 {
     private readonly FullStateMachineFluent _machine;
 
-    public FullStateMachineFluentWrapper(string? initialStateName, ILogger? logger = null, IStateMachineExtension[]? extensions = null)
+    public FullStateMachineFluentWrapper(string? initialStateName, ILogger? logger = null, IStateMachineExtension<TestState, TestTrigger>[]? extensions = null)
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<TestState>("FullStateMachine", initialStateName);
         var state = (TestState)Enum.Parse(typeof(TestState), resolvedName);
-        _machine = new FullStateMachineFluent(state, extensions ?? Array.Empty<IStateMachineExtension>(), LoggerAdapter.For<FullStateMachineFluent>(logger));
+        _machine = new FullStateMachineFluent(state, extensions ?? Array.Empty<IStateMachineExtension<TestState, TestTrigger>>(), LoggerAdapter.For<FullStateMachineFluent>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;
@@ -147,11 +147,11 @@ public class FullStateMachineLegacyWrapper : IStateMachineTestWrapper
 {
     private readonly FullStateMachine _machine;
 
-    public FullStateMachineLegacyWrapper(string? initialStateName, ILogger? logger = null, IStateMachineExtension[]? extensions = null)
+    public FullStateMachineLegacyWrapper(string? initialStateName, ILogger? logger = null, IStateMachineExtension<TestState, TestTrigger>[]? extensions = null)
     {
         var resolvedName = InitialStateResolver.ResolveOrDefault<TestState>("FullStateMachine", initialStateName);
         var state = (TestState)Enum.Parse(typeof(TestState), resolvedName);
-        _machine = new FullStateMachine(state, extensions ?? Array.Empty<IStateMachineExtension>(), LoggerAdapter.For<FullStateMachine>(logger));
+        _machine = new FullStateMachine(state, extensions ?? Array.Empty<IStateMachineExtension<TestState, TestTrigger>>(), LoggerAdapter.For<FullStateMachine>(logger));
     }
 
     public object CurrentState => _machine.CurrentState;

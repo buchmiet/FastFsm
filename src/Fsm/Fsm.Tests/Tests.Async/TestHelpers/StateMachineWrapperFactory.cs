@@ -1486,8 +1486,8 @@ namespace Tests.Async.TestHelpers
             var s = (Tests.Async.Features.Extensions.AState)Enum.Parse(typeof(Tests.Async.Features.Extensions.AState), sName);
             return api switch
             {
-                ApiType.Legacy => new ExtensionWrappers.SuccessLegacy(new Tests.Async.Features.Extensions.AsyncHookOrderMachineSuccess(s, new FastFsm.Contracts.IStateMachineExtension[] { })),
-                ApiType.Fluent => new ExtensionWrappers.SuccessFluent(new Tests.Async.Features.Extensions.AsyncHookOrderMachineSuccessFluentFsm(s, new FastFsm.Contracts.IStateMachineExtension[] { })),
+                ApiType.Legacy => new ExtensionWrappers.SuccessLegacy(new Tests.Async.Features.Extensions.AsyncHookOrderMachineSuccess(s, Array.Empty<FastFsm.Contracts.IStateMachineExtension<Tests.Async.Features.Extensions.AState, Tests.Async.Features.Extensions.ATrigger>>())),
+                ApiType.Fluent => new ExtensionWrappers.SuccessFluent(new Tests.Async.Features.Extensions.AsyncHookOrderMachineSuccessFluentFsm(s, Array.Empty<FastFsm.Contracts.IStateMachineExtension<Tests.Async.Features.Extensions.AState, Tests.Async.Features.Extensions.ATrigger>>())),
                 _ => throw new ArgumentOutOfRangeException()
             };
         }
@@ -1497,8 +1497,8 @@ namespace Tests.Async.TestHelpers
             var s = (Tests.Async.Features.Extensions.AState)Enum.Parse(typeof(Tests.Async.Features.Extensions.AState), sName);
             return api switch
             {
-                ApiType.Legacy => new ExtensionWrappers.FailLegacy(new Tests.Async.Features.Extensions.AsyncHookOrderMachineFail(s, new FastFsm.Contracts.IStateMachineExtension[] { })),
-                ApiType.Fluent => new ExtensionWrappers.FailFluent(new Tests.Async.Features.Extensions.AsyncHookOrderMachineFailFluentFsm(s, new FastFsm.Contracts.IStateMachineExtension[] { })),
+                ApiType.Legacy => new ExtensionWrappers.FailLegacy(new Tests.Async.Features.Extensions.AsyncHookOrderMachineFail(s, Array.Empty<FastFsm.Contracts.IStateMachineExtension<Tests.Async.Features.Extensions.AState, Tests.Async.Features.Extensions.ATrigger>>())),
+                ApiType.Fluent => new ExtensionWrappers.FailFluent(new Tests.Async.Features.Extensions.AsyncHookOrderMachineFailFluentFsm(s, Array.Empty<FastFsm.Contracts.IStateMachineExtension<Tests.Async.Features.Extensions.AState, Tests.Async.Features.Extensions.ATrigger>>())),
                 _ => throw new ArgumentOutOfRangeException()
             };
         }
@@ -1593,8 +1593,8 @@ namespace Tests.Async.TestHelpers
             var s = (Tests.Async.Features.Extensions.ExtState)Enum.Parse(typeof(Tests.Async.Features.Extensions.ExtState), sName);
             return api switch
             {
-                ApiType.Legacy => new ExtensionWrappers.ExtLegacy(new Tests.Async.Features.Extensions.AsyncExtensionsMachine(s, new FastFsm.Contracts.IStateMachineExtension[]{})),
-                ApiType.Fluent => new ExtensionWrappers.ExtFluent(new Tests.Async.Features.Extensions.AsyncExtensionsMachineFluentFsm(s, new FastFsm.Contracts.IStateMachineExtension[]{})),
+                ApiType.Legacy => new ExtensionWrappers.ExtLegacy(new Tests.Async.Features.Extensions.AsyncExtensionsMachine(s, Array.Empty<FastFsm.Contracts.IStateMachineExtension<Tests.Async.Features.Extensions.ExtState, Tests.Async.Features.Extensions.ExtTrigger>>())),
+                ApiType.Fluent => new ExtensionWrappers.ExtFluent(new Tests.Async.Features.Extensions.AsyncExtensionsMachineFluentFsm(s, Array.Empty<FastFsm.Contracts.IStateMachineExtension<Tests.Async.Features.Extensions.ExtState, Tests.Async.Features.Extensions.ExtTrigger>>())),
                 _ => throw new ArgumentOutOfRangeException()
             };
         }

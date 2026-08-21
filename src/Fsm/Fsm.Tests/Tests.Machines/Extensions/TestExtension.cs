@@ -1,61 +1,59 @@
 using FastFsm.Contracts;
+using Tests.Machines.Machines;
 
 namespace Tests.Machines.Extensions
 {
     /// <summary>
     /// Test extension that can throw exceptions
     /// </summary>
-    public class TestExtension : IStateMachineExtension
+    public class TestExtension : IStateMachineExtension<ExtState, ExtTrigger>
     {
         public bool ThrowOnBeforeTransition { get; set; }
         public bool ThrowOnAfterTransition { get; set; }
         public bool ThrowOnGuardEvaluation { get; set; }
         public bool ThrowOnGuardEvaluated { get; set; }
 
-        public Action<IStateMachineContext>? BeforeTransitionCallback { get; set; }
-        public Action<IStateMachineContext, bool>? AfterTransitionCallback { get; set; }
+        public Action<TransitionAttemptContext<ExtState, ExtTrigger>>? BeforeTransitionCallback { get; set; }
+        public Action<TransitionAttemptContext<ExtState, ExtTrigger>, bool>? AfterTransitionCallback { get; set; }
 
-        public void OnBeforeTransition<TContext>(TContext context) where TContext : IStateMachineContext
+        public ExtensionHooks Hooks => ExtensionHooks.Transitions | ExtensionHooks.Guards;
+
+        public void OnAttemptStarting(in TransitionAttemptContext<ExtState, ExtTrigger> attempt)
         {
             if (ThrowOnBeforeTransition)
                 throw new InvalidOperationException("Test exception in OnBeforeTransition");
 
-            BeforeTransitionCallback?.Invoke(context);
+            BeforeTransitionCallback?.Invoke(attempt);
         }
 
-        public void OnAfterTransition<TContext>(TContext context, bool success) where TContext : IStateMachineContext
+        public void OnAttemptCompleted(
+            in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
+            in TransitionResult<ExtState> result)
         {
             if (ThrowOnAfterTransition)
                 throw new InvalidOperationException("Test exception in OnAfterTransition");
 
-            AfterTransitionCallback?.Invoke(context, success);
+            AfterTransitionCallback?.Invoke(attempt, result.Outcome == TransitionOutcome.Succeeded);
         }
 
-        public void OnGuardEvaluation<TContext>(TContext context, string guardName) where TContext : IStateMachineContext
+        public void OnGuardEvaluating(
+            in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
+            in TransitionInfo<ExtState> candidate,
+            string guardName)
         {
             if (ThrowOnGuardEvaluation)
                 throw new InvalidOperationException("Test exception in OnGuardEvaluation");
         }
 
-        public void OnGuardEvaluated<TContext>(TContext context, string guardName, bool result) where TContext : IStateMachineContext
+        public void OnGuardEvaluated(
+            in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
+            in TransitionInfo<ExtState> candidate,
+            string guardName,
+            bool result)
         {
             if (ThrowOnGuardEvaluated)
                 throw new InvalidOperationException("Test exception in OnGuardEvaluated");
         }
 
-        public void OnUnhandledTrigger<TContext>(TContext context) where TContext : IStateMachineContext
-        {
-            // no-op by default
-        }
-
-        public void OnInternalTransition<TContext>(TContext context) where TContext : IStateMachineContext
-        {
-            // no-op by default
-        }
-
-        public void OnTransitioned<TContext>(TContext context) where TContext : IStateMachineContext
-        {
-            // no-op by default
-        }
     }
 }
