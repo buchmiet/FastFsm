@@ -1,26 +1,28 @@
 # Benchmarks
 
-FastFsm includes a BenchmarkDotNet project at `src/Benchmark/`. Verified results for the **0.9 / .NET 10** line are recorded below.
+FastFsm includes a BenchmarkDotNet project at `src/Benchmark/`. Verified results for the **0.9.2 / .NET 10** line are recorded below.
 
 ## Running benchmarks locally
 
 Prerequisites:
 
-1. .NET 10 SDK (`global.json` pins 10.0.400).
+1. .NET 10 SDK (`global.json` pins `10.0.100` with `rollForward: latestMajor`).
 2. For **packaged-mode** runs (consumer-like): a built `FastFsm.Sharp` package in `./nuget` (see `nuget.config`).
 
 The benchmark project inherits `UsePackages=false` from `Directory.Build.props`, so `dotnet build` / CI use project references like the test projects. Pass `-p:UsePackages=true` only when measuring against a local nupkg.
 
 ```bash
-dotnet pack src/Fsm/Fsm.Core/Fsm.Core.csproj -c Release
-dotnet run -c Release -p:UsePackages=true --project src/Benchmark/Benchmark.csproj
+dotnet build src/Benchmark/Benchmark.csproj -c Release
+dotnet run -c Release --project src/Benchmark/Benchmark.csproj --no-build -- --filter "*"
 ```
 
 Or on Windows: `src/Benchmark/run.ps1` (packs core, then runs with `UsePackages=true`).
 
+For reproducible snapshot export: `scripts/run-benchmark-snapshot.ps1 -HostLabel win-x64-amd-9600x -CopyToDocs`.
+
 On Linux/macOS, `BenchmarkDotNet.Diagnostics.Windows` is excluded automatically.
 
-BenchmarkDotNet writes results under `BenchmarkDotNet.Artifacts/results/` (under `src/Benchmark/` when run from that project directory).
+BenchmarkDotNet writes results under `BenchmarkDotNet.Artifacts/results/` (relative to the working directory when the benchmark exe runs — typically repo root or `src/Benchmark/`).
 
 ## Benchmark coverage
 
@@ -28,13 +30,51 @@ The benchmark sources include:
 
 - flat synchronous transition paths (`StateMachineBenchmarks`)
 - hierarchical-state-machine scenarios (`HsmBenchmarks`)
+- extension hook overhead (`ExtensionBenchmarks`, `HsmExtensionBenchmarks`)
+- observability registration paths (`ObservabilityBenchmarks`, `FlatObservabilitySampledTracingBenchmarks`)
 - comparisons with Stateless, LiquidState, and Appccelerate as referenced by `Benchmark.csproj`
+
+All suites use **InProcess** jobs (`IterationCount=15`, `WarmupCount=3`) for reliable builds with source-generator project references.
 
 ## Verified results
 
 Host labels (`win-x64-amd-9600x`, `linux-arm64`, …) describe **CPU architecture and OS only** — never machine names or hostnames. See [benchmarks/results/README.md](benchmarks/results/README.md).
 
-### `win-x64-intel-14600k` + `wsl-x64-intel-14600k` (2026-08-17, `FastFsm.Sharp` 0.9.0)
+### `win-x64-amd-9600x` (2026-08-21, **`v0.9.2` release gate**)
+
+Measured on Windows 11 x64 (AMD Ryzen 5 9600X). Full snapshot: [win-x64-amd-9600x-2026-08-21.md](benchmarks/results/win-x64-amd-9600x-2026-08-21.md)
+
+**Package:** FastFsm.Sharp 0.9.2  
+**BenchmarkDotNet:** 0.15.8 — InProcess, `IterationCount=15`, `WarmupCount=3`, runtime .NET 10.0.11  
+**Comparison libraries:** Stateless **5.20.1**, LiquidState.Unofficial 1.0.6, Appccelerate.StateMachine 6.0.0
+
+**Flat FSM (selected, Mean):**
+
+| Method | Mean | Alloc/op |
+|--------|-----:|---------:|
+| FastFsm_Basic | 0.84 ns | 0 |
+| LiquidState_Basic | 26.0 ns | 72 B |
+| Stateless_Basic | 327.8 ns | 1208 B |
+| FastFsm_CanFire | 0.28 ns | 0 |
+
+**HSM (selected, Mean):**
+
+| Method | Mean |
+|--------|-----:|
+| FastFSM_Hsm_Basic_EnterLeave | 2.60 ns |
+| Stateless_Hsm_Basic_EnterLeave | 671.1 ns |
+| FastFSM_Hsm_Internal | 0.93 ns |
+| Stateless_Hsm_Internal | 383.9 ns |
+
+**Observability flat (512 ops/invoke):**
+
+| Scenario | Mean/op | Alloc/op |
+|----------|--------:|---------:|
+| Metrics only | 73.8 ns | 0 |
+| Tracing, no listener | 79.3 ns | 0 |
+| Sampled tracing + listener | 579.6 ns | ~1.26 KB |
+
+### Historical snapshots (0.9.0 / 0.9.1)
 
 Intel Core i5-14600K, measured at commit `b6ed370` on **native Windows** and **WSL2** for a dual-OS view.
 
@@ -111,15 +151,22 @@ On this x64 Windows host, generated `switch`-based dispatch is fastest on simple
 
 Earlier ARM64 snapshot at `548ea01` (pre-release): [linux-arm64-2026-08-16.md](benchmarks/results/linux-arm64-2026-08-16.md).
 
-### macOS (Apple Silicon)
+### Pending 0.9.2 multi-platform snapshots
 
-**Status:** not measured yet. Benchmark restore/build may fail under memory pressure on low-RAM hosts. Re-run locally after closing memory-heavy apps:
+| Host label | Platform | Status |
+|------------|----------|--------|
+| `linux-arm64` | homelab Ubuntu aarch64 | in progress |
+| `macos-arm64` | Apple Silicon | in progress |
+| `win-arm64` | Windows 11 ARM64 (Orange Pi) | in progress |
+
+Run on each host:
 
 ```bash
-export PATH="$HOME/.dotnet:$PATH"
 dotnet build src/Benchmark/Benchmark.csproj -c Release
-dotnet run -c Release --project src/Benchmark/Benchmark.csproj --no-build
+dotnet run -c Release --project src/Benchmark/Benchmark.csproj --no-build -- --filter "*"
 ```
+
+On macOS, ensure `~/.dotnet` is on `PATH`.
 
 ## Publishing benchmark results
 

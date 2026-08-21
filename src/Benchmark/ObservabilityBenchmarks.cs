@@ -52,7 +52,6 @@ public class FlatObservabilityBenchmarks
     private ObsFlatExtensibleMachine _allDisabled = null!;
     private ObsFlatExtensibleMachine _metricsOnly = null!;
     private ObsFlatExtensibleMachine _tracingNoListener = null!;
-    private ObsFlatExtensibleMachine _tracingWithListener = null!;
     private ObsFlatExtensibleMachine _tracingAndMetrics = null!;
 
     [GlobalSetup]
@@ -62,12 +61,11 @@ public class FlatObservabilityBenchmarks
         _allDisabled = Create(new FastFsmObservabilityOptions());
         _metricsOnly = Create(new FastFsmObservabilityOptions { Metrics = true });
         _tracingNoListener = Create(new FastFsmObservabilityOptions { Tracing = true });
-        _tracingWithListener = Create(new FastFsmObservabilityOptions { Tracing = true });
         _tracingAndMetrics = Create(new FastFsmObservabilityOptions { Tracing = true, Metrics = true });
 
         foreach (var machine in new[]
                  {
-                     _baseline, _allDisabled, _metricsOnly, _tracingNoListener, _tracingWithListener, _tracingAndMetrics
+                     _baseline, _allDisabled, _metricsOnly, _tracingNoListener, _tracingAndMetrics
                  })
         {
             machine.Start();
@@ -109,20 +107,42 @@ public class FlatObservabilityBenchmarks
     }
 
     [Benchmark(OperationsPerInvoke = Operations)]
-    public void TracingWithActivityListener()
-    {
-        using (ObservabilityBenchmarkActivityListener.Activate())
-        {
-            for (var i = 0; i < Operations; i++)
-                _tracingWithListener.TryFire(ObsBenchTrigger.Next);
-        }
-    }
-
-    [Benchmark(OperationsPerInvoke = Operations)]
     public void TracingAndMetrics()
     {
         for (var i = 0; i < Operations; i++)
             _tracingAndMetrics.TryFire(ObsBenchTrigger.Next);
+    }
+}
+
+[InProcess]
+[WarmupCount(3)]
+[IterationCount(15)]
+[MemoryDiagnoser]
+[BenchmarkCategory("Observability", "Flat", "SampledTracing")]
+public class FlatObservabilitySampledTracingBenchmarks
+{
+    private const int Operations = 512;
+    private ObsFlatExtensibleMachine _machine = null!;
+    private IDisposable _listenerScope = null!;
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        _listenerScope = ObservabilityBenchmarkActivityListener.Activate();
+        _machine = new ObsFlatExtensibleMachine(
+            ObsBenchState.A,
+            [new ObservabilityExtension<ObsBenchState, ObsBenchTrigger>(new FastFsmObservabilityOptions { Tracing = true })]);
+        _machine.Start();
+    }
+
+    [GlobalCleanup]
+    public void Cleanup() => _listenerScope.Dispose();
+
+    [Benchmark(OperationsPerInvoke = Operations)]
+    public void TracingWithActivityListener()
+    {
+        for (var i = 0; i < Operations; i++)
+            _machine.TryFire(ObsBenchTrigger.Next);
     }
 }
 

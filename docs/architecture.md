@@ -54,7 +54,7 @@ Both configuration APIs converge on the same internal model before emission.
 ## Packages and build
 
 - Target framework: `net10.0` (`Directory.Build.props`)
-- Repository package version: `FastFsmPackageVersion` (`0.9.1`)
+- Repository package version: `FastFsmPackageVersion` (`0.9.2`)
 - `UsePackages=false` — repository projects use project references and analyzer wiring from `eng/FastFsmReferences.props` / `Directory.Build.targets`
 - `UsePackages=true` — package references resolve the configured FastFsm package version from the configured NuGet sources
 

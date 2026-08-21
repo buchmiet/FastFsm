@@ -145,7 +145,9 @@ public sealed class StatelessHsmAsync
 
 // ===== 3) HSM Benchmarks (BDN) =====
 
-[SimpleJob(RuntimeMoniker.Net10_0, launchCount: 1, warmupCount: 3, iterationCount: 15)]
+[InProcess]
+[WarmupCount(3)]
+[IterationCount(15)]
 [MemoryDiagnoser]
 [DisassemblyDiagnoser(maxDepth: 2)]
 public class HsmBenchmarks

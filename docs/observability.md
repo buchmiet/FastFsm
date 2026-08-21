@@ -128,7 +128,20 @@ Internal ≠ external self. An ancestor-owned transition may have `SourceState !
 
 ## Benchmarks
 
-See `src/Benchmark/ObservabilityBenchmarks.cs` for flat and HSM scenarios: baseline, all-disabled registration, metrics-only, tracing without listener, tracing with listener, and combined tracing+metrics.
+See `src/Benchmark/ObservabilityBenchmarks.cs` and `FlatObservabilitySampledTracingBenchmarks` for flat and HSM scenarios.
+
+**Flat observability (512 ops/invoke, InProcess, `win-x64-amd-9600x`, 2026-08-21):**
+
+| Scenario | Mean/op | Alloc/op |
+|---|---|---|
+| Baseline (no extension) | ~9.5 ns | 0 |
+| Registered, all disabled | ~10.2 ns | 0 |
+| Metrics only | ~87 ns | 0 |
+| Tracing, no listener | ~95 ns | 0 |
+| Tracing + metrics | ~125 ns | 0 |
+| **Sampled tracing + listener** | **~656 ns** | **~1.26 KB** |
+
+Sampled tracing runs in a dedicated benchmark class with the `ActivityListener` registered before the machine is created; `ShouldListenTo` is unconditional and sampling is gated in `Sample`.
 
 ## Related docs
 

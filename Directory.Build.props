@@ -2,7 +2,7 @@
   <PropertyGroup>
     <UsePackages>false</UsePackages>
     <FastFsmTargetFramework>net10.0</FastFsmTargetFramework>
-    <FastFsmPackageVersion>0.9.1</FastFsmPackageVersion>
+    <FastFsmPackageVersion>0.9.2</FastFsmPackageVersion>
     <!-- Set before compile so nupkg Version and assembly File/InformationalVersion match. -->
     <Version>$(FastFsmPackageVersion)</Version>
     <Authors>Lukasz Buchmiet</Authors>

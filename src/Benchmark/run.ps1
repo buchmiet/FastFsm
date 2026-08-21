@@ -6,4 +6,4 @@ Remove-Item -Recurse -Force .\bin, .\obj -ErrorAction SilentlyContinue
 dotnet pack ..\Fsm\Fsm.Core\Fsm.Core.csproj -c Release
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-dotnet run -c Release -f net10.0 -p:UsePackages=true --project .\Benchmark.csproj
+dotnet run -c Release -f net10.0 -p:UsePackages=true --project .\Benchmark.csproj -- --filter "*"

@@ -7,18 +7,32 @@ Repository package version is `FastFsmPackageVersion` / `Version` in `Directory.
 
 ## [Unreleased]
 
-### Changed
-
-- Hierarchical machines now report truthful Extension Contract v2 data: `SourceState` is the active leaf, `HandledAtState` is the owning state, `Kind` comes from `TransitionModel.IsInternal`, internal transitions have no targets, and `FinalState` is the machine's real current state.
-- HSM state lifecycle hooks exit leaf-to-ancestor and enter ancestor-to-leaf, including ancestor-owned external and self-transitions.
-- Extension hook masks are enforced at generator emission sites: transition payloads, guard dispatch, HSM LCA traversal, callback hooks, and attempt completion run only when the corresponding `ExtensionHooks` flag is set.
+## [0.9.2] - 2026-08-21
 
 ### Added
 
 - **`FastFsm.Sharp.Observability`** — first official Extension Contract v2 client: `ActivitySource` tracing, `Meter` metrics, optional `ILogger` sink, and machine-agnostic `ObservabilityEvent` stream via `ObservabilityExtension<TState,TTrigger>`.
 - HSM extension benchmarks (`HsmExtensionBenchmarks`: no extensions, transitions-only, states-only).
-- Observability benchmarks (`ObservabilityBenchmarks`: flat and HSM registration/disabled/metrics/tracing scenarios).
+- Observability benchmarks (`ObservabilityBenchmarks`, `FlatObservabilitySampledTracingBenchmarks`: flat and HSM registration/disabled/metrics/tracing scenarios).
 - Documentation for attempt outcomes, async pre-cancel semantics, and [observability.md](docs/observability.md).
+- `scripts/run-benchmark-snapshot.ps1` for reproducible packaged-mode benchmark capture.
+
+### Changed
+
+- Hierarchical machines now report truthful Extension Contract v2 data: `SourceState` is the active leaf, `HandledAtState` is the owning state, `Kind` comes from `TransitionModel.IsInternal`, internal transitions have no targets, and `FinalState` is the machine's real current state.
+- HSM state lifecycle hooks exit leaf-to-ancestor and enter ancestor-to-leaf, including ancestor-owned external and self-transitions.
+- Extension hook masks are enforced at generator emission sites: transition payloads, guard dispatch, HSM LCA traversal, callback hooks, and attempt completion run only when the corresponding `ExtensionHooks` flag is set.
+- Comparison benchmark dependency **Stateless** updated to **5.20.1** (from 5.17.0).
+- StateMachine/HSM benchmarks use InProcess jobs (consistent with extension/observability suites; avoids outer-process generator restore failures).
+- `global.json` SDK pin relaxed to `10.0.100` with `rollForward: latestMajor` for heterogeneous CI/bench hosts.
+
+### Fixed
+
+- Observability hot path gates string formatting and event construction behind enabled surfaces (metrics-only and no-listener tracing no longer pay for disabled event-stream work).
+- Observability DI captures an immutable options snapshot per `(TState,TTrigger)` registration instead of a shared mutable singleton.
+- `ObservabilityEvent.Timestamp` is emission time; `AttemptStartTimestamp` correlates events within one attempt.
+- Removed redundant `System.Diagnostics.DiagnosticSource` package reference on `net10.0` (NU1510 under `-warnaserror`).
+- Benchmark sampled-tracing listener registers with unconditional `ShouldListenTo` and gates work in `Sample`; sampled tracing runs in an isolated benchmark class (`FlatObservabilitySampledTracingBenchmarks`).
 
 ### Removed
 
@@ -91,5 +105,6 @@ Published on [NuGet.org](https://www.nuget.org/packages/FastFsm.Sharp). Targets 
 - Historical scratch trees from the git working set (old tests, multi-language bench experiments, local feed data, `Generator.Tests/old_tests`, tracked BenchmarkDotNet .NET 9 artifacts, local NuGet.config pointing at localhost). A local `archive.zip` may hold a copy; it is not part of the repository.
 - Hardcoded parser debug hooks for `AsyncOceOnEntryMachine` / `ContinueOnActionMachine`.
 
+[0.9.2]: https://github.com/buchmiet/FastFsm/releases/tag/v0.9.2
 [0.9.1]: https://github.com/buchmiet/FastFsm/releases/tag/v0.9.1
 [0.9.0]: https://github.com/buchmiet/FastFsm/releases/tag/v0.9.0

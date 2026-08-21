@@ -2,6 +2,10 @@
 
 This file records intended areas of work. It is not a release schedule or a compatibility commitment.
 
+## 0.9.2 (released)
+
+Repository package version is `0.9.2`. Adds **`FastFsm.Sharp.Observability`**, Extension Contract v2 HSM semantics and hook-mask gating (PR4), and refreshed multi-platform benchmarks (Stateless 5.20.1). Git tag `v0.9.2` marks the release.
+
 ## 0.9.1 (released)
 
 Repository package version is `0.9.1`. Patch release after 0.9.0: `net10.0-windows` props, clean-build packaging, CI hygiene, and stable async cancellation tests. Published on NuGet.org; git tag `v0.9.1` marks the release.
@@ -10,11 +14,9 @@ Repository package version is `0.9.1`. Patch release after 0.9.0: `net10.0-windo
 
 Repository package version is `0.9.0`. First .NET 10 release with canonical `FastFsm.Sharp*` package IDs and legacy `FastFsm.Net*` metapackages. Published on NuGet.org; git tag `v0.9.0` marks the release.
 
-## Next work: observability and 0.10
+## Next work: 0.10
 
-Extension Contract v2 landed on `main` (PR4). **`FastFsm.Sharp.Observability`** adds tracing, metrics, an optional `ILogger` sink, and a runtime event stream as a normal `lib/net10.0` assembly — the first client of the v2 contract.
-
-See [docs/observability.md](docs/observability.md) and [docs/proposals/extension-contract-v2.md](docs/proposals/extension-contract-v2.md).
+Extension Contract v2 and **`FastFsm.Sharp.Observability`** shipped in 0.9.2. See [docs/observability.md](docs/observability.md) and [docs/proposals/extension-contract-v2.md](docs/proposals/extension-contract-v2.md).
 
 ## Later feature candidate: deferred events
 
