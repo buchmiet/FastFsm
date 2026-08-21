@@ -1366,6 +1366,29 @@ internal abstract class StateMachineCodeGenerator(StateMachineModel model)
         }
     }
 
+    protected void WriteHierarchicalStateChangeWithDiagnostics(string targetState, string stateTypeForUsage)
+    {
+        Sb.AppendLine("RecordHistoryForCurrentPath();");
+        Sb.AppendLine($"string __transitionFromName = {CurrentStateField}.ToString();");
+        WriteStateChangeWithCompositeHandling(targetState, stateTypeForUsage);
+
+        if (!ShouldGenerateLogging)
+        {
+            return;
+        }
+
+        Sb.AppendLine("// HSM transition diagnostics");
+        Sb.AppendLine($"int lca = FindLowestCommonAncestor((int)Enum.Parse<{stateTypeForUsage}>(__transitionFromName), (int){CurrentStateField});");
+        Sb.AppendLine("int __exitCount = 0;");
+        Sb.AppendLine($"for (int s = (int)Enum.Parse<{stateTypeForUsage}>(__transitionFromName); s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __exitCount++; }}");
+        Sb.AppendLine("int __entryCount = 0;");
+        Sb.AppendLine($"for (int s = (int){CurrentStateField}; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __entryCount++; }}");
+        WriteLogStatement("Debug",
+            $"HierarchicalTransition(_logger, _instanceId, __transitionFromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
+        WriteLogStatement("Trace",
+            "ActivePath(_logger, _instanceId, DumpActivePath());");
+    }
+
     #endregion
 
     #region Template Method Hooks

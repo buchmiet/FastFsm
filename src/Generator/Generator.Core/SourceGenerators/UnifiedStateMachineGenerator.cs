@@ -2826,70 +2826,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
     {
             if (IsHierarchical)
         {
-                Sb.AppendLine("                        RecordHistoryForCurrentPath();");
-                
-                // Create a temporary StringBuilder with proper indentation for HSM logic
-                var indent = "                        ";
-                Sb.AppendLine($"{indent}string __transitionFromName = {CurrentStateField}.ToString();");
-                Sb.AppendLine($"{indent}// Set destination and resolve through GetCompositeEntryTarget");
-                
-                // SAVE COMPOSITE BEFORE ASSIGNING _currentState
-                Sb.AppendLine($"{indent}int __targetComposite = (int){stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
-                Sb.AppendLine();
-                
-                // Check if target is composite (has initial child)
-                Sb.AppendLine($"{indent}// Check if target is composite (has initial child)");
-                Sb.AppendLine($"{indent}bool __isComposite = (uint)__targetComposite < (uint)g_initialChild.Length && g_initialChild[__targetComposite] >= 0;");
-                Sb.AppendLine();
-                
-                Sb.AppendLine($"{indent}if (__isComposite)");
-                Sb.AppendLine($"{indent}{{");
-                Sb.AppendLine($"{indent}    // Resolve entry into composite (Initial vs History)");
-                Sb.AppendLine($"{indent}    int __resolvedIndex = GetCompositeEntryTarget(__targetComposite);");
-                Sb.AppendLine($"{indent}    var __histMode = HistoryArray[__targetComposite];");
-                Sb.AppendLine($"{indent}    string __resolution = (__histMode == Abstractions.Attributes.HistoryMode.None ? \"Initial\" : \"History\");");
-                Sb.AppendLine();
-                
-                if (ShouldGenerateLogging)
-                {
-                    Sb.AppendLine($"{indent}    if (_logger?.IsEnabled(LogLevel.Debug) == true)");
-                    Sb.AppendLine($"{indent}    {{");
-                    Sb.AppendLine($"{indent}        {Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
-                    Sb.AppendLine($"{indent}    }}");
-                    Sb.AppendLine($"{indent}    if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)");
-                    Sb.AppendLine($"{indent}    {{");
-                    Sb.AppendLine($"{indent}        {Model.ClassName}Log.HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
-                    Sb.AppendLine($"{indent}    }}");
-                }
-                
-                Sb.AppendLine($"{indent}    {CurrentStateField} = ({stateTypeForUsage})__resolvedIndex;");
-                Sb.AppendLine($"{indent}}}");
-                Sb.AppendLine($"{indent}else");
-                Sb.AppendLine($"{indent}{{");
-                Sb.AppendLine($"{indent}    // Target is not composite - simple assignment");
-                Sb.AppendLine($"{indent}    {CurrentStateField} = ({stateTypeForUsage})__targetComposite;");
-                Sb.AppendLine($"{indent}}}");
-                Sb.AppendLine();
-                
-                // Add HierarchicalTransition and ActivePath logging
-                if (ShouldGenerateLogging)
-                {
-                    Sb.AppendLine($"{indent}// HSM transition diagnostics");
-                    Sb.AppendLine($"{indent}int lca = FindLowestCommonAncestor((int)Enum.Parse<{stateTypeForUsage}>(__transitionFromName), (int){CurrentStateField});");
-                    Sb.AppendLine($"{indent}int __exitCount = 0;");
-                    Sb.AppendLine($"{indent}for (int s = (int)Enum.Parse<{stateTypeForUsage}>(__transitionFromName); s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __exitCount++; }}");
-                    Sb.AppendLine($"{indent}int __entryCount = 0;");
-                    Sb.AppendLine($"{indent}for (int s = (int){CurrentStateField}; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __entryCount++; }}");
-                    
-                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true)");
-                    Sb.AppendLine($"{indent}{{");
-                    Sb.AppendLine($"{indent}    HierarchicalTransition(_logger, _instanceId, __transitionFromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
-                    Sb.AppendLine($"{indent}}}");
-                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Trace) == true)");
-                    Sb.AppendLine($"{indent}{{");
-                    Sb.AppendLine($"{indent}    ActivePath(_logger, _instanceId, DumpActivePath());");
-                    Sb.AppendLine($"{indent}}}");
-                }
+                WriteHierarchicalStateChangeWithDiagnostics(transition.ToState, stateTypeForUsage);
             }
             else
             {
@@ -3323,70 +3260,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
     {
             if (IsHierarchical)
         {
-                Sb.AppendLine("                        RecordHistoryForCurrentPath();");
-                
-                // Create HSM logic with proper indentation
-                var indent = "                        ";
-                Sb.AppendLine($"{indent}string __transitionFromName = {CurrentStateField}.ToString();");
-                Sb.AppendLine($"{indent}// Set destination and resolve through GetCompositeEntryTarget");
-                
-                // SAVE COMPOSITE BEFORE ASSIGNING _currentState
-                Sb.AppendLine($"{indent}int __targetComposite = (int){stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
-                Sb.AppendLine();
-                
-                // Check if target is composite (has initial child)
-                Sb.AppendLine($"{indent}// Check if target is composite (has initial child)");
-                Sb.AppendLine($"{indent}bool __isComposite = (uint)__targetComposite < (uint)g_initialChild.Length && g_initialChild[__targetComposite] >= 0;");
-                Sb.AppendLine();
-                
-                Sb.AppendLine($"{indent}if (__isComposite)");
-                Sb.AppendLine($"{indent}{{");
-                Sb.AppendLine($"{indent}    // Resolve entry into composite (Initial vs History)");
-                Sb.AppendLine($"{indent}    int __resolvedIndex = GetCompositeEntryTarget(__targetComposite);");
-                Sb.AppendLine($"{indent}    var __histMode = HistoryArray[__targetComposite];");
-                Sb.AppendLine($"{indent}    string __resolution = (__histMode == Abstractions.Attributes.HistoryMode.None ? \"Initial\" : \"History\");");
-                Sb.AppendLine();
-                
-                if (ShouldGenerateLogging)
-                {
-                    Sb.AppendLine($"{indent}    if (_logger?.IsEnabled(LogLevel.Debug) == true)");
-                    Sb.AppendLine($"{indent}    {{");
-                    Sb.AppendLine($"{indent}        {Model.ClassName}Log.CompositeStateEntry(_logger, _instanceId, (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString(), __resolution);");
-                    Sb.AppendLine($"{indent}    }}");
-                    Sb.AppendLine($"{indent}    if (_logger?.IsEnabled(LogLevel.Debug) == true && __histMode != Abstractions.Attributes.HistoryMode.None)");
-                    Sb.AppendLine($"{indent}    {{");
-                    Sb.AppendLine($"{indent}        {Model.ClassName}Log.HistoryRestored(_logger, _instanceId, __histMode.ToString(), (({stateTypeForUsage})__targetComposite).ToString(), (({stateTypeForUsage})__resolvedIndex).ToString());");
-                    Sb.AppendLine($"{indent}    }}");
-                }
-                
-                Sb.AppendLine($"{indent}    {CurrentStateField} = ({stateTypeForUsage})__resolvedIndex;");
-                Sb.AppendLine($"{indent}}}");
-                Sb.AppendLine($"{indent}else");
-                Sb.AppendLine($"{indent}{{");
-                Sb.AppendLine($"{indent}    // Target is not composite - simple assignment");
-                Sb.AppendLine($"{indent}    {CurrentStateField} = ({stateTypeForUsage})__targetComposite;");
-                Sb.AppendLine($"{indent}}}");
-                Sb.AppendLine();
-                
-                // Add HierarchicalTransition and ActivePath logging
-                if (ShouldGenerateLogging)
-                {
-                    Sb.AppendLine($"{indent}// HSM transition diagnostics");
-                    Sb.AppendLine($"{indent}int lca = FindLowestCommonAncestor((int)Enum.Parse<{stateTypeForUsage}>(__transitionFromName), (int){CurrentStateField});");
-                    Sb.AppendLine($"{indent}int __exitCount = 0;");
-                    Sb.AppendLine($"{indent}for (int s = (int)Enum.Parse<{stateTypeForUsage}>(__transitionFromName); s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __exitCount++; }}");
-                    Sb.AppendLine($"{indent}int __entryCount = 0;");
-                    Sb.AppendLine($"{indent}for (int s = (int){CurrentStateField}; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __entryCount++; }}");
-                    
-                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true)");
-                    Sb.AppendLine($"{indent}{{");
-                    Sb.AppendLine($"{indent}    HierarchicalTransition(_logger, _instanceId, __transitionFromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
-                    Sb.AppendLine($"{indent}}}");
-                    Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Trace) == true)");
-                    Sb.AppendLine($"{indent}{{");
-                    Sb.AppendLine($"{indent}    ActivePath(_logger, _instanceId, DumpActivePath());");
-                    Sb.AppendLine($"{indent}}}");
-                }
+                WriteHierarchicalStateChangeWithDiagnostics(transition.ToState, stateTypeForUsage);
             }
             else
             {
