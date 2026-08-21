@@ -7,6 +7,15 @@ Repository package version is `FastFsmPackageVersion` / `Version` in `Directory.
 
 ## [Unreleased]
 
+### Changed
+
+- Hierarchical machines now report truthful Extension Contract v2 data: `SourceState` is the active leaf, `HandledAtState` is the owning state, `Kind` comes from `TransitionModel.IsInternal`, internal transitions have no targets, and `FinalState` is the machine's real current state.
+- HSM state lifecycle hooks exit leaf-to-ancestor and enter ancestor-to-leaf, including ancestor-owned external and self-transitions.
+
+### Removed
+
+- Dead v1 `ExtensionRunner` HSM stubs (`RunBubbleToParent`, `RunInitialSubstateEntered`, `RunHistoryRestore`, `RunAncestorPathChanged`, `RunTransitionCompleted`). `ExtensionRunnerV2` remains the only shipped runner.
+
 ## [0.9.1] - 2026-08-17
 
 Published on [NuGet.org](https://www.nuget.org/packages/FastFsm.Sharp). Patch release: packaging, props, CI, and test hygiene after 0.9.0.

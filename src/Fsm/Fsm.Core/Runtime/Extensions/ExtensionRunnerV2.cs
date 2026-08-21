@@ -9,6 +9,9 @@ using Microsoft.Extensions.Logging;
 
 namespace FastFsm.Runtime.Extensions;
 
+// Shipped into consuming assemblies as ExtensionRunner.cs. The v1 runner and its
+// unused HSM stubs (bubble/history/path-change) are not part of this type.
+
 internal sealed class ExtensionSet<TState, TTrigger>
     where TState : unmanaged, Enum
     where TTrigger : unmanaged, Enum

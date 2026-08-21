@@ -992,7 +992,6 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 }
             }
 
-            // TODO(EXT): emit OnTransitionCompleted at end of async attempt with the last known context
             Sb.AppendLine($"return {SuccessVar};");
         }
         }
@@ -1381,18 +1380,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
             {
                 if (Model.HierarchyEnabled)
                 {
-                    Sb.AppendLine($"int __lifecycleSource = (int)attempt.SourceState;");
-                    Sb.AppendLine($"int __lifecycleTarget = (int){stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
-                    Sb.AppendLine("int __lifecycleLca = FindLowestCommonAncestor(__lifecycleSource, __lifecycleTarget);");
-                    Sb.AppendLine($"int __handledState = (int){stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.FromState)};");
-                    using (Sb.Block("if (__lifecycleLca == __handledState)"))
-                    {
-                        Sb.AppendLine("__lifecycleLca = (uint)__handledState < (uint)g_parent.Length ? g_parent[__handledState] : -1;");
-                    }
-                    using (Sb.Block("for (int __exiting = __lifecycleSource; __exiting >= 0 && __exiting != __lifecycleLca; __exiting = g_parent[__exiting])"))
-                    {
-                        Sb.AppendLine($"_extensionRunner.RunStateExiting(extensionSet, in attempt, ({stateTypeForUsage})__exiting);");
-                    }
+                    WriteHierarchicalExtensionStateExits(transition, stateTypeForUsage);
                 }
                 else
                 {
@@ -1454,17 +1442,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
                 if (Model.HierarchyEnabled)
                 {
-                    Sb.AppendLine("int __lifecycleTargetDepth = g_depth[(int)" + CurrentStateField + "];");
-                    Sb.AppendLine("int __lifecycleLcaDepth = __lifecycleLca >= 0 ? g_depth[__lifecycleLca] : -1;");
-                    using (Sb.Block("for (int __enterDepth = __lifecycleLcaDepth + 1; __enterDepth <= __lifecycleTargetDepth; __enterDepth++)"))
-                    {
-                        Sb.AppendLine($"int __entering = (int){CurrentStateField};");
-                        using (Sb.Block("while (g_depth[__entering] > __enterDepth)"))
-                        {
-                            Sb.AppendLine("__entering = g_parent[__entering];");
-                        }
-                        Sb.AppendLine($"_extensionRunner.RunStateEntered(extensionSet, in attempt, ({stateTypeForUsage})__entering);");
-                    }
+                    WriteHierarchicalExtensionStateEntries(stateTypeForUsage);
                 }
                 else
                 {
@@ -1594,6 +1572,44 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         Sb.AppendLine("}");
     }
 
+    private void WriteHierarchicalExtensionStateExits(TransitionModel transition, string stateType)
+    {
+        // Lifecycle exits start at the active leaf, but the LCA is computed from the
+        // state that owns the transition. Using the active leaf as the semantic source
+        // would skip the owner on ancestor-to-descendant and ancestor self-transitions.
+        Sb.AppendLine("#if DEBUG || FASTFSM_DEBUG_GENERATED_COMMENTS");
+        Sb.AppendLine("// HSM lifecycle: LCA from handled-at state; external source is always exited/re-entered");
+        Sb.AppendLine("#endif");
+        Sb.AppendLine($"int __lifecycleSource = (int)attempt.SourceState;");
+        Sb.AppendLine($"int __handledState = (int){stateType}.{TypeHelper.EscapeIdentifier(transition.FromState)};");
+        Sb.AppendLine($"int __lifecycleTarget = (int){stateType}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+        Sb.AppendLine("int __lifecycleLca = FindLowestCommonAncestor(__handledState, __lifecycleTarget);");
+        using (Sb.Block("if (__lifecycleLca == __handledState)"))
+        {
+            Sb.AppendLine("__lifecycleLca = (uint)__handledState < (uint)g_parent.Length ? g_parent[__handledState] : -1;");
+        }
+
+        using (Sb.Block("for (int __exiting = __lifecycleSource; __exiting >= 0 && __exiting != __lifecycleLca; __exiting = (uint)__exiting < (uint)g_parent.Length ? g_parent[__exiting] : -1)"))
+        {
+            Sb.AppendLine($"_extensionRunner.RunStateExiting(extensionSet, in attempt, ({stateType})__exiting);");
+        }
+    }
+
+    private void WriteHierarchicalExtensionStateEntries(string stateType)
+    {
+        Sb.AppendLine($"int __lifecycleTargetDepth = g_depth[(int){CurrentStateField}];");
+        Sb.AppendLine("int __lifecycleLcaDepth = __lifecycleLca >= 0 ? g_depth[__lifecycleLca] : -1;");
+        using (Sb.Block("for (int __enterDepth = __lifecycleLcaDepth + 1; __enterDepth <= __lifecycleTargetDepth; __enterDepth++)"))
+        {
+            Sb.AppendLine($"int __entering = (int){CurrentStateField};");
+            using (Sb.Block("while (g_depth[__entering] > __enterDepth)"))
+            {
+                Sb.AppendLine("__entering = g_parent[__entering];");
+            }
+            Sb.AppendLine($"_extensionRunner.RunStateEntered(extensionSet, in attempt, ({stateType})__entering);");
+        }
+    }
+
     private void WriteExtensionCallback(
         TransitionModel transition,
         string stateTypeForUsage,
@@ -1708,7 +1724,6 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         {
             // HSM implementation: walk up the parent chain
             Sb.AppendLine($"int check = (int){CurrentStateField};");
-            Sb.AppendLine("string __fromName = " + CurrentStateField + ".ToString();");
             Sb.AppendLine("while (check >= 0)");
             Sb.AppendLine("{");
             Sb.AppendLine($"    var state = ({stateType})check;");
@@ -1740,19 +1755,16 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                         .OrderByDescending(t => t.Priority)
                         .First();
                     
-                    // For internal transitions, emit InternalTransitionOnAncestor
                     if (bestTransition.IsInternal && ShouldGenerateLogging)
                     {
                         Sb.AppendLine($"                    // Internal transition on ancestor: {bestTransition.FromState}");
                         using (Sb.Block("                    if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
                         {
-                            Sb.AppendLine($"                        InternalTransitionOnAncestor(_logger, _instanceId, (({stateType})check).ToString(), __fromName, trigger.ToString());");
+                            Sb.AppendLine($"                        InternalTransitionOnAncestor(_logger, _instanceId, (({stateType})check).ToString(), {CurrentStateField}.ToString(), trigger.ToString());");
                         }
-                        // TODO(EXT): emit OnInternalTransition hook here for HSM ancestor internal
                     }
-                    
+
                     Sb.AppendLine($"                    // Transition: {bestTransition.FromState} -> {bestTransition.ToState} (Priority: {bestTransition.Priority})");
-                    // TODO(EXT): if this transition is handled at a parent, consider emitting OnBubbleToParent(ctx, handledAt: state)
                     writeTransitionLogic(bestTransition, stateType, triggerType);
                     
                     Sb.AppendLine("                }");
