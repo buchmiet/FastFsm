@@ -39,7 +39,7 @@
   <!-- Dev-mode: compile package content files directly instead of requiring a pre-built nupkg -->
   <ItemGroup Condition="'$(UsePackages)' != 'true' and ('$(FastFsmReferenceCore)' == 'true' or '$(FastFsmReferenceLogging)' == 'true' or '$(FastFsmReferenceDependencyInjection)' == 'true')">
     <Compile
-      Include="$(_FastFsmRepoRoot)/src/Fsm/Fsm.Core/Runtime/Extensions/ExtensionRunnerV2.cs"
+      Include="$(_FastFsmRepoRoot)/src/Fsm/Fsm.Core/Runtime/Extensions/ExtensionRunner.cs"
       Link="FastFsm/ExtensionRunner.cs" />
     <Compile Include="$(_FastFsmRepoRoot)/src/Fsm/Fsm.Core/Runtime/GlobalUsings.FastFsm.cs" Link="FastFsm/GlobalUsings.FastFsm.cs" />
   </ItemGroup>
