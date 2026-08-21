@@ -9,9 +9,13 @@ Repository package version is `FastFsmPackageVersion` / `Version` in `Directory.
 
 ## [0.9.2] - 2026-08-21
 
+### Breaking
+
+- Replaced the untyped `IStateMachineExtension` contract with `IStateMachineExtension<TState,TTrigger>`. The previous untyped interface and context types are removed; there is no parallel compatibility surface.
+
 ### Added
 
-- **`FastFsm.Sharp.Observability`** — first official Extension Contract v2 client: `ActivitySource` tracing, `Meter` metrics, optional `ILogger` sink, and machine-agnostic `ObservabilityEvent` stream via `ObservabilityExtension<TState,TTrigger>`.
+- **`FastFsm.Sharp.Observability`** — `ActivitySource` tracing, `Meter` metrics, optional `ILogger` sink, and machine-agnostic `ObservabilityEvent` stream via `ObservabilityExtension<TState,TTrigger>`.
 - HSM extension benchmarks (`HsmExtensionBenchmarks`: no extensions, transitions-only, states-only).
 - Observability benchmarks (`ObservabilityBenchmarks`, `FlatObservabilitySampledTracingBenchmarks`: flat and HSM registration/disabled/metrics/tracing scenarios).
 - Documentation for attempt outcomes, async pre-cancel semantics, and [observability.md](docs/observability.md).
@@ -19,7 +23,7 @@ Repository package version is `FastFsmPackageVersion` / `Version` in `Directory.
 
 ### Changed
 
-- Hierarchical machines now report truthful Extension Contract v2 data: `SourceState` is the active leaf, `HandledAtState` is the owning state, `Kind` comes from `TransitionModel.IsInternal`, internal transitions have no targets, and `FinalState` is the machine's real current state.
+- Extension transition data now distinguishes the active source state, transition-owning state, declared target, resolved target, transition kind, outcome, failure stage, and actual final state.
 - HSM state lifecycle hooks exit leaf-to-ancestor and enter ancestor-to-leaf, including ancestor-owned external and self-transitions.
 - Extension hook masks are enforced at generator emission sites: transition payloads, guard dispatch, HSM LCA traversal, callback hooks, and attempt completion run only when the corresponding `ExtensionHooks` flag is set.
 - Comparison benchmark dependency **Stateless** updated to **5.20.1** (from 5.17.0).
@@ -33,10 +37,6 @@ Repository package version is `FastFsmPackageVersion` / `Version` in `Directory.
 - `ObservabilityEvent.Timestamp` is emission time; `AttemptStartTimestamp` correlates events within one attempt.
 - Removed redundant `System.Diagnostics.DiagnosticSource` package reference on `net10.0` (NU1510 under `-warnaserror`).
 - Benchmark sampled-tracing listener registers with unconditional `ShouldListenTo` and gates work in `Sample`; sampled tracing runs in an isolated benchmark class (`FlatObservabilitySampledTracingBenchmarks`).
-
-### Removed
-
-- Dead v1 `ExtensionRunner` HSM stubs (`RunBubbleToParent`, `RunInitialSubstateEntered`, `RunHistoryRestore`, `RunAncestorPathChanged`, `RunTransitionCompleted`). `ExtensionRunnerV2` remains the only shipped runner.
 
 ## [0.9.1] - 2026-08-17
 

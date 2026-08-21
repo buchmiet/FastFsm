@@ -4,7 +4,7 @@ Source-generated finite and hierarchical state machines for .NET 10.
 
 FastFsm generates `switch`-based state-machine code at build time. Machines can be configured with either the **Fluent API** or the **Attribute API**. The generator validates transitions, guards, callbacks, and hierarchy during compilation.
 
-**Repository package version:** `0.9.2` (defined in `Directory.Build.props`). See [CHANGELOG.md](CHANGELOG.md). **0.9.2** adds `FastFsm.Sharp.Observability` and Extension Contract v2 hardening; prior **0.9.1** is on [NuGet.org](https://www.nuget.org/packages/FastFsm.Sharp) as `FastFsm.Sharp*`, with legacy `FastFsm.Net*` metapackages forwarding to the same bits.
+**Repository package version:** `0.9.2` (defined in `Directory.Build.props`). See [CHANGELOG.md](CHANGELOG.md). **0.9.2** adds `FastFsm.Sharp.Observability` and the typed extension contract; prior **0.9.1** is on [NuGet.org](https://www.nuget.org/packages/FastFsm.Sharp) as `FastFsm.Sharp*`, with legacy `FastFsm.Net*` metapackages forwarding to the same bits.
 
 ## Install
 
@@ -77,7 +77,7 @@ bool ok = door.TryFire(DoorTrigger.Close); // returns false when no valid transi
 - Synchronous and asynchronous machines (`ValueTask` on asynchronous paths)
 - Hierarchical states, shallow and deep history, internal transitions, and transition priority
 - Typed payloads per trigger
-- `IStateMachineExtension` transition hooks
+- Typed `IStateMachineExtension<TState, TTrigger>` lifecycle hooks
 - Optional logging through `FastFsm.Sharp.Logging`
 - Optional dependency-injection integration through `FastFsm.Sharp.DependencyInjection`
 - Generated code paths compatible with trimming and Native AOT
