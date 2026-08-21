@@ -11,7 +11,7 @@ public sealed class ObservabilityDependencyInjectionTests : IDisposable
     private ServiceProvider? _provider;
 
     [Fact]
-    public void AddFastFsmObservability_registers_observability_extension_and_options()
+    public void AddFastFsmObservability_registers_extension_with_requested_hook_mask()
     {
         _services.AddLogging();
         _services.AddFastFsmObservability<DiObservabilityState, DiObservabilityTrigger>(options =>
@@ -22,11 +22,26 @@ public sealed class ObservabilityDependencyInjectionTests : IDisposable
         _provider = _services.BuildServiceProvider();
 
         var extension = _provider.GetRequiredService<IStateMachineExtension<DiObservabilityState, DiObservabilityTrigger>>();
-        Assert.IsType<ObservabilityExtension<DiObservabilityState, DiObservabilityTrigger>>(extension);
+        var observability = Assert.IsType<ObservabilityExtension<DiObservabilityState, DiObservabilityTrigger>>(extension);
+        Assert.True(observability.Hooks.HasFlag(ExtensionHooks.Transitions));
+        Assert.True(observability.Hooks.HasFlag(ExtensionHooks.Lifecycle));
+    }
 
-        var options = _provider.GetRequiredService<FastFsmObservabilityOptions>();
-        Assert.True(options.EventStream);
-        Assert.True(options.Metrics);
+    [Fact]
+    public void AddFastFsmObservability_second_state_pair_gets_its_own_options_snapshot()
+    {
+        _services.AddFastFsmObservability<DiObservabilityState, DiObservabilityTrigger>(options =>
+            options.Metrics = true);
+        _services.AddStateMachineObservabilityExtension<ObservabilityAltState, ObservabilityAltTrigger>(
+            new FastFsmObservabilityOptions { Tracing = true });
+
+        _provider = _services.BuildServiceProvider();
+
+        var first = _provider.GetRequiredService<ObservabilityExtension<DiObservabilityState, DiObservabilityTrigger>>();
+        var second = _provider.GetRequiredService<ObservabilityExtension<ObservabilityAltState, ObservabilityAltTrigger>>();
+
+        Assert.Equal(ExtensionHooks.Transitions, first.Hooks);
+        Assert.Equal(ExtensionHooks.Transitions, second.Hooks);
     }
 
     [Fact]
@@ -51,3 +66,6 @@ public sealed class ObservabilityDependencyInjectionTests : IDisposable
 
     public void Dispose() => _provider?.Dispose();
 }
+
+public enum ObservabilityAltState { A, B }
+public enum ObservabilityAltTrigger { Go }

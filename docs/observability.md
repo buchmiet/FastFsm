@@ -82,6 +82,11 @@ Enable `IncludeStateTriggerMetricTags` only when you accept higher cardinality.
 
 Implement `IObservabilityEventSink` to receive `ObservabilityEvent` values. States, triggers, and outcomes are strings at this boundary — the typed core contract stays inside the extension hot path.
 
+Each event carries:
+
+- `Timestamp` — monotonic time when the event was **emitted**
+- `AttemptStartTimestamp` — shared attempt start time for correlating events within one transition attempt
+
 Use for test recorders, runtime inspectors, or custom exporters.
 
 ## ILogger
@@ -100,7 +105,7 @@ services.AddSingleton<IObservabilityEventSink, MyRecorder>();
 services.AddStateMachine<IMyMachine, MyMachine, MyState, MyTrigger>();
 ```
 
-`AddFastFsmObservability` registers `ObservabilityExtension<TState,TTrigger>` using the same open-generic extension pattern as core DI.
+`AddFastFsmObservability` captures an immutable options snapshot per `(TState,TTrigger)` registration. It does not register a shared mutable `FastFsmObservabilityOptions` singleton. For another state/trigger pair, call `AddFastFsmObservability` again or `AddStateMachineObservabilityExtension` with an explicit options instance.
 
 ## Payload privacy
 

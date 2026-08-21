@@ -41,12 +41,11 @@ public sealed class ObservabilityTestHarness : IDisposable
     }
 
     public ObservabilityExtension<TState, TTrigger> CreateExtension<TState, TTrigger>(
-        Action<FastFsmObservabilityOptions>? configure = null)
+        Action<FastFsmObservabilityOptions.Builder>? configure = null)
         where TState : unmanaged, Enum
         where TTrigger : unmanaged, Enum
     {
-        var options = new FastFsmObservabilityOptions();
-        configure?.Invoke(options);
+        var options = FastFsmObservabilityOptions.Create(configure);
         return new ObservabilityExtension<TState, TTrigger>(options, eventSink: EventSink);
     }
 

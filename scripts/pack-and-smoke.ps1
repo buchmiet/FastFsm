@@ -82,7 +82,7 @@ Assert-NupkgDependsOn (Join-Path $feed "FastFsm.Sharp.Logging.$version.nupkg") @
 Assert-NupkgDependsOn (Join-Path $feed "FastFsm.Sharp.DependencyInjection.$version.nupkg") @(
     "FastFsm.Sharp", "Microsoft.Extensions.DependencyInjection", "Microsoft.Extensions.Logging.Abstractions")
 Assert-NupkgDependsOn (Join-Path $feed "FastFsm.Sharp.Observability.$version.nupkg") @(
-    "FastFsm.Sharp", "System.Diagnostics.DiagnosticSource", "Microsoft.Extensions.Logging.Abstractions", "Microsoft.Extensions.DependencyInjection.Abstractions")
+    "FastFsm.Sharp", "Microsoft.Extensions.Logging.Abstractions", "Microsoft.Extensions.DependencyInjection.Abstractions")
 
 $coreNupkg = Join-Path $feed "FastFsm.Sharp.$version.nupkg"
 $dllTmp = Join-Path ([IO.Path]::GetTempPath()) ("FastFsm-asmcheck-" + [guid]::NewGuid().ToString("n") + ".dll")

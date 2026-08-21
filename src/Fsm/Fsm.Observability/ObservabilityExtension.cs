@@ -13,7 +13,13 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
     where TTrigger : unmanaged, Enum
 {
     private readonly ConcurrentDictionary<AttemptKey, Activity> _activeActivities = new();
-    private readonly FastFsmObservabilityOptions _options;
+    private readonly bool _metrics;
+    private readonly bool _tracing;
+    private readonly bool _eventStream;
+    private readonly bool _logging;
+    private readonly bool _includeStateTriggerMetricTags;
+    private readonly bool _capturePayload;
+    private readonly Func<object?, string?>? _payloadFormatter;
     private readonly ILogger<ObservabilityExtension<TState, TTrigger>>? _logger;
     private readonly IObservabilityEventSink? _eventSink;
     private readonly string _stateTypeName;
@@ -26,9 +32,15 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        _options = options;
-        _logger = options.Logging ? logger : null;
-        _eventSink = options.EventStream ? eventSink : null;
+        _metrics = options.Metrics;
+        _tracing = options.Tracing;
+        _eventStream = options.EventStream;
+        _logging = options.Logging;
+        _includeStateTriggerMetricTags = options.IncludeStateTriggerMetricTags;
+        _capturePayload = options.CapturePayload;
+        _payloadFormatter = options.PayloadFormatter;
+        _logger = _logging ? logger : null;
+        _eventSink = _eventStream ? eventSink : null;
         _stateTypeName = typeof(TState).Name;
         _triggerTypeName = typeof(TTrigger).Name;
         Hooks = ComputeHooks(options);
@@ -38,12 +50,12 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
 
     public void OnAttemptStarting(in TransitionAttemptContext<TState, TTrigger> attempt)
     {
-        if (_options.Metrics)
+        if (_metrics)
         {
             ObservabilityTelemetry.Attempts.Add(1);
         }
 
-        if (_options.Tracing)
+        if (_tracing)
         {
             var activity = ObservabilityTelemetry.ActivitySource.StartActivity(
                 "fsm.transition",
@@ -61,14 +73,20 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
             }
         }
 
-        EmitEvent(
-            ObservabilityEventKind.AttemptStarting,
-            attempt.InstanceId,
-            attempt.AttemptId,
-            attempt.StartTimestamp,
-            sourceState: FormatEnum(attempt.SourceState),
-            trigger: FormatEnum(attempt.Trigger),
-            payload: FormatPayload(attempt.Payload));
+        if (_eventStream && _eventSink is not null)
+        {
+            _eventSink.OnEvent(new ObservabilityEvent
+            {
+                Kind = ObservabilityEventKind.AttemptStarting,
+                InstanceId = attempt.InstanceId,
+                AttemptId = attempt.AttemptId,
+                Timestamp = Stopwatch.GetTimestamp(),
+                AttemptStartTimestamp = attempt.StartTimestamp,
+                SourceState = FormatEnum(attempt.SourceState),
+                Trigger = FormatEnum(attempt.Trigger),
+                Payload = FormatPayload(attempt.Payload)
+            });
+        }
 
         if (_logger is not null)
         {
@@ -83,10 +101,10 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
         in TransitionAttemptContext<TState, TTrigger> attempt,
         in TransitionInfo<TState> matched)
     {
-        if (_options.Tracing && TryGetActivity(attempt.InstanceId, attempt.AttemptId, out var activity))
+        if (_tracing && TryGetActivity(attempt.InstanceId, attempt.AttemptId, out var activity))
         {
             activity.SetTag("fastfsm.handled_at_state", FormatEnum(matched.HandledAtState));
-            activity.SetTag("fastfsm.transition.kind", matched.Kind.ToString());
+            activity.SetTag("fastfsm.transition.kind", KindName(matched.Kind));
 
             if (matched.DeclaredTarget is TState declaredTarget)
             {
@@ -96,17 +114,23 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
             activity.AddEvent(new ActivityEvent("transition.matched"));
         }
 
-        EmitEvent(
-            ObservabilityEventKind.TransitionMatched,
-            attempt.InstanceId,
-            attempt.AttemptId,
-            attempt.StartTimestamp,
-            sourceState: FormatEnum(attempt.SourceState),
-            trigger: FormatEnum(attempt.Trigger),
-            handledAtState: FormatEnum(matched.HandledAtState),
-            declaredTarget: matched.DeclaredTarget is TState declared ? FormatEnum(declared) : null,
-            transitionKind: matched.Kind.ToString(),
-            payload: FormatPayload(attempt.Payload));
+        if (_eventStream && _eventSink is not null)
+        {
+            _eventSink.OnEvent(new ObservabilityEvent
+            {
+                Kind = ObservabilityEventKind.TransitionMatched,
+                InstanceId = attempt.InstanceId,
+                AttemptId = attempt.AttemptId,
+                Timestamp = Stopwatch.GetTimestamp(),
+                AttemptStartTimestamp = attempt.StartTimestamp,
+                SourceState = FormatEnum(attempt.SourceState),
+                Trigger = FormatEnum(attempt.Trigger),
+                HandledAtState = FormatEnum(matched.HandledAtState),
+                DeclaredTarget = matched.DeclaredTarget is TState declared ? FormatEnum(declared) : null,
+                TransitionKind = KindName(matched.Kind),
+                Payload = FormatPayload(attempt.Payload)
+            });
+        }
 
         if (_logger is not null)
         {
@@ -115,7 +139,7 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
                 FormatEnum(attempt.SourceState),
                 FormatEnum(attempt.Trigger),
                 FormatEnum(matched.HandledAtState),
-                matched.Kind.ToString());
+                KindName(matched.Kind));
         }
     }
 
@@ -123,41 +147,47 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
         in TransitionAttemptContext<TState, TTrigger> attempt,
         in TransitionResult<TState> result)
     {
-        var elapsed = Stopwatch.GetElapsedTime(attempt.StartTimestamp);
-
-        if (_options.Metrics)
+        if (_metrics)
         {
-            RecordMetrics(in attempt, in result, elapsed);
+            RecordMetrics(in attempt, in result, Stopwatch.GetElapsedTime(attempt.StartTimestamp));
         }
 
-        if (_options.Tracing && TryRemoveActivity(attempt.InstanceId, attempt.AttemptId, out var activity))
+        if (_tracing && TryRemoveActivity(attempt.InstanceId, attempt.AttemptId, out var activity))
         {
             CompleteActivity(activity, in result);
         }
 
-        EmitEvent(
-            ObservabilityEventKind.AttemptCompleted,
-            attempt.InstanceId,
-            attempt.AttemptId,
-            attempt.StartTimestamp,
-            sourceState: FormatEnum(attempt.SourceState),
-            trigger: FormatEnum(attempt.Trigger),
-            handledAtState: result.MatchedTransition is TransitionInfo<TState> matched
-                ? FormatEnum(matched.HandledAtState)
-                : null,
-            declaredTarget: result.MatchedTransition is TransitionInfo<TState> matchedTransition
-                && matchedTransition.DeclaredTarget is TState declaredTarget
-                    ? FormatEnum(declaredTarget)
+        if (_eventStream && _eventSink is not null)
+        {
+            _eventSink.OnEvent(new ObservabilityEvent
+            {
+                Kind = ObservabilityEventKind.AttemptCompleted,
+                InstanceId = attempt.InstanceId,
+                AttemptId = attempt.AttemptId,
+                Timestamp = Stopwatch.GetTimestamp(),
+                AttemptStartTimestamp = attempt.StartTimestamp,
+                SourceState = FormatEnum(attempt.SourceState),
+                Trigger = FormatEnum(attempt.Trigger),
+                HandledAtState = result.MatchedTransition is TransitionInfo<TState> matched
+                    ? FormatEnum(matched.HandledAtState)
                     : null,
-            resolvedTarget: result.ResolvedTarget is TState resolvedTarget
-                ? FormatEnum(resolvedTarget)
-                : null,
-            finalState: FormatEnum(result.FinalState),
-            transitionKind: result.MatchedTransition?.Kind.ToString(),
-            outcome: result.Outcome.ToString(),
-            stage: result.Stage?.ToString(),
-            payload: FormatPayload(attempt.Payload),
-            exception: result.Exception);
+                DeclaredTarget = result.MatchedTransition is TransitionInfo<TState> matchedTransition
+                    && matchedTransition.DeclaredTarget is TState declaredTarget
+                        ? FormatEnum(declaredTarget)
+                        : null,
+                ResolvedTarget = result.ResolvedTarget is TState resolvedTarget
+                    ? FormatEnum(resolvedTarget)
+                    : null,
+                FinalState = FormatEnum(result.FinalState),
+                TransitionKind = result.MatchedTransition is TransitionInfo<TState> info
+                    ? KindName(info.Kind)
+                    : null,
+                Outcome = OutcomeName(result.Outcome),
+                Stage = result.Stage?.ToString(),
+                Payload = FormatPayload(attempt.Payload),
+                Exception = result.Exception
+            });
+        }
 
         if (_logger is not null)
         {
@@ -166,8 +196,8 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
                 FormatEnum(attempt.SourceState),
                 FormatEnum(attempt.Trigger),
                 FormatEnum(result.FinalState),
-                result.Outcome.ToString(),
-                elapsed.TotalMilliseconds);
+                OutcomeName(result.Outcome),
+                Stopwatch.GetElapsedTime(attempt.StartTimestamp).TotalMilliseconds);
         }
     }
 
@@ -176,7 +206,7 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
         in TransitionInfo<TState> candidate,
         string guardName)
     {
-        if (_options.Tracing && TryGetActivity(attempt.InstanceId, attempt.AttemptId, out var activity))
+        if (_tracing && TryGetActivity(attempt.InstanceId, attempt.AttemptId, out var activity))
         {
             activity.AddEvent(new ActivityEvent(
                 "guard.evaluating",
@@ -186,18 +216,24 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
                 }));
         }
 
-        EmitEvent(
-            ObservabilityEventKind.GuardEvaluating,
-            attempt.InstanceId,
-            attempt.AttemptId,
-            attempt.StartTimestamp,
-            sourceState: FormatEnum(attempt.SourceState),
-            trigger: FormatEnum(attempt.Trigger),
-            handledAtState: FormatEnum(candidate.HandledAtState),
-            declaredTarget: candidate.DeclaredTarget is TState declared ? FormatEnum(declared) : null,
-            transitionKind: candidate.Kind.ToString(),
-            guardName: guardName,
-            payload: FormatPayload(attempt.Payload));
+        if (_eventStream && _eventSink is not null)
+        {
+            _eventSink.OnEvent(new ObservabilityEvent
+            {
+                Kind = ObservabilityEventKind.GuardEvaluating,
+                InstanceId = attempt.InstanceId,
+                AttemptId = attempt.AttemptId,
+                Timestamp = Stopwatch.GetTimestamp(),
+                AttemptStartTimestamp = attempt.StartTimestamp,
+                SourceState = FormatEnum(attempt.SourceState),
+                Trigger = FormatEnum(attempt.Trigger),
+                HandledAtState = FormatEnum(candidate.HandledAtState),
+                DeclaredTarget = candidate.DeclaredTarget is TState declared ? FormatEnum(declared) : null,
+                TransitionKind = KindName(candidate.Kind),
+                GuardName = guardName,
+                Payload = FormatPayload(attempt.Payload)
+            });
+        }
 
         if (_logger is not null)
         {
@@ -211,7 +247,7 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
         string guardName,
         bool result)
     {
-        if (_options.Tracing && TryGetActivity(attempt.InstanceId, attempt.AttemptId, out var activity))
+        if (_tracing && TryGetActivity(attempt.InstanceId, attempt.AttemptId, out var activity))
         {
             activity.AddEvent(new ActivityEvent(
                 "guard.evaluated",
@@ -222,19 +258,25 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
                 }));
         }
 
-        EmitEvent(
-            ObservabilityEventKind.GuardEvaluated,
-            attempt.InstanceId,
-            attempt.AttemptId,
-            attempt.StartTimestamp,
-            sourceState: FormatEnum(attempt.SourceState),
-            trigger: FormatEnum(attempt.Trigger),
-            handledAtState: FormatEnum(candidate.HandledAtState),
-            declaredTarget: candidate.DeclaredTarget is TState declared ? FormatEnum(declared) : null,
-            transitionKind: candidate.Kind.ToString(),
-            guardName: guardName,
-            guardResult: result,
-            payload: FormatPayload(attempt.Payload));
+        if (_eventStream && _eventSink is not null)
+        {
+            _eventSink.OnEvent(new ObservabilityEvent
+            {
+                Kind = ObservabilityEventKind.GuardEvaluated,
+                InstanceId = attempt.InstanceId,
+                AttemptId = attempt.AttemptId,
+                Timestamp = Stopwatch.GetTimestamp(),
+                AttemptStartTimestamp = attempt.StartTimestamp,
+                SourceState = FormatEnum(attempt.SourceState),
+                Trigger = FormatEnum(attempt.Trigger),
+                HandledAtState = FormatEnum(candidate.HandledAtState),
+                DeclaredTarget = candidate.DeclaredTarget is TState declared ? FormatEnum(declared) : null,
+                TransitionKind = KindName(candidate.Kind),
+                GuardName = guardName,
+                GuardResult = result,
+                Payload = FormatPayload(attempt.Payload)
+            });
+        }
 
         if (_logger is not null)
         {
@@ -244,7 +286,7 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
 
     public void OnStateExiting(in TransitionAttemptContext<TState, TTrigger> attempt, TState state)
     {
-        if (_options.Tracing && TryGetActivity(attempt.InstanceId, attempt.AttemptId, out var activity))
+        if (_tracing && TryGetActivity(attempt.InstanceId, attempt.AttemptId, out var activity))
         {
             activity.AddEvent(new ActivityEvent(
                 "state.exiting",
@@ -254,15 +296,21 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
                 }));
         }
 
-        EmitEvent(
-            ObservabilityEventKind.StateExiting,
-            attempt.InstanceId,
-            attempt.AttemptId,
-            attempt.StartTimestamp,
-            sourceState: FormatEnum(attempt.SourceState),
-            trigger: FormatEnum(attempt.Trigger),
-            state: FormatEnum(state),
-            payload: FormatPayload(attempt.Payload));
+        if (_eventStream && _eventSink is not null)
+        {
+            _eventSink.OnEvent(new ObservabilityEvent
+            {
+                Kind = ObservabilityEventKind.StateExiting,
+                InstanceId = attempt.InstanceId,
+                AttemptId = attempt.AttemptId,
+                Timestamp = Stopwatch.GetTimestamp(),
+                AttemptStartTimestamp = attempt.StartTimestamp,
+                SourceState = FormatEnum(attempt.SourceState),
+                Trigger = FormatEnum(attempt.Trigger),
+                State = FormatEnum(state),
+                Payload = FormatPayload(attempt.Payload)
+            });
+        }
 
         if (_logger is not null)
         {
@@ -272,7 +320,7 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
 
     public void OnStateEntered(in TransitionAttemptContext<TState, TTrigger> attempt, TState state)
     {
-        if (_options.Tracing && TryGetActivity(attempt.InstanceId, attempt.AttemptId, out var activity))
+        if (_tracing && TryGetActivity(attempt.InstanceId, attempt.AttemptId, out var activity))
         {
             activity.AddEvent(new ActivityEvent(
                 "state.entered",
@@ -282,15 +330,21 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
                 }));
         }
 
-        EmitEvent(
-            ObservabilityEventKind.StateEntered,
-            attempt.InstanceId,
-            attempt.AttemptId,
-            attempt.StartTimestamp,
-            sourceState: FormatEnum(attempt.SourceState),
-            trigger: FormatEnum(attempt.Trigger),
-            state: FormatEnum(state),
-            payload: FormatPayload(attempt.Payload));
+        if (_eventStream && _eventSink is not null)
+        {
+            _eventSink.OnEvent(new ObservabilityEvent
+            {
+                Kind = ObservabilityEventKind.StateEntered,
+                InstanceId = attempt.InstanceId,
+                AttemptId = attempt.AttemptId,
+                Timestamp = Stopwatch.GetTimestamp(),
+                AttemptStartTimestamp = attempt.StartTimestamp,
+                SourceState = FormatEnum(attempt.SourceState),
+                Trigger = FormatEnum(attempt.Trigger),
+                State = FormatEnum(state),
+                Payload = FormatPayload(attempt.Payload)
+            });
+        }
 
         if (_logger is not null)
         {
@@ -303,7 +357,7 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
         TransitionStage stage,
         string callbackName)
     {
-        if (_options.Tracing && TryGetActivity(attempt.InstanceId, attempt.AttemptId, out var activity))
+        if (_tracing && TryGetActivity(attempt.InstanceId, attempt.AttemptId, out var activity))
         {
             activity.AddEvent(new ActivityEvent(
                 "callback.executing",
@@ -314,16 +368,22 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
                 }));
         }
 
-        EmitEvent(
-            ObservabilityEventKind.CallbackExecuting,
-            attempt.InstanceId,
-            attempt.AttemptId,
-            attempt.StartTimestamp,
-            sourceState: FormatEnum(attempt.SourceState),
-            trigger: FormatEnum(attempt.Trigger),
-            stage: stage.ToString(),
-            callbackName: callbackName,
-            payload: FormatPayload(attempt.Payload));
+        if (_eventStream && _eventSink is not null)
+        {
+            _eventSink.OnEvent(new ObservabilityEvent
+            {
+                Kind = ObservabilityEventKind.CallbackExecuting,
+                InstanceId = attempt.InstanceId,
+                AttemptId = attempt.AttemptId,
+                Timestamp = Stopwatch.GetTimestamp(),
+                AttemptStartTimestamp = attempt.StartTimestamp,
+                SourceState = FormatEnum(attempt.SourceState),
+                Trigger = FormatEnum(attempt.Trigger),
+                Stage = stage.ToString(),
+                CallbackName = callbackName,
+                Payload = FormatPayload(attempt.Payload)
+            });
+        }
 
         if (_logger is not null)
         {
@@ -341,7 +401,7 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
         string callbackName,
         Exception exception)
     {
-        if (_options.Tracing && TryGetActivity(attempt.InstanceId, attempt.AttemptId, out var activity))
+        if (_tracing && TryGetActivity(attempt.InstanceId, attempt.AttemptId, out var activity))
         {
             activity.AddEvent(new ActivityEvent(
                 "callback.faulted",
@@ -353,17 +413,23 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
                 }));
         }
 
-        EmitEvent(
-            ObservabilityEventKind.CallbackFaulted,
-            attempt.InstanceId,
-            attempt.AttemptId,
-            attempt.StartTimestamp,
-            sourceState: FormatEnum(attempt.SourceState),
-            trigger: FormatEnum(attempt.Trigger),
-            stage: stage.ToString(),
-            callbackName: callbackName,
-            payload: FormatPayload(attempt.Payload),
-            exception: exception);
+        if (_eventStream && _eventSink is not null)
+        {
+            _eventSink.OnEvent(new ObservabilityEvent
+            {
+                Kind = ObservabilityEventKind.CallbackFaulted,
+                InstanceId = attempt.InstanceId,
+                AttemptId = attempt.AttemptId,
+                Timestamp = Stopwatch.GetTimestamp(),
+                AttemptStartTimestamp = attempt.StartTimestamp,
+                SourceState = FormatEnum(attempt.SourceState),
+                Trigger = FormatEnum(attempt.Trigger),
+                Stage = stage.ToString(),
+                CallbackName = callbackName,
+                Payload = FormatPayload(attempt.Payload),
+                Exception = exception
+            });
+        }
 
         if (_logger is not null)
         {
@@ -378,12 +444,18 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
 
     public void OnMachineStarted(Guid instanceId, TState initialState)
     {
-        EmitEvent(
-            ObservabilityEventKind.MachineStarted,
-            instanceId,
-            attemptId: 0,
-            timestamp: Stopwatch.GetTimestamp(),
-            finalState: FormatEnum(initialState));
+        if (_eventStream && _eventSink is not null)
+        {
+            _eventSink.OnEvent(new ObservabilityEvent
+            {
+                Kind = ObservabilityEventKind.MachineStarted,
+                InstanceId = instanceId,
+                AttemptId = 0,
+                Timestamp = Stopwatch.GetTimestamp(),
+                AttemptStartTimestamp = 0,
+                FinalState = FormatEnum(initialState)
+            });
+        }
 
         if (_logger is not null)
         {
@@ -397,9 +469,9 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
         TimeSpan elapsed)
     {
         TagList tags = default;
-        tags.Add("outcome", result.Outcome.ToString());
+        tags.Add("outcome", OutcomeName(result.Outcome));
 
-        if (_options.IncludeStateTriggerMetricTags)
+        if (_includeStateTriggerMetricTags)
         {
             tags.Add("source_state", FormatEnum(attempt.SourceState));
             tags.Add("trigger", FormatEnum(attempt.Trigger));
@@ -407,7 +479,7 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
 
         if (result.MatchedTransition is TransitionInfo<TState> matched)
         {
-            tags.Add("transition_kind", matched.Kind.ToString());
+            tags.Add("transition_kind", KindName(matched.Kind));
         }
 
         ObservabilityTelemetry.Completed.Add(1, in tags);
@@ -435,7 +507,7 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
         in TransitionResult<TState> result)
     {
         activity.SetTag("fastfsm.final_state", FormatEnum(result.FinalState));
-        activity.SetTag("fastfsm.outcome", result.Outcome.ToString());
+        activity.SetTag("fastfsm.outcome", OutcomeName(result.Outcome));
 
         if (result.ResolvedTarget is TState resolvedTarget)
         {
@@ -476,64 +548,14 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
         activity.Dispose();
     }
 
-    private void EmitEvent(
-        ObservabilityEventKind kind,
-        Guid instanceId,
-        long attemptId,
-        long timestamp,
-        string? sourceState = null,
-        string? trigger = null,
-        string? handledAtState = null,
-        string? declaredTarget = null,
-        string? resolvedTarget = null,
-        string? finalState = null,
-        string? state = null,
-        string? transitionKind = null,
-        string? outcome = null,
-        string? stage = null,
-        string? guardName = null,
-        bool? guardResult = null,
-        string? callbackName = null,
-        string? payload = null,
-        Exception? exception = null)
-    {
-        if (!_options.EventStream || _eventSink is null)
-        {
-            return;
-        }
-
-        _eventSink.OnEvent(new ObservabilityEvent
-        {
-            Kind = kind,
-            InstanceId = instanceId,
-            AttemptId = attemptId,
-            Timestamp = timestamp,
-            SourceState = sourceState,
-            Trigger = trigger,
-            HandledAtState = handledAtState,
-            DeclaredTarget = declaredTarget,
-            ResolvedTarget = resolvedTarget,
-            FinalState = finalState,
-            State = state,
-            TransitionKind = transitionKind,
-            Outcome = outcome,
-            Stage = stage,
-            GuardName = guardName,
-            GuardResult = guardResult,
-            CallbackName = callbackName,
-            Payload = payload,
-            Exception = exception
-        });
-    }
-
     private string? FormatPayload(object? payload)
     {
-        if (!_options.CapturePayload || payload is null || _options.PayloadFormatter is null)
+        if (!_capturePayload || payload is null || _payloadFormatter is null)
         {
             return null;
         }
 
-        return _options.PayloadFormatter(payload);
+        return _payloadFormatter(payload);
     }
 
     private bool TryGetActivity(Guid instanceId, long attemptId, out Activity activity)
@@ -545,6 +567,24 @@ public sealed class ObservabilityExtension<TState, TTrigger> : IStateMachineExte
     private static string FormatEnum<TEnum>(TEnum value)
         where TEnum : struct, Enum
         => value.ToString();
+
+    private static string OutcomeName(TransitionOutcome outcome) => outcome switch
+    {
+        TransitionOutcome.Succeeded => nameof(TransitionOutcome.Succeeded),
+        TransitionOutcome.GuardRejected => nameof(TransitionOutcome.GuardRejected),
+        TransitionOutcome.UnhandledTrigger => nameof(TransitionOutcome.UnhandledTrigger),
+        TransitionOutcome.InvalidPayload => nameof(TransitionOutcome.InvalidPayload),
+        TransitionOutcome.Canceled => nameof(TransitionOutcome.Canceled),
+        TransitionOutcome.Faulted => nameof(TransitionOutcome.Faulted),
+        _ => outcome.ToString()
+    };
+
+    private static string KindName(TransitionKind kind) => kind switch
+    {
+        TransitionKind.External => nameof(TransitionKind.External),
+        TransitionKind.Internal => nameof(TransitionKind.Internal),
+        _ => kind.ToString()
+    };
 
     private static ExtensionHooks ComputeHooks(FastFsmObservabilityOptions options)
     {

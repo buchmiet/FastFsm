@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Linq;
 using FastFsm.Contracts;
 using FastFsm.Observability;
 
@@ -319,6 +320,28 @@ public sealed class ObservabilitySemanticsTests
         var extension = harness.CreateExtension<ObservabilityFlatState, ObservabilityFlatTrigger>(options =>
             options.Metrics = true);
         Assert.Equal(ExtensionHooks.Transitions, extension.Hooks);
+    }
+
+    [Fact]
+    public void Event_stream_timestamps_are_emission_times_with_shared_attempt_start()
+    {
+        using var harness = new ObservabilityTestHarness();
+        var extension = harness.CreateExtension<ObservabilityFlatState, ObservabilityFlatTrigger>(options =>
+            options.EventStream = true);
+        var machine = new ObservabilityFlatMachine(ObservabilityFlatState.A, [extension]);
+        machine.Start();
+
+        Assert.True(machine.TryFire(ObservabilityFlatTrigger.Go));
+
+        var attemptEvents = harness.EventSink.Events
+            .Where(evt => evt.Kind is ObservabilityEventKind.AttemptStarting or ObservabilityEventKind.AttemptCompleted)
+            .ToList();
+        Assert.Equal(2, attemptEvents.Count);
+
+        var start = attemptEvents[0];
+        var completed = attemptEvents[1];
+        Assert.Equal(start.AttemptStartTimestamp, completed.AttemptStartTimestamp);
+        Assert.True(completed.Timestamp >= start.Timestamp);
     }
 
     [Fact]

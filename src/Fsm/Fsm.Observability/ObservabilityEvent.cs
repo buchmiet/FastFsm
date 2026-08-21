@@ -10,7 +10,11 @@ public readonly struct ObservabilityEvent
 
     public long AttemptId { get; init; }
 
+    /// <summary>Monotonic timestamp when this event was emitted.</summary>
     public long Timestamp { get; init; }
+
+    /// <summary>Attempt start timestamp for correlating events within one attempt.</summary>
+    public long AttemptStartTimestamp { get; init; }
 
     public string? SourceState { get; init; }
 

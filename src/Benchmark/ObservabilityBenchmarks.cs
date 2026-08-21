@@ -111,7 +111,7 @@ public class FlatObservabilityBenchmarks
     [Benchmark(OperationsPerInvoke = Operations)]
     public void TracingWithActivityListener()
     {
-        using (ObservabilityBenchmarkActivityListener.Create())
+        using (ObservabilityBenchmarkActivityListener.Activate())
         {
             for (var i = 0; i < Operations; i++)
                 _tracingWithListener.TryFire(ObsBenchTrigger.Next);
@@ -163,26 +163,5 @@ public class HsmObservabilityBenchmarks
     {
         for (var i = 0; i < Operations; i++)
             _metricsOnly.TryFire(ObsBenchTrigger.Toggle);
-    }
-}
-
-internal static class ObservabilityBenchmarkActivityListener
-{
-    public static IDisposable Create()
-    {
-        var listener = new ActivityListener
-        {
-            ShouldListenTo = source => source.Name == ObservabilityTelemetry.ActivitySourceName,
-            Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData
-        };
-        ActivitySource.AddActivityListener(listener);
-        return new ListenerScope();
-    }
-
-    private sealed class ListenerScope : IDisposable
-    {
-        public void Dispose()
-        {
-        }
     }
 }
