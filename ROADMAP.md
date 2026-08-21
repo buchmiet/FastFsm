@@ -4,7 +4,7 @@ This file records intended areas of work. It is not a release schedule or a comp
 
 ## 0.9.2 (released)
 
-Repository package version is `0.9.2`. Adds **`FastFsm.Sharp.Observability`**, Extension Contract v2 HSM semantics and hook-mask gating (PR4), and refreshed multi-platform benchmarks (Stateless 5.20.1). Git tag `v0.9.2` marks the release.
+Repository package version is `0.9.2`. Adds **`FastFsm.Sharp.Observability`**, the typed extension contract, HSM lifecycle semantics and hook-mask gating, plus refreshed multi-platform benchmarks (Stateless 5.20.1). Git tag `v0.9.2` marks the release.
 
 ## 0.9.1 (released)
 
@@ -16,11 +16,11 @@ Repository package version is `0.9.0`. First .NET 10 release with canonical `Fas
 
 ## Next work: 0.10
 
-Extension Contract v2 and **`FastFsm.Sharp.Observability`** shipped in 0.9.2. See [docs/observability.md](docs/observability.md) and [docs/proposals/extension-contract-v2.md](docs/proposals/extension-contract-v2.md).
+The current extension surface and **`FastFsm.Sharp.Observability`** shipped in 0.9.2. See [docs/extensions.md](docs/extensions.md) and [docs/observability.md](docs/observability.md).
 
 ## Later feature candidate: deferred events
 
-Deferred events remain a substantial state-machine feature under consideration, after extension contract v2.
+Deferred events remain a substantial state-machine feature under consideration.
 
 The intended capability is to allow a state to defer selected triggers instead of handling or rejecting them immediately, and to make those events eligible for processing after the machine leaves the deferring configuration.
 
