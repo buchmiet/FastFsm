@@ -99,6 +99,19 @@ public sealed class ExtensionLifecycleSurfaceTests
     }
 
     [Fact]
+    public void Lifecycle_only_extension_skips_hsm_lifecycle_path_without_reading_default_attempt()
+    {
+        var extension = new LifecycleOnlySurfaceExtension();
+        var machine = new LifecycleSurfaceHsm(LifecycleSurfaceState.A, [extension]);
+        machine.Start();
+
+        Assert.True(machine.TryFire(LifecycleSurfaceTrigger.EnterParent));
+
+        Assert.Equal(LifecycleSurfaceState.Child, machine.CurrentState);
+        Assert.Equal(["started:A"], extension.Events);
+    }
+
+    [Fact]
     public void Hook_mask_is_authoritative_for_each_extension()
     {
         var declared = new LifecycleSurfaceExtension(ExtensionHooks.Transitions | ExtensionHooks.Lifecycle);
@@ -185,4 +198,14 @@ public sealed class UndeclaredLifecycleSurfaceExtension
 
     public void OnAttemptStarting(in TransitionAttemptContext<LifecycleSurfaceState, LifecycleSurfaceTrigger> attempt)
         => AttemptStartingCalled = true;
+}
+
+public sealed class LifecycleOnlySurfaceExtension
+    : IStateMachineExtension<LifecycleSurfaceState, LifecycleSurfaceTrigger>
+{
+    public ExtensionHooks Hooks => ExtensionHooks.Lifecycle;
+    public List<string> Events { get; } = [];
+
+    public void OnMachineStarted(Guid instanceId, LifecycleSurfaceState initialState)
+        => Events.Add($"started:{initialState}");
 }

@@ -54,7 +54,9 @@ public partial class Machine
 
         var statesGate = generated.IndexOf("ExtensionHooks.States", System.StringComparison.Ordinal);
         var lca = generated.IndexOf("FindLowestCommonAncestor", System.StringComparison.Ordinal);
+        var attemptSource = generated.IndexOf("attempt.SourceState", System.StringComparison.Ordinal);
         Assert.True(statesGate >= 0);
         Assert.True(lca > statesGate);
+        Assert.True(attemptSource > statesGate);
     }
 }
