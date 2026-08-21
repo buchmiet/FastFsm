@@ -15,8 +15,10 @@ Repository package version is `FastFsmPackageVersion` / `Version` in `Directory.
 
 ### Added
 
+- **`FastFsm.Sharp.Observability`** — first official Extension Contract v2 client: `ActivitySource` tracing, `Meter` metrics, optional `ILogger` sink, and machine-agnostic `ObservabilityEvent` stream via `ObservabilityExtension<TState,TTrigger>`.
 - HSM extension benchmarks (`HsmExtensionBenchmarks`: no extensions, transitions-only, states-only).
-- Documentation for attempt outcomes and async pre-cancel semantics (no attempt when the token is already canceled at entry).
+- Observability benchmarks (`ObservabilityBenchmarks`: flat and HSM registration/disabled/metrics/tracing scenarios).
+- Documentation for attempt outcomes, async pre-cancel semantics, and [observability.md](docs/observability.md).
 
 ### Removed
 

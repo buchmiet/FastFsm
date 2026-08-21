@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<FastFsmReferenceCore>true</FastFsmReferenceCore>
+		<LangVersion>latest</LangVersion>
+		<Nullable>enable</Nullable>
+		<Deterministic>true</Deterministic>
+		<RootNamespace>FastFsm.Observability</RootNamespace>
+
+		<PackageId>FastFsm.Sharp.Observability</PackageId>
+		<Description>Tracing, metrics, and event-stream observability for FastFsm.Sharp state machines.</Description>
+		<PackageReleaseNotes>.NET 10 observability package for FastFsm.Sharp. Depends on FastFsm.Sharp. See CHANGELOG.md.</PackageReleaseNotes>
+
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<IsPackable>true</IsPackable>
+		<PackageOutputPath>../../../nuget</PackageOutputPath>
+		<IncludeBuildOutput>true</IncludeBuildOutput>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+	</ItemGroup>
+
+	<ItemGroup Condition="Exists('..\..\..\docs\observability.md')">
+		<None Include="..\..\..\docs\observability.md" Pack="true" PackagePath="README.md" />
+	</ItemGroup>
+
+	<PropertyGroup Condition="Exists('..\..\..\docs\observability.md')">
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+	</PropertyGroup>
+
+</Project>

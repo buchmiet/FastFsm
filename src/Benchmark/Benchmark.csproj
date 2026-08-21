@@ -11,6 +11,7 @@
 	  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
 	  <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\GeneratedFiles</CompilerGeneratedFilesOutputPath>
     <FastFsmReferenceCore>true</FastFsmReferenceCore>
+    <FastFsmReferenceObservability>true</FastFsmReferenceObservability>
   </PropertyGroup>
 
 	<ItemGroup>

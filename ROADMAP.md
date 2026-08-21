@@ -10,15 +10,11 @@ Repository package version is `0.9.1`. Patch release after 0.9.0: `net10.0-windo
 
 Repository package version is `0.9.0`. First .NET 10 release with canonical `FastFsm.Sharp*` package IDs and legacy `FastFsm.Net*` metapackages. Published on NuGet.org; git tag `v0.9.0` marks the release.
 
-## Next work: extension contract v2
+## Next work: observability and 0.10
 
-The extension mechanism ships in 0.9.1, but its public data contract is not correct enough to build observability on. In particular, the data delivered to extensions for hierarchical machines does not describe what the machine actually did: a trigger handled on an ancestor is reported as a state change that never occurred, and a transition into a composite state reports the composite rather than the leaf entered.
+Extension Contract v2 landed on `main` (PR4). **`FastFsm.Sharp.Observability`** adds tracing, metrics, an optional `ILogger` sink, and a runtime event stream as a normal `lib/net10.0` assembly — the first client of the v2 contract.
 
-Extension contract v2 replaces the extension surface with a contract generic in the state and trigger types, with stable machine identity, explicit transition semantics, structured outcomes, and a tested lifecycle event stream. It is a breaking change to the extension API, taken while the package has no dependent users, and is intended to release as `0.10.0`.
-
-`FastFsm.Sharp.Observability` — tracing, metrics, and an inspection stream — is built on the v2 contract and is not started before it lands.
-
-See [docs/proposals/extension-contract-v2.md](docs/proposals/extension-contract-v2.md).
+See [docs/observability.md](docs/observability.md) and [docs/proposals/extension-contract-v2.md](docs/proposals/extension-contract-v2.md).
 
 ## Later feature candidate: deferred events
 

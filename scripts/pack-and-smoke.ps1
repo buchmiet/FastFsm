@@ -12,7 +12,8 @@ Write-Host "Packing product projects -> $feed"
 foreach ($proj in @(
     "src/Fsm/Fsm.Core/Fsm.Core.csproj",
     "src/Fsm/Fsm.Logging/Fsm.Logging.csproj",
-    "src/Fsm/Fsm.DependencyInjection/Fsm.DependencyInjection.csproj")) {
+    "src/Fsm/Fsm.DependencyInjection/Fsm.DependencyInjection.csproj",
+    "src/Fsm/Fsm.Observability/Fsm.Observability.csproj")) {
     dotnet build (Join-Path $repo $proj) -c Release
     if ($LASTEXITCODE -ne 0) { throw "dotnet build failed: $proj" }
 }
@@ -31,6 +32,7 @@ foreach ($name in @(
     "FastFsm.Sharp.$version.nupkg",
     "FastFsm.Sharp.Logging.$version.nupkg",
     "FastFsm.Sharp.DependencyInjection.$version.nupkg",
+    "FastFsm.Sharp.Observability.$version.nupkg",
     "FastFsm.Net.$version.nupkg",
     "FastFsm.Net.Logging.$version.nupkg",
     "FastFsm.Net.DependencyInjection.$version.nupkg")) {
@@ -79,6 +81,8 @@ Assert-NupkgDependsOn (Join-Path $feed "FastFsm.Sharp.Logging.$version.nupkg") @
     "FastFsm.Sharp", "Microsoft.Extensions.Logging.Abstractions")
 Assert-NupkgDependsOn (Join-Path $feed "FastFsm.Sharp.DependencyInjection.$version.nupkg") @(
     "FastFsm.Sharp", "Microsoft.Extensions.DependencyInjection", "Microsoft.Extensions.Logging.Abstractions")
+Assert-NupkgDependsOn (Join-Path $feed "FastFsm.Sharp.Observability.$version.nupkg") @(
+    "FastFsm.Sharp", "System.Diagnostics.DiagnosticSource", "Microsoft.Extensions.Logging.Abstractions", "Microsoft.Extensions.DependencyInjection.Abstractions")
 
 $coreNupkg = Join-Path $feed "FastFsm.Sharp.$version.nupkg"
 $dllTmp = Join-Path ([IO.Path]::GetTempPath()) ("FastFsm-asmcheck-" + [guid]::NewGuid().ToString("n") + ".dll")
