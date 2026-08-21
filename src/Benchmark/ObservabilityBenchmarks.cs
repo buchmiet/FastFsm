@@ -128,6 +128,7 @@ public class FlatObservabilitySampledTracingBenchmarks
     [GlobalSetup]
     public void Setup()
     {
+        // Register before the machine is created so the first StartActivity is sampled.
         _listenerScope = ObservabilityBenchmarkActivityListener.Activate();
         _machine = new ObsFlatExtensibleMachine(
             ObsBenchState.A,

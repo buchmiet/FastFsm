@@ -1,54 +1,36 @@
 using System.Diagnostics;
-using System.Threading;
+using FastFsm.Observability;
 
 namespace Benchmark;
 
 /// <summary>
-/// Benchmark-only ActivityListener. <see cref="ActivityListener.ShouldListenTo"/> is evaluated when the
-/// listener is registered; gating sampled work happens in <see cref="ActivityListener.Sample"/>.
+/// Benchmark-only <see cref="ActivityListener"/>.
+/// <see cref="ActivityListener.ShouldListenTo"/> is evaluated once, when the listener is attached to an
+/// existing <see cref="ActivitySource"/> (and again only for sources created later). A later flag change
+/// does not re-run that filter, so sampling must not be gated behind a post-registration scope count.
 /// </summary>
 internal static class ObservabilityBenchmarkActivityListener
 {
-    private static int _activeScopes;
-    private static ActivityListener? _listener;
-    private static readonly object Gate = new();
-
     public static IDisposable Activate()
     {
-        Interlocked.Increment(ref _activeScopes);
-        EnsureRegistered();
-        return new Scope();
-    }
-
-    public static void EnsureRegistered()
-    {
-        if (_listener is not null)
+        var listener = new ActivityListener
         {
-            return;
+            ShouldListenTo = static source => source.Name == ObservabilityTelemetry.ActivitySourceName,
+            Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData
+        };
+
+        // Force the static source to exist before AddActivityListener, so the runtime attaches now
+        // rather than depending on a later source constructor.
+        _ = ObservabilityTelemetry.ActivitySource;
+        ActivitySource.AddActivityListener(listener);
+
+        if (!ObservabilityTelemetry.ActivitySource.HasListeners())
+        {
+            listener.Dispose();
+            throw new InvalidOperationException(
+                "ActivityListener did not attach to the FastFsm ActivitySource. Sampled tracing would be a no-op.");
         }
 
-        lock (Gate)
-        {
-            if (_listener is not null)
-            {
-                return;
-            }
-
-            _listener = new ActivityListener
-            {
-                ShouldListenTo = source =>
-                    source.Name == FastFsm.Observability.ObservabilityTelemetry.ActivitySourceName,
-                Sample = static (ref ActivityCreationOptions<ActivityContext> _) =>
-                    Volatile.Read(ref _activeScopes) > 0
-                        ? ActivitySamplingResult.AllData
-                        : ActivitySamplingResult.None
-            };
-            ActivitySource.AddActivityListener(_listener);
-        }
-    }
-
-    private sealed class Scope : IDisposable
-    {
-        public void Dispose() => Interlocked.Decrement(ref _activeScopes);
+        return listener;
     }
 }
