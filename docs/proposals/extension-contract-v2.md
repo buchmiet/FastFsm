@@ -2,7 +2,7 @@
 
 > **Status:** accepted design, not yet implemented. This document is not part of the current FastFsm API contract; it defines the contract that replaces it.
 >
-> **Revision 2.** See *Changes in revision 2* below.
+> **Revision 3.** See *Revision history* below.
 >
 > **Scope:** everything required before `IStateMachineExtension` can be treated as a public interop surface, and before `FastFsm.Sharp.Observability` can be built as an ordinary client of FastFsm rather than another special path in the generator.
 
@@ -18,7 +18,19 @@ Adding hooks on top of that model would multiply the problem. The priority is th
 
 Accordingly: **`FastFsm.Sharp.Observability` is not started until Extension Contract v2 lands.**
 
-## Changes in revision 2
+## Revision history
+
+### Changes in revision 3
+
+Three residual places where the model still fabricated or misplaced information.
+
+| | rev 2 | rev 3 |
+|---|---|---|
+| internal transition target | `TState DeclaredTarget`, necessarily filled | `TState? DeclaredTarget`, null for internal (**DEC-17**) |
+| matched vs selected | `OnTransitionSelected` emitted *after* the guard, while the result claimed a selection for `GuardRejected` | `OnTransitionMatched` / `MatchedTransition`, emitted *before* the guard (**DEC-18**) |
+| guard and callback faults | assumed producible in PR 2 | blocked by a blanket `catch` in the extensions path; recorded as **D13** and added to PR 2 scope |
+
+### Changes in revision 2
 
 Revision 1 modelled an attempt as a single `TransitionContext` carrying `HandledAtState`, `DeclaredTarget` and `Kind`, with `Kind = None` where no transition matched. That was internally inconsistent: `TState` has no absent value, and `default(TState)` is an ordinary state because enum member zero is a real state.
 
@@ -35,13 +47,23 @@ Revision 1's `TransitionKind.None` is removed: kind is a property of a transitio
 
 ## Current behaviour the contract must state
 
-Two facts about 0.9.1 that the contract must describe accurately rather than assume away. Both were checked against the generator.
+Three facts about 0.9.1 that the contract must describe accurately rather than assume away. All were checked against the generator.
 
 **Single-candidate selection.** FastFsm does not try a second transition when the first one's guard returns `false`. Both emission paths select exactly one candidate per (state, trigger) at compile time and `break` — `StateMachineCodeGenerator.cs:458-463` and `UnifiedStateMachineGenerator.cs:1618-1622`; the HSM extensions path takes `.OrderByDescending(t => t.Priority).First()` at `:1562`. `Priority` orders candidates for that compile-time selection; it does not produce runtime fallthrough.
 
-Therefore `TransitionOutcome.GuardRejected` means **the guard of the single selected transition returned false**, not "every candidate was rejected". The contract must say so, or Observability will export a meaning FastFsm does not implement.
+Therefore `TransitionOutcome.GuardRejected` means **the guard of the single matched transition returned false**, not "every candidate was rejected". The contract must say so, or Observability will export a meaning FastFsm does not implement.
 
 Whether guard fallthrough *should* exist is a core-semantics question — UML prescribes it — and is out of scope here. It is called out because the rev 2 model makes adding it later non-breaking for extensions: candidates are already carried per guard hook rather than folded into the attempt.
+
+**The extensions variant swallows exceptions the plain variant propagates.** `WriteTransitionLogicSyncWithExtensions` wraps the whole transition body — guard call included — in `try { … } catch { RunAfterTransition(false); return false; }`, with an unfiltered `catch`. This is visible in emitted code. The non-extensions variant has no such wrapper, and guard exceptions propagate unless `FASTFSM_SAFE_GUARDS` is defined, which nothing in the repository defines by default.
+
+Three consequences, recorded as **D13**:
+
+- a guard that throws is indistinguishable from a guard that returns `false`;
+- an `OperationCanceledException` from a guard is reported as rejection, not cancellation — `GuardGenerationHelper` is invoked with `treatCancellationAsFailure: false`, and `FASTFSM_SAFE_GUARDS` catches `OperationCanceledException` explicitly and returns `false`;
+- adding extensions to a machine changes its exception semantics, which contradicts DEC-3's requirement that extensions cannot alter the outcome of a transition.
+
+`TransitionOutcome.Faulted`, `TransitionOutcome.Canceled` and `TransitionStage` are therefore **not producible without generator work**: the information is destroyed at the blanket `catch` before any hook could observe it. This is scope for PR 2, and it is the one place where PR 2 must touch emission rather than only wiring.
 
 **State changes before entry callbacks run.** For an external transition the generator emits exit, action, **state change**, then entry (`UnifiedStateMachineGenerator.cs`, "State change BEFORE OnEntry"). If `OnEntry` throws or is cancelled, `_currentState` has already been assigned and the machine returns `false`:
 
@@ -119,12 +141,12 @@ Kind is emitted from `TransitionModel.IsInternal` at compile time. The runtime `
 ### DEC-6 — Declared, resolved and final position are three different facts
 
 ```
-DeclaredTarget  what the FSM definition names as the target
-ResolvedTarget  where composite / history resolution landed
-FinalState      where the machine actually is when the attempt ends
+DeclaredTarget  what the FSM definition names as the target   (null for internal)
+ResolvedTarget  where composite / history resolution landed   (null for internal, and where resolution never ran)
+FinalState      where the machine actually is when the attempt ends   (always present)
 ```
 
-Fixing the target must not be done by discarding the declared one; all three are diagnostically distinct, and the third is the only one that is always true.
+Fixing the target must not be done by discarding the declared one; all three are diagnostically distinct, and the third is the only one that is always true. See DEC-17 for why the first two are nullable.
 
 ### DEC-7 — Core exposes a monotonic start timestamp, not a computed duration
 
@@ -171,7 +193,7 @@ public readonly struct TransitionInfo<TState>
     where TState : unmanaged, Enum
 {
     public TState HandledAtState { get; }
-    public TState DeclaredTarget { get; }
+    public TState? DeclaredTarget { get; }   // null when Kind == Internal
     public TransitionKind Kind { get; }
 }
 ```
@@ -182,8 +204,8 @@ This is what makes the outcomes coherent rather than contradictory:
 |---|---|
 | `UnhandledTrigger` | no |
 | `InvalidPayload` | may not — payload is validated before selection |
-| `GuardRejected` | selected, then rejected |
-| `Succeeded`, `Faulted`, `Canceled` | selected |
+| `GuardRejected` | matched, then rejected |
+| `Succeeded`, `Faulted`, `Canceled` | matched |
 
 `OnTransitionStarting` is renamed `OnAttemptStarting`: an unhandled trigger is not a transition that started.
 
@@ -235,6 +257,39 @@ The asymmetry is deliberate: exit is announced while the machine is still in the
 
 0.10 ships `OnMachineStarted` only. Default interface implementations make `OnMachineStopped` addable later without a break. The dead `MachineStopped` event in the current logging generator — which nothing raises — must not dictate core semantics.
 
+### DEC-17 — An internal transition has no target, and the contract says so
+
+`InternalTransition(A, Refresh)` has no target. `A` is where the transition is *handled*, not where it points. The generator's own model sets `ToState = FromState` for internal transitions (`StateMachineParser.cs:1191-1196`), which is an implementation convenience, not a semantic fact — surfacing it as `DeclaredTarget = A` would fabricate a target exactly as D3 fabricated one for composite entry.
+
+```
+External:  DeclaredTarget = target        ResolvedTarget = actual leaf
+Internal:  DeclaredTarget = null          ResolvedTarget = null
+Always:    FinalState     = the state the machine is in
+```
+
+`TState` has no absent value and `default(TState)` is an ordinary state, so absence must be carried by `Nullable<TState>` rather than a sentinel. This also makes `DeclaredTarget` and `ResolvedTarget` symmetric: both are nullable for the same reason, and `FinalState` remains the one value that is always true.
+
+### DEC-18 — A transition is *matched* before its guard runs, not selected after it
+
+Revision 2 was internally inconsistent: it stated that `GuardRejected` carries the transition, while placing `OnTransitionSelected` after `OnGuardEvaluated`, so a rejected guard produced a result naming a transition whose hook never fired.
+
+The word is *matched*. FastFsm chooses a transition from `(state, trigger, priority)`, and the guard then decides whether it may execute. Matching and guarding are separate steps, and matching is what happens first:
+
+```
+OnAttemptStarting
+OnTransitionMatched
+OnGuardEvaluating
+OnGuardEvaluated
+…
+OnAttemptCompleted
+```
+
+The result property is `MatchedTransition` for the same reason. Under current single-candidate selection, matched and selected are the same event; naming it `Matched` avoids implying a selection step that does not exist.
+
+This composes with the fallthrough question in *Current behaviour*: were guard fallthrough added later, `OnTransitionMatched` would fire per candidate and a distinct `OnTransitionSelected` for the winner could be added additively under DEC-1's default interface implementations, without breaking anything written against this contract.
+
+The `candidate` parameter is retained on both guard hooks even though it is redundant today, so that a stateless extension can act on a guard hook without having stashed state from `OnTransitionMatched`.
+
 ## Packaging constraints
 
 - `ExtensionRunner.cs` is `Compile Remove`d from `FastFsm.dll` and shipped as `contentFiles/cs/any` with `BuildAction=Compile` (`Fsm.Core.csproj`). It is compiled into each consuming assembly as an internal type. **It is an implementation detail and must never appear in the extension contract.**
@@ -260,6 +315,7 @@ Each is observable in 0.9.1 and is pinned by a test in PR 0.
 | D10 | `_extensionsList` and `_extensions` are the same `List<>`; mutation during dispatch is undefined | `ExtensionsFeatureWriter.cs:9-10, 17-18` |
 | D11 | tests assert only `context.GetType().Name`; no test asserts any context value, which is why D1–D4 survived | `Tests.Fsm/Extensions/ExtensionsStandaloneTests.cs` |
 | D12 | a failed attempt reports a machine position the machine is not in, because state assignment precedes entry callbacks | generator, state change before `OnEntry` |
+| D13 | the extensions variant wraps the transition body, guard included, in an unfiltered `catch`, so a throwing guard is indistinguishable from a rejecting one, a cancelled guard reports as rejection, and adding extensions changes the machine's exception semantics | `WriteTransitionLogicSyncWithExtensions`; `GuardGenerationHelper` called with `treatCancellationAsFailure: false` |
 
 ## Target contract
 
@@ -274,8 +330,8 @@ public readonly struct TransitionResult<TState>
     public TransitionOutcome Outcome { get; }
 
     public TState FinalState { get; }                    // always true
-    public TState? ResolvedTarget { get; }               // null if resolution never happened
-    public TransitionInfo<TState>? SelectedTransition { get; }
+    public TState? ResolvedTarget { get; }               // null for internal, and if resolution never ran
+    public TransitionInfo<TState>? MatchedTransition { get; }
 
     public TransitionStage? Stage { get; }
     public Exception? Exception { get; }
@@ -305,10 +361,10 @@ TransitionAttemptContext
       │
       ├── OnAttemptStarting(attempt)
       │
+      ├── OnTransitionMatched(attempt, matched: TransitionInfo)
+      │
       ├── OnGuardEvaluating (attempt, candidate: TransitionInfo, guardName)
       ├── OnGuardEvaluated  (attempt, candidate, guardName, result)
-      │
-      ├── OnTransitionSelected(attempt, selected: TransitionInfo)
       │
       ├── OnStateExiting / OnCallbackExecuting / OnStateEntered / OnCallbackFaulted
       │
@@ -329,8 +385,8 @@ public interface IStateMachineExtension<TState, TTrigger>
 
     void OnAttemptStarting(in TransitionAttemptContext<TState, TTrigger> attempt) { }
 
-    void OnTransitionSelected(in TransitionAttemptContext<TState, TTrigger> attempt,
-                              in TransitionInfo<TState> selected) { }
+    void OnTransitionMatched(in TransitionAttemptContext<TState, TTrigger> attempt,
+                             in TransitionInfo<TState> matched) { }
 
     void OnAttemptCompleted(in TransitionAttemptContext<TState, TTrigger> attempt,
                             in TransitionResult<TState> result) { }
@@ -366,7 +422,7 @@ Default interface implementations do two things: an extension implements only th
 public enum ExtensionHooks
 {
     None        = 0,
-    Transitions = 1 << 0,   // attempt starting, selected, completed
+    Transitions = 1 << 0,   // attempt starting, transition matched, attempt completed
     Guards      = 1 << 1,
     States      = 1 << 2,   // state exiting, entered
     Callbacks   = 1 << 3,   // callback executing, faulted
@@ -450,8 +506,10 @@ Assertions must cover **content**, not merely invocation:
 
 - `InstanceId` identical across every hook of every attempt on one machine, and distinct between instances;
 - `AttemptId` identical across every hook of one attempt, strictly increasing across attempts, in sync and async;
-- `SelectedTransition` absent for `UnhandledTrigger` and for `InvalidPayload` rejected before selection; present for `GuardRejected`;
-- `HandledAtState`, `DeclaredTarget`, `Kind` correct for every topology, including internal-on-ancestor;
+- `MatchedTransition` absent for `UnhandledTrigger` and for `InvalidPayload` rejected before matching; present for `GuardRejected`, and `OnTransitionMatched` actually raised in that case;
+- `OnTransitionMatched` raised **before** `OnGuardEvaluating`, and exactly once per attempt;
+- `HandledAtState` and `Kind` correct for every topology, including internal-on-ancestor;
+- `DeclaredTarget` and `ResolvedTarget` both null for internal transitions, on the leaf and on an ancestor;
 - `ResolvedTarget` null where resolution never ran; correct leaf for composite and history targets;
 - **`FinalState` equal to `CurrentState` immediately after the attempt returns, in every outcome** — including entry-callback failure, where it must equal the target and not the source;
 - `Outcome` and `Stage` correct for every failure mode;
@@ -478,7 +536,7 @@ Acceptance criteria, verified by benchmarks in `src/Benchmark`, which currently 
 |----|-------|------|
 | **PR 0** — characterize extension contract | full matrix flat/HSM × sync/async × payload × guards × self/internal/composite; complete assertions on context content and ordering; extension benchmarks establishing the 0.9.1 baseline | stop refactoring blind |
 | **PR 1** — Extension Contract v2 | the complete final public shape: `TransitionAttemptContext`, `TransitionInfo`, `TransitionResult`, `TransitionOutcome`, `TransitionKind`, typed extension interface with every hook declared, `ExtensionHooks`, identity, `ExtensionSet` management. Behaviour for `Succeeded`, `GuardRejected`, `UnhandledTrigger`, `InvalidPayload`. Payload decision resolved | **model correctness** |
-| **PR 2** — outcomes and failures | no API shape change. Semantics only: `Faulted`, `Canceled`, `TransitionStage`, `Exception`, `ExceptionDirective.Continue`, raising `OnCallbackFaulted` | behaviour completion, not a second redesign |
+| **PR 2** — outcomes and failures | no API shape change. Semantics only: `Faulted`, `Canceled`, `TransitionStage`, `Exception`, `ExceptionDirective.Continue`, raising `OnCallbackFaulted`. Includes the D13 emission fix, without which none of these outcomes is producible | behaviour completion, not a second redesign |
 | **PR 3** — lifecycle surface | `OnMachineStarted`; state and callback hooks wired at every site; hook mask enforced; monotonic `StartTimestamp`; zero-closure dispatch | event stream sufficient for tracing and metrics |
 | **PR 4** — HSM observability semantics | audit and removal of the existing stubs; only well-defined HSM events survive; sync/async parity | full HSM credibility |
 | **PR 5** — `FastFsm.Sharp.Observability` | `ActivitySource`, `Meter`, optional `ILogger` sink, runtime inspection stream, as an open generic extension in a real `lib/net10.0` assembly | first public extension |
@@ -491,8 +549,10 @@ The descriptor track runs independently and blocks none of them.
 
 PR 1 also clears two pieces of accumulated friction: the `GenerateExtensibleVersion` default-value inconsistency noted in `docs/extensions.md`, and the redundant `ExtensionsOn => HasExtensions || IsExtensionsVariant()`, whose operands read the same field.
 
+**PR 2 is the one PR that must change emission, not only wiring.** D13 destroys the guard and callback exception before any hook could see it, so `Faulted`, `Canceled` and `Stage` cannot be raised until the blanket `catch` in the extensions path is replaced by filtered handling that distinguishes a thrown guard from a rejecting one and an `OperationCanceledException` from either. Restoring parity with the non-extensions variant is part of the fix, since under DEC-3 adding an extension must not change what the machine does with an exception.
+
 **PR 4 starts from deletion.** The five stubs in `ExtensionRunner` — `RunTransitionCompleted`, `RunBubbleToParent`, `RunInitialSubstateEntered`, `RunHistoryRestore`, `RunAncestorPathChanged` — have no call sites anywhere in the generator, and `ReadOnlySpan<TState>` cannot be retained by an extension, which is exactly what an inspector needs to do.
 
 Several may prove unnecessary. With `SourceState`, `HandledAtState`, `DeclaredTarget`, `ResolvedTarget`, `FinalState` and `Kind` in the model, and per-state `OnStateExiting` / `OnStateEntered` from DEC-15, an exit and entry path is already observable as a sequence; whole paths should not be pushed into hot-path events. Whether the LCA belongs on the attempt context — where it costs on every HSM attempt and is currently computed only under `ShouldGenerateLogging` — or only in a mask-gated hierarchy event, is decided here.
 
-**Release:** the contract is complete after PR 4 and ships as `0.10.0`, with the break recorded in `CHANGELOG.md` and `docs/extensions.md` rewritten against the delivered contract — normative ordering, the synchronous-hook requirement, the per-attempt snapshot semantics, the hook-mask footgun, and the meaning of every `TransitionOutcome` including that `GuardRejected` refers to the single selected transition. The existing constructor example must also be corrected: it shows a `logger:` parameter that non-logging machines do not have. Observability ships separately once PR 5 lands.
+**Release:** the contract is complete after PR 4 and ships as `0.10.0`, with the break recorded in `CHANGELOG.md` and `docs/extensions.md` rewritten against the delivered contract — normative ordering, the synchronous-hook requirement, the per-attempt snapshot semantics, the hook-mask footgun, and the meaning of every `TransitionOutcome` including that `GuardRejected` refers to the single matched transition. The existing constructor example must also be corrected: it shows a `logger:` parameter that non-logging machines do not have. Observability ships separately once PR 5 lands.
