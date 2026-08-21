@@ -15,14 +15,17 @@ internal sealed class ExtensionSet<TState, TTrigger>
 {
     private ExtensionSet(
         IStateMachineExtension<TState, TTrigger>[] items,
+        ExtensionHooks[] itemHooks,
         ExtensionHooks hooks)
     {
         Items = items;
+        ItemHooks = itemHooks;
         PublicItems = Array.AsReadOnly(items);
         Hooks = hooks;
     }
 
     public IStateMachineExtension<TState, TTrigger>[] Items { get; }
+    public ExtensionHooks[] ItemHooks { get; }
     public IReadOnlyList<IStateMachineExtension<TState, TTrigger>> PublicItems { get; }
     public ExtensionHooks Hooks { get; }
 
@@ -30,9 +33,10 @@ internal sealed class ExtensionSet<TState, TTrigger>
         IEnumerable<IStateMachineExtension<TState, TTrigger>>? extensions)
     {
         if (extensions is null)
-            return new ExtensionSet<TState, TTrigger>([], ExtensionHooks.None);
+            return new ExtensionSet<TState, TTrigger>([], [], ExtensionHooks.None);
 
         var items = new List<IStateMachineExtension<TState, TTrigger>>();
+        var itemHooks = new List<ExtensionHooks>();
         var hooks = ExtensionHooks.None;
         foreach (var extension in extensions)
         {
@@ -40,10 +44,12 @@ internal sealed class ExtensionSet<TState, TTrigger>
                 throw new ArgumentException("The extension collection cannot contain null items.", nameof(extensions));
 
             items.Add(extension);
-            hooks |= extension.Hooks;
+            var extensionHooks = extension.Hooks;
+            itemHooks.Add(extensionHooks);
+            hooks |= extensionHooks;
         }
 
-        return new ExtensionSet<TState, TTrigger>(items.ToArray(), hooks);
+        return new ExtensionSet<TState, TTrigger>(items.ToArray(), itemHooks.ToArray(), hooks);
     }
 }
 
@@ -70,6 +76,7 @@ internal sealed class ExtensionRunner
         if ((set.Hooks & ExtensionHooks.Transitions) == 0) return;
         for (var i = 0; i < set.Items.Length; i++)
         {
+            if ((set.ItemHooks[i] & ExtensionHooks.Transitions) == 0) continue;
             try { set.Items[i].OnAttemptStarting(in attempt); }
             catch (Exception ex) { Report(set.Items[i], nameof(IStateMachineExtension<TState, TTrigger>.OnAttemptStarting), in attempt, attempt.SourceState, ex); }
         }
@@ -86,6 +93,7 @@ internal sealed class ExtensionRunner
         if ((set.Hooks & ExtensionHooks.Transitions) == 0) return;
         for (var i = 0; i < set.Items.Length; i++)
         {
+            if ((set.ItemHooks[i] & ExtensionHooks.Transitions) == 0) continue;
             try { set.Items[i].OnTransitionMatched(in attempt, in matched); }
             catch (Exception ex) { Report(set.Items[i], nameof(IStateMachineExtension<TState, TTrigger>.OnTransitionMatched), in attempt, attempt.SourceState, ex); }
         }
@@ -102,6 +110,7 @@ internal sealed class ExtensionRunner
         if ((set.Hooks & ExtensionHooks.Transitions) == 0) return;
         for (var i = 0; i < set.Items.Length; i++)
         {
+            if ((set.ItemHooks[i] & ExtensionHooks.Transitions) == 0) continue;
             try { set.Items[i].OnAttemptCompleted(in attempt, in result); }
             catch (Exception ex) { Report(set.Items[i], nameof(IStateMachineExtension<TState, TTrigger>.OnAttemptCompleted), in attempt, result.FinalState, ex); }
         }
@@ -119,6 +128,7 @@ internal sealed class ExtensionRunner
         if ((set.Hooks & ExtensionHooks.Guards) == 0) return;
         for (var i = 0; i < set.Items.Length; i++)
         {
+            if ((set.ItemHooks[i] & ExtensionHooks.Guards) == 0) continue;
             try { set.Items[i].OnGuardEvaluating(in attempt, in candidate, guardName); }
             catch (Exception ex) { Report(set.Items[i], nameof(IStateMachineExtension<TState, TTrigger>.OnGuardEvaluating), in attempt, attempt.SourceState, ex); }
         }
@@ -137,6 +147,7 @@ internal sealed class ExtensionRunner
         if ((set.Hooks & ExtensionHooks.Guards) == 0) return;
         for (var i = 0; i < set.Items.Length; i++)
         {
+            if ((set.ItemHooks[i] & ExtensionHooks.Guards) == 0) continue;
             try { set.Items[i].OnGuardEvaluated(in attempt, in candidate, guardName, result); }
             catch (Exception ex) { Report(set.Items[i], nameof(IStateMachineExtension<TState, TTrigger>.OnGuardEvaluated), in attempt, attempt.SourceState, ex); }
         }
@@ -153,6 +164,7 @@ internal sealed class ExtensionRunner
         if ((set.Hooks & ExtensionHooks.States) == 0) return;
         for (var i = 0; i < set.Items.Length; i++)
         {
+            if ((set.ItemHooks[i] & ExtensionHooks.States) == 0) continue;
             try { set.Items[i].OnStateExiting(in attempt, state); }
             catch (Exception ex) { Report(set.Items[i], nameof(IStateMachineExtension<TState, TTrigger>.OnStateExiting), in attempt, state, ex); }
         }
@@ -169,6 +181,7 @@ internal sealed class ExtensionRunner
         if ((set.Hooks & ExtensionHooks.States) == 0) return;
         for (var i = 0; i < set.Items.Length; i++)
         {
+            if ((set.ItemHooks[i] & ExtensionHooks.States) == 0) continue;
             try { set.Items[i].OnStateEntered(in attempt, state); }
             catch (Exception ex) { Report(set.Items[i], nameof(IStateMachineExtension<TState, TTrigger>.OnStateEntered), in attempt, state, ex); }
         }
@@ -186,6 +199,7 @@ internal sealed class ExtensionRunner
         if ((set.Hooks & ExtensionHooks.Callbacks) == 0) return;
         for (var i = 0; i < set.Items.Length; i++)
         {
+            if ((set.ItemHooks[i] & ExtensionHooks.Callbacks) == 0) continue;
             try { set.Items[i].OnCallbackExecuting(in attempt, stage, callbackName); }
             catch (Exception ex) { Report(set.Items[i], nameof(IStateMachineExtension<TState, TTrigger>.OnCallbackExecuting), in attempt, attempt.SourceState, ex); }
         }
@@ -204,6 +218,7 @@ internal sealed class ExtensionRunner
         if ((set.Hooks & ExtensionHooks.Callbacks) == 0) return;
         for (var i = 0; i < set.Items.Length; i++)
         {
+            if ((set.ItemHooks[i] & ExtensionHooks.Callbacks) == 0) continue;
             try { set.Items[i].OnCallbackFaulted(in attempt, stage, callbackName, exception); }
             catch (Exception ex) { Report(set.Items[i], nameof(IStateMachineExtension<TState, TTrigger>.OnCallbackFaulted), in attempt, attempt.SourceState, ex); }
         }
@@ -220,6 +235,7 @@ internal sealed class ExtensionRunner
         if ((set.Hooks & ExtensionHooks.Lifecycle) == 0) return;
         for (var i = 0; i < set.Items.Length; i++)
         {
+            if ((set.ItemHooks[i] & ExtensionHooks.Lifecycle) == 0) continue;
             try { set.Items[i].OnMachineStarted(instanceId, initialState); }
 #if FSM_LOGGING_ENABLED
             catch (Exception ex)

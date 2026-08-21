@@ -332,31 +332,6 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         }
     }
 
-    private static string MakeSafeMemberSuffix(string raw)
-    {
-        if (string.IsNullOrEmpty(raw)) return "_";
-        // Remove leading '@' if present (verbatim identifier)
-        if (raw.Length > 0 && raw[0] == '@') raw = raw.Substring(1);
-        // Replace invalid identifier chars with '_'
-        var sb = new System.Text.StringBuilder(raw.Length);
-        foreach (var ch in raw)
-        {
-            if (char.IsLetterOrDigit(ch) || ch == '_') sb.Append(ch);
-            else sb.Append('_');
-        }
-        var s = sb.ToString();
-        // Prefix if starts with digit
-        if (s.Length == 0 || char.IsDigit(s[0])) s = "_" + s;
-        // If keyword, add trailing underscore to avoid collisions
-        switch (s)
-        {
-            case "class": case "return": case "void": case "int": case "interface": case "namespace":
-            case "new": case "throw": case "break": case "continue": case "goto":
-                s += "_"; break;
-        }
-        return s;
-    }
-
     private void WriteConstructor(string stateTypeForUsage, string className)
 {
         var extras = new List<string>();
@@ -879,7 +854,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
 
         Sb.AppendLine("var extensionSet = System.Threading.Volatile.Read(ref _extensionSet);");
         Sb.AppendLine($"var attempt = default(TransitionAttemptContext<{stateType}, {triggerType}>);");
-        using (Sb.Block("if (extensionSet.Items.Length != 0)"))
+        using (Sb.Block("if ((extensionSet.Hooks & (ExtensionHooks.Transitions | ExtensionHooks.Guards | ExtensionHooks.States | ExtensionHooks.Callbacks)) != 0)"))
         {
             Sb.AppendLine($"attempt = new TransitionAttemptContext<{stateType}, {triggerType}>(");
             Sb.AppendLine("    _fsmInstanceId,");
@@ -1402,6 +1377,29 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 }
             }
 
+            if (!transition.IsInternal)
+            {
+                if (Model.HierarchyEnabled)
+                {
+                    Sb.AppendLine($"int __lifecycleSource = (int)attempt.SourceState;");
+                    Sb.AppendLine($"int __lifecycleTarget = (int){stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.ToState)};");
+                    Sb.AppendLine("int __lifecycleLca = FindLowestCommonAncestor(__lifecycleSource, __lifecycleTarget);");
+                    Sb.AppendLine($"int __handledState = (int){stateTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.FromState)};");
+                    using (Sb.Block("if (__lifecycleLca == __handledState)"))
+                    {
+                        Sb.AppendLine("__lifecycleLca = (uint)__handledState < (uint)g_parent.Length ? g_parent[__handledState] : -1;");
+                    }
+                    using (Sb.Block("for (int __exiting = __lifecycleSource; __exiting >= 0 && __exiting != __lifecycleLca; __exiting = g_parent[__exiting])"))
+                    {
+                        Sb.AppendLine($"_extensionRunner.RunStateExiting(extensionSet, in attempt, ({stateTypeForUsage})__exiting);");
+                    }
+                }
+                else
+                {
+                    Sb.AppendLine("_extensionRunner.RunStateExiting(extensionSet, in attempt, attempt.SourceState);");
+                }
+            }
+
             if (!transition.IsInternal && hasOnEntryExit &&
                 Model.States.TryGetValue(transition.FromState, out var fromStateDef) &&
                 !string.IsNullOrEmpty(fromStateDef.OnExitMethod))
@@ -1453,6 +1451,25 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 }
 
                 Sb.AppendLine($"__resolvedTarget = {CurrentStateField};");
+
+                if (Model.HierarchyEnabled)
+                {
+                    Sb.AppendLine("int __lifecycleTargetDepth = g_depth[(int)" + CurrentStateField + "];");
+                    Sb.AppendLine("int __lifecycleLcaDepth = __lifecycleLca >= 0 ? g_depth[__lifecycleLca] : -1;");
+                    using (Sb.Block("for (int __enterDepth = __lifecycleLcaDepth + 1; __enterDepth <= __lifecycleTargetDepth; __enterDepth++)"))
+                    {
+                        Sb.AppendLine($"int __entering = (int){CurrentStateField};");
+                        using (Sb.Block("while (g_depth[__entering] > __enterDepth)"))
+                        {
+                            Sb.AppendLine("__entering = g_parent[__entering];");
+                        }
+                        Sb.AppendLine($"_extensionRunner.RunStateEntered(extensionSet, in attempt, ({stateTypeForUsage})__entering);");
+                    }
+                }
+                else
+                {
+                    Sb.AppendLine($"_extensionRunner.RunStateEntered(extensionSet, in attempt, {CurrentStateField});");
+                }
             }
 
             if (!transition.IsInternal && hasOnEntryExit &&
@@ -1586,6 +1603,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
         Action writeCallback)
     {
         Sb.AppendLine($"__transitionStage = {stage};");
+        Sb.AppendLine($"_extensionRunner.RunCallbackExecuting(extensionSet, in attempt, {stage}, \"{callbackName}\");");
         using (Sb.Block("try"))
         {
             writeCallback();

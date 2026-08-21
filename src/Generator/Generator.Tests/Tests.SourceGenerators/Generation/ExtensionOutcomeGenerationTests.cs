@@ -107,6 +107,13 @@ public partial class Machine
         Assert.Contains("TransitionStage.OnExit", generated);
         Assert.Contains("TransitionStage.OnEntry", generated);
         Assert.Contains("TransitionStage.Action", generated);
+        Assert.Contains(
+            "extensionSet.Hooks & (ExtensionHooks.Transitions | ExtensionHooks.Guards | ExtensionHooks.States | ExtensionHooks.Callbacks)",
+            generated);
+        Assert.DoesNotContain("if (extensionSet.Items.Length != 0)", generated);
+        Assert.Contains("RunStateExiting", generated);
+        Assert.Contains("RunStateEntered", generated);
+        Assert.Contains("RunCallbackExecuting", generated);
         Assert.Contains("RunCallbackFaulted", generated);
     }
 }
