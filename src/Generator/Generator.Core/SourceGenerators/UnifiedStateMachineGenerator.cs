@@ -1372,7 +1372,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 Sb.AppendLine("    RecordHistoryForCurrentPath();");
                 
                 // For HSM, we need to properly handle composite states and add diagnostics
-                Sb.AppendLine($"    string __fromName = {CurrentStateField}.ToString();");
+                Sb.AppendLine($"    string __transitionFromName = {CurrentStateField}.ToString();");
                 
                 // Inline the composite handling with proper indentation
                 Sb.AppendLine($"    // Set destination and resolve through GetCompositeEntryTarget");
@@ -1421,16 +1421,16 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 if (ShouldGenerateLogging)
                 {
                     Sb.AppendLine($"    // HSM transition diagnostics");
-                Sb.AppendLine($"    int lca = FindLowestCommonAncestor((int)Enum.Parse<{stateTypeForUsage}>(__fromName), (int){CurrentStateField});");
+                Sb.AppendLine($"    int lca = FindLowestCommonAncestor((int)Enum.Parse<{stateTypeForUsage}>(__transitionFromName), (int){CurrentStateField});");
                 // TODO(EXT): compute exitedPath/enteredPath spans and emit OnAncestorPathChanged(smCtx, exitedPath, enteredPath, (" + stateTypeForUsage + ")lca)
                     Sb.AppendLine($"    int __exitCount = 0;");
-                    Sb.AppendLine($"    for (int s = (int)Enum.Parse<{stateTypeForUsage}>(__fromName); s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __exitCount++; }}");
+                    Sb.AppendLine($"    for (int s = (int)Enum.Parse<{stateTypeForUsage}>(__transitionFromName); s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __exitCount++; }}");
                     Sb.AppendLine($"    int __entryCount = 0;");
                     Sb.AppendLine($"    for (int s = (int){CurrentStateField}; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __entryCount++; }}");
                     
                     using (Sb.Block("    if (_logger?.IsEnabled(LogLevel.Debug) == true)"))
                     {
-                        Sb.AppendLine($"HierarchicalTransition(_logger, _instanceId, __fromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
+                        Sb.AppendLine($"HierarchicalTransition(_logger, _instanceId, __transitionFromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
                     }
                     using (Sb.Block("    if (_logger?.IsEnabled(LogLevel.Trace) == true)"))
                     {
@@ -1924,8 +1924,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                                             {
                                                 var from = TypeHelper.EscapeIdentifier(transition.FromState);
                                                 var trig = TypeHelper.EscapeIdentifier(transition.Trigger);
-                                                Sb.AppendLine($"var guardResult = EvaluateGuard__{from}__{trig}(null);");
-                                                Sb.AppendLine("return guardResult;");
+                                                Sb.AppendLine($"return EvaluateGuard__{from}__{trig}(null);");
                                             }
                                             else
                                             {
@@ -1970,8 +1969,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                                         {
                                             var from = TypeHelper.EscapeIdentifier(transition.FromState);
                                             var trig = TypeHelper.EscapeIdentifier(transition.Trigger);
-                                            Sb.AppendLine($"var guardResult = EvaluateGuard__{from}__{trig}(null);");
-                                            Sb.AppendLine("return guardResult;");
+                                            Sb.AppendLine($"return EvaluateGuard__{from}__{trig}(null);");
                                         }
                                         else
                                         {
@@ -2615,7 +2613,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 
                 // Create a temporary StringBuilder with proper indentation for HSM logic
                 var indent = "                        ";
-                Sb.AppendLine($"{indent}string __fromName = {CurrentStateField}.ToString();");
+                Sb.AppendLine($"{indent}string __transitionFromName = {CurrentStateField}.ToString();");
                 Sb.AppendLine($"{indent}// Set destination and resolve through GetCompositeEntryTarget");
                 
                 // SAVE COMPOSITE BEFORE ASSIGNING _currentState
@@ -2660,15 +2658,15 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 if (ShouldGenerateLogging)
                 {
                     Sb.AppendLine($"{indent}// HSM transition diagnostics");
-                    Sb.AppendLine($"{indent}int lca = FindLowestCommonAncestor((int)Enum.Parse<{stateTypeForUsage}>(__fromName), (int){CurrentStateField});");
+                    Sb.AppendLine($"{indent}int lca = FindLowestCommonAncestor((int)Enum.Parse<{stateTypeForUsage}>(__transitionFromName), (int){CurrentStateField});");
                     Sb.AppendLine($"{indent}int __exitCount = 0;");
-                    Sb.AppendLine($"{indent}for (int s = (int)Enum.Parse<{stateTypeForUsage}>(__fromName); s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __exitCount++; }}");
+                    Sb.AppendLine($"{indent}for (int s = (int)Enum.Parse<{stateTypeForUsage}>(__transitionFromName); s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __exitCount++; }}");
                     Sb.AppendLine($"{indent}int __entryCount = 0;");
                     Sb.AppendLine($"{indent}for (int s = (int){CurrentStateField}; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __entryCount++; }}");
                     
                     Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true)");
                     Sb.AppendLine($"{indent}{{");
-                    Sb.AppendLine($"{indent}    HierarchicalTransition(_logger, _instanceId, __fromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
+                    Sb.AppendLine($"{indent}    HierarchicalTransition(_logger, _instanceId, __transitionFromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
                     Sb.AppendLine($"{indent}}}");
                     Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Trace) == true)");
                     Sb.AppendLine($"{indent}{{");
@@ -3115,7 +3113,7 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 
                 // Create HSM logic with proper indentation
                 var indent = "                        ";
-                Sb.AppendLine($"{indent}string __fromName = {CurrentStateField}.ToString();");
+                Sb.AppendLine($"{indent}string __transitionFromName = {CurrentStateField}.ToString();");
                 Sb.AppendLine($"{indent}// Set destination and resolve through GetCompositeEntryTarget");
                 
                 // SAVE COMPOSITE BEFORE ASSIGNING _currentState
@@ -3160,15 +3158,15 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                 if (ShouldGenerateLogging)
                 {
                     Sb.AppendLine($"{indent}// HSM transition diagnostics");
-                    Sb.AppendLine($"{indent}int lca = FindLowestCommonAncestor((int)Enum.Parse<{stateTypeForUsage}>(__fromName), (int){CurrentStateField});");
+                    Sb.AppendLine($"{indent}int lca = FindLowestCommonAncestor((int)Enum.Parse<{stateTypeForUsage}>(__transitionFromName), (int){CurrentStateField});");
                     Sb.AppendLine($"{indent}int __exitCount = 0;");
-                    Sb.AppendLine($"{indent}for (int s = (int)Enum.Parse<{stateTypeForUsage}>(__fromName); s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __exitCount++; }}");
+                    Sb.AppendLine($"{indent}for (int s = (int)Enum.Parse<{stateTypeForUsage}>(__transitionFromName); s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __exitCount++; }}");
                     Sb.AppendLine($"{indent}int __entryCount = 0;");
                     Sb.AppendLine($"{indent}for (int s = (int){CurrentStateField}; s >= 0 && s != lca; s = (s < g_parent.Length) ? g_parent[s] : -1) {{ __entryCount++; }}");
                     
                     Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Debug) == true)");
                     Sb.AppendLine($"{indent}{{");
-                    Sb.AppendLine($"{indent}    HierarchicalTransition(_logger, _instanceId, __fromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
+                    Sb.AppendLine($"{indent}    HierarchicalTransition(_logger, _instanceId, __transitionFromName, {CurrentStateField}.ToString(), (({stateTypeForUsage})lca).ToString(), __exitCount, __entryCount);");
                     Sb.AppendLine($"{indent}}}");
                     Sb.AppendLine($"{indent}if (_logger?.IsEnabled(LogLevel.Trace) == true)");
                     Sb.AppendLine($"{indent}{{");
