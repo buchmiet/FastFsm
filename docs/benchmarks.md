@@ -2,6 +2,16 @@
 
 FastFsm includes a BenchmarkDotNet project at `src/Benchmark/`. Verified results for the **0.9.2 / .NET 10** line are recorded below.
 
+## Scope and interpretation
+
+These benchmarks measure framework overhead on small, synthetic state-machine workloads. They are microbenchmarks, not application-level throughput measurements.
+
+FastFsm is source-generated, while the comparison libraries are configured and dispatched at runtime. The benchmark tables report the measured cost of those implementations on the same workloads; they do not normalize the architectural differences into a single "faster than" ratio.
+
+Results reported with `OperationsPerInvoke` are per-operation values from batched BenchmarkDotNet invocations. Sub-nanosecond figures should therefore be interpreted as amortized microbenchmark cost, not as standalone wall-clock latency of an isolated transition.
+
+Use the full snapshots when comparing implementations. They include allocation data, async scenarios, runtime and hardware details, package versions, and benchmark configuration.
+
 ## Running benchmarks locally
 
 Prerequisites:
@@ -40,31 +50,33 @@ All suites use **InProcess** jobs (`IterationCount=15`, `WarmupCount=3`) for rel
 
 Host labels (`win-x64-amd-9600x`, `linux-arm64`, …) describe **CPU architecture and OS only** — never machine names or hostnames. See [benchmarks/results/README.md](benchmarks/results/README.md).
 
-### `win-x64-amd-9600x` (2026-08-21, **`v0.9.2` release gate**)
+### `win-x64-amd-9600x` (2026-08-21, `v0.9.2` release gate)
 
 Measured on Windows 11 x64 (AMD Ryzen 5 9600X). Full snapshot: [win-x64-amd-9600x-2026-08-21.md](benchmarks/results/win-x64-amd-9600x-2026-08-21.md)
 
 **Package:** FastFsm.Sharp 0.9.2  
 **BenchmarkDotNet:** 0.15.8 — InProcess, `IterationCount=15`, `WarmupCount=3`, runtime .NET 10.0.11  
-**Comparison libraries:** Stateless **5.20.1**, LiquidState.Unofficial 1.0.6, Appccelerate.StateMachine 6.0.0
+**Comparison libraries:** Stateless 5.20.1, LiquidState.Unofficial 1.0.6, Appccelerate.StateMachine 6.0.0
 
-**Flat FSM (selected, Mean):**
+The tables below are a compact index into the snapshot. The linked snapshot contains the broader benchmark set.
+
+**Flat synchronous dispatch:**
 
 | Method | Mean | Alloc/op |
 |--------|-----:|---------:|
 | FastFsm_Basic | 0.84 ns | 0 |
 | LiquidState_Basic | 26.0 ns | 72 B |
 | Stateless_Basic | 327.8 ns | 1208 B |
-| FastFsm_CanFire | 0.28 ns | 0 |
+| Appccelerate_Basic | 331.7 ns | 1568 B |
 
-**HSM (selected, Mean):**
+**HSM:**
 
-| Method | Mean |
-|--------|-----:|
-| FastFSM_Hsm_Basic_EnterLeave | 2.60 ns |
-| Stateless_Hsm_Basic_EnterLeave | 671.1 ns |
-| FastFSM_Hsm_Internal | 0.93 ns |
-| Stateless_Hsm_Internal | 383.9 ns |
+| Method | Mean | Alloc/op |
+|--------|-----:|---------:|
+| FastFSM_Hsm_Basic_EnterLeave | 2.60 ns | 0 |
+| Stateless_Hsm_Basic_EnterLeave | 671.1 ns | 3520 B |
+| FastFSM_Hsm_Internal | 0.93 ns | 0 |
+| Stateless_Hsm_Internal | 383.9 ns | 1424 B |
 
 **Observability flat (512 ops/invoke):**
 
@@ -83,7 +95,7 @@ Intel Core i5-14600K, measured at commit `b6ed370` on **native Windows** and **W
 | [win-x64-intel-14600k-2026-08-17.md](benchmarks/results/win-x64-intel-14600k-2026-08-17.md) | Windows 11 | 0.9.0 | ~8 min |
 | [wsl-x64-intel-14600k-2026-08-17.md](benchmarks/results/wsl-x64-intel-14600k-2026-08-17.md) | WSL2 Ubuntu 24.04 | 0.9.0 | ~7.5 min |
 
-**Flat FSM (selected, Mean):**
+**Flat FSM:**
 
 | Method | Win native | WSL2 | `win-x64-amd-9600x` | `linux-arm64` |
 |--------|----------:|-----:|--------------------:|--------------:|
@@ -92,7 +104,7 @@ Intel Core i5-14600K, measured at commit `b6ed370` on **native Windows** and **W
 | FastFsm_CanFire | 0.36 ns | 0.48 ns | 0.35 ns | 0.54 ns |
 | LiquidState_Basic | 26.5 ns | 33.7 ns | 21.2 ns | 25.4 ns |
 
-**HSM (selected, Mean):**
+**HSM:**
 
 | Method | Win native | WSL2 | `win-x64-amd-9600x` |
 |--------|----------:|-----:|--------------------:|
@@ -100,11 +112,7 @@ Intel Core i5-14600K, measured at commit `b6ed370` on **native Windows** and **W
 | Stateless_Hsm_Basic_EnterLeave | 765 ns | 1,204 ns | 712 ns |
 | FastFSM_Hsm_Internal | 0.97 ns | 0.99 ns | 1.17 ns |
 
-**Takeaways:**
-
-- Generated FastFsm sync paths stay **sub-2 ns** on every x64 host; differences between Windows and WSL on the same CPU are noise-level for `FastFsm_Basic` / `CanFire`.
-- Third-party libraries (Stateless, Appccelerate) show **much larger WSL vs Windows gaps** on the i5-14600K pair (e.g. `Stateless_Basic` 293 ns → 445 ns), consistent with WSL2 + DrvFS overhead and different reported core topology.
-- `win-x64-amd-9600x` remains the reference **0.9.0 release-gate** snapshot at commit `93ab811`; the Intel/WSL pair at `b6ed370` uses the same benchmark harness and comparison package versions — runtime performance is expected to match.
+Cross-run comparisons should be treated separately from same-run comparisons because the job mode, runtime, package versions, and host can differ. The dated snapshots preserve those details.
 
 ### `win-x64-amd-9600x` (2026-08-17, `v0.9.0` release gate)
 
@@ -124,18 +132,18 @@ Full tables: [docs/benchmarks/results/win-x64-amd-9600x-2026-08-17.md](benchmark
 | .NET | SDK 10.0.400, runtime 10.0.11 |
 | Wall time | ~9.5 min total (23 + 7 benchmarks) |
 
-**Flat FSM (selected, vs Stateless baseline = 1.00 where shown):**
+**Flat FSM:**
 
-| Method | Mean | Ratio vs Stateless |
-|--------|-----:|-------------------:|
-| FastFsm_Basic | 0.91 ns | 0.004 |
-| Stateless_Basic | 234.0 ns | 1.000 |
-| LiquidState_Basic | 21.2 ns | 0.091 |
-| FastFsm_GuardsActions | 0.87 ns | 0.004 |
-| FastFsm_CanFire | 0.35 ns | 0.001 |
-| FastFsm_Payload | 1.04 ns | 0.004 |
+| Method | Mean |
+|--------|-----:|
+| FastFsm_Basic | 0.91 ns |
+| Stateless_Basic | 234.0 ns |
+| LiquidState_Basic | 21.2 ns |
+| FastFsm_GuardsActions | 0.87 ns |
+| FastFsm_CanFire | 0.35 ns |
+| FastFsm_Payload | 1.04 ns |
 
-**HSM (selected):**
+**HSM:**
 
 | Method | Mean |
 |--------|-----:|
@@ -145,7 +153,7 @@ Full tables: [docs/benchmarks/results/win-x64-amd-9600x-2026-08-17.md](benchmark
 | Stateless_Hsm_Internal | 290.0 ns |
 | FastFSM_Hsm_History_Shallow | 35.0 ns |
 
-On this x64 Windows host, generated `switch`-based dispatch is fastest on simple transition paths; LiquidState is competitive on several async scenarios. Interpret ratios only together with allocation columns in the full report.
+The full report contains the async, payload, helper, allocation, and code-size results for the same run.
 
 ### `linux-arm64` (pre-release)
 
@@ -155,9 +163,9 @@ Earlier ARM64 snapshot at `548ea01` (pre-release): [linux-arm64-2026-08-16.md](b
 
 | Host label | Platform | Status |
 |------------|----------|--------|
-| `win-arm64` | Windows 11 ARM64 (Orange Pi) | observability complete — [snapshot](benchmarks/results/win-arm64-2026-08-21.md); full comparison pending disassembly fix |
-| `linux-arm64` | homelab Ubuntu aarch64 | blocked: Roslyn source generator does not emit benchmark machines on Linux (investigate separately) |
-| `macos-arm64` | Apple Silicon | pending (long restore over SSH; rerun locally on Mac) |
+| `win-arm64` | Windows 11 ARM64 (Orange Pi) | observability snapshot available — [snapshot](benchmarks/results/win-arm64-2026-08-21.md); full comparison pending |
+| `linux-arm64` | Ubuntu aarch64 | benchmark generator issue under investigation |
+| `macos-arm64` | Apple Silicon | pending |
 
 Run on each host:
 
@@ -179,6 +187,8 @@ When adding new numbers:
 5. Attach raw BenchmarkDotNet HTML/CSV to the corresponding GitHub Release or CI artifact rather than committing generated logs to the repository.
 
 Performance statements should distinguish measured results from implementation properties. A measured latency or allocation result should identify the benchmark and environment that produced it.
+
+Avoid converting individual microbenchmark rows into general library-wide speedup claims. If a ratio is useful for analysis, derive it from values produced by the same run and keep the benchmark scope explicit.
 
 ## Implementation properties relevant to benchmarking
 
