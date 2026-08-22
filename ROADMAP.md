@@ -46,3 +46,5 @@ See [docs/proposals/deferred-events.md](docs/proposals/deferred-events.md).
 A previous design exploration considered `record struct`, smart-enum, and string-backed state or trigger types while retaining compact generated internal identifiers.
 
 This remains an investigation rather than a planned feature. Any design would need to preserve compile-time validation, deterministic generated code, AOT/trimming compatibility, and predictable performance before it becomes part of the product roadmap.
+
+The current feasibility audit recommends treating these representations as **closed symbolic state and trigger types backed by generated dense internal identifiers**, rather than making arbitrary user values the runtime execution model. See [docs/proposals/non-enum-state-trigger-types.md](docs/proposals/non-enum-state-trigger-types.md).
