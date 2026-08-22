@@ -33,11 +33,11 @@ public abstract class GeneratorBaseClass(ITestOutputHelper output)
     }
     protected void AddProjectReferences(List<MetadataReference> refs)
     {
-        // Znajdź katalog z projektami
+        // Find the projects directory
         string testAssemblyPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
         string configuration = testAssemblyPath.Contains("Debug") ? "Debug" : "Release";
 
-        // Idź w górę do katalogu rozwiązania
+        // Walk up to the solution directory
         string currentDir = testAssemblyPath;
         string? solutionDir = null;
         for (int i = 0; i < 10; i++)
@@ -70,7 +70,7 @@ public abstract class GeneratorBaseClass(ITestOutputHelper output)
                                             "Make sure Fsm.Core is built before running tests.");
         }
 
-        // Dodaj Abstractions.dll (jeśli nie jest już w atrybutach)
+        // Add Abstractions.dll (if it is not already in the attributes)
         string abstractionsDllPath = Path.Combine(
             solutionDir, "src", "Abstractions", "bin", configuration, "netstandard2.0", "Abstractions.dll");
 
@@ -142,7 +142,7 @@ public abstract class GeneratorBaseClass(ITestOutputHelper output)
             if (File.Exists(extRunner))
                 allSourceTexts.Add(File.ReadAllText(extRunner));
 
-            // ─── dodatkowe pliki DI (shared‑source) ───
+            // ─── extra DI files (shared-source) ───
             if (enableDependencyInjection)
             {
                 var diDir = Path.Combine(solutionDir, "src", "Fsm", "Fsm.Core", "DependencyInjection");
@@ -159,10 +159,10 @@ public abstract class GeneratorBaseClass(ITestOutputHelper output)
             }
         }
 
-        // 3.  Kody użytkownika
+        // 3.  User source
         allSourceTexts.AddRange(userSources);
 
-        // ─── symbole preprocesora (#if FSM_…) ───
+        // ─── preprocessor symbols (#if FSM_…) ───
         var symbols = new List<string>();
         if (enableLogging) symbols.Add("FSM_LOGGING_ENABLED");
         if (enableDependencyInjection) symbols.Add("FSM_DI_ENABLED");
@@ -173,7 +173,7 @@ public abstract class GeneratorBaseClass(ITestOutputHelper output)
             .Select(src => CSharpSyntaxTree.ParseText(src, parseOptions))
             .ToArray();
 
-        // ─── referencje ───
+        // ─── references ───
         var refs = AppDomain.CurrentDomain.GetAssemblies()
             .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
             .Select(a => MetadataReference.CreateFromFile(a.Location))
@@ -213,11 +213,11 @@ public abstract class GeneratorBaseClass(ITestOutputHelper output)
 
                 if (File.Exists(diDllPath))
                     refs.Add(MetadataReference.CreateFromFile(diDllPath));
-                // jeśli brak – test pokaże diagnostykę, co ułatwi debug.
+                // if missing – the test will show diagnostics, which helps debugging.
             }
         }
 
-        // netstandard (potrzebny przy niektórych runtime’ach)
+        // netstandard (needed on some runtimes)
         var netstandard = Path.Combine(RuntimeEnvironment.GetRuntimeDirectory(), "netstandard.dll");
         if (File.Exists(netstandard))
             refs.Add(MetadataReference.CreateFromFile(netstandard));
@@ -239,7 +239,7 @@ public abstract class GeneratorBaseClass(ITestOutputHelper output)
             out var outCompilation,
             out var genDiags);
 
-        // ─── zebrane kody wygenerowane ───
+        // ─── collected generated sources ───
         var generated = new Dictionary<string, string>();
         foreach (var result in driverAfterRun.GetRunResult().Results)
             foreach (var src in result.GeneratedSources)

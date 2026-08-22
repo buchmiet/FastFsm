@@ -57,10 +57,7 @@ public partial class FastFsmHsmAsync
     [Transition(HsmState.Parent, HsmTrigger.LeaveParent, HsmState.Outside)]
     private void Transitions() { }
 
-    private async ValueTask DoAsyncExit()
-    {
-        await Task.Yield(); // real context switch
-    }
+    private async ValueTask DoAsyncExit() => await Task.Yield(); // real context switch
 }
 
 // Shallow history on parent

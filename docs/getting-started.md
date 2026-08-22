@@ -92,7 +92,7 @@ Asynchronous machines expose `StartAsync`, `TryFireAsync`, and `FireAsync`. Sync
 
 ## Extension generation
 
-`GenerateExtensibleVersion` selects whether the generated machine includes `IStateMachineExtension` support. In the current 0.9 codebase, set it explicitly because the attribute property's initializer and the generator's handling of an omitted named argument are inconsistent. See [attribute-api.md](attribute-api.md) and [extensions.md](extensions.md).
+`GenerateExtensibleVersion` selects whether the generated machine includes `IStateMachineExtension<TState, TTrigger>` support. Set it explicitly to `true` when you need extensions. See [attribute-api.md](attribute-api.md) and [extensions.md](extensions.md).
 
 ```csharp
 [StateMachine(typeof(State), typeof(Trigger), GenerateExtensibleVersion = true)]
@@ -120,4 +120,5 @@ dotnet test src/Fsm/Fsm.Tests/Tests.Fsm/Tests.Fsm.csproj
 - [Fluent API](fluent-api.md)
 - [Attribute API](attribute-api.md)
 - [Hierarchical state machines](hsm.md)
+- [Observability](observability.md)
 - [Diagnostics](diagnostics.md)

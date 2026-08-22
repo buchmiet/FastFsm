@@ -102,47 +102,35 @@ namespace Abstractions.Fluent
         /// Enable extensions support for the state machine.
         /// Equivalent to GenerateExtensibleVersion = true in attribute API.
         /// </summary>
-        public static StateBuilder<TState> Extensible<TState>() where TState : Enum
-        {
+        public static StateBuilder<TState> Extensible<TState>() where TState : Enum =>
             // Runtime no-op - only used at compile time by source generator
-            return new StateBuilder<TState>();
-        }
+            new StateBuilder<TState>();
 
         /// <summary>
         /// Set the exception handler for the state machine.
         /// The handler method must accept ExceptionContext and return ExceptionDirective.
         /// Equivalent to [OnException] attribute in attribute API.
         /// </summary>
-        public static StateBuilder<TState> OnException<TState>(string methodName) where TState : Enum
-        {
+        public static StateBuilder<TState> OnException<TState>(string methodName) where TState : Enum =>
             // Runtime no-op - only used at compile time by source generator
-            return new StateBuilder<TState>();
-        }
+            new StateBuilder<TState>();
 
         /// <summary>
         /// Set the exception handler using a method group.
         /// </summary>
-        public static StateBuilder<TState> OnException<TState>(Delegate handler) where TState : Enum
-        {
-            return new StateBuilder<TState>();
-        }
+        public static StateBuilder<TState> OnException<TState>(Delegate handler) where TState : Enum => new StateBuilder<TState>();
 
         /// <summary>
         /// Define a state in the state machine.
         /// </summary>
-        public static StateBuilder<TState> State<TState>(TState state) where TState : Enum
-        {
+        public static StateBuilder<TState> State<TState>(TState state) where TState : Enum =>
             // Runtime no-op - only used at compile time by source generator
-            return new StateBuilder<TState>();
-        }
+            new StateBuilder<TState>();
 
         /// <summary>
         /// Alias for State - set state context.
         /// </summary>
-        public static StateBuilder<TState> At<TState>(TState state) where TState : Enum
-        {
-            return new StateBuilder<TState>();
-        }
+        public static StateBuilder<TState> At<TState>(TState state) where TState : Enum => new StateBuilder<TState>();
     }
 
     /// <summary>
@@ -212,26 +200,17 @@ namespace Abstractions.Fluent
         /// <summary>
         /// Define a transition from this state.
         /// </summary>
-        public TransitionBuilder<TState, TTrigger> On<TTrigger>(TTrigger trigger) where TTrigger : Enum
-        {
-            return new TransitionBuilder<TState, TTrigger>();
-        }
+        public TransitionBuilder<TState, TTrigger> On<TTrigger>(TTrigger trigger) where TTrigger : Enum => new TransitionBuilder<TState, TTrigger>();
 
         /// <summary>
         /// Define an internal transition (no state change).
         /// </summary>
-        public TransitionBuilder<TState, TTrigger> OnInternal<TTrigger>(TTrigger trigger) where TTrigger : Enum
-        {
-            return new TransitionBuilder<TState, TTrigger>(isInternal: true);
-        }
+        public TransitionBuilder<TState, TTrigger> OnInternal<TTrigger>(TTrigger trigger) where TTrigger : Enum => new TransitionBuilder<TState, TTrigger>(isInternal: true);
 
         /// <summary>
         /// Continue to define another state.
         /// </summary>
-        public StateBuilder<TState> State(TState state)
-        {
-            return new StateBuilder<TState>();
-        }
+        public StateBuilder<TState> State(TState state) => new StateBuilder<TState>();
     }
 
     /// <summary>
@@ -316,47 +295,37 @@ namespace Abstractions.Fluent
         /// <summary>
         /// Set the target state for this transition and return to state builder.
         /// </summary>
-        public StateBuilder<TState> GoTo(TState targetState)
-        {
+        public StateBuilder<TState> GoTo(TState targetState) =>
             // Finalize transition with target state
-            return new StateBuilder<TState>();
-        }
+            new StateBuilder<TState>();
 
         /// <summary>
         /// Finalize as internal transition and return to state builder.
         /// </summary>
-        public StateBuilder<TState> Internal()
-        {
+        public StateBuilder<TState> Internal() =>
             // Finalize as internal transition
-            return new StateBuilder<TState>();
-        }
+            new StateBuilder<TState>();
 
         /// <summary>
         /// Continue to define another transition from the same state.
         /// </summary>
-        public TransitionBuilder<TState, TTrigger> On(TTrigger trigger)
-        {
+        public TransitionBuilder<TState, TTrigger> On(TTrigger trigger) =>
             // Auto-finalize previous transition as internal (parser will handle warning)
-            return new TransitionBuilder<TState, TTrigger>();
-        }
+            new TransitionBuilder<TState, TTrigger>();
 
         /// <summary>
         /// Continue to define an internal transition from the same state.
         /// </summary>
-        public TransitionBuilder<TState, TTrigger> OnInternal(TTrigger trigger)
-        {
+        public TransitionBuilder<TState, TTrigger> OnInternal(TTrigger trigger) =>
             // Auto-finalize previous transition as internal (parser will handle warning)
-            return new TransitionBuilder<TState, TTrigger>(isInternal: true);
-        }
+            new TransitionBuilder<TState, TTrigger>(isInternal: true);
 
         /// <summary>
         /// Continue to define another state.
         /// </summary>
-        public StateBuilder<TState> State(TState state)
-        {
+        public StateBuilder<TState> State(TState state) =>
             // Auto-finalize previous transition as internal if not finalized
-            return new StateBuilder<TState>();
-        }
+            new StateBuilder<TState>();
     }
 
     /// <summary>

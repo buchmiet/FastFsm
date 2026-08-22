@@ -16,13 +16,11 @@ public class StateMachineFactory<TInterface, TImplementation, TState, TTrigger>(
     where TState : unmanaged, Enum
     where TTrigger : unmanaged, Enum
 {
-    public TInterface Create(TState initialState)
-    {
-        // Używamy ActivatorUtilities zamiast Activator.CreateInstance
-        // To działa z konstruktorami z parametrami i jest AOT-friendly
-        return ActivatorUtilities.CreateInstance<TImplementation>(serviceProvider, initialState);
-    }
-    
+    public TInterface Create(TState initialState) =>
+        // Use ActivatorUtilities instead of Activator.CreateInstance
+        // Works with parameterized constructors and is AOT-friendly
+        ActivatorUtilities.CreateInstance<TImplementation>(serviceProvider, initialState);
+
     public TInterface CreateStarted(TState initialState)
     {
         var machine = Create(initialState);

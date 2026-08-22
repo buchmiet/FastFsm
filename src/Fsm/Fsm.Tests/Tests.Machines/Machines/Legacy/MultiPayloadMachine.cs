@@ -23,18 +23,9 @@ public partial class MultiPayloadMachine
         Action = nameof(HandleError))]
     private void Configure() { }
 
-    private void ApplyConfiguration(ConfigPayload config)
-    {
-        CurrentSetting = config.Setting;
-    }
+    private void ApplyConfiguration(ConfigPayload config) => CurrentSetting = config.Setting;
 
-    private void ProcessData(DataPayload data)
-    {
-        ProcessedValue = data.Value;
-    }
+    private void ProcessData(DataPayload data) => ProcessedValue = data.Value;
 
-    private void HandleError(ErrorPayload error)
-    {
-        LastErrorCode = error.Code;
-    }
+    private void HandleError(ErrorPayload error) => LastErrorCode = error.Code;
 }

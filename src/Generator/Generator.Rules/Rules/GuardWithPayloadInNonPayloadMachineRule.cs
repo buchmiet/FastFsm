@@ -5,7 +5,7 @@ using Generator.Rules.Definitions;
 namespace Generator.Rules.Rules;
 
 /// <summary>
-/// FSM010 – Guard expects payload, ale maszyna nie obsługuje payloadów.
+/// FSM010 — Guard expects payload, but the machine does not support payloads.
 /// </summary>
 public class GuardWithPayloadInNonPayloadMachineRule
     : IValidationRule<GuardWithPayloadContext>

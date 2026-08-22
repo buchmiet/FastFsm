@@ -43,12 +43,12 @@ namespace TestNamespace
     {
 ");
 
-            // ---------- pola --------------------------------------------------------
+            // ---------- fields --------------------------------------------------------
             foreach (var (fullType, _) in types)
             {
                 var formatted = _helper.FormatTypeForUsage(fullType);
 
-                // nazwa pola: usuwamy wszystkie znaki nielegalne w identyfikatorach
+                // field name: strip characters that are illegal in identifiers
                 var fieldName = formatted
                     .Replace("<", string.Empty)
                     .Replace(">", string.Empty)
@@ -59,7 +59,7 @@ namespace TestNamespace
                 sb.AppendLine($"        public {formatted} Field{fieldName};");
             }
 
-            // ---------- ciało metody -----------------------------------------------
+            // ---------- method body -----------------------------------------------
             sb.AppendLine(@"
         public void TestMethod()
         {
@@ -84,7 +84,7 @@ namespace TestNamespace
     }
 }");
 
-            // ---------- dodatkowy namespace ----------------------------------------
+            // ---------- extra namespace ----------------------------------------
             sb.AppendLine(@"
 namespace MyApp.Models
 {
@@ -116,7 +116,7 @@ namespace MyApp.Models
             };
 
             var namespaces = typesToProcess
-                .SelectMany(t => _helper.GetRequiredNamespaces(t))
+                .SelectMany(_helper.GetRequiredNamespaces)
                 .Distinct()
                 .OrderBy(ns => ns);
 

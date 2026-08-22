@@ -3,7 +3,7 @@
 namespace IndentedStringBuilder;
 
 /// <summary>
-///  Lekki wrapper nad <see cref="StringBuilder"/> zapewniający kontrolę wcięć.
+/// Lightweight wrapper over <see cref="StringBuilder"/> that tracks indentation.
 /// </summary>
 public sealed class IndentedStringBuilder(string indentUnit = "    ")
 {
@@ -33,7 +33,6 @@ public sealed class IndentedStringBuilder(string indentUnit = "    ")
         return this;
     }
 
-    // ▼ 2. bez rzutowania – zwracamy po prostu this
     public IndentedStringBuilder Append(string text)
     {
         _sb.Append(text);
@@ -44,12 +43,10 @@ public sealed class IndentedStringBuilder(string indentUnit = "    ")
     {
         if (!string.IsNullOrEmpty(header))
         {
-            // For headers like "try", "catch", etc., put the brace on the same line
             AppendLine($"{header} {{");
         }
         else
         {
-            // For empty headers, just add the opening brace
             AppendLine("{");
         }
         var indent = Indent();
@@ -59,7 +56,7 @@ public sealed class IndentedStringBuilder(string indentUnit = "    ")
             AppendLine("}");
         });
     }
-    
+
     /// <summary>
     /// Creates a block with the header and opening brace on the same line
     /// Example: "try {" instead of "try" on one line and "{" on the next
@@ -76,6 +73,39 @@ public sealed class IndentedStringBuilder(string indentUnit = "    ")
     }
 
     /// <summary>
+    /// Emits <c>#if condition</c> … <c>#endif</c> at the current indent.
+    /// Use <see cref="ElseDirective"/> inside the scope for <c>#else</c>.
+    /// </summary>
+    public IDisposable IfDirective(string condition)
+    {
+        AppendLine($"#if {condition}");
+        return new DisposableAction(() => AppendLine("#endif"));
+    }
+
+    /// <summary>
+    /// Emits <c>#else</c>. Call inside <see cref="IfDirective"/>.
+    /// </summary>
+    public void ElseDirective() => AppendLine("#else");
+
+    /// <summary>
+    /// Emits <c>switch (expression) { … }</c>.
+    /// </summary>
+    public IDisposable Switch(string expression) => Block($"switch ({expression})");
+
+    /// <summary>
+    /// Emits <c>case matcher:</c> followed by a braced body. Write <c>break;</c> (or <c>return</c>) inside the scope.
+    /// </summary>
+    public IDisposable Case(string matcher, bool braces = true)
+    {
+        AppendLine($"case {matcher}:");
+        return braces ? Block("") : Indent();
+    }
+
+    public void DefaultBreak() => AppendLine("default: break;");
+
+    public void DefaultReturn(string expression) => AppendLine($"default: return {expression};");
+
+    /// <summary>
     /// Writes an XML documentation summary comment
     /// </summary>
     public void WriteSummary(string summary)
@@ -84,19 +114,12 @@ public sealed class IndentedStringBuilder(string indentUnit = "    ")
         AppendLine($"/// {summary}");
         AppendLine("/// </summary>");
     }
-    public void WriteParam(string paramName, string description)
-    {
-        AppendLine($"/// <param name=\"{paramName}\">{description}</param>");
-    }
 
-    public void WriteReturns( string description)
-    {
-        AppendLine($"/// <returns>{description}</returns>");
-    }
-    public void AddProperty(string typeAndName, string? value = null)
-    {
-        AppendLine($"{typeAndName}{(value is not null ? $"={value}" : string.Empty)};");
-    }
+    public void WriteParam(string paramName, string description) => AppendLine($"/// <param name=\"{paramName}\">{description}</param>");
+
+    public void WriteReturns(string description) => AppendLine($"/// <returns>{description}</returns>");
+
+    public void AddProperty(string typeAndName, string? value = null) => AppendLine($"{typeAndName}{(value is not null ? $"={value}" : string.Empty)};");
 
 
     public override string ToString() => _sb.ToString();

@@ -26,16 +26,10 @@ namespace Tests.Async.Features.Cancellation;
             return true;
         }
 
-        private async Task DoStart(CancellationToken ct = default)
-        {
-            await Task.Delay(1, ct);
-        }
+    private async Task DoStart(CancellationToken ct = default) => await Task.Delay(1, ct);
 
-        private async Task OnEnterReady(CancellationToken ct = default)
-        {
-            await Task.Delay(1, ct);
-        }
-    }
+    private async Task OnEnterReady(CancellationToken ct = default) => await Task.Delay(1, ct);
+}
 
     // FluentFsm version 
     [StateMachine(typeof(SimpleStates), typeof(SimpleTriggers))]
@@ -59,16 +53,10 @@ namespace Tests.Async.Features.Cancellation;
             return true;
         }
 
-        private async Task DoStart(CancellationToken ct = default)
-        {
-            await Task.Delay(1, ct);
-        }
+    private async Task DoStart(CancellationToken ct = default) => await Task.Delay(1, ct);
 
-        private async Task OnEnterReady(CancellationToken ct = default)
-        {
-            await Task.Delay(1, ct);
-        }
-    }
+    private async Task OnEnterReady(CancellationToken ct = default) => await Task.Delay(1, ct);
+}
 
     public enum SimpleStates
     {

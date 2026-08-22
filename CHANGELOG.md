@@ -7,7 +7,7 @@ Repository package version is `FastFsmPackageVersion` / `Version` in `Directory.
 
 ## [Unreleased]
 
-## [0.9.2] - 2026-08-21
+## [0.9.2] - unreleased
 
 ### Breaking
 
@@ -29,6 +29,7 @@ Repository package version is `FastFsmPackageVersion` / `Version` in `Directory.
 - Comparison benchmark dependency **Stateless** updated to **5.20.1** (from 5.17.0).
 - StateMachine/HSM benchmarks use InProcess jobs (consistent with extension/observability suites; avoids outer-process generator restore failures).
 - `global.json` SDK pin relaxed to `10.0.100` with `rollForward: latestMajor` for heterogeneous CI/bench hosts.
+- Generator emission uses structured `IndentedStringBuilder` scopes (`Block`, `Switch`, `Case`, `IfDirective`) and `GeneratedLogLevel` at log call sites (generated machine semantics unchanged).
 
 ### Fixed
 
@@ -36,7 +37,7 @@ Repository package version is `FastFsmPackageVersion` / `Version` in `Directory.
 - Observability DI captures an immutable options snapshot per `(TState,TTrigger)` registration instead of a shared mutable singleton.
 - `ObservabilityEvent.Timestamp` is emission time; `AttemptStartTimestamp` correlates events within one attempt.
 - Removed redundant `System.Diagnostics.DiagnosticSource` package reference on `net10.0` (NU1510 under `-warnaserror`).
-- Benchmark sampled-tracing listener registers with unconditional `ShouldListenTo` and gates work in `Sample`; sampled tracing runs in an isolated benchmark class (`FlatObservabilitySampledTracingBenchmarks`).
+- Sampled-tracing `ActivityListener` is created per activation after `ActivitySource` exists, always samples FastFsm, and detaches on dispose (`ShouldListenTo` is evaluated only at attach time). Sampled tracing runs in `FlatObservabilitySampledTracingBenchmarks`.
 
 ## [0.9.1] - 2026-08-17
 
@@ -105,6 +106,6 @@ Published on [NuGet.org](https://www.nuget.org/packages/FastFsm.Sharp). Targets 
 - Historical scratch trees from the git working set (old tests, multi-language bench experiments, local feed data, `Generator.Tests/old_tests`, tracked BenchmarkDotNet .NET 9 artifacts, local NuGet.config pointing at localhost). A local `archive.zip` may hold a copy; it is not part of the repository.
 - Hardcoded parser debug hooks for `AsyncOceOnEntryMachine` / `ContinueOnActionMachine`.
 
-[0.9.2]: https://github.com/buchmiet/FastFsm/releases/tag/v0.9.2
+[0.9.2]: https://github.com/buchmiet/FastFsm/compare/v0.9.1...feature/pr5-observability
 [0.9.1]: https://github.com/buchmiet/FastFsm/releases/tag/v0.9.1
 [0.9.0]: https://github.com/buchmiet/FastFsm/releases/tag/v0.9.0

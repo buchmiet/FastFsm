@@ -15,7 +15,7 @@ namespace Tests.Async.Features.Exceptions;
         private readonly List<string> _log = new();
         public IReadOnlyList<string> Log => _log;
 
-        // ---------- GUARD, który rzuca ----------
+        // ---------- GUARD that throws ----------
         [Transition(ExStates.Init, ExTriggers.GuardBoom, ExStates.Next, Guard = nameof(ThrowingGuardAsync))]
         private async ValueTask<bool> ThrowingGuardAsync()
         {
@@ -24,7 +24,7 @@ namespace Tests.Async.Features.Exceptions;
             throw new InvalidOperationException("guard failed");
         }
 
-        // ---------- GUARD OK + ACTION rzuca (przechodzimy do Middle – brak OnExit na Init) ----------
+        // ---------- GUARD OK + ACTION throws (go to Middle — Init has no OnExit) ----------
         [Transition(ExStates.Init, ExTriggers.ActionBoom, ExStates.Middle,
                     Guard = nameof(GuardOkAsync), Action = nameof(ThrowingActionAsync))]
         private async ValueTask<bool> GuardOkAsync()
@@ -41,15 +41,15 @@ namespace Tests.Async.Features.Exceptions;
             throw new InvalidOperationException("action failed");
         }
 
-        // ---------- Przejście, które trafi w OnEntry rzucające ----------
+        // ---------- Transition that hits throwing OnEntry ----------
         [Transition(ExStates.Init, ExTriggers.EntryBoom, ExStates.Next, Guard = nameof(GuardOkAsync))]
-        private void NoAction() { /* nic */ }
+        private void NoAction() { /* no-op */ }
 
-        // ---------- Przejście, które trafi w OnExit rzucające ----------
+        // ---------- Transition that hits throwing OnExit ----------
         [Transition(ExStates.Middle, ExTriggers.ExitBoom, ExStates.Next, Guard = nameof(GuardOkAsync))]
-        private void NoAction2() { /* nic */ }
+        private void NoAction2() { /* no-op */ }
 
-        // ---------- OnEntry rzuca ----------
+        // ---------- OnEntry throws ----------
         [State(ExStates.Next, OnEntry = nameof(ThrowingOnEntryAsync))]
         private async Task ThrowingOnEntryAsync()
         {
@@ -58,7 +58,7 @@ namespace Tests.Async.Features.Exceptions;
             throw new InvalidOperationException("on entry failed");
         }
 
-        // ---------- OnExit rzuca ----------
+        // ---------- OnExit throws ----------
         [State(ExStates.Middle, OnExit = nameof(ThrowingOnExitAsync))]
         private async ValueTask ThrowingOnExitAsync()
         {

@@ -14,7 +14,7 @@
 		<EnforceExtendedAnalyzerRules>false</EnforceExtendedAnalyzerRules>
 		<!-- Roslyn API nullability is noisy in generator internals; generated user code is validated separately -->
 		<NoWarn>$(NoWarn);CS8600;CS8601;CS8602;CS8603;CS8604;CS8321</NoWarn>
-		<!-- skopiuj zależności do bin/, ALE NIE Microsoft.CodeAnalysis (dla hot-reload) -->
+		<!-- Copy dependencies to bin/, EXCEPT Microsoft.CodeAnalysis (hot-reload) -->
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 
 		<Authors>Lukasz Buchmiet</Authors>
@@ -31,7 +31,7 @@
 		</PackageReference>
 	</ItemGroup>
 
-	<!-- zależności RUNTIME generatora (projekty) -->
+	<!-- generator RUNTIME dependencies (projects) -->
 	<ItemGroup>
 		<ProjectReference Include="..\..\Abstractions\Abstractions.csproj" />
 		<ProjectReference Include="..\Generator.DependencyInjection\Generator.DependencyInjection.csproj" />
@@ -41,17 +41,17 @@
 		<ProjectReference Include="..\..\IndentedStringBuilder\IndentedStringBuilder.csproj" />
 	</ItemGroup>
 
-	<!-- podstawowy plik analyzera do nupkg -->
+	<!-- primary analyzer assembly for the nupkg -->
 	<ItemGroup>
 		<None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
 		<None Include="$(OutputPath)$(AssemblyName).xml" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" Condition="Exists('$(OutputPath)$(AssemblyName).xml')" />
 	</ItemGroup>
 
-	<!-- zapakuj zależności generatora obok analyzera -->
+	<!-- pack generator dependencies next to the analyzer -->
 	<Target Name="PackAnalyzerDeps" BeforeTargets="GenerateNuspec" DependsOnTargets="Build">
 		<ItemGroup>
 			<_AnalyzerFiles Include="$(OutputPath)*.dll;$(OutputPath)*.xml" />
-			<!-- nie przenosimy bibliotek Roslyna i części systemowych -->
+			<!-- do not pack Roslyn or selected system libraries -->
 			<_AnalyzerFiles Remove="$(OutputPath)Microsoft.CodeAnalysis*.dll" />
 			<_AnalyzerFiles Remove="$(OutputPath)System.Collections.Immutable.dll" />
 			<_AnalyzerFiles Remove="$(OutputPath)System.Runtime.CompilerServices.Unsafe.dll" />
@@ -61,7 +61,7 @@
 		</ItemGroup>
 	</Target>
 
-	<!-- release tracking (opcjonalnie) -->
+	<!-- release tracking (optional) -->
 	<ItemGroup>
 		<AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
 		<AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />

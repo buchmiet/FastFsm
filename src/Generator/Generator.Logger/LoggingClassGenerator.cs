@@ -85,7 +85,7 @@ namespace Generator.Log
                 WriteHistoryRestoredMethod();
                 WriteActivePathMethod();
                 _sb.AppendLine();
-                
+
                 // New lifecycle methods
                 WriteUnhandledTriggerMethod();
                 WriteMachineStartedMethod();
@@ -101,7 +101,7 @@ namespace Generator.Log
         private void WriteLoggerMessageDelegates()
         {
             _sb.AppendLine("// Static LoggerMessage.Define delegates for zero-allocation logging");
-            
+
             // New lifecycle events (1100+ range)
             _sb.AppendLine("// UnhandledTrigger");
             _sb.AppendLine("private static readonly Action<ILogger, string, string, string, Exception?> s_UnhandledTrigger = LoggerMessage.Define<string, string, string>(");
@@ -512,7 +512,7 @@ namespace Generator.Log
             // The UnifiedStateMachineGenerator will need to check this to avoid duplicates
             sb.AppendLine();
         }
-        
+
         public static void WriteInstanceIdFieldIfNeeded(bool isAsyncMachine, ref IndentedStringBuilder.IndentedStringBuilder sb)
         {
             // Only write _instanceId for sync machines with logging
@@ -524,20 +524,12 @@ namespace Generator.Log
             }
         }
 
-        public static string GetLoggerConstructorParameter(string className, ref IndentedStringBuilder.IndentedStringBuilder sb)
-        {
+        public static string GetLoggerConstructorParameter(string className, ref IndentedStringBuilder.IndentedStringBuilder sb) =>
             // sb is unused here, but we keep the signature consistent with the original
-            return $"ILogger<{className}>? logger = null";
-        }
+            $"ILogger<{className}>? logger = null";
 
-        public static void WriteLoggerAssignment(ref IndentedStringBuilder.IndentedStringBuilder sb)
-        {
-            sb.AppendLine("_logger = logger;");
-        }
+        public static void WriteLoggerAssignment(ref IndentedStringBuilder.IndentedStringBuilder sb) => sb.AppendLine("_logger = logger;");
 
-        public static void WriteLogStatement(string className, string logLevel, string logMethodCall, ref IndentedStringBuilder.IndentedStringBuilder sb)
-        {
-            sb.AppendLine($"{className}Log.{logMethodCall}");
-        }
+        public static void WriteLogStatement(string className, string logMethodCall, ref IndentedStringBuilder.IndentedStringBuilder sb) => sb.AppendLine($"{className}Log.{logMethodCall}");
     }
 }

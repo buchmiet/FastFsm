@@ -1,6 +1,6 @@
 # Observability
 
-`FastFsm.Sharp.Observability` is the first official client of Extension Contract v2. It ships as a normal `lib/net10.0` assembly and observes transitions through `IStateMachineExtension<TState,TTrigger>` — no generator changes required.
+`FastFsm.Sharp.Observability` is the first official client of the typed extension contract. It ships as a normal `lib/net10.0` assembly and observes transitions through `IStateMachineExtension<TState,TTrigger>` — no generator changes required.
 
 ## Install
 
@@ -54,7 +54,7 @@ OpenTelemetry collectors listen to the shared `ActivitySource` (`FastFsm`) and `
 - **One attempt → one span** named `fsm.transition`
 - Starts in `OnAttemptStarting`, ends in `OnAttemptCompleted`
 - Correlated by diagnostic tags `fastfsm.instance_id` and `fastfsm.attempt_id` (trace only — not metric dimensions)
-- Semantic tags use v2 contract fields: `source_state`, `handled_at_state`, `declared_target`, `resolved_target`, `final_state`, `transition.kind`, `outcome`
+- Semantic tags use typed-contract fields: `source_state`, `handled_at_state`, `declared_target`, `resolved_target`, `final_state`, `transition.kind`, `outcome`
 - `Faulted` → `ActivityStatusCode.Error` with exception event
 - `Canceled` → OK status with `fastfsm.canceled=true` (not a fault)
 - `GuardRejected`, `UnhandledTrigger`, `InvalidPayload` → OK status (not exception errors)
@@ -113,7 +113,7 @@ Payload is **ignored by default**. Observability does not call `ToString()` on p
 
 ## HSM fields
 
-Observability reads v2 semantics directly from the extension contract:
+Observability reads these facts directly from the typed extension contract:
 
 | Field | Meaning |
 |---|---|
@@ -141,10 +141,10 @@ See `src/Benchmark/ObservabilityBenchmarks.cs` and `FlatObservabilitySampledTrac
 | Tracing + metrics | ~125 ns | 0 |
 | **Sampled tracing + listener** | **~656 ns** | **~1.26 KB** |
 
-Sampled tracing runs in a dedicated benchmark class with the `ActivityListener` registered before the machine is created; `ShouldListenTo` is unconditional and sampling is gated in `Sample`.
+Sampled tracing runs in a dedicated benchmark class. The `ActivityListener` is attached per activation after `ActivitySource` exists, always samples FastFsm, and detaches on dispose.
 
 ## Related docs
 
-- [extensions.md](extensions.md) — Extension Contract v2 hook surface
+- [extensions.md](extensions.md) — typed extension hook surface
 - [dependency-injection.md](dependency-injection.md) — core DI registration
 - [logging.md](logging.md) — generator-integrated logging (separate track)

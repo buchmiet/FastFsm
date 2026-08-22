@@ -15,29 +15,29 @@ namespace Tests.Async.Features.Concurrency;
             var m = new RcMachineFluentFsm(RcStates.Initial);
             await m.StartAsync();
 
-            // Dwa równoległe przejścia z tego samego stanu źródłowego
+            // Two parallel transitions from the same source state
             var t1 = m.TryFireAsync(RcTriggers.ToA);
             var t2 = m.TryFireAsync(RcTriggers.ToB);
 
-            // 1) Czekamy aż PIERWSZE wywołanie wejdzie do SlowActionAsync
+            // 1) Wait until the FIRST call enters SlowActionAsync
             await RcMachineFluentFsm.WaitUntilFirstInsideAsync(TimeSpan.FromSeconds(5));
 
-            // 2) W tym momencie tylko jedno wywołanie jest w środku
-            m.SlowActionCalls.ShouldBe(1, "Dzięki serializacji tylko jedna ścieżka powinna być w SlowActionAsync.");
+            // 2) At this point only one call is inside
+            m.SlowActionCalls.ShouldBe(1, "Thanks to serialization only one path should be inside SlowActionAsync.");
 
-            // 3) Zwolnij barierę, pozwalając pierwszemu dokończyć
+            // 3) Release the barrier, allowing the first call to finish
             RcMachineFluentFsm.ReleaseFirst();
 
-            // 4) Obie operacje kończą – jedna sukces, druga false
+            // 4) Both operations finish – one success, the other false
             var results = await Task.WhenAll(t1.AsTask(), t2.AsTask());
-            results.Count(x => x).ShouldBe(1, "Tylko jedno z dwóch równoległych przejść powinno się udać.");
+            results.Count(x => x).ShouldBe(1, "Only one of the two parallel transitions should succeed.");
 
             // 5) Callbacks: OnExit raz, OnEntry (A albo B) raz, SlowAction raz
             m.OnExitCalls.ShouldBe(1);
             (m.OnEntryACalls + m.OnEntryBCalls).ShouldBe(1);
             m.SlowActionCalls.ShouldBe(1);
 
-            // 6) Stan końcowy to A lub B (zależnie od tego, kto wygrał)
+            // 6) Final state is A or B (depending on who won)
             m.CurrentState.ShouldBeOneOf(RcStates.A, RcStates.B);
         }
     }

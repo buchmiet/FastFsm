@@ -6,21 +6,21 @@ using Microsoft.CodeAnalysis;
 namespace Generator.Helpers;
 
 /// <summary>
-/// Analizuje symbol metody (IMethodSymbol) i określa jej charakterystykę asynchroniczną.
-/// Działa w izolacji, co ułatwia testowanie.
+/// Analyzes an <see cref="IMethodSymbol"/> and classifies its async characteristics.
+/// Isolated so it is easy to unit-test.
 /// </summary>
 internal sealed class AsyncSignatureAnalyzer
 {
     private readonly TypeSystemHelper _typeHelper;
     private readonly ConcurrentDictionary<IMethodSymbol, AsyncSignatureInfo> _cache = new(SymbolEqualityComparer.Default);
 
-    // Pełne nazwy typów Task/ValueTask, które będziemy sprawdzać
+    // Full Task/ValueTask type names used for comparisons
     private const string TaskFullName = "System.Threading.Tasks.Task";
     private const string ValueTaskFullName = "System.Threading.Tasks.ValueTask";
     private const string TaskOfTFullName = "System.Threading.Tasks.Task`1";
     private const string ValueTaskOfTFullName = "System.Threading.Tasks.ValueTask`1";
 
-    // Nazwy typów bool i void dla porównań
+    // bool/void type names for comparisons
     private const string BoolFullName = "System.Boolean";
     private const string VoidFullName = "System.Void";
 
@@ -34,56 +34,53 @@ internal sealed class AsyncSignatureAnalyzer
 
 
     /// <summary>
-    /// Analizuje sygnaturę metody z cache'owaniem wyników.
+    /// Analyzes a method signature, caching results.
     /// </summary>
-    public AsyncSignatureInfo Analyze(IMethodSymbol method, Compilation compilation)
-    {
-        return _cache.GetOrAdd(method, _ =>
-        {
-            var (isAsync, isBoolEquivalent) = _typeHelper.AnalyzeAwaitable(method.ReturnType, compilation);
+    public AsyncSignatureInfo Analyze(IMethodSymbol method, Compilation compilation) => _cache.GetOrAdd(method, _ =>
+                                                                                             {
+                                                                                                 var (isAsync, isBoolEquivalent) = _typeHelper.AnalyzeAwaitable(method.ReturnType, compilation);
 
-            var taskSym = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task");
-            var valueTaskSym = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask");
-            var taskOfTSym = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
+                                                                                                 var taskSym = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task");
+                                                                                                 var valueTaskSym = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask");
+                                                                                                 var taskOfTSym = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
 
-            var info = new AsyncSignatureInfo
-            {
-                IsAsync = isAsync,
-                IsBoolEquivalent = isBoolEquivalent,
-                IsVoidEquivalent =
-                    method.ReturnType.SpecialType == SpecialType.System_Void ||
-                    (isAsync && (SymbolEqualityComparer.Default.Equals(method.ReturnType, taskSym) ||
-                                 SymbolEqualityComparer.Default.Equals(method.ReturnType, valueTaskSym)))
-            };
+                                                                                                 var info = new AsyncSignatureInfo
+                                                                                                 {
+                                                                                                     IsAsync = isAsync,
+                                                                                                     IsBoolEquivalent = isBoolEquivalent,
+                                                                                                     IsVoidEquivalent =
+                                                                                                         method.ReturnType.SpecialType == SpecialType.System_Void ||
+                                                                                                         (isAsync && (SymbolEqualityComparer.Default.Equals(method.ReturnType, taskSym) ||
+                                                                                                                      SymbolEqualityComparer.Default.Equals(method.ReturnType, valueTaskSym)))
+                                                                                                 };
 
-            // async void
-            if (method.IsAsync && method.ReturnsVoid)
-                info.IsInvalidAsyncVoid = true;
+                                                                                                 // async void
+                                                                                                 if (method.IsAsync && method.ReturnsVoid)
+                                                                                                     info.IsInvalidAsyncVoid = true;
 
-            // Guard: Task<bool> (ValueTask<bool> jest OK)
-            if (isBoolEquivalent &&
-                method.ReturnType is INamedTypeSymbol nts &&
-                SymbolEqualityComparer.Default.Equals(nts.ConstructedFrom, taskOfTSym))
-            {
-                info.IsInvalidGuardTask = true;
-            }
+                                                                                                 // Guard: Task<bool> (ValueTask<bool> jest OK)
+                                                                                                 if (isBoolEquivalent &&
+                                                                                                     method.ReturnType is INamedTypeSymbol nts &&
+                                                                                                     SymbolEqualityComparer.Default.Equals(nts.ConstructedFrom, taskOfTSym))
+                                                                                                 {
+                                                                                                     info.IsInvalidGuardTask = true;
+                                                                                                 }
 
-            return info;
-        });
-    }
+                                                                                                 return info;
+                                                                                             });
 
 
     /// <summary>
-    /// Analizuje sygnaturę metody z dodatkową walidacją dla konkretnego typu callbacku.
+    /// Analyzes a method signature with extra validation for a specific callback kind.
     /// </summary>
     public AsyncSignatureInfo AnalyzeCallback(IMethodSymbol methodSymbol, string callbackType, Compilation compilation)
     {
         var info = Analyze(methodSymbol, compilation);
 
-        // Dodatkowa walidacja per typ callbacku
+        // Extra validation per callback kind
         if (callbackType == "Guard" && info.IsAsync)
         {
-            // Guard musi zwracać ValueTask<bool>, nie Task<bool>
+            // Guards must return ValueTask<bool>, not Task<bool>
             if (info.IsBoolEquivalent && IsTaskBool(methodSymbol.ReturnType))
             {
                 info.IsInvalidGuardTask = true;
@@ -96,29 +93,26 @@ internal sealed class AsyncSignatureAnalyzer
 
 
     /// <summary>
-    /// Zwraca oczekiwany typ zwracany dla danego typu callbacku i trybu.
+    /// Returns the expected return type for a callback kind and async mode.
     /// </summary>
-    public string GetExpectedReturnType(string callbackType, bool isAsync)
+    public string GetExpectedReturnType(string callbackType, bool isAsync) => (callbackType, isAsync) switch
     {
-        return (callbackType, isAsync) switch
-        {
-            ("Guard", false) => "bool",
-            ("Guard", true) => "ValueTask<bool>",
-            ("Action", false) => "void",
-            ("Action", true) => "Task or ValueTask",
-            ("OnEntry", false) => "void",
-            ("OnEntry", true) => "Task or ValueTask",
-            ("OnExit", false) => "void",
-            ("OnExit", true) => "Task or ValueTask",
-            _ => "void" // domyślnie dla nieznanych typów callbacków
-        };
-    }
+        ("Guard", false) => "bool",
+        ("Guard", true) => "ValueTask<bool>",
+        ("Action", false) => "void",
+        ("Action", true) => "Task or ValueTask",
+        ("OnEntry", false) => "void",
+        ("OnEntry", true) => "Task or ValueTask",
+        ("OnExit", false) => "void",
+        ("OnExit", true) => "Task or ValueTask",
+        _ => "void" // default for unknown callback kinds
+    };
 
     private AsyncSignatureInfo AnalyzeInternal(IMethodSymbol methodSymbol)
     {
         var returnType = methodSymbol.ReturnType;
 
-        // --- Analiza dla `async void` - to jedyny przypadek, gdzie `IsAsync` jest kluczowe ---
+        // --- async void is the only case where method.IsAsync is essential ---
         if (methodSymbol.IsAsync && returnType.SpecialType == SpecialType.System_Void)
         {
             return new AsyncSignatureInfo { IsAsync = true, IsInvalidAsyncVoid = true };
@@ -126,14 +120,14 @@ internal sealed class AsyncSignatureAnalyzer
 
         if (returnType is not INamedTypeSymbol namedReturnType)
         {
-            // Nie jest to nazwany typ, więc nie może być Task/ValueTask etc.
+            // Not a named type, so it cannot be Task/ValueTask etc.
             return new AsyncSignatureInfo { IsAsync = false, IsVoidEquivalent = returnType.SpecialType == SpecialType.System_Void };
         }
 
-        // Używamy helpera do uzyskania kanonicznej nazwy typu
+        // Canonical type name via the helper
         string fullTypeName = _typeHelper.BuildFullTypeName(namedReturnType.OriginalDefinition);
 
-        // --- Analiza typów asynchronicznych ---
+        // --- Async types ---
         if (fullTypeName == TaskFullName || fullTypeName == ValueTaskFullName)
         {
             return new AsyncSignatureInfo { IsAsync = true, IsVoidEquivalent = true };
@@ -144,7 +138,7 @@ internal sealed class AsyncSignatureAnalyzer
             var typeArgument = namedReturnType.TypeArguments.FirstOrDefault();
             if (typeArgument is INamedTypeSymbol argType && _typeHelper.BuildFullTypeName(argType) == BoolFullName)
             {
-                // Guard musi być ValueTask<bool>, a nie Task<bool>
+                // Guards must be ValueTask<bool>, not Task<bool>
                 bool isInvalidGuard = fullTypeName == TaskOfTFullName;
                 return new AsyncSignatureInfo
                 {
@@ -155,7 +149,7 @@ internal sealed class AsyncSignatureAnalyzer
             }
         }
 
-        // --- Analiza typów synchronicznych ---
+        // --- Sync types ---
         string syncFullTypeName = _typeHelper.BuildFullTypeName(namedReturnType);
         if (syncFullTypeName == VoidFullName)
         {
@@ -167,7 +161,7 @@ internal sealed class AsyncSignatureAnalyzer
             return new AsyncSignatureInfo { IsAsync = false, IsBoolEquivalent = true };
         }
 
-        // Domyślnie sygnatura jest nieobsługiwana
+        // Unsupported signature by default
         return default;
     }
 
@@ -184,10 +178,7 @@ internal sealed class AsyncSignatureAnalyzer
     }
 
     /// <summary>
-    /// Czyści cache analizy. Użyteczne w testach.
+    /// Clears the analysis cache. Useful in tests.
     /// </summary>
-    public void ClearCache()
-    {
-        _cache.Clear();
-    }
+    public void ClearCache() => _cache.Clear();
 }

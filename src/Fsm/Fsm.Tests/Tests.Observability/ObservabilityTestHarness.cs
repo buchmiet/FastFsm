@@ -80,10 +80,7 @@ public sealed class ObservabilityTestHarness : IDisposable
         Instrument instrument,
         long measurement,
         ReadOnlySpan<KeyValuePair<string, object?>> tags,
-        object? state)
-    {
-        _counterTotals.AddOrUpdate(instrument.Name, measurement, (_, current) => current + measurement);
-    }
+        object? state) => _counterTotals.AddOrUpdate(instrument.Name, measurement, (_, current) => current + measurement);
 
     private void OnHistogramMeasurement(
         Instrument instrument,

@@ -21,10 +21,7 @@ public partial class AsyncLifecycleMachine
             .On(AsyncLifecycleTrigger.CompleteAsync)
                 .GoTo(AsyncLifecycleState.Completed);
 
-    private async Task StartProcessingAsync()
-    {
-        await Task.Delay(10); // Simulate async work
-    }
+    private async Task StartProcessingAsync() => await Task.Delay(10); // Simulate async work
 
     private async Task FailingActionAsync()
     {

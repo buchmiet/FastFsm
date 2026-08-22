@@ -2,9 +2,11 @@
 
 This file records intended areas of work. It is not a release schedule or a compatibility commitment.
 
-## 0.9.2 (released)
+## 0.9.2 (in progress)
 
-Repository package version is `0.9.2`. Adds **`FastFsm.Sharp.Observability`**, the typed extension contract, HSM lifecycle semantics and hook-mask gating, plus refreshed multi-platform benchmarks (Stateless 5.20.1). Git tag `v0.9.2` marks the release.
+Repository package version is already `0.9.2` on `feature/pr5-observability`. This release adds **`FastFsm.Sharp.Observability`**, the typed extension contract, HSM lifecycle semantics and hook-mask gating, plus refreshed multi-platform benchmarks (Stateless 5.20.1).
+
+`main` is still **0.9.1** on NuGet (`v0.9.1`). Tag `v0.9.2` is created when this ships.
 
 ## 0.9.1 (released)
 
@@ -16,7 +18,7 @@ Repository package version is `0.9.0`. First .NET 10 release with canonical `Fas
 
 ## Next work: 0.10
 
-The current extension surface and **`FastFsm.Sharp.Observability`** shipped in 0.9.2. See [docs/extensions.md](docs/extensions.md) and [docs/observability.md](docs/observability.md).
+The typed extension surface and **`FastFsm.Sharp.Observability`** are the 0.9.2 work. See [docs/extensions.md](docs/extensions.md) and [docs/observability.md](docs/observability.md). After 0.9.2, deferred events remain the next substantial feature candidate.
 
 ## Later feature candidate: deferred events
 

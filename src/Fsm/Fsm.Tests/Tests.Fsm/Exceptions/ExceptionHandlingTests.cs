@@ -6,13 +6,13 @@ using Xunit;
 namespace Tests.Fsm.Exceptions
 {
     /// <summary>
-    /// Zestaw testów weryfikujących poprawną obsługę wyjątków w rozszerzeniach.
+    /// Test suite verifying correct exception handling in extensions.
     /// </summary>
     public class ExceptionHandlingTests
     {
         /// <summary>
-        /// Test weryfikujący, że wyjątek rzucony przez jedno rozszerzenie
-        /// nie przerywa przejścia stanu i pozwala na wykonanie kolejnych rozszerzeń.
+        /// Verifies that an exception thrown by one extension
+        /// does not abort the state transition and still allows later extensions to run.
         /// </summary>
         [Fact]
         public void Extension_Exception_DoesNot_Break_Transition()
@@ -20,7 +20,7 @@ namespace Tests.Fsm.Exceptions
             // Arrange
             var throwing = new ThrowingExtension();
             var counting = new CountingExtension();
-            // Tworzymy maszynę, przekazując rozszerzenia bezpośrednio do konstruktora
+            // Create the machine, passing extensions directly to the constructor
             var machine = new TestMachine(BasicState.Initial, [throwing, counting]);
             machine.Start();
 
@@ -28,13 +28,13 @@ namespace Tests.Fsm.Exceptions
             var result = machine.TryFire(Trigger.Next);
 
             // Assert
-            Assert.True(result); // Przejście stanu powinno się powieść
-            Assert.Equal(BasicState.Final, machine.CurrentState); // Maszyna jest w nowym stanie
-            Assert.Equal(1, counting.BeforeTransitionCount); // Drugie, poprawne rozszerzenie zostało wykonane
+            Assert.True(result); // The state transition should succeed
+            Assert.Equal(BasicState.Final, machine.CurrentState); // The machine is in the new state
+            Assert.Equal(1, counting.BeforeTransitionCount); // The second, correct extension was executed
         }
 
         /// <summary>
-        /// Test weryfikujący, że wyjątek z rozszerzenia jest poprawnie logowany.
+        /// Verifies that an exception from an extension is logged correctly.
         /// </summary>
         //[Fact]
         //public void Extension_Exception_Is_Logged()
@@ -53,12 +53,12 @@ namespace Tests.Fsm.Exceptions
         //    runner.RunBeforeTransition([throwing], context);
 
         //    // Assert
-        //    Assert.Single(logger.LoggedErrors); // Powinien być dokładnie jeden błąd w logach
+        //    Assert.Single(logger.LoggedErrors); // There should be exactly one error in the logs
 
         //    var loggedMessage = logger.LoggedErrors.First();
-        //    Assert.Contains(nameof(ThrowingExtension), loggedMessage); // Log zawiera nazwę zepsutego rozszerzenia
-        //    Assert.Contains(nameof(IStateMachineExtension.OnBeforeTransition), loggedMessage); // Log zawiera nazwę metody
-        //    Assert.Contains("FromState=Initial", loggedMessage); // Log zawiera poprawny kontekst
+        //    Assert.Contains(nameof(ThrowingExtension), loggedMessage); // Log contains the name of the broken extension
+        //    Assert.Contains(nameof(IStateMachineExtension.OnBeforeTransition), loggedMessage); // Log contains the method name
+        //    Assert.Contains("FromState=Initial", loggedMessage); // Log contains the correct context
         //    Assert.Contains("Trigger=Next", loggedMessage);
         //}
     }

@@ -22,7 +22,7 @@
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
 	</ItemGroup>
 
-	<!-- Roslyn (tylko Workspaces, nie snapshot-helperów) -->
+	<!-- Roslyn (Workspaces only, not snapshot helpers) -->
 	<ItemGroup>
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.6.0" />
 	</ItemGroup>

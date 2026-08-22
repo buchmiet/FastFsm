@@ -723,11 +723,11 @@ public class StateMachineGenerator : IIncrementalGenerator
         
         try
         {
-            // Rozbicie krotki wejściowej
+            // Deconstruct the input tuple
             var (compAndOpts, classes) = data;
             var (compilation, optionsProvider) = compAndOpts;
 
-            // Nic do zrobienia
+            // Nothing to do
             if (classes.IsDefaultOrEmpty)
                 return;
 
@@ -739,7 +739,7 @@ public class StateMachineGenerator : IIncrementalGenerator
             }
             catch
             {
-                // Bez diagnostyki: kończymy cicho jeśli parser nie powstał
+                // No diagnostics: stop quietly if the parser could not be created
                 return;
             }
 
@@ -840,7 +840,7 @@ public class StateMachineGenerator : IIncrementalGenerator
                     model!.GenerateDependencyInjection = BuildProperties.GetGenerateDI(
                         optionsProvider.GlobalOptions);
 
-                    // 1) Główny generator — flattened unified generator obsługuje wszystkie warianty
+                    // 1) Main emitter — unified generator handles all variants
                     var generator = new Generator.SourceGenerators.UnifiedStateMachineGenerator(model);
 
                     string source;
@@ -890,7 +890,7 @@ public class StateMachineGenerator : IIncrementalGenerator
                         throw;
                     }
 
-                    // 2) Dependency Injection (opcjonalnie)
+                    // 2) Dependency Injection (optional)
                     if (model.GenerateDependencyInjection)
                     {
                         var factoryModel = FactoryGenerationModelBuilder.Create(model);
@@ -918,7 +918,7 @@ public class StateMachineGenerator : IIncrementalGenerator
                         }
                     }
 
-                    // 3) Logging helpers (opcjonalnie)
+                    // 3) Logging helpers (optional)
                     if (model.GenerateLogging)
                     {
                         var loggingSource = new Generator.Log.LoggingClassGenerator(model.ClassName, model.Namespace ?? string.Empty).Generate();
@@ -962,7 +962,7 @@ public class StateMachineGenerator : IIncrementalGenerator
         }
         catch
         {
-            // Bez diagnostyki
+            // No diagnostics
         }
         finally
         {

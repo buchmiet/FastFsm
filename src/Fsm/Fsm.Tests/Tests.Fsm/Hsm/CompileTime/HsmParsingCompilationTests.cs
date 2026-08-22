@@ -16,12 +16,10 @@ public partial class HsmParsingCompilationTests
     #region Compilation Tests
 
     [Fact]
-    public void AllHsmMachinesShouldCompile()
-    {
+    public void AllHsmMachinesShouldCompile() =>
         // This test passes if all the state machines compile successfully
         // The actual compilation happens at build time
         Assert.True(true, "All HSM parsing tests compiled successfully");
-    }
 
     [Fact]
     public void SimpleParentChildMachineCanBeInstantiated()

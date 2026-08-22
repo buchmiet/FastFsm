@@ -15,8 +15,5 @@ public partial class WithGuardBenchmarkMachine
         .State(BenchmarkState.C)
         .State(BenchmarkState.D);
 
-    private bool CanTransition()
-    {
-        return ShouldAllow; // Simple condition based on ShouldAllow flag
-    }
+    private bool CanTransition() => ShouldAllow; // Simple condition based on ShouldAllow flag
 }

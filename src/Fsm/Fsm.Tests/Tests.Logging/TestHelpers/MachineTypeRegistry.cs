@@ -27,7 +27,7 @@ namespace Tests.Logging.TestHelpers
 
         public static readonly IReadOnlyDictionary<string, EnumTypePair> Types = new Dictionary<string, EnumTypePair>(StringComparer.Ordinal)
         {
-            // Machines.cs – wszystkie używają TestState/TestTrigger
+            // Machines.cs – all use TestState/TestTrigger
             ["PureStateMachine"] = new EnumTypePair(typeof(Tests.Logging.TestState), typeof(Tests.Logging.TestState), typeof(Tests.Logging.TestTrigger), typeof(Tests.Logging.TestTrigger)),
             ["BasicStateMachine"] = new EnumTypePair(typeof(Tests.Logging.TestState), typeof(Tests.Logging.TestState), typeof(Tests.Logging.TestTrigger), typeof(Tests.Logging.TestTrigger)),
             ["PayloadStateMachine"] = new EnumTypePair(typeof(Tests.Logging.TestState), typeof(Tests.Logging.TestState), typeof(Tests.Logging.TestTrigger), typeof(Tests.Logging.TestTrigger)),

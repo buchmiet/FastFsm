@@ -21,10 +21,7 @@ namespace Tests.DependencyInjection
             return services.AddStateMachine<IBasicTestMachine, BasicTestMachine, TestState, TestTrigger>(lifetime);
         }
 
-        public static IServiceCollection AddBasicTestMachine(this IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Singleton)
-        {
-            return services.AddStateMachine<IBasicTestMachine, BasicTestMachine, TestState, TestTrigger>(lifetime);
-        }
+        public static IServiceCollection AddBasicTestMachine(this IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Singleton) => services.AddStateMachine<IBasicTestMachine, BasicTestMachine, TestState, TestTrigger>(lifetime);
 
         // Guarded (extensions variant)
         public static IServiceCollection AddGuardedTestMachine(this IServiceCollection services, TestState initialState, ServiceLifetime lifetime = ServiceLifetime.Singleton)
@@ -33,15 +30,9 @@ namespace Tests.DependencyInjection
             return services.AddStateMachine<IGuardedTestMachine, GuardedTestMachine, TestState, TestTrigger>(lifetime);
         }
 
-        public static IServiceCollection AddGuardedTestMachine(this IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Singleton)
-        {
-            return services.AddStateMachine<IGuardedTestMachine, GuardedTestMachine, TestState, TestTrigger>(lifetime);
-        }
+        public static IServiceCollection AddGuardedTestMachine(this IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Singleton) => services.AddStateMachine<IGuardedTestMachine, GuardedTestMachine, TestState, TestTrigger>(lifetime);
 
-        public static IServiceCollection AddPureTestMachine(this IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Singleton)
-        {
-            return services.AddStateMachine<IPureTestMachine, PureTestMachine, TestState, TestTrigger>(lifetime);
-        }
+        public static IServiceCollection AddPureTestMachine(this IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Singleton) => services.AddStateMachine<IPureTestMachine, PureTestMachine, TestState, TestTrigger>(lifetime);
 
         public static IServiceCollection AddPureTestMachine(this IServiceCollection services, Func<IServiceProvider, TestState> initialFactory, ServiceLifetime lifetime = ServiceLifetime.Singleton)
         {
@@ -56,10 +47,7 @@ namespace Tests.DependencyInjection
             return services.AddStateMachine<IExtensionsTestMachine, ExtensionsTestMachine, TestState, TestTrigger>(lifetime);
         }
 
-        public static IServiceCollection AddExtensionsTestMachine(this IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Singleton)
-        {
-            return services.AddStateMachine<IExtensionsTestMachine, ExtensionsTestMachine, TestState, TestTrigger>(lifetime);
-        }
+        public static IServiceCollection AddExtensionsTestMachine(this IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Singleton) => services.AddStateMachine<IExtensionsTestMachine, ExtensionsTestMachine, TestState, TestTrigger>(lifetime);
 
         // Full (Payload + Extensions)
         public static IServiceCollection AddFullTestMachine(this IServiceCollection services, TestState initialState, ServiceLifetime lifetime = ServiceLifetime.Singleton)
@@ -68,9 +56,6 @@ namespace Tests.DependencyInjection
             return services.AddStateMachine<IFullTestMachine, FullTestMachine, TestState, TestTrigger>(lifetime);
         }
 
-        public static IServiceCollection AddFullTestMachine(this IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Singleton)
-        {
-            return services.AddStateMachine<IFullTestMachine, FullTestMachine, TestState, TestTrigger>(lifetime);
-        }
+        public static IServiceCollection AddFullTestMachine(this IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Singleton) => services.AddStateMachine<IFullTestMachine, FullTestMachine, TestState, TestTrigger>(lifetime);
     }
 }

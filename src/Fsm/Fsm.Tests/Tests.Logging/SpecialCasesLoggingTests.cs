@@ -185,18 +185,18 @@ namespace Tests.Logging
         {
             var logger = GetLogger<BasicStateMachine>();
 
-            // 1) Udany scenariusz
+            // 1) Successful scenario
             var okMachine = new BasicStateMachine(TestState.Initial, logger);
             okMachine.Start();
             okMachine.TryFire(TestTrigger.Start);           // TransitionSucceeded (1), OnExit/Entry/Action (4-6)
 
-            // 2) Scenariusz z nie-spełnionym guardem
+            // 2) Scenario with an unsatisfied guard
             var failMachine = new BasicStateMachine(TestState.Initial, logger);
-            failMachine.GuardResult = false;                // wymusza GuardFailed
+            failMachine.GuardResult = false;                // forces GuardFailed
             failMachine.Start();
             failMachine.TryFire(TestTrigger.Start);         // GuardFailed (2) + TransitionFailed (3)
 
-            // --- asercje bez zmian ---
+            // --- assertions unchanged ---
             var eventIds = LoggedMessages
                 .Select(l => l.EventId)
                 .Where(id => id.Id > 0)

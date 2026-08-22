@@ -36,7 +36,7 @@ public partial class TrafficLight
 
 | Property | Description |
 |----------|-------------|
-| `GenerateExtensibleVersion` | Generates `IStateMachineExtension` support when set to `true`; defaults to `false` |
+| `GenerateExtensibleVersion` | Generates `IStateMachineExtension<TState, TTrigger>` support when set to `true`; defaults to `false` |
 | `GenerateStructuralApi` | Generates structural query methods such as `HasTransition` when set to `true` |
 | `EnableHierarchy` | Enables HSM support; HSM metadata can also cause hierarchy support to be enabled by the generator |
 | `DefaultPayloadType` | Sets the default payload type for payload-enabled machines |
@@ -52,7 +52,7 @@ Extension support is opt-in:
 
 When the property is omitted or explicitly set to `false`, the generated machine does not include the extension interface, hooks, or extension-management constructor parameter.
 
-When extension support is enabled, generated constructors accept optional `IEnumerable<IStateMachineExtension>` parameters. Logging-enabled variants can also accept `ILogger<T>` where applicable.
+When extension support is enabled, generated constructors accept optional `IEnumerable<IStateMachineExtension<TState, TTrigger>>` parameters. Logging-enabled variants can also accept `ILogger<T>` where applicable.
 
 ## Guards and actions
 

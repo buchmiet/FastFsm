@@ -25,9 +25,7 @@ namespace Tests.Machines.Extensions
 
         public void OnAttemptCompleted(
             in TransitionAttemptContext<PhysicalOrderState, PhysicalOrderTrigger> attempt,
-            in TransitionResult<PhysicalOrderState> result)
-        {
-            Entries.Add(new AuditEntry
+            in TransitionResult<PhysicalOrderState> result) => Entries.Add(new AuditEntry
             {
                 Timestamp = DateTime.UtcNow,
                 FromState = attempt.SourceState,
@@ -37,6 +35,5 @@ namespace Tests.Machines.Extensions
                 PayloadData = attempt.Payload,
                 Success = result.Outcome == TransitionOutcome.Succeeded
             });
-        }
     }
 }

@@ -231,7 +231,7 @@ namespace StateMachine.Tests
 
         // Get required namespaces for using statements
         var namespaces = new[] { stateTypeName, triggerTypeName, payloadTypeName }
-            .SelectMany(t => _helper.GetRequiredNamespaces(t))
+            .SelectMany(_helper.GetRequiredNamespaces)
             .Distinct()
             .ToList();
 

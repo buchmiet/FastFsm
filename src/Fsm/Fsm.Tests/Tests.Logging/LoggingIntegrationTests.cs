@@ -219,14 +219,14 @@ namespace Tests.Logging
             // -------------------------------------------------
             // Arrange
             // -------------------------------------------------
-            // Wyłączamy poziom Debug, zostawiamy Info i Warning
+            // Disable the Debug level; keep Info and Warning
             LoggerMock.Setup(x => x.IsEnabled(LogLevel.Debug)).Returns(false);
             LoggerMock.Setup(x => x.IsEnabled(LogLevel.Information)).Returns(true);
             LoggerMock.Setup(x => x.IsEnabled(LogLevel.Warning)).Returns(true);
 
             var machine = new BasicStateMachine(
                 TestState.Initial,
-                GetLogger<BasicStateMachine>());   // logger z przekierowaniem do LoggerMock
+                GetLogger<BasicStateMachine>());   // logger redirected to LoggerMock
             machine.Start();
             // -------------------------------------------------
             // Act
@@ -236,8 +236,8 @@ namespace Tests.Logging
             // -------------------------------------------------
             // Assert
             // -------------------------------------------------
-            // Powinny pojawić się tylko logi Information: MachineStarted i TransitionSucceeded
-            // Logi Debug (TransitionStarted, OnExit, Action, OnEntry) powinny być odfiltrowane
+            // Only Information logs should appear: MachineStarted and TransitionSucceeded
+            // Debug logs (TransitionStarted, OnExit, Action, OnEntry) should be filtered out
             VerifyLogCount(2);
             LoggedMessages[0].EventId.Name.ShouldBe("MachineStarted");
             LoggedMessages[0].Level.ShouldBe(LogLevel.Information);

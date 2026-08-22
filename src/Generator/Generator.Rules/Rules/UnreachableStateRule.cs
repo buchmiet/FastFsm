@@ -8,10 +8,9 @@ using Generator.Rules.Definitions;
 
 namespace Generator.Rules.Rules;
 
-// Implementacja IValidationRule<UnreachableStateContext>
+// IValidationRule<UnreachableStateContext> implementation
 public class UnreachableStateRule : IValidationRule<UnreachableStateContext>
 {
-    // Metoda Validate przyjmuje nowy kontekst i zwraca IEnumerable<ValidationResult>
     public IEnumerable<ValidationResult> Validate(UnreachableStateContext context)
     {
         if (context.AllDefinedStateNames == null || !context.AllDefinedStateNames.Any())

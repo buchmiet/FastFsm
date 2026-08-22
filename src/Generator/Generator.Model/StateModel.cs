@@ -178,15 +178,12 @@ public sealed class StateModel
     public static StateModel Create(
         string name,
         string? onEntryMethod = null,
-        string? onExitMethod = null)
-    {
-        return new StateModel
+        string? onExitMethod = null) => new StateModel
         {
             Name = name,
             OnEntryMethod = onEntryMethod,
             OnExitMethod = onExitMethod
         };
-    }
 
     #endregion
 

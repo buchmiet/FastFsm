@@ -64,7 +64,7 @@ public class FullVariantDiTests : DITestBase
 
         // Act
 
-        var machine = GetService<IFullTestMachine>() as FullTestMachine; // Użyj var lub FullTestMachine
+        var machine = GetService<IFullTestMachine>() as FullTestMachine; // Use var or FullTestMachine
         Assert.NotNull(machine);
         machine.Start();
         var result = machine.TryFire(TestTrigger.Next, testData);
@@ -119,7 +119,7 @@ public class FullVariantDiTests : DITestBase
         var testData = new TestData { Id = 999, Name = "NoExt" };
 
         // Act
-        var machine = GetService<IFullTestMachine>() as FullTestMachine; // Użyj var lub FullTestMachine
+        var machine = GetService<IFullTestMachine>() as FullTestMachine; // Use var or FullTestMachine
         Assert.NotNull(machine);
         machine.Start();
         var result = machine.TryFire(TestTrigger.Next, testData);
@@ -172,35 +172,23 @@ public class FullVariantDiTests : DITestBase
         public ExtensionHooks Hooks => ExtensionHooks.Transitions | ExtensionHooks.Guards;
         public List<string> Events { get; } = [];
 
-        public void OnAttemptStarting(in TransitionAttemptContext<TestState, TestTrigger> attempt)
-        {
-            Events.Add("BeforeTransition");
-        }
+        public void OnAttemptStarting(in TransitionAttemptContext<TestState, TestTrigger> attempt) => Events.Add("BeforeTransition");
 
         public void OnAttemptCompleted(
             in TransitionAttemptContext<TestState, TestTrigger> attempt,
-            in TransitionResult<TestState> result)
-        {
-            Events.Add(result.Outcome == TransitionOutcome.Succeeded
+            in TransitionResult<TestState> result) => Events.Add(result.Outcome == TransitionOutcome.Succeeded
                 ? "AfterTransition:Success"
                 : "AfterTransition:Failed");
-        }
 
         public void OnGuardEvaluating(
             in TransitionAttemptContext<TestState, TestTrigger> attempt,
             in TransitionInfo<TestState> candidate,
-            string guardName)
-        {
-            Events.Add($"GuardEvaluation:{guardName}");
-        }
+            string guardName) => Events.Add($"GuardEvaluation:{guardName}");
 
         public void OnGuardEvaluated(
             in TransitionAttemptContext<TestState, TestTrigger> attempt,
             in TransitionInfo<TestState> candidate,
             string guardName,
-            bool result)
-        {
-            Events.Add($"GuardEvaluated:{guardName}:{result}");
-        }
+            bool result) => Events.Add($"GuardEvaluated:{guardName}:{result}");
     }
 }

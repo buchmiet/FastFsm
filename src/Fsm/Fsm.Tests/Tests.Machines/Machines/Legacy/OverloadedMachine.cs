@@ -28,15 +28,9 @@ public partial class OverloadedMachine
         return true;
     }
 
-    private void DoTransition()
-    {
-        CallLog.Add("Action()");
-    }
+    private void DoTransition() => CallLog.Add("Action()");
 
-    private void OnEntryB()
-    {
-        CallLog.Add("OnEntry()");
-    }
+    private void OnEntryB() => CallLog.Add("OnEntry()");
 
     // Payload overload versions
     private bool CanGo(OverloadPayload payload)
@@ -45,13 +39,7 @@ public partial class OverloadedMachine
         return true;
     }
 
-    private void DoTransition(OverloadPayload payload)
-    {
-        CallLog.Add("Action(payload)");
-    }
+    private void DoTransition(OverloadPayload payload) => CallLog.Add("Action(payload)");
 
-    private void OnEntryB(OverloadPayload payload)
-    {
-        CallLog.Add("OnEntry(payload)");
-    }
+    private void OnEntryB(OverloadPayload payload) => CallLog.Add("OnEntry(payload)");
 }

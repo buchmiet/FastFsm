@@ -23,18 +23,9 @@ public partial class WorkflowMachine
     [Transition(WorkflowState.Approved, WorkflowTrigger.Complete, WorkflowState.Completed)]
     private void Configure() { }
 
-    private void OnInitialized(WorkflowPayload payload)
-    {
-        Priority = payload.Priority;
-    }
+    private void OnInitialized(WorkflowPayload payload) => Priority = payload.Priority;
 
-    private void OnApproved(WorkflowPayload payload)
-    {
-        ApprovedBy = payload.ApprovedBy;
-    }
+    private void OnApproved(WorkflowPayload payload) => ApprovedBy = payload.ApprovedBy;
 
-    private void OnCompleted(WorkflowPayload payload)
-    {
-        Result = payload.Result;
-    }
+    private void OnCompleted(WorkflowPayload payload) => Result = payload.Result;
 }

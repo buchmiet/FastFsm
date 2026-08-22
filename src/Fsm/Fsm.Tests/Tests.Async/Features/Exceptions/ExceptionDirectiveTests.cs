@@ -60,15 +60,12 @@ public partial class OnEntryContinueMachine
         ActionExecuted = true;
         await Task.Yield();
     }
-    
-    private ExceptionDirective HandleException(ExceptionContext<ExceptionTestStates, ExceptionTestTriggers> ctx)
+
+    private ExceptionDirective HandleException(ExceptionContext<ExceptionTestStates, ExceptionTestTriggers> ctx) => ctx.Exception switch
     {
-        return ctx.Exception switch
-        {
-            TransientDeviceException => ExceptionDirective.Continue,
-            _ => ExceptionDirective.Propagate
-        };
-    }
+        TransientDeviceException => ExceptionDirective.Continue,
+        _ => ExceptionDirective.Propagate
+    };
 }
 
 #endregion
@@ -91,11 +88,8 @@ public partial class ActionPropagateMachine
         await Task.Yield();
         throw new InvalidOperationException("Action failed");
     }
-    
-    private ExceptionDirective HandleException(ExceptionContext<ExceptionTestStates, ExceptionTestTriggers> ctx)
-    {
-        return ExceptionDirective.Propagate;
-    }
+
+    private ExceptionDirective HandleException(ExceptionContext<ExceptionTestStates, ExceptionTestTriggers> ctx) => ExceptionDirective.Propagate;
 }
 
 #endregion
@@ -148,14 +142,12 @@ public partial class CancellationPropagationMachine
         await Task.Yield();
         throw new OperationCanceledException();
     }
-    
+
     private ValueTask<ExceptionDirective> HandleException(
         ExceptionContext<ExceptionTestStates, ExceptionTestTriggers> ctx,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) =>
         // This should never be called for OperationCanceledException
-        return new ValueTask<ExceptionDirective>(ExceptionDirective.Continue);
-    }
+        new ValueTask<ExceptionDirective>(ExceptionDirective.Continue);
 }
 
 #endregion
@@ -324,11 +316,8 @@ public partial class ExceptionContextCaptureMachine
         await Task.Yield();
         throw new TransientDeviceException();
     }
-    
-    private ExceptionDirective HandleException(ExceptionContext<ExceptionTestStates, ExceptionTestTriggers> ctx)
-    {
-        return _handler(ctx);
-    }
+
+    private ExceptionDirective HandleException(ExceptionContext<ExceptionTestStates, ExceptionTestTriggers> ctx) => _handler(ctx);
 }
 
 #endregion

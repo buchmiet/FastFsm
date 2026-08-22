@@ -7,7 +7,7 @@ using Xunit;
 namespace Tests.Fsm.Exceptions;
 
 /// <summary>
-/// Sprawdza, że wyjątek w akcji jest propagowany po zmianie stanu i prawidłowo ustawia wynik.
+/// Verifies that an exception in an action is propagated after the state change and that the result is set correctly.
 /// </summary>
 public class ActionExceptionTests
 {

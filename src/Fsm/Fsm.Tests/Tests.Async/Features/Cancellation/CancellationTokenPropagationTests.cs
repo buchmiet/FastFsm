@@ -198,9 +198,9 @@ namespace Tests.Async.Features.Cancellation;
             var machine = new SpecificationComplianceMachineFluentFsm(SpecStates.Ready);
             await machine.StartAsync();
 
-            // poczekaj, aż async OnEnterReady skończy się dopisywać do logu…
-            await Task.Delay(20);          // 20 ms wystarcza przy Delay(1) w OnEnterReady
-            machine.ClearLog();            // teraz dopiero zerujemy
+            // wait until async OnEnterReady finishes writing to the log…
+            await Task.Delay(20);          // 20 ms is enough given Delay(1) in OnEnterReady
+            machine.ClearLog();            // only now do we reset
 
             using var cts = new CancellationTokenSource();
             cts.Cancel();
@@ -221,7 +221,7 @@ namespace Tests.Async.Features.Cancellation;
             await Should.ThrowAsync<OperationCanceledException>(async () =>
                 await machine.GetPermittedTriggersAsync(cts.Token));
 
-            // Żaden callback nie powinien się wywołać po anulowaniu
+            // No callback should run after cancellation
             machine.CallLog.ShouldBeEmpty();
         }
 
@@ -420,12 +420,12 @@ namespace Tests.Async.Features.Cancellation;
             var machine = new SpecificationComplianceMachineFluentFsm(SpecStates.Ready);
             await machine.StartAsync();
 
-            // Brak anulowalnego tokenu
+            // No cancellable token
             await machine.FireAsync(SpecTriggers.Start, null, default);
 
             machine.CurrentState.ShouldBe(SpecStates.Working);
 
-            // Guard został wywołany z tokenem, ale CanBeCanceled == false ⇒ "()"
+            // Guard was invoked with a token, but CanBeCanceled == false ⇒ "()"
             machine.CallLog.ShouldContain(("CanStart", "()"));
         }
 
@@ -478,10 +478,8 @@ namespace Tests.Async.Features.Cancellation;
 
     internal class TestSynchronizationContext : SynchronizationContext
     {
-        public override void Post(SendOrPostCallback d, object? state)
-        {
-            // Run synchronously for testing
-            d(state);
-        }
-    }
+    public override void Post(SendOrPostCallback d, object? state) =>
+        // Run synchronously for testing
+        d(state);
+}
  

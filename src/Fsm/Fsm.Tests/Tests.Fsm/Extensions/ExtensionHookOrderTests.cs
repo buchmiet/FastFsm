@@ -21,7 +21,7 @@ namespace Tests.Fsm.Extensions
             // act
             machine.TryFire(HookOrderTrigger.Next);
 
-            // assert – pełna sekwencja
+            // assert – full sequence
             var expected = new[]
             {
                 "Before",

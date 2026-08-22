@@ -24,10 +24,8 @@ public readonly struct TransitionEntry<TState, TTrigger>(
     public readonly int ActionIndex = actionIndex;   // Index into actions array (-1 if none)
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool Matches(TState state, TTrigger trigger)
-    {
+    public bool Matches(TState state, TTrigger trigger) =>
         // Optimized comparison using generic constraints
-        return EqualityComparer<TState>.Default.Equals(FromState, state) &&
+        EqualityComparer<TState>.Default.Equals(FromState, state) &&
                EqualityComparer<TTrigger>.Default.Equals(Trigger, trigger);
-    }
 }

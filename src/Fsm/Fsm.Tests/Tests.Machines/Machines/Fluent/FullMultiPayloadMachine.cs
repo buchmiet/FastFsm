@@ -33,14 +33,8 @@ public partial class FullMultiPayloadMachine
         ProcessedOrderIds.Add(order.OrderId);
         TotalProcessed += order.Amount;
     }
-        
-    private void HandlePayment(in PaymentPayload payment) 
-    {
-        ProcessedPaymentIds.Add(payment.OrderId);
-    }
-        
-    private void HandleShipping(in ShippingPayload shipping) 
-    {
-        ShippedTrackingNumbers.Add(shipping.OrderId);
-    }
+
+    private void HandlePayment(in PaymentPayload payment) => ProcessedPaymentIds.Add(payment.OrderId);
+
+    private void HandleShipping(in ShippingPayload shipping) => ShippedTrackingNumbers.Add(shipping.OrderId);
 }

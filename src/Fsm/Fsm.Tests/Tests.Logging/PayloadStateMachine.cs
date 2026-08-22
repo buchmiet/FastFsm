@@ -34,19 +34,13 @@ public partial class PayloadStateMachine
     private bool CanStart() => GuardResult;
 
     // Action with payload
-    private void ProcessAction(TestPayload payload)
-    {
-        LastPayload = payload;
-    }
+    private void ProcessAction(TestPayload payload) => LastPayload = payload;
 
     // Parameterless action
     private void ProcessAction() { }
 
     // OnEntry with payload
-    private void OnProcessingEntry(TestPayload payload)
-    {
-        LastPayload = payload;
-    }
+    private void OnProcessingEntry(TestPayload payload) => LastPayload = payload;
 
     // Parameterless OnEntry
     private void OnProcessingEntry() { }

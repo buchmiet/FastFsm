@@ -44,7 +44,7 @@ Event IDs and templates are defined by the logging source generator in `Generato
 
 ## Extensions and logging
 
-When `FSM_LOGGING_ENABLED` is active, exceptions caught while invoking extension hooks can be reported through the generated logging path. Extension behavior is defined by `IStateMachineExtension` implementations.
+When `FSM_LOGGING_ENABLED` is active, exceptions caught while invoking extension hooks can be reported through the generated logging path. Extension behavior is defined by `IStateMachineExtension<TState, TTrigger>` implementations.
 
 ## Tests
 

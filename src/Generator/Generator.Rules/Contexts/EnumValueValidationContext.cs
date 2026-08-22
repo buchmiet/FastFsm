@@ -3,6 +3,6 @@
 public class EnumValueValidationContext(string enumTypeName, string providedValueString, bool isValueDefinedInEnum)
 {
     public string EnumTypeName { get; } = enumTypeName;
-    public string ProvidedValueString { get; } = providedValueString; // Wartość podana w atrybucie jako string
-    public bool IsValueDefinedInEnum { get; } = isValueDefinedInEnum; // Czy parser/analyzer znalazł tę wartość w enumie
+    public string ProvidedValueString { get; } = providedValueString; // Value as given in the attribute
+    public bool IsValueDefinedInEnum { get; } = isValueDefinedInEnum; // Whether parser/analyzer found this value in the enum
 }

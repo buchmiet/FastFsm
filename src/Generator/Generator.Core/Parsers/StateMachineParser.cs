@@ -1349,7 +1349,7 @@ internal class StateMachineParser(Compilation compilation, SourceProductionConte
                     model.States[stateName] = stateModel;
                 }
 
-                // Przetwarzamy argumenty nazwane (OnEntry / OnExit)
+                // Process named arguments (OnEntry / OnExit)
                 foreach (var namedArg in attrData.NamedArguments)
                 {
                     // ---------- OnEntry ----------

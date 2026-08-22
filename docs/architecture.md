@@ -1,4 +1,4 @@
-# Architecture (0.9)
+# Architecture (0.9.2)
 
 Contributor-oriented overview of the FastFsm 0.9 codebase. API guides live under [docs/](.).
 
@@ -16,7 +16,8 @@ Your partial class + [StateMachine] / Fluent Configure()
         ▼
   FastFsm runtime (StateMachineBase / AsyncStateMachineBase)
         │
-        ├── Optional: ExtensionRunner + IStateMachineExtension
+        ├── Optional: ExtensionRunner + IStateMachineExtension<TState,TTrigger>
+        ├── Optional: ObservabilityExtension (FastFsm.Sharp.Observability)
         ├── Optional: ILogger (FastFsm.Logging generator)
         └── Optional: DI factory (FastFsm.DependencyInjection)
 ```
@@ -34,6 +35,7 @@ Your partial class + [StateMachine] / Fluent Configure()
 | `FastFsm` | Runtime bases and contracts; packaged as `FastFsm.Sharp` |
 | `Fsm.Logging` | Logging package (`FastFsm.Sharp.Logging`) |
 | `Fsm.DependencyInjection` | DI package (`FastFsm.Sharp.DependencyInjection`) |
+| `Fsm.Observability` | Tracing/metrics/event stream (`FastFsm.Sharp.Observability`) |
 | `Tests.Machines` | Shared machine definitions at `src/Fsm/Fsm.Tests/Tests.Machines/`; used by `Tests.Fsm` and `Tests.Logging` |
 
 ## Generator entry points
@@ -48,8 +50,8 @@ Both configuration APIs converge on the same internal model before emission.
 
 - `StateMachineBase<TState,TTrigger>` — synchronous transitions and `TryFire` / `Fire`
 - `AsyncStateMachineBase<…>` — asynchronous transitions, `ValueTask` API, serialized transition attempts
-- `ExtensionRunner` — invokes extension hooks; included as compile-time content in the core package
-- `IStateMachineContext` / `IStateSnapshot` — context exposed to extensions
+- `ExtensionRunner` — invokes typed extension hooks; included as compile-time content in the core package
+- `IStateMachineExtension<TState,TTrigger>` — current extension contract (see [extensions.md](extensions.md); design history in [decisions/extension-contract.md](decisions/extension-contract.md))
 
 ## Packages and build
 
@@ -118,7 +120,7 @@ Future releases should treat the preserved table as the compatibility contract u
 |------|----------|
 | `src/Abstractions/` | Attributes and Fluent API |
 | `src/Fsm/Fsm.Core/` | Runtime; packaged as `FastFsm.Sharp` |
-| `src/Fsm/Fsm.Logging/`, `src/Fsm/Fsm.DependencyInjection/` | Satellite packages |
+| `src/Fsm/Fsm.Logging/`, `src/Fsm/Fsm.DependencyInjection/`, `src/Fsm/Fsm.Observability/` | Satellite packages |
 | `src/Fsm/Fsm.Tests/` | FSM test projects (`Tests.*`) and shared `Tests.Machines` fixtures |
 | `src/Generator/` | Generator projects (`Generator.*`) and `Tests.SourceGenerators` |
 | `src/Benchmark/`, `src/IndentedStringBuilder/` | Benchmark harness and generator helper |
@@ -134,6 +136,7 @@ Solution folders in `FastFsm.slnx`: `/Fsm/`, `/Fsm/Fsm.Tests/`, `/Generator/` (i
 | `Tests.Logging` | `src/Fsm/Fsm.Tests/Tests.Logging/` | Logging and Attribute/Fluent parity matrix |
 | `Tests.DependencyInjection` | `src/Fsm/Fsm.Tests/Tests.DependencyInjection/` | DI registration |
 | `Tests.Instance` | `src/Fsm/Fsm.Tests/Tests.Instance/` | Instance-configure / startup |
+| `Tests.Observability` | `src/Fsm/Fsm.Tests/Tests.Observability/` | Tracing, metrics, and event-stream semantics |
 | `Tests.Machines` | `src/Fsm/Fsm.Tests/Tests.Machines/` | Shared machine definitions referenced by `Tests.Fsm` and `Tests.Logging` |
 | `Tests.SourceGenerators` | `src/Generator/Generator.Tests/Tests.SourceGenerators/` | Generator rules and emission tests |
 
@@ -145,9 +148,9 @@ Pack + consumer smoke: `scripts/pack-and-smoke.ps1` / `scripts/pack-and-smoke.sh
 
 Repository recovery and branch notes: [maintenance/repository-archeology-2026-08.md](maintenance/repository-archeology-2026-08.md).
 
-## 0.9 codebase
+## 0.9.2 codebase
 
 - Fluent and attribute configuration use a single generator pipeline
-- DI and logging are separate NuGet packages
+- DI, logging, and observability are separate NuGet packages
 - Diagnostic IDs use FSM01xx / FSM11xx / FSM20xx / FSM30xx ranges
-- `OnTransitioned` is part of `IStateMachineExtension`
+- Extension hooks live on `IStateMachineExtension<TState,TTrigger>`; the untyped `IStateMachineExtension` / `OnTransitioned` surface is gone

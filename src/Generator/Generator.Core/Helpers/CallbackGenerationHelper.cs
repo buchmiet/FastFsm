@@ -313,11 +313,8 @@ namespace Generator.Helpers
             bool isMethodAsync,
             bool isCallerAsync,
             bool continueOnCapturedContext,
-            params string[] args)
-        {
-            AsyncGenerationHelper.EmitMethodInvocation(
+            params string[] args) => AsyncGenerationHelper.EmitMethodInvocation(
                 sb, methodName, isMethodAsync, isCallerAsync, continueOnCapturedContext, args);
-        }
 
         private static void GenerateLegacyCallback(
             IndentedStringBuilder.IndentedStringBuilder sb,

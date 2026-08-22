@@ -263,7 +263,7 @@ namespace Generator.Helpers
 
         //    if (declareVariable)
         //    {
-        //        // Pełna deklaracja z przypisaniem
+        //        // Full declaration with assignment
         //        if ((awaitPrefix + transition.GuardMethod + configureAwait).Length > 80)
         //        {
         //            sb.AppendLine($"bool {resultVar} = {payloadVar} is {payloadType} typedGuardPayload &&");

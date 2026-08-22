@@ -1,34 +1,34 @@
 ﻿namespace Generator.Helpers;
 
 /// <summary>
-/// Zawiera wynik analizy sygnatury metody pod kątem jej asynchroniczności i poprawności.
+/// Result of analyzing a method signature for asynchrony and validity.
 /// </summary>
 internal struct AsyncSignatureInfo
 {
     /// <summary>
-    /// Czy metoda jest asynchroniczna (zwraca Task/ValueTask).
+    /// True when the method is asynchronous (returns Task/ValueTask).
     /// </summary>
     public bool IsAsync { get; set; }
 
     /// <summary>
-    /// Czy sygnatura jest równoważna `void` (void, Task, ValueTask).
-    /// Używane dla Action, OnEntry, OnExit.
+    /// True when the signature is void-equivalent (void, Task, ValueTask).
+    /// Used for Action, OnEntry, and OnExit.
     /// </summary>
     public bool IsVoidEquivalent { get; set; }
 
     /// <summary>
-    /// Czy sygnatura jest równoważna `bool` (bool, ValueTask&lt;bool&gt;).
-    /// Używane dla Guard.
+    /// True when the signature is bool-equivalent (bool, ValueTask&lt;bool&gt;).
+    /// Used for Guard.
     /// </summary>
     public bool IsBoolEquivalent { get; set; }
 
     /// <summary>
-    /// Czy wykryto niepoprawną sygnaturę `async void`.
+    /// True when an invalid <c>async void</c> signature was detected.
     /// </summary>
     public bool IsInvalidAsyncVoid { get; set; }
 
     /// <summary>
-    /// Czy wykryto niepoprawną sygnaturę `Task&lt;bool&gt;` dla guarda.
+    /// True when an invalid <c>Task&lt;bool&gt;</c> guard signature was detected.
     /// </summary>
     public bool IsInvalidGuardTask { get; set; }
 }

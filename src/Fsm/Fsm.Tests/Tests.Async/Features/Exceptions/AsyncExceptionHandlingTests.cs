@@ -30,20 +30,20 @@ namespace Tests.Async.Features.Exceptions;
             var m = new ExceptionAsyncMachineFluentFsm(ExStates.Init);
             await m.StartAsync();
 
-            // Teraz oczekujemy propagacji wyjątku z akcji:
+            // We now expect the exception from the action to propagate:
             await Should.ThrowAsync<InvalidOperationException>(
                 async () => await m.TryFireAsync(ExTriggers.ActionBoom));
 
-            // Brak rollbacku: stan docelowy ustawiony przed OnEntry/Action
+            // No rollback: destination state is set before OnEntry/Action
             m.CurrentState.ShouldBe(ExStates.Middle);
 
-            // Logi: guard przeszedł, akcja zaczęła i rzuciła
+            // Logs: guard passed, action started and threw
             m.Log.ShouldContain("GuardOk");
             m.Log.ShouldContain("Action:Begin");
 
-            // Brak OnEntry/OnExit w tym scenariuszu:
-            // - Init nie ma OnExit
-            // - Middle nie ma OnEntry
+            // No OnEntry/OnExit in this scenario:
+            // - Init has no OnExit
+            // - Middle has no OnEntry
             m.Log.ShouldNotContain("OnEntry:Begin");
             m.Log.ShouldNotContain("OnExit:Begin");
         }
@@ -58,10 +58,10 @@ namespace Tests.Async.Features.Exceptions;
             await Should.ThrowAsync<InvalidOperationException>(
                 async () => await m.TryFireAsync(ExTriggers.EntryBoom));
 
-            // Brak rollbacku – stan docelowy ustawiony przed OnEntry
+            // No rollback – destination state is set before OnEntry
             m.CurrentState.ShouldBe(ExStates.Next);
 
-            // Logi: guard przeszedł, OnEntry rozpoczęte i rzuciło, akcji nie ma
+            // Logs: guard passed, OnEntry started and threw, no action
             m.Log.ShouldContain("GuardOk");
             m.Log.ShouldContain("OnEntry:Begin");
             m.Log.ShouldNotContain("Action:Begin");
@@ -71,7 +71,7 @@ namespace Tests.Async.Features.Exceptions;
         [Fact]
         public async Task TryFireAsync_When_OnExit_Throws_Should_Return_False_And_State_Unchanged()
         {
-            // startujemy w stanie Middle, który ma rzucające OnExit
+            // start in Middle, which has a throwing OnExit
             var m = new ExceptionAsyncMachineFluentFsm(ExStates.Middle);
             await m.StartAsync();
             var ok = await m.TryFireAsync(ExTriggers.ExitBoom);
@@ -90,6 +90,6 @@ namespace Tests.Async.Features.Exceptions;
 
             var list = await m.GetPermittedTriggersAsync();
 
-            list.ShouldNotContain(ExTriggers.GuardBoom); // guard rzuca, więc trigger nie powinien być dozwolony
+            list.ShouldNotContain(ExTriggers.GuardBoom); // guard throws, so the trigger should not be permitted
         }
     }

@@ -155,13 +155,10 @@ namespace Tests.Async.TestHelpers
             }
         }
 
-        public static object CreateDummyPayload(string machineName)
+        public static object CreateDummyPayload(string machineName) => machineName switch
         {
-            return machineName switch
-            {
-                "MultiPayload" => new Tests.Async.Features.Payload.ConfigPayload { Setting = "Auto", Timeout = 1 },
-                _ => new Tests.Async.Features.Payload.ProcessPayload { Id = 999, Data = "Auto" },
-            };
-        }
+            "MultiPayload" => new Tests.Async.Features.Payload.ConfigPayload { Setting = "Auto", Timeout = 1 },
+            _ => new Tests.Async.Features.Payload.ProcessPayload { Id = 999, Data = "Auto" },
+        };
     }
 }
