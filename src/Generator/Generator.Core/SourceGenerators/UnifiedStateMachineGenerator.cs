@@ -1940,7 +1940,8 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                                 {
                                     foreach (var transition in group)
                                     {
-                                        using (Sb.Case($"{triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}", braces: false))
+                                        // Braced: the guard emission below declares guardResult, which would collide across cases in a shared switch scope.
+                                        using (Sb.Case($"{triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}"))
                                         {
                                             if (!string.IsNullOrEmpty(transition.GuardMethod))
                                             {
@@ -1996,7 +1997,8 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                                 var transitionsFromThisState = Model.Transitions.Where(t => t.FromState == stateName);
                                 foreach (var transition in transitionsFromThisState)
                                 {
-                                    using (Sb.Case($"{triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}", braces: false))
+                                    // Braced: the guard emission below declares guardResult, which would collide across cases in a shared switch scope.
+                                    using (Sb.Case($"{triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}"))
                                     {
                                         if (!string.IsNullOrEmpty(transition.GuardMethod))
                                         {
@@ -2848,7 +2850,8 @@ internal class UnifiedStateMachineGenerator(StateMachineModel model) : StateMach
                             var transitionsFromThisState = Model.Transitions.Where(t => t.FromState == stateName);
                             foreach (var transition in transitionsFromThisState)
                             {
-                                using (Sb.Case($"{triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}", braces: false))
+                                // Braced: the guard emission below declares guardResult, which would collide across cases in a shared switch scope.
+                                using (Sb.Case($"{triggerTypeForUsage}.{TypeHelper.EscapeIdentifier(transition.Trigger)}"))
                                 {
                                     if (!string.IsNullOrEmpty(transition.GuardMethod))
                                     {
