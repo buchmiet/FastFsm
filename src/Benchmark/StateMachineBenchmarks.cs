@@ -552,7 +552,11 @@ public class StateMachineBenchmarks
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Helper")]
     public void Stateless_GetPermittedTriggers()
     {
+        // Stateless deprecates the sync accessor in favour of PermittedTriggersAsync, but this
+        // category measures synchronous APIs against FastFsm's sync GetPermittedTriggers().
+#pragma warning disable CS0618
         for (int i = 0; i < Ops; i++) _ = _statelessBasic.PermittedTriggers;
+#pragma warning restore CS0618
         DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_statelessBasic);
     }
 
