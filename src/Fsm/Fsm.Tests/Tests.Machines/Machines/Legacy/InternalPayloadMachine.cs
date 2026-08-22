@@ -15,8 +15,5 @@ public partial class InternalPayloadMachine
     [Transition(InternalPayloadState.Active, InternalPayloadTrigger.Deactivate, InternalPayloadState.Inactive)]
     private void Configure() { }
 
-    private void UpdateCounter(UpdatePayload update)
-    {
-        Counter += update.Increment;
-    }
+    private void UpdateCounter(UpdatePayload update) => Counter += update.Increment;
 }

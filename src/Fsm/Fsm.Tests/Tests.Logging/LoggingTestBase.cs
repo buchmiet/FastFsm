@@ -12,14 +12,14 @@ public abstract class LoggingTestBase
     // LoggingTestBase.cs
     protected Mock<ILogger<T>> GetLoggerMock<T>() where T : class
     {
-        // Wyciągamy generyczny interfejs z jednego, wspólnego mocka
+        // Extract the generic interface from a single shared mock
         var typed = LoggerMock.As<ILogger<T>>();
 
-        // Forward IsEnabled -> zawsze true (jak w bazowym mocku)
+        // Forward IsEnabled -> always true (as in the base mock)
         typed.Setup(x => x.IsEnabled(It.IsAny<LogLevel>()))
             .Returns(true);
 
-        // Forward Log -> ta sama lista LoggedMessages
+        // Forward Log -> the same LoggedMessages list
         typed.Setup(x => x.Log(
                 It.IsAny<LogLevel>(),
                 It.IsAny<EventId>(),
@@ -45,7 +45,7 @@ public abstract class LoggingTestBase
         LoggerMock = new Mock<ILogger>();
         LoggedMessages = new();
 
-        // --- przechwytywanie Log ----------------------------------------
+        // --- capture Log ----------------------------------------
         LoggerMock.Setup(x => x.Log(
                 It.IsAny<LogLevel>(),
                 It.IsAny<EventId>(),
@@ -58,16 +58,16 @@ public abstract class LoggingTestBase
                 LoggedMessages.Add((lvl, id, msg));
             });
 
-        // --- domyślnie wszystkie poziomy włączone ------------------------
+        // --- all levels enabled by default ------------------------
         LoggerMock.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
     }
 
-    /*  -------  NOWE metody  ----------------------------------------- */
+    /*  -------  NEW methods  ----------------------------------------- */
 
     /// <summary>
-    /// Zwraca loger generyczny delegujący do wspólnego <see cref="LoggerMock"/>.
-    /// Dzięki temu konfiguracja IsEnabled zrobiona na LoggerMock
-    /// obowiązuje również dla ILogger&lt;T&gt;.
+    /// Returns a generic logger that delegates to the shared <see cref="LoggerMock"/>.
+    /// This way the IsEnabled configuration on LoggerMock
+    /// also applies to ILogger&lt;T&gt;.
     /// </summary>
     protected ILogger<T> GetLogger<T>() where T : class
         => new DelegatingLogger<T>(LoggerMock.Object);
@@ -103,15 +103,9 @@ public abstract class LoggingTestBase
         }
     }
 
-    protected void VerifyLogCount(int expectedCount)
-    {
-        LoggedMessages.Count.ShouldBe(expectedCount);
-    }
+    protected void VerifyLogCount(int expectedCount) => LoggedMessages.Count.ShouldBe(expectedCount);
 
-    protected void VerifyNoLogs()
-    {
-        LoggedMessages.ShouldBeEmpty();
-    }
+    protected void VerifyNoLogs() => LoggedMessages.ShouldBeEmpty();
 }
 
 /// <summary>

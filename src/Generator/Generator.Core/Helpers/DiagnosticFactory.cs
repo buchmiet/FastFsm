@@ -12,50 +12,43 @@ internal static class DiagnosticFactory
    
     private static readonly ConcurrentDictionary<string, DiagnosticDescriptor> DescriptorCache = new();
 
-    private static DiagnosticSeverity ToRoslynSeverity(RuleSeverity ruleSeverity)
+    private static DiagnosticSeverity ToRoslynSeverity(RuleSeverity ruleSeverity) => ruleSeverity switch
     {
-        return ruleSeverity switch
-        {
-            RuleSeverity.Error => DiagnosticSeverity.Error,
-            RuleSeverity.Warning => DiagnosticSeverity.Warning,
-            RuleSeverity.Info => DiagnosticSeverity.Info,
-            _ => DiagnosticSeverity.Warning // Domyślna wartość
-        };
-    }
+        RuleSeverity.Error => DiagnosticSeverity.Error,
+        RuleSeverity.Warning => DiagnosticSeverity.Warning,
+        RuleSeverity.Info => DiagnosticSeverity.Info,
+        _ => DiagnosticSeverity.Warning // default
+    };
 
     /// <summary>
-    /// Pobiera lub tworzy DiagnosticDescriptor na podstawie RuleId.
-    /// Deskryptor jest cache'owany.
+    /// Gets or creates a DiagnosticDescriptor for a RuleId.
+    /// Descriptors are cached.
     /// </summary>
-    /// <param name="ruleId">Identyfikator reguły (np. "FSM001").</param>
-    /// <returns>Odpowiedni DiagnosticDescriptor.</returns>
-    /// <exception cref="KeyNotFoundException">Jeśli reguła o danym ID nie jest zdefiniowana w DefinedRules.</exception>
-    internal static DiagnosticDescriptor Get(string ruleId)
-    {
-        return DescriptorCache.GetOrAdd(ruleId, id =>
-        {
-            // Znajdź RuleDefinition w StateMachine.Rules.Definitions.DefinedRules
-            RuleDefinition? ruleDefinition = DefinedRules.All.FirstOrDefault(rd => rd.Id == id);
+    /// <param name="ruleId">Rule identifier (e.g. "FSM001").</param>
+    /// <returns>The matching DiagnosticDescriptor.</returns>
+    /// <exception cref="KeyNotFoundException">Thrown when the rule ID is not defined in DefinedRules.</exception>
+    internal static DiagnosticDescriptor Get(string ruleId) => DescriptorCache.GetOrAdd(ruleId, id =>
+                                                                    {
+                                                                        // Look up RuleDefinition in StateMachine.Rules.Definitions.DefinedRules
+                                                                        RuleDefinition? ruleDefinition = DefinedRules.All.FirstOrDefault(rd => rd.Id == id);
 
-            if (ruleDefinition == null)
-            {
-                throw new KeyNotFoundException($"RuleDefinition for ID '{id}' not found in DefinedRules.All. Ensure it is defined in StateMachine.Rules.");
-            }
+                                                                        if (ruleDefinition == null)
+                                                                        {
+                                                                            throw new KeyNotFoundException($"RuleDefinition for ID '{id}' not found in DefinedRules.All. Ensure it is defined in StateMachine.Rules.");
+                                                                        }
 
-            // Stwórz DiagnosticDescriptor na podstawie RuleDefinition
-            return new DiagnosticDescriptor(
-                id: ruleDefinition.Id,
-                title: ruleDefinition.Title, // Używamy stringa bezpośrednio
-                messageFormat: ruleDefinition.MessageFormat, // Używamy stringa bezpośrednio
-                category: ruleDefinition.Category,
-                defaultSeverity: ToRoslynSeverity(ruleDefinition.DefaultSeverity),
-                isEnabledByDefault: ruleDefinition.IsEnabledByDefault,
-                description: ruleDefinition.Description, // Używamy stringa bezpośrednio
-                helpLinkUri: null // Można dodać, jeśli macie dokumentację online dla reguł
-                                  // customTags: Można dodać jeśli potrzebne
-            );
-        });
-    }
+                                                                        // Build DiagnosticDescriptor from RuleDefinition
+                                                                        return new DiagnosticDescriptor(
+                                                                            id: ruleDefinition.Id,
+                                                                            title: ruleDefinition.Title,
+                                                                            messageFormat: ruleDefinition.MessageFormat,
+                                                                            category: ruleDefinition.Category,
+                                                                            defaultSeverity: ToRoslynSeverity(ruleDefinition.DefaultSeverity),
+                                                                            isEnabledByDefault: ruleDefinition.IsEnabledByDefault,
+                                                                            description: ruleDefinition.Description,
+                                                                            helpLinkUri: null
+                                                                        );
+                                                                    });
 
     internal static bool TryCreateDiagnostic(ValidationResult validationResult, Location location,out Diagnostic? result)
     {

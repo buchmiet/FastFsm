@@ -98,11 +98,8 @@ public partial class FluentPropagateMachine
         await Task.Yield();
         throw new InvalidOperationException("Test propagate");
     }
-    
-    private ExceptionDirective PropagateHandler(ExceptionContext<TestState, TestTrigger> context)
-    {
-        return ExceptionDirective.Propagate;
-    }
+
+    private ExceptionDirective PropagateHandler(ExceptionContext<TestState, TestTrigger> context) => ExceptionDirective.Propagate;
 }
 
 public class FluentPropagateTests

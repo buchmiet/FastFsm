@@ -9,8 +9,7 @@ namespace Generator.DependencyInjection
 {
 
         /// <summary>
-        /// Generuje fabrykę oraz metody rozszerzeń dla kontenera DI na podstawie gotowego,
-        /// wstępnie przetworzonego modelu danych.
+        /// Emits a factory and DI extension methods from a preprocessed model.
         /// </summary>
         public sealed class FactoryCodeGenerator(FactoryGenerationModel model)
         {

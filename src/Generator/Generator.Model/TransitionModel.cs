@@ -171,9 +171,7 @@ public sealed class TransitionModel
         string trigger,
         string? guardMethod = null,
         string? actionMethod = null,
-        string? expectedPayloadType = null)
-    {
-        return new TransitionModel
+        string? expectedPayloadType = null) => new TransitionModel
         {
             FromState = fromState,
             ToState = toState,
@@ -182,7 +180,6 @@ public sealed class TransitionModel
             ActionMethod = actionMethod,
             ExpectedPayloadType = expectedPayloadType
         };
-    }
 
     #endregion
 

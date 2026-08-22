@@ -92,7 +92,7 @@ public class ExtensionsVariantDITests : DITestBase
 
         // Act
         var machine = GetService<IExtensionsTestMachine>() as ExtensionsTestMachine;
-        Assert.NotNull(machine); // Zmień na NotNull!
+        Assert.NotNull(machine); // Change to NotNull!
         machine.Start();
 
         var result = machine.TryFire(TestTrigger.Next);
@@ -130,7 +130,7 @@ public class ExtensionsVariantDITests : DITestBase
         Assert.NotSame(scoped1, scoped2); // Scoped different per scope
 
         // Act & Assert - Transient
-        // Dla transient, musimy wywołać GetServices dwa razy
+        // For transient, we must call GetServices twice
         var transientExtensions1 = scope1.ServiceProvider.GetServices<IStateMachineExtension<TestState, TestTrigger>>().ToList();
         var transientExtensions2 = scope1.ServiceProvider.GetServices<IStateMachineExtension<TestState, TestTrigger>>().ToList();
 
@@ -193,34 +193,22 @@ public class ExtensionsVariantDITests : DITestBase
             Name = name;
         }
 
-        public virtual void OnAttemptStarting(in TransitionAttemptContext<TestState, TestTrigger> attempt)
-        {
-            Events.Add($"{Name}:Before");
-        }
+        public virtual void OnAttemptStarting(in TransitionAttemptContext<TestState, TestTrigger> attempt) => Events.Add($"{Name}:Before");
 
         public virtual void OnAttemptCompleted(
             in TransitionAttemptContext<TestState, TestTrigger> attempt,
-            in TransitionResult<TestState> result)
-        {
-            Events.Add($"{Name}:After");
-        }
+            in TransitionResult<TestState> result) => Events.Add($"{Name}:After");
 
         public virtual void OnGuardEvaluating(
             in TransitionAttemptContext<TestState, TestTrigger> attempt,
             in TransitionInfo<TestState> candidate,
-            string guardName)
-        {
-            Events.Add($"{Name}:GuardEval:{guardName}");
-        }
+            string guardName) => Events.Add($"{Name}:GuardEval:{guardName}");
 
         public virtual void OnGuardEvaluated(
             in TransitionAttemptContext<TestState, TestTrigger> attempt,
             in TransitionInfo<TestState> candidate,
             string guardName,
-            bool result)
-        {
-            Events.Add($"{Name}:GuardEvaluated:{guardName}:{result}");
-        }
+            bool result) => Events.Add($"{Name}:GuardEvaluated:{guardName}:{result}");
     }
 
     private class OrderedTestExtension : TestExtension

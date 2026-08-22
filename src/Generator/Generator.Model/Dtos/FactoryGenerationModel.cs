@@ -5,17 +5,17 @@ using System.Text;
 namespace Generator.Model.Dtos
 {
     /// <summary>
-    /// Główny model danych dla FactoryCodeGenerator, zawierający wszystkie wstępnie
-    /// przetworzone informacje, eliminując potrzebę posiadania TypeSystemHelper w generatorze.
+    /// Primary data model for FactoryCodeGenerator: preprocessed type info so the generator
+    /// does not need TypeSystemHelper at emission time.
     /// </summary>
     public sealed record FactoryGenerationModel
     {
-        // Informacje o typach
+        // Type info
         public TypeGenerationInfo StateType { get; set; } = new();
         public TypeGenerationInfo TriggerType { get; set; } = new();
-        public TypeGenerationInfo? PayloadType { get; set; } // Może nie istnieć
+        public TypeGenerationInfo? PayloadType { get; set; } // May be absent
 
-        // Informacje z oryginalnego StateMachineModel
+        // From the original StateMachineModel
         public string ClassName { get; set; } = "";
         public string? UserNamespace { get; set; }
         public bool ShouldGenerateLogging { get; set; }
@@ -24,7 +24,7 @@ namespace Generator.Model.Dtos
         public bool IsSinglePayload { get; set; }
 
         /// <summary>
-        /// Zbiorcza, unikalna lista wszystkich przestrzeni nazw potrzebnych w generowanym pliku.
+        /// Unique set of namespaces required in the generated file.
         /// </summary>
         public IReadOnlyCollection<string> AllRequiredNamespaces { get; set; } = Array.Empty<string>();
     }

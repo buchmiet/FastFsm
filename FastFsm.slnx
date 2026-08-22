@@ -3,6 +3,7 @@
     <Project Path="src/Fsm/Fsm.Core/Fsm.Core.csproj" />
     <Project Path="src/Fsm/Fsm.DependencyInjection/Fsm.DependencyInjection.csproj" />
     <Project Path="src/Fsm/Fsm.Logging/Fsm.Logging.csproj" />
+    <Project Path="src/Fsm/Fsm.Observability/Fsm.Observability.csproj" />
   </Folder>
   <Folder Name="/Fsm/Fsm.Tests/">
     <Project Path="src/Fsm/Fsm.Tests/Tests.Async/Tests.Async.csproj" />
@@ -10,6 +11,7 @@
     <Project Path="src/Fsm/Fsm.Tests/Tests.Fsm/Tests.Fsm.csproj" />
     <Project Path="src/Fsm/Fsm.Tests/Tests.Instance/Tests.Instance.csproj" />
     <Project Path="src/Fsm/Fsm.Tests/Tests.Logging/Tests.Logging.csproj" />
+    <Project Path="src/Fsm/Fsm.Tests/Tests.Observability/Tests.Observability.csproj" />
     <Project Path="src/Fsm/Fsm.Tests/Tests.Machines/Tests.Machines.csproj" />
   </Folder>
   <Folder Name="/Generator/">

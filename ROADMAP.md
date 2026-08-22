@@ -2,6 +2,12 @@
 
 This file records intended areas of work. It is not a release schedule or a compatibility commitment.
 
+## 0.9.2 (in progress)
+
+Repository package version is already `0.9.2` on `feature/pr5-observability`. This release adds **`FastFsm.Sharp.Observability`**, the typed extension contract, HSM lifecycle semantics and hook-mask gating, plus refreshed multi-platform benchmarks (Stateless 5.20.1).
+
+`main` is still **0.9.1** on NuGet (`v0.9.1`). Tag `v0.9.2` is created when this ships.
+
 ## 0.9.1 (released)
 
 Repository package version is `0.9.1`. Patch release after 0.9.0: `net10.0-windows` props, clean-build packaging, CI hygiene, and stable async cancellation tests. Published on NuGet.org; git tag `v0.9.1` marks the release.
@@ -10,19 +16,13 @@ Repository package version is `0.9.1`. Patch release after 0.9.0: `net10.0-windo
 
 Repository package version is `0.9.0`. First .NET 10 release with canonical `FastFsm.Sharp*` package IDs and legacy `FastFsm.Net*` metapackages. Published on NuGet.org; git tag `v0.9.0` marks the release.
 
-## Next work: extension contract v2
+## Next work: 0.10
 
-The extension mechanism ships in 0.9.1, but its public data contract is not correct enough to build observability on. In particular, the data delivered to extensions for hierarchical machines does not describe what the machine actually did: a trigger handled on an ancestor is reported as a state change that never occurred, and a transition into a composite state reports the composite rather than the leaf entered.
-
-Extension contract v2 replaces the extension surface with a contract generic in the state and trigger types, with stable machine identity, explicit transition semantics, structured outcomes, and a tested lifecycle event stream. It is a breaking change to the extension API, taken while the package has no dependent users, and is intended to release as `0.10.0`.
-
-`FastFsm.Sharp.Observability` — tracing, metrics, and an inspection stream — is built on the v2 contract and is not started before it lands.
-
-See [docs/proposals/extension-contract-v2.md](docs/proposals/extension-contract-v2.md).
+The typed extension surface and **`FastFsm.Sharp.Observability`** are the 0.9.2 work. See [docs/extensions.md](docs/extensions.md) and [docs/observability.md](docs/observability.md). After 0.9.2, deferred events remain the next substantial feature candidate.
 
 ## Later feature candidate: deferred events
 
-Deferred events remain a substantial state-machine feature under consideration, after extension contract v2.
+Deferred events remain a substantial state-machine feature under consideration.
 
 The intended capability is to allow a state to defer selected triggers instead of handling or rejecting them immediately, and to make those events eligible for processing after the machine leaves the deferring configuration.
 

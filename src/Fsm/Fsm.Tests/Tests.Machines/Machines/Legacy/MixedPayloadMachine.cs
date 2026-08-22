@@ -18,13 +18,7 @@ public partial class MixedPayloadMachine
         Action = nameof(ProcessSpecial))]
     private void Configure() { }
 
-    private void ProcessDefault(DefaultPayload payload)
-    {
-        LastDefaultId = payload.Id;
-    }
+    private void ProcessDefault(DefaultPayload payload) => LastDefaultId = payload.Id;
 
-    private void ProcessSpecial(SpecialPayload payload)
-    {
-        LastSpecialValue = payload.SpecialValue;
-    }
+    private void ProcessSpecial(SpecialPayload payload) => LastSpecialValue = payload.SpecialValue;
 }

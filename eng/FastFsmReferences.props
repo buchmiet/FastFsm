@@ -26,13 +26,20 @@
     <ProjectReference Include="$(_FastFsmRepoRoot)/src/Fsm/Fsm.DependencyInjection/Fsm.DependencyInjection.csproj" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(FastFsmReferenceObservability)' == 'true' and '$(UsePackages)' == 'true'">
+    <PackageReference Include="FastFsm.Sharp.Observability" Version="$(FastFsmPackageVersion)" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(FastFsmReferenceObservability)' == 'true' and '$(UsePackages)' != 'true'">
+    <ProjectReference Include="$(_FastFsmRepoRoot)/src/Fsm/Fsm.Observability/Fsm.Observability.csproj" />
+  </ItemGroup>
+
   <!-- Dev-mode: wire source generators directly (nupkg normally ships them as analyzers) -->
   <!-- Analyzer DLLs are added via AddFastFsmDevAnalyzers in Directory.Build.targets -->
 
   <!-- Dev-mode: compile package content files directly instead of requiring a pre-built nupkg -->
   <ItemGroup Condition="'$(UsePackages)' != 'true' and ('$(FastFsmReferenceCore)' == 'true' or '$(FastFsmReferenceLogging)' == 'true' or '$(FastFsmReferenceDependencyInjection)' == 'true')">
     <Compile
-      Include="$(_FastFsmRepoRoot)/src/Fsm/Fsm.Core/Runtime/Extensions/ExtensionRunnerV2.cs"
+      Include="$(_FastFsmRepoRoot)/src/Fsm/Fsm.Core/Runtime/Extensions/ExtensionRunner.cs"
       Link="FastFsm/ExtensionRunner.cs" />
     <Compile Include="$(_FastFsmRepoRoot)/src/Fsm/Fsm.Core/Runtime/GlobalUsings.FastFsm.cs" Link="FastFsm/GlobalUsings.FastFsm.cs" />
   </ItemGroup>

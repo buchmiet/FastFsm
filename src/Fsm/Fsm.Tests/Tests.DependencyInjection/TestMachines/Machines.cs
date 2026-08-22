@@ -69,10 +69,7 @@ public partial class PayloadTestMachine
         return data.Id > 0;
     }
 
-    private void ProcessData(TestData data)
-    {
-        LastProcessedData = data;
-    }
+    private void ProcessData(TestData data) => LastProcessedData = data;
 }
 
 // === WITH EXTENSIONS VARIANT ===
@@ -138,13 +135,7 @@ public partial class MultiPayloadTestMachine
     [Transition(TestState.B, TestTrigger.Back, TestState.A, Action = nameof(ProcessBack))]
     private void Configure() { }
 
-    private void ProcessNext(TestData data)
-    {
-        LastPayload = data;
-    }
+    private void ProcessNext(TestData data) => LastPayload = data;
 
-    private void ProcessBack(string message)
-    {
-        LastPayload = message;
-    }
+    private void ProcessBack(string message) => LastPayload = message;
 }

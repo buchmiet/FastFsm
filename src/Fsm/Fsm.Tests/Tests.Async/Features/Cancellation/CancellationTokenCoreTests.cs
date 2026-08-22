@@ -504,10 +504,10 @@ public class CancellationTokenCoreTests
         await machine.StartAsync();
         using var cts = new CancellationTokenSource();
 
-        // Act – token trafia we właściwy parametr
+        // Act – token is passed to the correct parameter
         var result = await machine.TryFireAsync(
             TokenTestTrigger.Start,
-            cancellationToken: cts.Token);   // ← kluczowa zmiana
+            cancellationToken: cts.Token);   // ← key change
 
         // Assert
         result.ShouldBeTrue();
@@ -573,15 +573,15 @@ public class CancellationTokenCoreTests
         await machine.StartAsync();
         using var cts = new CancellationTokenSource();
 
-        cts.CancelAfter(50); // Anulujemy po 50 ms (Guard ma DelayMs=100)
+        cts.CancelAfter(50); // Cancel after 50 ms (Guard has DelayMs=100)
 
         // Act
         var result = await machine.TryFireAsync(
             TokenTestTrigger.Start,
-            cancellationToken: cts.Token);   // <-- poprawnie przekazany token
+            cancellationToken: cts.Token);   // <-- token passed correctly
 
         // Assert
-        result.ShouldBeFalse();                       // Guard anulowany ⇒ brak przejścia
+        result.ShouldBeFalse();                       // Guard cancelled ⇒ no transition
         machine.CurrentState.ShouldBe(TokenTestState.Initial);
         machine.ExecutionLog.ShouldContain("Guard:Begin");
         machine.ExecutionLog.ShouldNotContain("Guard:End");
@@ -784,7 +784,7 @@ public class CancellationTokenCoreTests
         var logCountBefore = machine.ExecutionLog.Count;
 
         using var cts = new CancellationTokenSource();
-        cts.Cancel(); // token anulowany przed wywołaniem
+        cts.Cancel(); // token cancelled before the call
 
         // Act & Assert
         await Should.ThrowAsync<TaskCanceledException>(async () =>

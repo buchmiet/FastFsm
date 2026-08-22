@@ -20,7 +20,7 @@ namespace Tests.Async.Features.Concurrency;
         public int OnEntryACalls => Volatile.Read(ref _onEntryACalls);
         public int OnEntryBCalls => Volatile.Read(ref _onEntryBCalls);
 
-        // --- Sonda współbieżności (bariera) ---
+        // --- Concurrency probe (barrier) ---
         private static int _slowActionEntered;
         private static TaskCompletionSource<bool> _firstInside =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -44,7 +44,7 @@ namespace Tests.Async.Features.Concurrency;
 
         public static void ReleaseFirst() => _releaseFirst.TrySetResult(true);
 
-        // ----- Hooki stanowe i akcja z atrybutami -----
+        // ----- State hooks and attributed action -----
 
         [State(RcStates.Initial, OnExit = nameof(OnInitialExitAsync))]
         private async Task OnInitialExitAsync()
@@ -59,10 +59,10 @@ namespace Tests.Async.Features.Concurrency;
         {
             var n = Interlocked.Increment(ref _slowActionEntered);
             if (n == 1)
-                _firstInside.TrySetResult(true);       // sygnał: pierwszy wszedł
+                _firstInside.TrySetResult(true);       // signal: first caller entered
 
-            // Pierwsze wywołanie czeka na „zwolnij”, drugie w ogóle nie wejdzie
-            // zanim pierwsze skończy (serializacja przez SemaphoreSlim w bazie).
+            // First call waits for "release"; the second cannot enter
+            // until the first finishes (serialized by SemaphoreSlim on the base).
             await _releaseFirst.Task.ConfigureAwait(false);
         }
 
@@ -94,7 +94,7 @@ namespace Tests.Async.Features.Concurrency;
         public int OnEntryACalls => Volatile.Read(ref _onEntryACalls);
         public int OnEntryBCalls => Volatile.Read(ref _onEntryBCalls);
 
-        // --- Sonda współbieżności (bariera) ---
+        // --- Concurrency probe (barrier) ---
         private static int _slowActionEntered;
         private static TaskCompletionSource<bool> _firstInside =
             new(TaskCreationOptions.RunContinuationsAsynchronously);

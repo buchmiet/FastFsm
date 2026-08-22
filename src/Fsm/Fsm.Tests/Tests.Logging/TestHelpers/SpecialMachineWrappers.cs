@@ -109,20 +109,11 @@ public class AsyncLifecycleMachineFluentWrapper : IStateMachineTestWrapper
     public bool CanFire(object trigger) => false; // async-only machine; avoid sync CanFire
     public IReadOnlyList<object> GetPermittedTriggers() => new List<object>();
 
-    public async ValueTask StartAsync(CancellationToken ct = default)
-    {
-        await _machine.StartAsync(ct);
-    }
+    public async ValueTask StartAsync(CancellationToken ct = default) => await _machine.StartAsync(ct);
 
-    public async ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default)
-    {
-        return await _machine.TryFireAsync((AsyncLifecycleTrigger)trigger, ct);
-    }
+    public async ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => await _machine.TryFireAsync((AsyncLifecycleTrigger)trigger, ct);
 
-    public async ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default)
-    {
-        await _machine.FireAsync((AsyncLifecycleTrigger)trigger, ct);
-    }
+    public async ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => await _machine.FireAsync((AsyncLifecycleTrigger)trigger, ct);
 }
 
 public class AsyncLifecycleMachineLegacyWrapper : IStateMachineTestWrapper
@@ -145,20 +136,11 @@ public class AsyncLifecycleMachineLegacyWrapper : IStateMachineTestWrapper
     public bool CanFire(object trigger) => false; // async-only machine; avoid sync CanFire
     public IReadOnlyList<object> GetPermittedTriggers() => new List<object>();
 
-    public async ValueTask StartAsync(CancellationToken ct = default)
-    {
-        await _machine.StartAsync(ct);
-    }
+    public async ValueTask StartAsync(CancellationToken ct = default) => await _machine.StartAsync(ct);
 
-    public async ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default)
-    {
-        return await _machine.TryFireAsync((AsyncLifecycleTrigger)trigger, ct);
-    }
+    public async ValueTask<bool> TryFireAsync(object trigger, object? payload = null, CancellationToken ct = default) => await _machine.TryFireAsync((AsyncLifecycleTrigger)trigger, ct);
 
-    public async ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default)
-    {
-        await _machine.FireAsync((AsyncLifecycleTrigger)trigger, ct);
-    }
+    public async ValueTask FireAsync(object trigger, object? payload = null, CancellationToken ct = default) => await _machine.FireAsync((AsyncLifecycleTrigger)trigger, ct);
 }
 
 // ============== InternalTransitionMachine Wrappers ==============

@@ -125,10 +125,10 @@ namespace Tests.Fsm.Performance
         [Fact]
         public void GuardEvaluation_PerformanceImpact_Improved()
         {
-            const int iterations = 10_000_000; // Zwiększona liczba iteracji
+            const int iterations = 10_000_000; // Increased iteration count
             const int warmupIterations = 100_000;
 
-            // Warmup dla obu maszyn
+            // Warmup for both machines
             var noGuardMachine = new NoGuardBenchmarkMachine(BenchmarkState.A);
             noGuardMachine.Start();
             var withGuardMachine = new WithGuardBenchmarkMachine(BenchmarkState.A);
@@ -140,13 +140,13 @@ namespace Tests.Fsm.Performance
                 withGuardMachine.TryFire(BenchmarkTrigger.Next);
             }
 
-            // Reset maszyn
+            // Reset machines
             noGuardMachine = new NoGuardBenchmarkMachine(BenchmarkState.A);
             noGuardMachine.Start();
             withGuardMachine = new WithGuardBenchmarkMachine(BenchmarkState.A);
             withGuardMachine.Start();
 
-            // Pomiar bez guards - wielokrotne próby
+            // Measurement without guards - multiple runs
             var noGuardTimes = new List<double>();
             for (int run = 0; run < 5; run++)
             {
@@ -159,7 +159,7 @@ namespace Tests.Fsm.Performance
                 noGuardTimes.Add(sw.Elapsed.TotalMilliseconds);
             }
 
-            // Pomiar z guards - wielokrotne próby
+            // Measurement with guards - multiple runs
             var withGuardTimes = new List<double>();
             for (int run = 0; run < 5; run++)
             {
@@ -172,7 +172,7 @@ namespace Tests.Fsm.Performance
                 withGuardTimes.Add(sw.Elapsed.TotalMilliseconds);
             }
 
-            // Użyj mediany zamiast średniej (bardziej odporna na outliers)
+            // Use the median instead of the mean (more robust to outliers)
             var noGuardMedian = noGuardTimes.OrderBy(x => x).ElementAt(noGuardTimes.Count / 2);
             var withGuardMedian = withGuardTimes.OrderBy(x => x).ElementAt(withGuardTimes.Count / 2);
 
@@ -186,21 +186,21 @@ namespace Tests.Fsm.Performance
             output.WriteLine($"  Overhead: {guardOverhead:F1}%");
             output.WriteLine($"  Absolute difference: {nsPerTransitionWithGuard - nsPerTransitionNoGuard:F1}ns per transition");
 
-            // Realistyczne oczekiwania:
-            // Guard dodaje ~5-10ns na przejście, co przy bazowej operacji ~10ns daje 50-100% overhead
+            // Realistic expectations:
+            // A guard adds ~5-10ns per transition, which on a ~10ns baseline is 50-100% overhead
             Assert.True(nsPerTransitionWithGuard < 50,
                 $"Transition with guard took {nsPerTransitionWithGuard:F1}ns, expected < 50ns");
 
-            // Dla praktycznych zastosowań ważniejsza jest absolutna wydajność niż procentowy overhead
+            // For practical use, absolute performance matters more than percentage overhead
             Assert.True(withGuardMedian < noGuardMedian * 2.5,
                 $"Guard overhead is {guardOverhead:F1}%, expected < 150%");
         }
 
-        // Dodatkowy test sprawdzający rzeczywistą wydajność
+        // Extra test checking real-world performance
         [Fact]
         public void GuardEvaluation_RealWorldPerformance()
         {
-            // Test symulujący bardziej realistyczne użycie
+            // Test simulating more realistic usage
             var machine = new WithGuardBenchmarkMachine(BenchmarkState.A);
             machine.Start();
             const int operations = 1_000_000;
@@ -215,7 +215,7 @@ namespace Tests.Fsm.Performance
                     successfulTransitions++;
                 }
 
-                // Symulacja dodatkowej pracy (typowe w prawdziwych aplikacjach)
+                // Simulate extra work (typical in real applications)
                 Thread.SpinWait(10);
             }
             sw.Stop();
@@ -228,7 +228,7 @@ namespace Tests.Fsm.Performance
             output.WriteLine($"  Time: {sw.ElapsedMilliseconds}ms");
             output.WriteLine($"  Throughput: {opsPerSecond:N0} ops/sec");
 
-            // W rzeczywistych zastosowaniach liczy się całkowita przepustowość
+            // In real-world use, overall throughput is what matters
             Assert.True(opsPerSecond > 50_000, $"Throughput {opsPerSecond:N0} ops/sec, expected > 50,000");
         }
 

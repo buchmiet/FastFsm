@@ -4,7 +4,7 @@ Source-generated finite and hierarchical state machines for .NET 10.
 
 FastFsm generates `switch`-based state-machine code at build time. Machines can be configured with either the **Fluent API** or the **Attribute API**. The generator validates transitions, guards, callbacks, and hierarchy during compilation.
 
-**Repository package version:** `0.9.1` (defined in `Directory.Build.props`). See [CHANGELOG.md](CHANGELOG.md). **0.9.1** is on [NuGet.org](https://www.nuget.org/packages/FastFsm.Sharp) as `FastFsm.Sharp*`, with legacy `FastFsm.Net*` metapackages forwarding to the same bits.
+**Repository package version:** `0.9.2` on `feature/pr5-observability` (defined in `Directory.Build.props`). **Not yet published** — NuGet still has **0.9.1** (`v0.9.1`). See [CHANGELOG.md](CHANGELOG.md). **0.9.2** adds `FastFsm.Sharp.Observability` and the typed extension contract.
 
 ## Install
 
@@ -13,6 +13,7 @@ dotnet add package FastFsm.Sharp
 # optional
 dotnet add package FastFsm.Sharp.Logging
 dotnet add package FastFsm.Sharp.DependencyInjection
+dotnet add package FastFsm.Sharp.Observability
 ```
 
 Requires **.NET SDK 10.0** (see `global.json`).
@@ -77,7 +78,7 @@ bool ok = door.TryFire(DoorTrigger.Close); // returns false when no valid transi
 - Synchronous and asynchronous machines (`ValueTask` on asynchronous paths)
 - Hierarchical states, shallow and deep history, internal transitions, and transition priority
 - Typed payloads per trigger
-- `IStateMachineExtension` transition hooks
+- Typed `IStateMachineExtension<TState, TTrigger>` lifecycle hooks
 - Optional logging through `FastFsm.Sharp.Logging`
 - Optional dependency-injection integration through `FastFsm.Sharp.DependencyInjection`
 - Generated code paths compatible with trimming and Native AOT
@@ -108,6 +109,7 @@ bool ok = door.TryFire(DoorTrigger.Close); // returns false when no valid transi
 | `FastFsm.Sharp` | Runtime and source generator |
 | `FastFsm.Sharp.Logging` | `ILogger` integration for generated machines |
 | `FastFsm.Sharp.DependencyInjection` | `Microsoft.Extensions.DependencyInjection` registration helpers |
+| `FastFsm.Sharp.Observability` | `ActivitySource` / `Meter` / event stream via `ObservabilityExtension<TState,TTrigger>` |
 
 **Migrating from FastFsm.Net 0.6.9.x:** new projects use `FastFsm.Sharp*`. Existing `FastFsm.Net*` references can stay — 0.9.0 ships legacy metapackages that forward to `FastFsm.Sharp*` (see [CHANGELOG.md](CHANGELOG.md)). Your machine code (`Abstractions.*`, `FastFsm.*`) stays the same. Details: [docs/architecture.md](docs/architecture.md#public-api-compatibility-090).
 
@@ -118,7 +120,7 @@ bool ok = door.TryFire(DoorTrigger.Close); // returns false when no valid transi
 - `src/Generator/` — Roslyn source generator (`Generator.Core`, `Generator.Model`, `Generator.Rules`, …)
 - `src/Generator/Generator.Rules/` — diagnostic rule definitions (`RuleIdentifiers`, `DefinedRules`)
 - `src/Fsm/Fsm.Tests/Tests.Machines/` — shared machine definitions used by `Tests.Fsm` and `Tests.Logging`
-- `src/Fsm/Fsm.Tests/Tests.*/` — FSM test runners (`Tests.Fsm`, `Tests.Async`, `Tests.Logging`, …)
+- `src/Fsm/Fsm.Tests/Tests.*/` — FSM test runners (`Tests.Fsm`, `Tests.Async`, `Tests.Logging`, `Tests.Observability`, …)
 - `src/Generator/Generator.Tests/Tests.SourceGenerators/` — generator rule and emission tests
 
 ## Contributing
@@ -129,9 +131,9 @@ Build and test from a clean tree. With `UsePackages=false`, test projects use pr
 dotnet test FastFsm.slnx -c Release
 ```
 
-That runs `Tests.Fsm`, `Tests.Async`, `Tests.Logging`, `Tests.DependencyInjection`, `Tests.Instance`, and `Tests.SourceGenerators`. `Tests.Machines` is a shared machine library, not a test runner.
+That runs `Tests.Fsm`, `Tests.Async`, `Tests.Logging`, `Tests.DependencyInjection`, `Tests.Instance`, `Tests.Observability`, and `Tests.SourceGenerators`. `Tests.Machines` is a shared machine library, not a test runner.
 
-Pack the three NuGet packages and compile clean consumer consoles against `./nuget`:
+Pack the product NuGet packages and compile clean consumer consoles against `./nuget`:
 
 ```bash
 # Windows

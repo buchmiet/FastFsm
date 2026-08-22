@@ -26,19 +26,16 @@ internal class TypeSystemHelper
 
         
     }
-    
+
     /// <summary>
     /// Returns the fully qualified name for HistoryMode type.
     /// </summary>
-    public string GetHistoryModeTypeName()
-    {
-        return "Abstractions.Attributes.HistoryMode";
-    }
+    public string GetHistoryModeTypeName() => "Abstractions.Attributes.HistoryMode";
 
     /// <summary>
     /// Returns <c>true</c> if symbol represents <see cref="System.Threading.CancellationToken"/>.
     /// Does this in a way that is resistant to:
-    /// • brak referencji do System.Private.CoreLib (GetTypeByMetadataName zwraca <c>null</c>)  
+    /// • missing System.Private.CoreLib reference (GetTypeByMetadataName returns <c>null</c>)  
     /// • "retargeting assemblies" (same type from two different compilations)  
     /// </summary>
     public bool IsCancellationToken(ITypeSymbol typeSymbol, Compilation compilation)
@@ -60,7 +57,7 @@ internal class TypeSystemHelper
 
 
     /// <summary>
-    /// Sprawdza czy zwracany typ jest:
+    /// Returns whether the type is:
     ///   * Task
     ///   * ValueTask
     ///   * Task&lt;bool&gt;
@@ -136,11 +133,11 @@ internal class TypeSystemHelper
 
     /// <summary>
     /// Formats fully qualified type name for use in generated code:
-    /// • stosuje aliasy (string, int, …),
+    /// • applies aliases (string, int, …),
     /// • simplifies CLR generics and C# friendly syntax,
-    /// • zachowuje (opcjonalnie) prefiks global::,
+    /// • optionally keeps the global:: prefix,
     /// • correctly handles nested types, arrays and nullable.
-    /// Metoda jest zgodna z netstandard2.0 (bez System.Range itp.).
+    /// Compatible with netstandard2.0 (no System.Range, etc.).
     /// </summary>
     public string FormatTypeForUsage(string fullyQualifiedTypeName,
         bool useGlobalPrefix = false)
@@ -277,12 +274,9 @@ internal class TypeSystemHelper
     /// <summary>
     /// Determines if a type is nested (contains another type)
     /// </summary>
-    public bool IsNestedType(string fullyQualifiedTypeName)
-    {
-        return !string.IsNullOrEmpty(fullyQualifiedTypeName) &&
+    public bool IsNestedType(string fullyQualifiedTypeName) => !string.IsNullOrEmpty(fullyQualifiedTypeName) &&
                // Check for '+' which indicates nested type
                fullyQualifiedTypeName.Contains('+');
-    }
 
     /// <summary>
     /// Determines if a type is generic
@@ -572,7 +566,7 @@ internal class TypeSystemHelper
     }
 
     /// <summary>
-    /// Przetwarza przyjazny (C#) zapis generyka, np.
+    /// Processes a friendly C# generic spelling, e.g.
     ///     "Namespace.Event&lt;string, List&lt;int&gt;&gt;"
     /// and returns formatted name ready for insertion into code.
     /// </summary>
@@ -584,7 +578,7 @@ internal class TypeSystemHelper
             return "object";
 
         int open = friendlyTypeName.IndexOf('<');
-        if (open < 0)                               // nie-generyk
+        if (open < 0)                               // not generic
             return FormatTypeForUsage(friendlyTypeName, useGlobalPrefix);
 
         int close = friendlyTypeName.LastIndexOf('>');

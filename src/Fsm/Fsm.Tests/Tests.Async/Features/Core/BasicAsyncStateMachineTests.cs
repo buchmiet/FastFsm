@@ -58,10 +58,7 @@ public partial class SimpleAsyncMachine
 
     // Sync action (allowed in async machine)
     [Transition(AsyncStates.Processing, AsyncTriggers.Complete, AsyncStates.Completed, Action = nameof(Complete))]
-    private void Complete()
-    {
-        _executionLog.Add("Complete:Sync");
-    }
+    private void Complete() => _executionLog.Add("Complete:Sync");
 
     // Async OnEntry
     [State(AsyncStates.Processing, OnEntry = nameof(OnProcessingEntryAsync))]
@@ -123,10 +120,7 @@ public partial class SimpleAsyncMachineFluentFsm
     }
 
     // Sync action (allowed in async machine)
-    private void Complete()
-    {
-        _executionLog.Add("Complete:Sync");
-    }
+    private void Complete() => _executionLog.Add("Complete:Sync");
 
     // Async OnEntry
     private async Task OnProcessingEntryAsync()
@@ -216,7 +210,7 @@ public class BasicAsyncStateMachineTests
         Should.Throw<SyncCallOnAsyncMachineException>(() => machine.TryFire(AsyncTriggers.Start));
         Should.Throw<SyncCallOnAsyncMachineException>(() => machine.Fire(AsyncTriggers.Start));
         Should.Throw<SyncCallOnAsyncMachineException>(() => machine.CanFire(AsyncTriggers.Start));
-        Should.Throw<SyncCallOnAsyncMachineException>(() => machine.GetPermittedTriggers());
+        Should.Throw<SyncCallOnAsyncMachineException>(machine.GetPermittedTriggers);
     }
 
     [Fact]

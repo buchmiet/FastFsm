@@ -265,10 +265,7 @@ namespace Tests.Logging
         [Transition(LifecycleState.Processing, LifecycleTrigger.Fail, LifecycleState.Failed)]
         private void ConfigureTransitions() { }
 
-        private void ThrowingEntry()
-        {
-            throw new InvalidOperationException("Entry callback failed");
-        }
+        private void ThrowingEntry() => throw new InvalidOperationException("Entry callback failed");
     }
 
     // Async state machine for testing async action logging
@@ -286,10 +283,7 @@ namespace Tests.Logging
             AsyncLifecycleState.Completed)]
         private void ConfigureTransitions() { }
 
-        private async Task StartProcessingAsync()
-        {
-            await Task.Delay(10); // Simulate async work
-        }
+        private async Task StartProcessingAsync() => await Task.Delay(10); // Simulate async work
 
         private async Task FailingActionAsync()
         {

@@ -90,10 +90,7 @@ namespace Tests.Logging
             _output = output;
         }
 
-        public ILogger CreateLogger(string categoryName)
-        {
-            return new XUnitLogger(_output, categoryName);
-        }
+        public ILogger CreateLogger(string categoryName) => new XUnitLogger(_output, categoryName);
 
         public void Dispose() { }
     }
@@ -171,40 +168,25 @@ namespace Tests.Logging
 
         public ExtensionHooks Hooks => ExtensionHooks.Transitions | ExtensionHooks.Guards;
 
-        public void OnAttemptStarting(in TransitionAttemptContext<WorkflowState, WorkflowTrigger> attempt)
-        {
-            _output.WriteLine($"Extension: Attempt {attempt.AttemptId} started at {attempt.StartTimestamp}");
-        }
+        public void OnAttemptStarting(in TransitionAttemptContext<WorkflowState, WorkflowTrigger> attempt) => _output.WriteLine($"Extension: Attempt {attempt.AttemptId} started at {attempt.StartTimestamp}");
 
         public void OnTransitionMatched(
             in TransitionAttemptContext<WorkflowState, WorkflowTrigger> attempt,
-            in TransitionInfo<WorkflowState> matched)
-        {
-            _output.WriteLine($"Extension: Matched {matched.Kind} transition");
-        }
+            in TransitionInfo<WorkflowState> matched) => _output.WriteLine($"Extension: Matched {matched.Kind} transition");
 
         public void OnAttemptCompleted(
             in TransitionAttemptContext<WorkflowState, WorkflowTrigger> attempt,
-            in TransitionResult<WorkflowState> result)
-        {
-            _output.WriteLine($"Extension: Attempt completed with outcome={result.Outcome}");
-        }
+            in TransitionResult<WorkflowState> result) => _output.WriteLine($"Extension: Attempt completed with outcome={result.Outcome}");
 
         public void OnGuardEvaluating(
             in TransitionAttemptContext<WorkflowState, WorkflowTrigger> attempt,
             in TransitionInfo<WorkflowState> candidate,
-            string guardName)
-        {
-            _output.WriteLine($"Extension: Evaluating guard '{guardName}'");
-        }
+            string guardName) => _output.WriteLine($"Extension: Evaluating guard '{guardName}'");
 
         public void OnGuardEvaluated(
             in TransitionAttemptContext<WorkflowState, WorkflowTrigger> attempt,
             in TransitionInfo<WorkflowState> candidate,
             string guardName,
-            bool result)
-        {
-            _output.WriteLine($"Extension: Guard '{guardName}' returned {result}");
-        }
+            bool result) => _output.WriteLine($"Extension: Guard '{guardName}' returned {result}");
     }
 }

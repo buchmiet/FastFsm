@@ -269,13 +269,13 @@ public class PayloadVariantTests
         var invalidPayload = new ConditionalPayload { IsValid = false };
 
         // Act & Assert ----------------------------------------------------------
-        // 1) Guard przechodzi → true
+        // 1) Guard passes → true
         Assert.True(machine.CanFire(ConditionalTrigger.Execute, validPayload));
 
-        // 2) Guard nie przechodzi → false
+        // 2) Guard fails → false
         Assert.False(machine.CanFire(ConditionalTrigger.Execute, invalidPayload));
 
-        // 3) Wywołanie bez payloadu, guard oczekuje danych → false
+        // 3) Call without a payload; the guard expects data → false
         Assert.False(machine.CanFire(ConditionalTrigger.Execute));
     }
 
@@ -323,7 +323,7 @@ public class PayloadVariantTests
             // Assert
             Assert.True(result);
             Assert.Equal(OrderState.Submitted, machine.CurrentState);
-            // Akcja nie wykonała się, bo nie było payloadu
+            // Action did not run because there was no payload
             Assert.Equal(0, machine.LastProcessedOrderId);
             Assert.Equal(0, machine.LastProcessedAmount);
         }

@@ -21,8 +21,5 @@ public partial class InitialPayloadMachine
     [Transition(InitialPayloadState.Start, InitialPayloadTrigger.Go, InitialPayloadState.Next)]
     private void Configure() { }
 
-    private void OnEntryStart()
-    {
-        InitialEntryCalledParameterless = true;
-    }
+    private void OnEntryStart() => InitialEntryCalledParameterless = true;
 }

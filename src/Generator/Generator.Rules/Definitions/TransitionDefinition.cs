@@ -25,10 +25,7 @@ public class TransitionDefinition(string fromState, string trigger, string? toSt
     /// Serves as the default hash function.
     /// The hash code is based on FromState and Trigger only, to align with Equals behavior.
     /// </summary>
-    public override int GetHashCode()
-    {
-        return (FromState, Trigger).GetHashCode();
-    }
+    public override int GetHashCode() => (FromState, Trigger).GetHashCode();
 
 
     public bool EqualsIncludingToState(TransitionDefinition? other)

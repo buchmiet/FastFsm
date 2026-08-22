@@ -67,17 +67,11 @@ public partial class PayloadStateMachineFluent
 
     private bool CanStart() => GuardResult;
 
-    private void ProcessAction(TestPayload payload)
-    {
-        LastPayload = payload;
-    }
+    private void ProcessAction(TestPayload payload) => LastPayload = payload;
 
     private void ProcessAction() { }
 
-    private void OnProcessingEntry(TestPayload payload)
-    {
-        LastPayload = payload;
-    }
+    private void OnProcessingEntry(TestPayload payload) => LastPayload = payload;
 
     private void OnProcessingEntry() { }
 }
@@ -128,17 +122,11 @@ public partial class FullStateMachineFluent
 
     private bool CanStart() => GuardResult;
 
-    private void ProcessAction(TestPayload payload)
-    {
-        LastPayload = payload;
-    }
+    private void ProcessAction(TestPayload payload) => LastPayload = payload;
 
     private void ProcessAction() { }
 
-    private void OnProcessingEntry(TestPayload payload)
-    {
-        LastPayload = payload;
-    }
+    private void OnProcessingEntry(TestPayload payload) => LastPayload = payload;
 
     private void OnProcessingEntry() { }
 }

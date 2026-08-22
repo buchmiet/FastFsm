@@ -24,10 +24,7 @@ public abstract class DITestBase : IDisposable
     /// <summary>
     /// Build the service provider. Call this after all services are registered.
     /// </summary>
-    protected void BuildProvider()
-    {
-        Provider = Services.BuildServiceProvider();
-    }
+    protected void BuildProvider() => Provider = Services.BuildServiceProvider();
 
     /// <summary>
     /// Get a required service from the container
@@ -43,10 +40,7 @@ public abstract class DITestBase : IDisposable
     /// <summary>
     /// Get an optional service from the container
     /// </summary>
-    protected T? GetOptionalService<T>() where T : class
-    {
-        return Provider?.GetService<T>();
-    }
+    protected T? GetOptionalService<T>() where T : class => Provider?.GetService<T>();
 
     /// <summary>
     /// Create a scope for testing scoped services
@@ -89,8 +83,5 @@ public abstract class DITestBase : IDisposable
         Assert.Equal(expectedLifetime, descriptor.Lifetime);
     }
 
-    public virtual void Dispose()
-    {
-        Provider?.Dispose();
-    }
+    public virtual void Dispose() => Provider?.Dispose();
 }

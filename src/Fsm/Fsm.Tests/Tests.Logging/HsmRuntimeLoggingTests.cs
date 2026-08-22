@@ -50,10 +50,7 @@ namespace Tests.Logging
             IDisposable ILogger.BeginScope<TState>(TState state) => NullScope.Instance;
             bool ILogger.IsEnabled(LogLevel level) => true;
 
-            void ILogger.Log<TState>(LogLevel level, EventId eventId, TState state, Exception? ex, Func<TState, Exception?, string> formatter)
-            {
-                Entries.Add(new(level, eventId.Name ?? string.Empty, formatter(state, ex)));
-            }
+            void ILogger.Log<TState>(LogLevel level, EventId eventId, TState state, Exception? ex, Func<TState, Exception?, string> formatter) => Entries.Add(new(level, eventId.Name ?? string.Empty, formatter(state, ex)));
 
             private sealed class NullScope : IDisposable { public static readonly NullScope Instance = new(); public void Dispose() { } }
         }
@@ -64,11 +61,11 @@ namespace Tests.Logging
             var machine = new HsmMachineFluent(HState.A, logger);
 
             machine.Start();                       // A1
-            machine.TryFire(HTrigger.MoveToA2);    // A1 -> A2 (ustawia historię A=A2)
+            machine.TryFire(HTrigger.MoveToA2);    // A1 -> A2 (sets history A=A2)
             machine.TryFire(HTrigger.Switch);      // A -> B (B1 Initial)
-            machine.TryFire(HTrigger.Back);        // B -> A (przywraca historię A2)
+            machine.TryFire(HTrigger.Back);        // B -> A (restores history A2)
 
-            // Szukamy wpisów po nazwie eventu i fragmencie treści (odpornie na kolejność)
+            // Look up entries by event name and a message fragment (order-independent)
             VerifyLogMessage(logger, LogLevel.Debug, "CompositeStateEntry", "A", "A2", "History");
             VerifyLogMessage(logger, LogLevel.Debug, "HistoryRestored", "Shallow", "A", "A2");
             VerifyLogMessage(logger, LogLevel.Debug, "HierarchicalTransition", "B1", "A2");

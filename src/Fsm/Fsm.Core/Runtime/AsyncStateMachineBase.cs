@@ -122,11 +122,9 @@ namespace FastFsm.Runtime
         }
 
 
-        protected virtual ValueTask OnInitialEntryAsync(CancellationToken cancellationToken = default)
-        {
+        protected virtual ValueTask OnInitialEntryAsync(CancellationToken cancellationToken = default) =>
             // Override in generated code to dispatch initial OnEntry
-            return ValueTask.CompletedTask;
-        }
+            ValueTask.CompletedTask;
 
         protected void EnsureStarted()
         {
@@ -278,10 +276,7 @@ namespace FastFsm.Runtime
         /// <summary>
         /// Asynchronously gets the active state path from root to current leaf state.
         /// </summary>
-        public virtual ValueTask<IReadOnlyList<TState>> GetActivePathAsync(CancellationToken cancellationToken = default)
-        {
-            return new ValueTask<IReadOnlyList<TState>>(GetActivePath());
-        }
+        public virtual ValueTask<IReadOnlyList<TState>> GetActivePathAsync(CancellationToken cancellationToken = default) => new ValueTask<IReadOnlyList<TState>>(GetActivePath());
 
         /// <summary>
         /// Updates the last active child tracking when exiting a state.

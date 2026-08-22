@@ -11,13 +11,14 @@
 	  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
 	  <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\GeneratedFiles</CompilerGeneratedFilesOutputPath>
     <FastFsmReferenceCore>true</FastFsmReferenceCore>
+    <FastFsmReferenceObservability>true</FastFsmReferenceObservability>
   </PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Appccelerate.StateMachine" Version="6.0.0" />
 		<PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
 		<PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.15.8" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
-		<PackageReference Include="Stateless" Version="5.17.0" />
+		<PackageReference Include="Stateless" Version="5.20.1" />
 		<PackageReference Include="LiquidState.Unofficial" Version="1.0.6" />
 	</ItemGroup>
 

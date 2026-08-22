@@ -37,7 +37,7 @@ services.ConfigureStateMachineInitialState<OrderState>(
 services.AddStateMachineExtension<AuditExtension>(ServiceLifetime.Singleton);
 ```
 
-Extensions registered in DI are supplied to machines generated with extension support. In the current 0.9 codebase, set `GenerateExtensibleVersion = true` explicitly on those machines; see [extensions.md](extensions.md).
+Extensions registered in DI are supplied to machines generated with extension support. Set `GenerateExtensibleVersion = true` explicitly on those machines; see [extensions.md](extensions.md).
 
 ## Factory
 

@@ -793,16 +793,16 @@ public class AsyncPayloadStateMachineTests
         await machine.StartAsync();
         var payload = new ProcessPayload { Id = 888 };
 
-        // Act + Assert: teraz oczekujemy wyjątku z akcji
+        // Act + Assert: we now expect an exception from the action
         await Should.ThrowAsync<InvalidOperationException>(
             async () => await machine.TryFireAsync(AsyncPayloadTriggers.Process, payload));
 
-        // Stan: bez rollbacku, ustawiony na docelowy
+        // State: no rollback; set to the destination
         machine.CurrentState.ShouldBe(AsyncPayloadStates.Processing);
 
-        // Log: akcja rozpoczęta i rzuciła; brak OnEntry/OnExit w tym scenariuszu
+        // Log: action started and threw; no OnEntry/OnExit in this scenario
         machine.Log.ShouldContain("Action:Begin:888");
-        // (opcjonalnie)
+        // (optional)
         // machine.Log.ShouldNotContain("OnEntry:Begin:888");
     }
 
@@ -815,14 +815,14 @@ public class AsyncPayloadStateMachineTests
         await machine.StartAsync();
         var payload = new ProcessPayload { Id = 777 };
 
-        // Act + Assert: oczekujemy propagacji wyjątku z OnEntry
+        // Act + Assert: we expect the exception from OnEntry to propagate
         await Should.ThrowAsync<InvalidOperationException>(
             async () => await machine.TryFireAsync(AsyncPayloadTriggers.Fail, payload));
 
-        // Brak rollbacku – stan docelowy ustawiony przed OnEntry
+        // No rollback – destination state is set before OnEntry
         machine.CurrentState.ShouldBe(AsyncPayloadStates.Failed);
 
-        // Log: OnEntry rozpoczęte (i rzuciło)
+        // Log: OnEntry started (and threw)
         machine.Log.ShouldContain("OnEntry:Begin:777");
     }
 
@@ -964,13 +964,11 @@ public class AsyncPayloadStateMachineTests
     }
 
     [Fact]
-    public async Task Should_Use_Default_Payload_Type_When_Not_Specified_For_Trigger()
-    {
+    public async Task Should_Use_Default_Payload_Type_When_Not_Specified_For_Trigger() =>
         // This test would require a machine with default payload type
         // Since our test machines use specific payload types, this scenario is covered
         // by the multi-payload tests where each trigger has its specific type
         await Task.CompletedTask;
-    }
 
     [Fact]
     public async Task Should_Handle_High_Frequency_Async_Transitions_With_Large_Payloads()
@@ -1013,7 +1011,7 @@ public class AsyncPayloadStateMachineTests
         Should.Throw<SyncCallOnAsyncMachineException>(() => machine.TryFire(AsyncPayloadTriggers.Start, payload));
         Should.Throw<SyncCallOnAsyncMachineException>(() => machine.Fire(AsyncPayloadTriggers.Start, payload));
         Should.Throw<SyncCallOnAsyncMachineException>(() => machine.CanFire(AsyncPayloadTriggers.Start, payload));
-        Should.Throw<SyncCallOnAsyncMachineException>(() => machine.GetPermittedTriggers());
+        Should.Throw<SyncCallOnAsyncMachineException>(machine.GetPermittedTriggers);
     }
 
     [Fact]

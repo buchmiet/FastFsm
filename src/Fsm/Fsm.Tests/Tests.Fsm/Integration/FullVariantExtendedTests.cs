@@ -116,25 +116,25 @@ namespace Tests.Fsm.Integration
         {
             var t = typeof(FullMultiPayloadMachine);
 
-            // --- Konstruktory ---
+            // --- Constructors ---
             var ctors = t.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            output.WriteLine("Konstruktory:");
+            output.WriteLine("Constructors:");
             foreach (var c in ctors)
                 output.WriteLine("  • " + c);
 
-            // --- Pola prywatne ---
+            // --- Private fields ---
             var fields = t.GetFields(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
-            output.WriteLine("\nPola (non-public):");
+            output.WriteLine("\nFields (non-public):");
             foreach (var f in fields)
                 output.WriteLine($"  • {f.FieldType.Name} {f.Name}");
 
-            // --- Metody publiczne ---
+            // --- Public methods ---
             var pubs = t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
-            output.WriteLine("\nMetody publiczne:");
+            output.WriteLine("\nPublic methods:");
             foreach (var m in pubs)
                 output.WriteLine("  • " + m);
 
-            // --- Szybka asercja, że jest dokładnie JEDNA metoda TryFire<TPayload> ---
+            // --- Quick assertion that there is exactly ONE TryFire<TPayload> method ---
             Assert.Single(pubs, m => m.Name == "TryFire" && m.IsGenericMethod);
         }
 
@@ -142,34 +142,34 @@ namespace Tests.Fsm.Integration
         [Fact]
         public void PayloadMap_ShouldPointTo_CompileTimeTypes()
         {
-            // 1. Utwórz instancję (konstruktor NIE wywołuje TryFire)
+            // 1. Create an instance (the constructor does NOT call TryFire)
             var machine = new FullMultiPayloadMachine(PhysicalOrderState.New, extensions: null);
             machine.Start();
 
-            // 2. Wyciągnij prywatne, statyczne pole _payloadMap
+            // 2. Extract the private static _payloadMap field
             var field = typeof(FullMultiPayloadMachine)
                 .GetField("_payloadMap",
                     BindingFlags.NonPublic | BindingFlags.Static);
 
-            Assert.NotNull(field);                                  // pole istnieje
+            Assert.NotNull(field);                                  // field exists
             var map = (Dictionary<PhysicalOrderTrigger, Type>)field!.GetValue(null)!;
 
-            // 3. Wypisz co siedzi w mapie
+            // 3. Print what is in the map
             foreach (var (trigger, type) in map)
             {
                 output.WriteLine(
                     $"{trigger,-7} → {type.FullName}  (asm: {type.Assembly.GetName().Name})");
             }
 
-            // 4. Assercje: czy to *te same* obiekty Type?
+            // 4. Assertions: are these the *same* Type objects?
             Assert.Same(typeof(OrderPayload), map[PhysicalOrderTrigger.Process]);
             Assert.Same(typeof(PaymentPayload), map[PhysicalOrderTrigger.Pay]);
             Assert.Same(typeof(ShippingPayload), map[PhysicalOrderTrigger.Ship]);
 
-            // 5. (opcjonalnie) szybki runtime-check bez TryFire:
+            // 5. (optional) quick runtime check without TryFire:
             var ok = map[PhysicalOrderTrigger.Process].IsInstanceOfType(
                 new OrderPayload { OrderId = 42 });
-            Assert.True(ok);  // powinno być true dla „pasującego” payloadu
+            Assert.True(ok);  // should be true for a matching payload
         }
 
         [Fact]
@@ -177,36 +177,36 @@ namespace Tests.Fsm.Integration
         {
             // Arrange
             var typeTracker = new PayloadTypeTracker();
-            // Upewnij się, że maszyna ma konstruktor przyjmujący rozszerzenia
+            // Make sure the machine has a constructor that accepts extensions
             var machine = new FullMultiPayloadMachine(PhysicalOrderState.New, new[] { typeTracker });
             machine.Start();
 
-            //// === Krok 1: Tylko pierwsze przejście ===
-            output.WriteLine("---" + " Krok 1: Przejście Process -> Processing ---");
+            //// === Step 1: First transition only ===
+            output.WriteLine("---" + " Step 1: Transition Process -> Processing ---");
 
             var processResult = machine.TryFire(PhysicalOrderTrigger.Process, new OrderPayload { OrderId = 1 });
-            Assert.True(processResult, "Przejście Process -> Processing nie powiodło się.");
+            Assert.True(processResult, "Transition Process -> Processing failed.");
             Assert.Contains(typeof(OrderPayload), typeTracker.ObservedTypes);
             Assert.Single(typeTracker.ObservedTypes);
-            output.WriteLine("Sukces kroku 1. Obserwowane typy: " + string.Join(", ", typeTracker.ObservedTypes.Select(t => t.Name)));
+            output.WriteLine("Step 1 succeeded. Observed types: " + string.Join(", ", typeTracker.ObservedTypes.Select(t => t.Name)));
 
 
-            //  === Krok 2: Drugie przejście ===
-            output.WriteLine("\n--- Krok 2: Przejście Processing -> Paid ---");
+            //  === Step 2: Second transition ===
+            output.WriteLine("\n--- Step 2: Transition Processing -> Paid ---");
             var payResult = machine.TryFire(PhysicalOrderTrigger.Pay, new PaymentPayload { OrderId = 1, PaymentMethod = "PayPal" });
-            Assert.True(payResult, "Przejście Processing -> Paid nie powiodło się.");
+            Assert.True(payResult, "Transition Processing -> Paid failed.");
             Assert.Contains(typeof(PaymentPayload), typeTracker.ObservedTypes);
             Assert.Equal(2, typeTracker.ObservedTypes.Count);
-            output.WriteLine("Sukces kroku 2. Obserwowane typy: " + string.Join(", ", typeTracker.ObservedTypes.Select(t => t.Name)));
+            output.WriteLine("Step 2 succeeded. Observed types: " + string.Join(", ", typeTracker.ObservedTypes.Select(t => t.Name)));
 
 
-            // === Krok 3: Trzecie przejście ===
-            output.WriteLine("\n--- Krok 3: Przejście Paid -> Shipped ---");
+            // === Step 3: Third transition ===
+            output.WriteLine("\n--- Step 3: Transition Paid -> Shipped ---");
             var shipResult = machine.TryFire(PhysicalOrderTrigger.Ship, new ShippingPayload { OrderId = 1, Carrier = "FedEx" });
-            Assert.True(shipResult, "Przejście Paid -> Shipped nie powiodło się.");
+            Assert.True(shipResult, "Transition Paid -> Shipped failed.");
             Assert.Contains(typeof(ShippingPayload), typeTracker.ObservedTypes);
             Assert.Equal(3, typeTracker.ObservedTypes.Count);
-            output.WriteLine("Sukces kroku 3. Obserwowane typy: " + string.Join(", ", typeTracker.ObservedTypes.Select(t => t.Name)));
+            output.WriteLine("Step 3 succeeded. Observed types: " + string.Join(", ", typeTracker.ObservedTypes.Select(t => t.Name)));
         }
 
 

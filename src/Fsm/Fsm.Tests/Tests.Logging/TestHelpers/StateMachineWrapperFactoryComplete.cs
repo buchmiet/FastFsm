@@ -41,165 +41,117 @@ public static class StateMachineWrapperFactoryComplete
     }
 
     // Factory implementations for all 16 machines
-    private static IStateMachineTestWrapper CreatePure(ApiType api, string? initial, ILogger? logger)
+    private static IStateMachineTestWrapper CreatePure(ApiType api, string? initial, ILogger? logger) => api switch
     {
-        return api switch
-        {
-            ApiType.Legacy => new PureStateMachineLegacyWrapper(initial, logger),
-            ApiType.Fluent => new PureStateMachineFluentWrapper(initial, logger),
-            _ => throw new ArgumentOutOfRangeException()
-        };
-    }
+        ApiType.Legacy => new PureStateMachineLegacyWrapper(initial, logger),
+        ApiType.Fluent => new PureStateMachineFluentWrapper(initial, logger),
+        _ => throw new ArgumentOutOfRangeException()
+    };
 
-    private static IStateMachineTestWrapper CreateBasic(ApiType api, string? initial, ILogger? logger)
+    private static IStateMachineTestWrapper CreateBasic(ApiType api, string? initial, ILogger? logger) => api switch
     {
-        return api switch
-        {
-            ApiType.Legacy => new BasicStateMachineLegacyWrapper(initial, logger),
-            ApiType.Fluent => new BasicStateMachineFluentWrapper(initial, logger),
-            _ => throw new ArgumentOutOfRangeException()
-        };
-    }
+        ApiType.Legacy => new BasicStateMachineLegacyWrapper(initial, logger),
+        ApiType.Fluent => new BasicStateMachineFluentWrapper(initial, logger),
+        _ => throw new ArgumentOutOfRangeException()
+    };
 
-    private static IStateMachineTestWrapper CreatePayload(ApiType api, string? initial, ILogger? logger)
+    private static IStateMachineTestWrapper CreatePayload(ApiType api, string? initial, ILogger? logger) => api switch
     {
-        return api switch
-        {
-            ApiType.Legacy => new PayloadStateMachineLegacyWrapper(initial, logger),
-            ApiType.Fluent => new PayloadStateMachineFluentWrapper(initial, logger),
-            _ => throw new ArgumentOutOfRangeException()
-        };
-    }
+        ApiType.Legacy => new PayloadStateMachineLegacyWrapper(initial, logger),
+        ApiType.Fluent => new PayloadStateMachineFluentWrapper(initial, logger),
+        _ => throw new ArgumentOutOfRangeException()
+    };
 
-    private static IStateMachineTestWrapper CreateExtensions(ApiType api, string? initial, ILogger? logger)
+    private static IStateMachineTestWrapper CreateExtensions(ApiType api, string? initial, ILogger? logger) => api switch
     {
-        return api switch
-        {
-            ApiType.Legacy => new ExtensionsStateMachineLegacyWrapper(initial, logger),
-            ApiType.Fluent => new ExtensionsStateMachineFluentWrapper(initial, logger),
-            _ => throw new ArgumentOutOfRangeException()
-        };
-    }
+        ApiType.Legacy => new ExtensionsStateMachineLegacyWrapper(initial, logger),
+        ApiType.Fluent => new ExtensionsStateMachineFluentWrapper(initial, logger),
+        _ => throw new ArgumentOutOfRangeException()
+    };
 
-    private static IStateMachineTestWrapper CreateFull(ApiType api, string? initial, ILogger? logger)
+    private static IStateMachineTestWrapper CreateFull(ApiType api, string? initial, ILogger? logger) => api switch
     {
-        return api switch
-        {
-            ApiType.Legacy => new FullStateMachineLegacyWrapper(initial, logger),
-            ApiType.Fluent => new FullStateMachineFluentWrapper(initial, logger),
-            _ => throw new ArgumentOutOfRangeException()
-        };
-    }
+        ApiType.Legacy => new FullStateMachineLegacyWrapper(initial, logger),
+        ApiType.Fluent => new FullStateMachineFluentWrapper(initial, logger),
+        _ => throw new ArgumentOutOfRangeException()
+    };
 
-    private static IStateMachineTestWrapper CreateMultiPayload(ApiType api, string? initial, ILogger? logger)
+    private static IStateMachineTestWrapper CreateMultiPayload(ApiType api, string? initial, ILogger? logger) => api switch
     {
-        return api switch
-        {
-            ApiType.Legacy => new MultiPayloadStateMachineLegacyWrapper(initial, logger),
-            ApiType.Fluent => new MultiPayloadStateMachineFluentWrapper(initial, logger),
-            _ => throw new ArgumentOutOfRangeException()
-        };
-    }
+        ApiType.Legacy => new MultiPayloadStateMachineLegacyWrapper(initial, logger),
+        ApiType.Fluent => new MultiPayloadStateMachineFluentWrapper(initial, logger),
+        _ => throw new ArgumentOutOfRangeException()
+    };
 
-    private static IStateMachineTestWrapper CreateLifecycle(ApiType api, string? initial, ILogger? logger)
+    private static IStateMachineTestWrapper CreateLifecycle(ApiType api, string? initial, ILogger? logger) => api switch
     {
-        return api switch
-        {
-            ApiType.Legacy => new LifecycleMachineLegacyWrapper(initial, logger),
-            ApiType.Fluent => new LifecycleMachineFluentWrapper(initial, logger),
-            _ => throw new ArgumentOutOfRangeException()
-        };
-    }
+        ApiType.Legacy => new LifecycleMachineLegacyWrapper(initial, logger),
+        ApiType.Fluent => new LifecycleMachineFluentWrapper(initial, logger),
+        _ => throw new ArgumentOutOfRangeException()
+    };
 
-    private static IStateMachineTestWrapper CreateAsyncLifecycle(ApiType api, string? initial, ILogger? logger)
+    private static IStateMachineTestWrapper CreateAsyncLifecycle(ApiType api, string? initial, ILogger? logger) => api switch
     {
-        return api switch
-        {
-            ApiType.Legacy => new AsyncLifecycleMachineLegacyWrapper(initial, logger),
-            ApiType.Fluent => new AsyncLifecycleMachineFluentWrapper(initial, logger),
-            _ => throw new ArgumentOutOfRangeException()
-        };
-    }
+        ApiType.Legacy => new AsyncLifecycleMachineLegacyWrapper(initial, logger),
+        ApiType.Fluent => new AsyncLifecycleMachineFluentWrapper(initial, logger),
+        _ => throw new ArgumentOutOfRangeException()
+    };
 
-    private static IStateMachineTestWrapper CreateInternalTransition(ApiType api, string? initial, ILogger? logger)
+    private static IStateMachineTestWrapper CreateInternalTransition(ApiType api, string? initial, ILogger? logger) => api switch
     {
-        return api switch
-        {
-            ApiType.Legacy => new InternalTransitionMachineLegacyWrapper(initial, logger),
-            ApiType.Fluent => new InternalTransitionMachineFluentWrapper(initial, logger),
-            _ => throw new ArgumentOutOfRangeException()
-        };
-    }
+        ApiType.Legacy => new InternalTransitionMachineLegacyWrapper(initial, logger),
+        ApiType.Fluent => new InternalTransitionMachineFluentWrapper(initial, logger),
+        _ => throw new ArgumentOutOfRangeException()
+    };
 
-    private static IStateMachineTestWrapper CreateStruct(ApiType api, string? initial, ILogger? logger)
+    private static IStateMachineTestWrapper CreateStruct(ApiType api, string? initial, ILogger? logger) => api switch
     {
-        return api switch
-        {
-            ApiType.Legacy => new StructStateMachineLegacyWrapper(initial, logger),
-            ApiType.Fluent => new StructStateMachineFluentWrapper(initial, logger),
-            _ => throw new ArgumentOutOfRangeException()
-        };
-    }
+        ApiType.Legacy => new StructStateMachineLegacyWrapper(initial, logger),
+        ApiType.Fluent => new StructStateMachineFluentWrapper(initial, logger),
+        _ => throw new ArgumentOutOfRangeException()
+    };
 
-    private static IStateMachineTestWrapper CreateInitialOnEntry(ApiType api, string? initial, ILogger? logger)
+    private static IStateMachineTestWrapper CreateInitialOnEntry(ApiType api, string? initial, ILogger? logger) => api switch
     {
-        return api switch
-        {
-            ApiType.Legacy => new InitialOnEntryStateMachineActionsLegacyWrapper(initial, logger),
-            ApiType.Fluent => new InitialOnEntryStateMachineActionsFluentWrapper(initial, logger),
-            _ => throw new ArgumentOutOfRangeException()
-        };
-    }
+        ApiType.Legacy => new InitialOnEntryStateMachineActionsLegacyWrapper(initial, logger),
+        ApiType.Fluent => new InitialOnEntryStateMachineActionsFluentWrapper(initial, logger),
+        _ => throw new ArgumentOutOfRangeException()
+    };
 
-    private static IStateMachineTestWrapper CreateFullMultiPayload(ApiType api, string? initial, ILogger? logger)
+    private static IStateMachineTestWrapper CreateFullMultiPayload(ApiType api, string? initial, ILogger? logger) => api switch
     {
-        return api switch
-        {
-            ApiType.Legacy => new FullMultiPayloadMachineLegacyWrapper(initial, logger),
-            ApiType.Fluent => new FullMultiPayloadMachineFluentWrapper(initial, logger),
-            _ => throw new ArgumentOutOfRangeException()
-        };
-    }
+        ApiType.Legacy => new FullMultiPayloadMachineLegacyWrapper(initial, logger),
+        ApiType.Fluent => new FullMultiPayloadMachineFluentWrapper(initial, logger),
+        _ => throw new ArgumentOutOfRangeException()
+    };
 
-    private static IStateMachineTestWrapper CreateExample(ApiType api, string? initial, ILogger? logger)
+    private static IStateMachineTestWrapper CreateExample(ApiType api, string? initial, ILogger? logger) => api switch
     {
-        return api switch
-        {
-            ApiType.Legacy => new ExampleStateMachineLegacyWrapper(initial, logger),
-            ApiType.Fluent => new ExampleStateMachineFluentWrapper(initial, logger),
-            _ => throw new ArgumentOutOfRangeException()
-        };
-    }
+        ApiType.Legacy => new ExampleStateMachineLegacyWrapper(initial, logger),
+        ApiType.Fluent => new ExampleStateMachineFluentWrapper(initial, logger),
+        _ => throw new ArgumentOutOfRangeException()
+    };
 
-    private static IStateMachineTestWrapper CreateGuarded(ApiType api, string? initial, ILogger? logger)
+    private static IStateMachineTestWrapper CreateGuarded(ApiType api, string? initial, ILogger? logger) => api switch
     {
-        return api switch
-        {
-            ApiType.Legacy => new GuardedStateMachineLegacyWrapper(initial, logger),
-            ApiType.Fluent => new GuardedStateMachineFluentWrapper(initial, logger),
-            _ => throw new ArgumentOutOfRangeException()
-        };
-    }
+        ApiType.Legacy => new GuardedStateMachineLegacyWrapper(initial, logger),
+        ApiType.Fluent => new GuardedStateMachineFluentWrapper(initial, logger),
+        _ => throw new ArgumentOutOfRangeException()
+    };
 
-    private static IStateMachineTestWrapper CreateExtensible(ApiType api, string? initial, ILogger? logger)
+    private static IStateMachineTestWrapper CreateExtensible(ApiType api, string? initial, ILogger? logger) => api switch
     {
-        return api switch
-        {
-            ApiType.Legacy => new ExtensibleMachineLegacyWrapper(initial, logger),
-            ApiType.Fluent => new ExtensibleMachineFluentWrapper(initial, logger),
-            _ => throw new ArgumentOutOfRangeException()
-        };
-    }
+        ApiType.Legacy => new ExtensibleMachineLegacyWrapper(initial, logger),
+        ApiType.Fluent => new ExtensibleMachineFluentWrapper(initial, logger),
+        _ => throw new ArgumentOutOfRangeException()
+    };
 
-    private static IStateMachineTestWrapper CreateHsm(ApiType api, string? initial, ILogger? logger)
+    private static IStateMachineTestWrapper CreateHsm(ApiType api, string? initial, ILogger? logger) => api switch
     {
-        return api switch
-        {
-            ApiType.Legacy => new HsmMachineLegacyWrapper(initial, logger),
-            ApiType.Fluent => new HsmMachineFluentWrapper(initial, logger),
-            _ => throw new ArgumentOutOfRangeException()
-        };
-    }
+        ApiType.Legacy => new HsmMachineLegacyWrapper(initial, logger),
+        ApiType.Fluent => new HsmMachineFluentWrapper(initial, logger),
+        _ => throw new ArgumentOutOfRangeException()
+    };
 
     // Helper methods
     public static Type GetStateEnumType(string machine, ApiType api) =>

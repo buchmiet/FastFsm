@@ -98,9 +98,10 @@ public partial class FastFsmAsyncActions
 // ===== Benchmarks =====
 // Note: HardwareCounters require Windows, Administrator privileges and no Hyper-V.
 // Otherwise CPU columns will not appear in the report.
-[SimpleJob(RuntimeMoniker.Net10_0, launchCount: 1, warmupCount: 3, iterationCount: 15)]
+[InProcess]
+[WarmupCount(3)]
+[IterationCount(15)]
 [MemoryDiagnoser]
-[DisassemblyDiagnoser(maxDepth: 3)]
   
 public class StateMachineBenchmarks
 {
@@ -551,7 +552,11 @@ public class StateMachineBenchmarks
     [Benchmark(OperationsPerInvoke = Ops), BenchmarkCategory("Helper")]
     public void Stateless_GetPermittedTriggers()
     {
+        // Stateless deprecates the sync accessor in favour of PermittedTriggersAsync, but this
+        // category measures synchronous APIs against FastFsm's sync GetPermittedTriggers().
+#pragma warning disable CS0618
         for (int i = 0; i < Ops; i++) _ = _statelessBasic.PermittedTriggers;
+#pragma warning restore CS0618
         DeadCodeEliminationHelper.KeepAliveWithoutBoxing(_statelessBasic);
     }
 

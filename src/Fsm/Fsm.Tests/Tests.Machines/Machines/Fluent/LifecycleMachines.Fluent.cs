@@ -15,8 +15,5 @@ public partial class LifecycleMachineFluent
             .On(LifecycleTrigger.Complete).GoTo(LifecycleState.Completed)
             .On(LifecycleTrigger.Fail).GoTo(LifecycleState.Failed);
 
-    private void ThrowingEntry()
-    {
-        throw new InvalidOperationException("Entry callback failed");
-    }
+    private void ThrowingEntry() => throw new InvalidOperationException("Entry callback failed");
 }

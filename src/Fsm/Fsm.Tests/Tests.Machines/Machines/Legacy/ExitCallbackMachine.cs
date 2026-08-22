@@ -17,9 +17,5 @@ public partial class ExitCallbackMachine
     [Transition(ExitState.A, ExitTrigger.Go, ExitState.B)]
     private void Configure() { }
 
-    private void OnExitA()
-    {
-        OnExitCalled = true;
-        // OnExit cannot receive payload, so OnExitPayloadData remains null
-    }
+    private void OnExitA() => OnExitCalled = true;// OnExit cannot receive payload, so OnExitPayloadData remains null
 }

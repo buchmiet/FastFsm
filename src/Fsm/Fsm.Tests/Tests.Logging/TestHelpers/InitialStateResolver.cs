@@ -40,9 +40,6 @@ namespace Tests.Logging.TestHelpers
         }
 
         // Convenience generic overload used by wrappers
-        public static string ResolveOrDefault<TState>(string machine, string? initial) where TState : struct, Enum
-        {
-            return Resolve(machine, typeof(TState), initial);
-        }
+        public static string ResolveOrDefault<TState>(string machine, string? initial) where TState : struct, Enum => Resolve(machine, typeof(TState), initial);
     }
 }

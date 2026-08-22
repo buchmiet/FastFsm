@@ -17,10 +17,7 @@ public partial class LifecycleMachineFluent
             .On(LifecycleTrigger.Complete).GoTo(LifecycleState.Completed)
             .On(LifecycleTrigger.Fail).GoTo(LifecycleState.Failed);
 
-    private void ThrowingEntry()
-    {
-        throw new InvalidOperationException("Entry callback failed");
-    }
+    private void ThrowingEntry() => throw new InvalidOperationException("Entry callback failed");
 }
 
 // Async lifecycle state machine - Fluent version
@@ -39,10 +36,7 @@ public partial class AsyncLifecycleMachineFluent
             .On(AsyncLifecycleTrigger.CompleteAsync)
                 .GoTo(AsyncLifecycleState.Completed);
 
-    private async Task StartProcessingAsync()
-    {
-        await Task.Delay(10);
-    }
+    private async Task StartProcessingAsync() => await Task.Delay(10);
 
     private async Task FailingActionAsync()
     {

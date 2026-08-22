@@ -30,28 +30,19 @@ namespace Generator.Helpers
         /// <summary>
         /// Returns method modifiers (async keyword).
         /// </summary>
-        public static string GetMethodModifiers(bool isAsync)
-        {
-            return isAsync ? "async " : "";
-        }
+        public static string GetMethodModifiers(bool isAsync) => isAsync ? "async " : "";
 
         /// <summary>
         /// Returns await keyword if needed.
         /// </summary>
-        public static string GetAwaitKeyword(bool targetMethodIsAsync, bool callerIsAsync)
-        {
-            return callerIsAsync && targetMethodIsAsync ? "await " : "";
-        }
+        public static string GetAwaitKeyword(bool targetMethodIsAsync, bool callerIsAsync) => callerIsAsync && targetMethodIsAsync ? "await " : "";
 
         /// <summary>
         /// Returns ConfigureAwait call if needed.
         /// </summary>
-        public static string GetConfigureAwait(bool isAsync, bool continueOnCapturedContext)
-        {
-            return isAsync
+        public static string GetConfigureAwait(bool isAsync, bool continueOnCapturedContext) => isAsync
                 ? $".ConfigureAwait({continueOnCapturedContext.ToString().ToLowerInvariant()})"
                 : "";
-        }
 
         /// <summary>
         /// Generates method invocation with await and ConfigureAwait handling.
@@ -94,22 +85,16 @@ namespace Generator.Helpers
         /// <summary>
         /// Returns the base class name for the state machine.
         /// </summary>
-        public static string GetBaseClassName(string stateType, string triggerType, bool isAsync)
-        {
-            return isAsync
+        public static string GetBaseClassName(string stateType, string triggerType, bool isAsync) => isAsync
                 ? $"AsyncStateMachineBase<{stateType}, {triggerType}>"
                 : $"StateMachineBase<{stateType}, {triggerType}>";
-        }
 
         /// <summary>
         /// Returns the interface name for the state machine.
         /// </summary>
-        public static string GetInterfaceName(string stateType, string triggerType, bool isAsync)
-        {
-            return isAsync
+        public static string GetInterfaceName(string stateType, string triggerType, bool isAsync) => isAsync
                 ? $"IStateMachineAsync<{stateType}, {triggerType}>"
                 : $"IStateMachineSync<{stateType}, {triggerType}>";
-        }
 
         /// <summary>
         /// Generates fire-and-forget async call for constructor (initial OnEntry).

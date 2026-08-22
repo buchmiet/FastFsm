@@ -7,20 +7,37 @@ Repository package version is `FastFsmPackageVersion` / `Version` in `Directory.
 
 ## [Unreleased]
 
-### Changed
+## [0.9.2] - unreleased
 
-- Hierarchical machines now report truthful Extension Contract v2 data: `SourceState` is the active leaf, `HandledAtState` is the owning state, `Kind` comes from `TransitionModel.IsInternal`, internal transitions have no targets, and `FinalState` is the machine's real current state.
-- HSM state lifecycle hooks exit leaf-to-ancestor and enter ancestor-to-leaf, including ancestor-owned external and self-transitions.
-- Extension hook masks are enforced at generator emission sites: transition payloads, guard dispatch, HSM LCA traversal, callback hooks, and attempt completion run only when the corresponding `ExtensionHooks` flag is set.
+### Breaking
+
+- Replaced the untyped `IStateMachineExtension` contract with `IStateMachineExtension<TState,TTrigger>`. The previous untyped interface and context types are removed; there is no parallel compatibility surface.
 
 ### Added
 
+- **`FastFsm.Sharp.Observability`** — `ActivitySource` tracing, `Meter` metrics, optional `ILogger` sink, and machine-agnostic `ObservabilityEvent` stream via `ObservabilityExtension<TState,TTrigger>`.
 - HSM extension benchmarks (`HsmExtensionBenchmarks`: no extensions, transitions-only, states-only).
-- Documentation for attempt outcomes and async pre-cancel semantics (no attempt when the token is already canceled at entry).
+- Observability benchmarks (`ObservabilityBenchmarks`, `FlatObservabilitySampledTracingBenchmarks`: flat and HSM registration/disabled/metrics/tracing scenarios).
+- Documentation for attempt outcomes, async pre-cancel semantics, and [observability.md](docs/observability.md).
+- `scripts/run-benchmark-snapshot.ps1` for reproducible packaged-mode benchmark capture.
 
-### Removed
+### Changed
 
-- Dead v1 `ExtensionRunner` HSM stubs (`RunBubbleToParent`, `RunInitialSubstateEntered`, `RunHistoryRestore`, `RunAncestorPathChanged`, `RunTransitionCompleted`). `ExtensionRunnerV2` remains the only shipped runner.
+- Extension transition data now distinguishes the active source state, transition-owning state, declared target, resolved target, transition kind, outcome, failure stage, and actual final state.
+- HSM state lifecycle hooks exit leaf-to-ancestor and enter ancestor-to-leaf, including ancestor-owned external and self-transitions.
+- Extension hook masks are enforced at generator emission sites: transition payloads, guard dispatch, HSM LCA traversal, callback hooks, and attempt completion run only when the corresponding `ExtensionHooks` flag is set.
+- Comparison benchmark dependency **Stateless** updated to **5.20.1** (from 5.17.0).
+- StateMachine/HSM benchmarks use InProcess jobs (consistent with extension/observability suites; avoids outer-process generator restore failures).
+- `global.json` SDK pin relaxed to `10.0.100` with `rollForward: latestMajor` for heterogeneous CI/bench hosts.
+- Generator emission uses structured `IndentedStringBuilder` scopes (`Block`, `Switch`, `Case`, `IfDirective`) and `GeneratedLogLevel` at log call sites (generated machine semantics unchanged).
+
+### Fixed
+
+- Observability hot path gates string formatting and event construction behind enabled surfaces (metrics-only and no-listener tracing no longer pay for disabled event-stream work).
+- Observability DI captures an immutable options snapshot per `(TState,TTrigger)` registration instead of a shared mutable singleton.
+- `ObservabilityEvent.Timestamp` is emission time; `AttemptStartTimestamp` correlates events within one attempt.
+- Removed redundant `System.Diagnostics.DiagnosticSource` package reference on `net10.0` (NU1510 under `-warnaserror`).
+- Sampled-tracing `ActivityListener` is created per activation after `ActivitySource` exists, always samples FastFsm, and detaches on dispose (`ShouldListenTo` is evaluated only at attach time). Sampled tracing runs in `FlatObservabilitySampledTracingBenchmarks`.
 
 ## [0.9.1] - 2026-08-17
 
@@ -89,5 +106,6 @@ Published on [NuGet.org](https://www.nuget.org/packages/FastFsm.Sharp). Targets 
 - Historical scratch trees from the git working set (old tests, multi-language bench experiments, local feed data, `Generator.Tests/old_tests`, tracked BenchmarkDotNet .NET 9 artifacts, local NuGet.config pointing at localhost). A local `archive.zip` may hold a copy; it is not part of the repository.
 - Hardcoded parser debug hooks for `AsyncOceOnEntryMachine` / `ContinueOnActionMachine`.
 
+[0.9.2]: https://github.com/buchmiet/FastFsm/compare/v0.9.1...feature/pr5-observability
 [0.9.1]: https://github.com/buchmiet/FastFsm/releases/tag/v0.9.1
 [0.9.0]: https://github.com/buchmiet/FastFsm/releases/tag/v0.9.0

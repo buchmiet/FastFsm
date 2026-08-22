@@ -49,7 +49,7 @@ public class DualApiMatrixTests : LoggingTestBase
         );
 
         // Act & Assert - Start machine
-        Should.NotThrow(() => wrapper.Start());
+        Should.NotThrow(wrapper.Start);
         
         // Verify initial state
         wrapper.CurrentState.ShouldNotBeNull();

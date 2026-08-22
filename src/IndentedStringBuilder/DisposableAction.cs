@@ -1,7 +1,7 @@
 ﻿namespace IndentedStringBuilder;
 
 /// <summary>
-///  Wywołuje podaną akcję przy Dispose().
+/// Invokes the given action on Dispose().
 /// </summary>
 internal sealed class DisposableAction(Action action) : IDisposable
 {

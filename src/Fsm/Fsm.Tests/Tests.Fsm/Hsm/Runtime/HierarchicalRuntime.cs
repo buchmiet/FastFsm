@@ -65,10 +65,10 @@ namespace Tests.Fsm.Hsm.Runtime
         {
             var type = typeof(DeepHistoryMachine);
 
-            // instancja jest potrzebna, jeśli będziemy czytać chronione właściwości
+            // an instance is needed if we will read protected properties
             var instance = Activator.CreateInstance(type, DeepHistoryMachine_S.Out)!;
 
-            // spróbuj: g_*  -> s_* (wsteczna zgodność) -> chronione właściwości z instancji
+            // try: g_*  -> s_* (backward compatibility) -> protected properties from the instance
             int[] parent = GetIntArray(type, instance, "g_parent", "ParentArray");
             int[] initial = GetIntArray(type, instance, "g_initialChild", "InitialChildArray");
             int[] depth = GetIntArray(type, instance, "g_depth", "DepthArray");
@@ -94,40 +94,40 @@ namespace Tests.Fsm.Hsm.Runtime
 
         static int[] GetIntArray(Type t, object instance, string staticFieldName, string protectedPropName)
         {
-            // 1) nowe pole g_*
+            // 1) new g_* field
             var f = t.GetField(staticFieldName, BindingFlags.NonPublic | BindingFlags.Static);
             if (f != null) return (int[])f.GetValue(null)!;
 
-            // 2) wsteczna zgodność: stare pole s_*
+            // 2) backward compatibility: legacy s_* field
             var legacy = staticFieldName.Replace("g_", "s_");
             f = t.GetField(legacy, BindingFlags.NonPublic | BindingFlags.Static);
             if (f != null) return (int[])f.GetValue(null)!;
 
-            // 3) chroniona właściwość bazowa (override w klasie wygenerowanej)
+            // 3) protected base property (override in the generated class)
             var p = t.GetProperty(protectedPropName, BindingFlags.NonPublic | BindingFlags.Instance)
                  ?? t.BaseType?.GetProperty(protectedPropName, BindingFlags.NonPublic | BindingFlags.Instance);
             if (p != null) return (int[])p.GetValue(instance)!;
 
-            throw new InvalidOperationException($"Nie znaleziono {staticFieldName}/{protectedPropName} w {t.FullName}.");
+            throw new InvalidOperationException($"Did not find {staticFieldName}/{protectedPropName} in {t.FullName}.");
         }
 
         static Array GetArray(Type t, object instance, string staticFieldName, string protectedPropName)
         {
-            // 1) nowe pole g_*
+            // 1) new g_* field
             var f = t.GetField(staticFieldName, BindingFlags.NonPublic | BindingFlags.Static);
             if (f != null) return (Array)f.GetValue(null)!;
 
-            // 2) wsteczna zgodność: stare pole s_*
+            // 2) backward compatibility: legacy s_* field
             var legacy = staticFieldName.Replace("g_", "s_");
             f = t.GetField(legacy, BindingFlags.NonPublic | BindingFlags.Static);
             if (f != null) return (Array)f.GetValue(null)!;
 
-            // 3) chroniona właściwość bazowa
+            // 3) protected base property
             var p = t.GetProperty(protectedPropName, BindingFlags.NonPublic | BindingFlags.Instance)
                  ?? t.BaseType?.GetProperty(protectedPropName, BindingFlags.NonPublic | BindingFlags.Instance);
             if (p != null) return (Array)p.GetValue(instance)!;
 
-            throw new InvalidOperationException($"Nie znaleziono {staticFieldName}/{protectedPropName} w {t.FullName}.");
+            throw new InvalidOperationException($"Did not find {staticFieldName}/{protectedPropName} in {t.FullName}.");
         }
 
         [Fact]

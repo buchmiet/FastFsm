@@ -55,7 +55,7 @@ Fluent:
 
 ## External transitions and bubbling
 
-External transitions move between states (including across composite boundaries). The generator emits hierarchical exit/entry sequences. Extension Contract v2 observes that path as per-state `OnStateExiting` / `OnStateEntered` hooks plus `HandledAtState`, `DeclaredTarget`, and `ResolvedTarget` on the attempt result. There are no separate HSM-specific extension callbacks.
+External transitions move between states (including across composite boundaries). The generator emits hierarchical exit/entry sequences. Extensions observe that path through per-state `OnStateExiting` / `OnStateEntered` hooks plus `HandledAtState`, `DeclaredTarget`, and `ResolvedTarget` on the attempt result. There are no separate HSM-specific extension callbacks.
 
 ## Transition priority
 

@@ -13,7 +13,7 @@ internal class FactoryGenerationModelBuilder
     {
         var typeHelper = new TypeSystemHelper();
 
-        // Przetwarzanie typu State
+        // Process State type
         var stateTypeInfo = new TypeGenerationInfo
         {
             UsageName = typeHelper.FormatTypeForUsage(model.StateType),
@@ -22,7 +22,7 @@ internal class FactoryGenerationModelBuilder
             RequiredNamespaces = typeHelper.GetRequiredNamespaces(model.StateType).ToList()
         };
 
-        // Przetwarzanie typu Trigger
+        // Process Trigger type
         var triggerTypeInfo = new TypeGenerationInfo
         {
             UsageName = typeHelper.FormatTypeForUsage(model.TriggerType),
@@ -31,7 +31,7 @@ internal class FactoryGenerationModelBuilder
             RequiredNamespaces = typeHelper.GetRequiredNamespaces(model.TriggerType).ToList()
         };
 
-        // Przetwarzanie typu Payload (jeśli istnieje)
+        // Process Payload type (if present)
         TypeGenerationInfo? payloadTypeInfo = null;
         var isSinglePayload = (model.GenerationConfig.HasPayload || model.DefaultPayloadType != null || model.TriggerPayloadTypes.Any())
                               && !model.TriggerPayloadTypes.Any()
@@ -48,7 +48,7 @@ internal class FactoryGenerationModelBuilder
             };
         }
 
-        // Zbieranie wszystkich unikalnych przestrzeni nazw
+        // Collect unique namespaces
         var allNamespaces = new HashSet<string>();
         allNamespaces.UnionWith(stateTypeInfo.RequiredNamespaces);
         allNamespaces.UnionWith(triggerTypeInfo.RequiredNamespaces);
@@ -57,7 +57,7 @@ internal class FactoryGenerationModelBuilder
             allNamespaces.UnionWith(payloadTypeInfo.RequiredNamespaces);
         }
 
-        // Dodaj stałe usingi
+        // Add required usings
         allNamespaces.Add(NamespaceSystem);
         allNamespaces.Add(NamespaceMicrosoftDependencyInjection);
         if (model.GenerateLogging)

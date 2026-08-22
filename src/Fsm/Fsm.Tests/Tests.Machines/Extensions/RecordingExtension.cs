@@ -3,8 +3,8 @@ using Tests.Machines.Machines;
 
 namespace Tests.Machines.Extensions
 {
-    // ── mini maszyna ───────────────────────────────────────────────────────────
-    // ── extension zbierający zdarzenia ────────────────────────────────────────
+    // ── mini machine ───────────────────────────────────────────────────────────
+    // ── extension that records events ────────────────────────────────────────
     public class RecordingExtension : IStateMachineExtension<HookOrderState, HookOrderTrigger>
     {
         private readonly List<string> _log;

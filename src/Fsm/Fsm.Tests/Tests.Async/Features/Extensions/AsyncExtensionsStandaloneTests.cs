@@ -16,34 +16,22 @@ public class AsyncExtensionsStandaloneTests
         public ExtensionHooks Hooks => ExtensionHooks.Transitions | ExtensionHooks.Guards;
         public List<string> Log { get; } = new();
 
-        public void OnAttemptStarting(in TransitionAttemptContext<ExtState, ExtTrigger> attempt)
-        {
-            Log.Add($"AttemptStarting: {attempt.SourceState}");
-        }
+        public void OnAttemptStarting(in TransitionAttemptContext<ExtState, ExtTrigger> attempt) => Log.Add($"AttemptStarting: {attempt.SourceState}");
 
         public void OnAttemptCompleted(
             in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
-            in TransitionResult<ExtState> result)
-        {
-            Log.Add($"AttemptCompleted: {result.Outcome}");
-        }
+            in TransitionResult<ExtState> result) => Log.Add($"AttemptCompleted: {result.Outcome}");
 
         public void OnGuardEvaluating(
             in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
             in TransitionInfo<ExtState> candidate,
-            string guardName)
-        {
-            Log.Add($"GuardEvaluating: {guardName}");
-        }
+            string guardName) => Log.Add($"GuardEvaluating: {guardName}");
 
         public void OnGuardEvaluated(
             in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
             in TransitionInfo<ExtState> candidate,
             string guardName,
-            bool result)
-        {
-            Log.Add($"GuardEvaluated: {guardName} = {result}");
-        }
+            bool result) => Log.Add($"GuardEvaluated: {guardName} = {result}");
     }
 
     [Fact]
@@ -134,41 +122,26 @@ public class AsyncExtensionsStandaloneTests
     {
         public ExtensionHooks Hooks => ExtensionHooks.Transitions | ExtensionHooks.Guards;
 
-        public void OnAttemptStarting(in TransitionAttemptContext<ExtState, ExtTrigger> attempt)
-        {
-            throw new Exception("Extension error");
-        }
+        public void OnAttemptStarting(in TransitionAttemptContext<ExtState, ExtTrigger> attempt) => throw new Exception("Extension error");
 
         public void OnTransitionMatched(
             in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
-            in TransitionInfo<ExtState> matched)
-        {
-            throw new Exception("Extension error");
-        }
+            in TransitionInfo<ExtState> matched) => throw new Exception("Extension error");
 
         public void OnAttemptCompleted(
             in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
-            in TransitionResult<ExtState> result)
-        {
-            throw new Exception("Extension error");
-        }
+            in TransitionResult<ExtState> result) => throw new Exception("Extension error");
 
         public void OnGuardEvaluating(
             in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
             in TransitionInfo<ExtState> candidate,
-            string guardName)
-        {
-            throw new Exception("Extension error");
-        }
+            string guardName) => throw new Exception("Extension error");
 
         public void OnGuardEvaluated(
             in TransitionAttemptContext<ExtState, ExtTrigger> attempt,
             in TransitionInfo<ExtState> candidate,
             string guardName,
-            bool result)
-        {
-            throw new Exception("Extension error");
-        }
+            bool result) => throw new Exception("Extension error");
     }
 }
 
@@ -195,20 +168,11 @@ public partial class AsyncExtensionsMachineFluentFsm
         return true;
     }
 
-    private async Task StartWorkAsync()
-    {
-        await Task.Yield();
-    }
+    private async Task StartWorkAsync() => await Task.Yield();
 
-    private async Task OnEnterIdleAsync()
-    {
-        await Task.Yield();
-    }
+    private async Task OnEnterIdleAsync() => await Task.Yield();
 
-    private async Task OnExitWorkingAsync()
-    {
-        await Task.Yield();
-    }
+    private async Task OnExitWorkingAsync() => await Task.Yield();
 }
 
 // Async machine with extensions support (Legacy version)
@@ -231,20 +195,11 @@ public partial class AsyncExtensionsMachine
         return true;
     }
 
-    private async Task StartWorkAsync()
-    {
-        await Task.Yield();
-    }
+    private async Task StartWorkAsync() => await Task.Yield();
 
-    private async Task OnEnterIdleAsync()
-    {
-        await Task.Yield();
-    }
+    private async Task OnEnterIdleAsync() => await Task.Yield();
 
-    private async Task OnExitWorkingAsync()
-    {
-        await Task.Yield();
-    }
+    private async Task OnExitWorkingAsync() => await Task.Yield();
 }
 
 public enum ExtState { Idle, Working, Complete }
